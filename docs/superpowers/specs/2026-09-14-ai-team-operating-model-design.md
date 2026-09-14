@@ -95,13 +95,12 @@ available to routines).
   runbook). Monday runs additionally propose the week's plan in `STATUS.md`.
 - Model: `claude-sonnet-5`. Repo: `sandovabarbora/filmrunner`. Connectors:
   Gmail only. Tools: Bash, Read, Write, Edit, Glob, Grep.
-- `main` rules: code changes only via PR with the CI check green (enforced by
-  a required status check on GitHub). The three state files
-  (`docs/company/STATUS.md`, `INBOX.md`, `LOG.md`) are committed directly
-  to `main` by the routine so they are always current. GitHub branch
-  protection cannot exempt paths, so "no code directly to main" is a
-  contract in `TEAM.md` plus the required check, not a hard lock; a
-  violation is visible in `git log` and treated as a bug.
+- `main` rules (amended during implementation, see DECISIONS.md): a GitHub
+  ruleset requires the `ci` check on every commit reaching `main`, which
+  rejects all direct pushes. Code lands via PRs the founder merges. The
+  routine's state files (`docs/company/STATUS.md`, `INBOX.md`, `LOG.md`)
+  land via a state-only PR on `shift/state-<date>` with auto-merge, so
+  they appear on `main` a few minutes after the run.
 
 Run contract (the prompt is self-contained and repeats this):
 
@@ -116,8 +115,7 @@ Run contract (the prompt is self-contained and repeats this):
 4. When something needs approval, append an `INBOX.md` item and continue
    with the next ungated item. Never block.
 5. Write `STATUS.md` (per role: summary, tests, blockers, `needs_approval`)
-   and one `LOG.md` line; commit these, and any new `INBOX.md` items,
-   directly to `main` (rebase on non-fast-forward, never force).
+   and one `LOG.md` line; open a state-only PR with auto-merge.
 6. Send a digest to `sandovabarb@gmail.com` and to no other address: five
    lines max, what was done, what awaits approval (`#id`), what is blocked,
    PR link.
