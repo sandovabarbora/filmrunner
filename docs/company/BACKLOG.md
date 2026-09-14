@@ -31,6 +31,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a draft invitation email exists as text; sending it is an INBOX item, not done by the routine
   - failure case: if fewer than five candidates can be named from the founder's network, the plan says how to find the rest (film schools, FAMU, production listings) instead of shrinking the sample
 
+## FR-8 · tech-lead · Demo deployment of the PWA for discovery interviews
+- state: ready
+- gated: partial
+- why: showing an AD a call sheet that works on their own phone with no signal is stronger evidence than any interview question; the PWA needs HTTPS and a public API to exist outside localhost
+- dod:
+  - docs/adr/ADR-002-demo-hosting.md: frontend on Cloudflare Pages (or GitHub Pages), backend on Fly.io (or Railway) from the existing Dockerfile, Postgres on Neon; alternatives and costs stated; migrations run as a release step, not on every boot
+  - deploy configs committed (fly.toml, Pages config, GitHub Actions deploy job triggered on main) with secrets read from the platform, never from the repo
+  - INBOX items for every account, domain, or payment the founder must create; the routine never creates them
+  - a seed script that loads one realistic demo production and call sheet so the URL shows something on first open
+  - failure case: if the service worker does not register on iOS Safari over the deployed HTTPS URL, the ADR records it as a blocker for the demo and proposes the fallback (install banner off, plain web link) instead of shipping a demo that silently fails on the phones ADs actually carry
+
 ## FR-4 · tech-lead · ADR-001: stack of the skeleton
 - state: ready
 - gated: no
