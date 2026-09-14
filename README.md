@@ -22,8 +22,9 @@ without an approved item in `docs/company/INBOX.md`.
 
 ## Live demo
 
-https://sandovabarbora.github.io/filmrunner/?demo=1 serves the PWA from
-GitHub Pages with a bundled sample shoot day (no backend). Open it on a
+https://sandovabarbora.github.io/filmrunner/ serves the PWA from GitHub
+Pages with a bundled sample shoot day (no backend). `?sheet=<id>&api=<base>`
+loads a real call sheet from a FilmRunner API; `?dev=1` shows the lookup form. Open it on a
 phone, add it to the home screen, switch to airplane mode: the call sheet
 still renders from the cache. Deployed by `.github/workflows/pages.yml` on
 every push to `main` that touches `frontend/`.

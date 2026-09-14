@@ -30,10 +30,33 @@ def frontend_url() -> Iterator[str]:
         server.shutdown()
 
 
-def test_shell_renders(page: Page, frontend_url: str) -> None:
+def test_root_shows_demo_not_a_form(page: Page, frontend_url: str) -> None:
     page.goto(f"{frontend_url}/index.html")
-    assert "call sheet viewer" in page.locator("h1").inner_text()
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert "FilmRunner" in page.locator("h1").inner_text()
+    assert not page.locator("#lookup").is_visible()
+    assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
+
+
+def test_dev_mode_shows_the_lookup_form(page: Page, frontend_url: str) -> None:
+    page.goto(f"{frontend_url}/index.html?dev=1")
     assert page.locator("#loadBtn").is_visible()
+    assert not page.locator("#sheet").evaluate("el => el.classList.contains('visible')")
+
+
+def test_share_link_loads_from_api_without_form(page: Page, frontend_url: str) -> None:
+    page.route(
+        "**/api/v1/public/call-sheets/abc",
+        lambda route: route.fulfill(
+            content_type="application/json",
+            body='{"unit_name":"Second Unit","day_number":3,"day_count":9,"shoot_date":"2026-10-01",'
+            '"current_revision":{"revision_letter":"A","schedule_items":[]}}',
+        ),
+    )
+    page.goto(f"{frontend_url}/index.html?sheet=abc&api=http://api.test")
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert "Day 3 of 9" in page.locator("#dayLabel").inner_text()
+    assert not page.locator("#lookup").is_visible()
 
 
 def test_service_worker_registers(page: Page, frontend_url: str) -> None:
@@ -46,7 +69,7 @@ def test_service_worker_registers(page: Page, frontend_url: str) -> None:
 
 def test_load_without_api_shows_offline_status(page: Page, frontend_url: str) -> None:
     """Failure case: no API and no cache must show a visible status, not a blank sheet."""
-    page.goto(f"{frontend_url}/index.html")
+    page.goto(f"{frontend_url}/index.html?dev=1")
     page.fill("#apiBase", "http://127.0.0.1:1")
     page.fill("#callSheetId", "00000000-0000-0000-0000-000000000000")
     page.click("#loadBtn")
