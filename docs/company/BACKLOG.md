@@ -16,7 +16,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if the service worker does not register on iOS Safari over the deployed HTTPS URL, the ADR records it as a blocker for the demo and proposes the fallback (install banner off, plain web link) instead of shipping a demo that silently fails on the phones ADs actually carry
 
 ## FR-10 · frontend · Minimal AD editor: create a call sheet and publish a revision from a phone
-- state: ready
+- state: done
+- note: delivered 2026-09-14 in the founder's session (feat/fr-10-ad-editor): editor.html, ADR-003, E2E test against the real API (publish A, publish B, crew sees B) plus the network-loss failure case.
 - gated: no
 - why: the wedge is "AD publishes, crew receives"; today a call sheet can only be created with curl against the API, so nothing is usable by a real AD
 - dod:

@@ -29,6 +29,15 @@ phone, add it to the home screen, switch to airplane mode: the call sheet
 still renders from the cache. Deployed by `.github/workflows/pages.yml` on
 every push to `main` that touches `frontend/`.
 
+## AD editor
+
+https://sandovabarbora.github.io/filmrunner/editor.html — one page: connect
+(API + token, kept on the phone until sign-in lands), pick or create a
+production, fill the day, calls, safety and scenes, publish. The draft is
+saved on the phone on every change; the server sees only publishes
+(revision A, then B, C...). After publishing, the crew link is shown.
+Design: `docs/adr/ADR-003-editor.md`.
+
 ## Production (API)
 
 API on Fly.io (`backend/fly.toml`, region fra), Postgres on Supabase used

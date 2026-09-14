@@ -1,0 +1,38 @@
+/* Editor: same paper world as the viewer; forms sized for thumbs. */
+
+.block { padding: 18px 0 6px; border-bottom: 1px solid var(--rule); }
+.block h2 { margin: 0 0 10px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.field { display: block; margin-bottom: 12px; }
+.field .label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  background: #fff; color: var(--ink); font: inherit; font-size: 16px; /* 16px stops iOS zooming into fields */
+}
+input.mono { font-family: var(--mono); }
+textarea { resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.inline { display: flex; gap: 8px; margin-top: 8px; }
+.inline input { flex: 1; }
+button { padding: 11px 14px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--ink); color: var(--paper); font-weight: 600; cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.secondary { background: #fff; color: var(--ink); }
+button.quiet { background: transparent; color: var(--ink-2); border-color: var(--rule); font-weight: 500; padding: 8px 10px; }
+button.quiet.danger { color: var(--err-ink); }
+button.linklike { all: unset; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: inherit; }
+
+.items { list-style: none; margin: 0; padding: 0; }
+.item { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.item-row { display: grid; grid-template-columns: 5.5ch 1fr 1fr 5.5ch auto; gap: 8px; align-items: center; }
+.item-row .pages { text-align: right; }
+.item .set { margin-top: 8px; }
+.item-actions { display: flex; gap: 8px; margin-top: 8px; }
+#addScene { margin: 12px 0 4px; }
+
+.publish { padding: 20px 0; }
+.publish-state { font-size: 0.9375rem; color: var(--ink-2); margin-bottom: 10px; }
+#publish { width: 100%; padding: 14px; font-size: 1.0625rem; }
+.share { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; word-break: break-all; }
+.share .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.share a { display: block; margin: 6px 0 8px; color: var(--ink); font-family: var(--mono); font-size: 0.8125rem; }
+.publish .quiet { margin-top: 12px; }

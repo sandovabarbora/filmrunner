@@ -40,3 +40,46 @@ export interface CallSheet {
   unit_name: string;
   current_revision: CallSheetRevision | null;
 }
+
+/* Create payloads (backend/app/schemas). */
+
+export interface ScheduleItemCreate {
+  order_index: number;
+  scene_number: string;
+  int_ext: "INT" | "EXT";
+  day_night: "DAY" | "NIGHT";
+  set_description: string;
+  page_count_eighths: number;
+}
+
+export interface RevisionCreate {
+  general_crew_call: string | null;
+  shooting_call: string | null;
+  sunrise: string | null;
+  sunset: string | null;
+  weather_forecast: string | null;
+  safety_notes: string | null;
+  created_by: string | null;
+  schedule_items: ScheduleItemCreate[];
+}
+
+export interface CallSheetCreate {
+  shoot_date: string;
+  day_number: number;
+  day_count: number;
+  unit_name: string;
+  initial_revision: RevisionCreate;
+}
+
+export interface Production {
+  id: string;
+  name: string;
+  working_title: string | null;
+  production_company: string | null;
+  status: "prep" | "shooting" | "wrapped" | string;
+}
+
+export interface CallSheetCreated extends CallSheet {
+  id: string;
+  production_id: string;
+}
