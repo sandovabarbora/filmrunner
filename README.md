@@ -12,6 +12,14 @@ and why, and what's deliberately deferred.
 - **Frontend**: single-file offline-first PWA (vanilla HTML/CSS/JS, no build step), IndexedDB cache + service worker.
 - **Local dev**: docker-compose (Postgres + backend + a static file server for the frontend).
 
+## How this company runs
+
+FilmRunner is run by one founder and an AI team. The operating model,
+approval contract, roles and the daily routine are in
+`docs/company/TEAM.md`; strategy questions in `docs/company/BRIEF.md`;
+work in `docs/company/BACKLOG.md`. Nothing with real-world effect happens
+without an approved item in `docs/company/INBOX.md`.
+
 ## Quick start
 
 ```bash
