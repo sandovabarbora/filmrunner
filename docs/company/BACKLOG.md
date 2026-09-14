@@ -24,13 +24,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: delivered in PR #8 (branch shift/FR-2). `WebFetch` was blocked by this session's egress proxy for every vendor domain, so the teardown is built from `WebSearch` snippets, not directly-read vendor pages; several items are flagged "unverified" and a follow-up re-verification pass is requested in the doc.
 
 ## FR-3 · pm · Customer discovery plan: five Prague interviews
-- state: ready
+- state: done
 - gated: partial
 - why: Q1 to Q4 in BRIEF.md can only be answered by the people who make call sheets
 - dod:
   - docs/research/discovery-plan.md names the target roles (1st AD, 2nd AD, production coordinator), a 30-minute script, and a note-taking template
   - a draft invitation email exists as text; sending it is an INBOX item, not done by the routine
   - failure case: if fewer than five candidates can be named from the founder's network, the plan says how to find the rest (film schools, FAMU, production listings) instead of shrinking the sample
+- note: delivered in PR #11 (branch docs/fr-3-discovery-plan) — target roles, a 30-minute script mapped to BRIEF.md Q1-Q4/Q6, a note-taking template, and draft invitation email text. Recruiting real candidates and sending the invitation needs the founder's own network and identity, not the routine; filed as INBOX #1.
 
 ## FR-8 · tech-lead · Demo deployment of the PWA for discovery interviews
 - state: ready
