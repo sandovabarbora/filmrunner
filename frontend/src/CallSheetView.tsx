@@ -1,4 +1,4 @@
-import type { CallSheet, ContactCard, ScheduleItem } from "./types";
+import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem } from "./types";
 
 function pages(eighths: number): string {
   const whole = Math.floor(eighths / 8);
@@ -23,11 +23,16 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
 
 export interface CallSheetViewProps {
   callSheet: CallSheet;
+  personal?: PersonalSheet | null;
   freshness: { fromCache: false } | { fromCache: true; fetchedAt: string };
 }
 
-export function CallSheetView({ callSheet, freshness }: CallSheetViewProps) {
+export function CallSheetView({ callSheet, personal = null, freshness }: CallSheetViewProps) {
   const rev = callSheet.current_revision;
+  const myDept = personal?.department ?? null;
+  const heads = callSheet.contacts?.department_heads ?? [];
+  const mine = myDept ? heads.filter((c) => c.department === myDept) : [];
+  const others = myDept ? heads.filter((c) => c.department !== myDept) : heads;
   const items = [...(rev?.schedule_items ?? [])].sort((a, b) => a.order_index - b.order_index);
   const title = callSheet.production_title ?? callSheet.unit_name;
   return (
@@ -44,6 +49,16 @@ export function CallSheetView({ callSheet, freshness }: CallSheetViewProps) {
           {rev && <span className="rev-badge" data-rev={rev.revision_letter}>REV {rev.revision_letter}</span>}
         </div>
       </header>
+
+      {personal && (
+        <section className="you" id="you" aria-label="Your call">
+          <div className="you-head">
+            <div className="label">Your call</div>
+            <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.department} · {personal.position}</span></div>
+          </div>
+          <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
+        </section>
+      )}
 
       <section className="calls" aria-label="Call times">
         <div className="call crew">
@@ -90,11 +105,24 @@ export function CallSheetView({ callSheet, freshness }: CallSheetViewProps) {
               <ContactRow c={callSheet.contacts.head_of_day} />
             </div>
           )}
-          {callSheet.contacts.department_heads.length > 0 && (
-            <ul className="contact-list">
-              {callSheet.contacts.department_heads.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
-            </ul>
+          {mine.length > 0 && (
+            <div className="hod mine" id="yourDepartment">
+              <div className="label">Your department · {myDept}</div>
+              {mine.map((c) => <ContactRow key={`${c.department}-${c.name}`} c={c} />)}
+            </div>
           )}
+          {others.length > 0 && (myDept ? (
+            <details className="others" id="otherDepartments">
+              <summary>Other departments ({others.length})</summary>
+              <ul className="contact-list">
+                {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
+              </ul>
+            </details>
+          ) : (
+            <ul className="contact-list">
+              {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
+            </ul>
+          ))}
           {callSheet.contacts.nearest_hospital && (
             <p className="hospital"><span className="k">Nearest hospital </span>{callSheet.contacts.nearest_hospital}</p>
           )}

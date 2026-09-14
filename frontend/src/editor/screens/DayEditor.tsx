@@ -229,6 +229,25 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
           </div>
         )}
+        {published && crew.length > 0 && (
+          <div className="share" id="personalLinks">
+            <div className="label">Personal links · one per crew member</div>
+            <ul className="list">
+              {crew.map((m) => {
+                const link = `${crewLink(conn.apiBase, draft.callSheetId!)}&me=${encodeURIComponent(m.personal_token)}`;
+                return (
+                  <li key={m.id} className="row static">
+                    <span className="name">{m.contact.name}<span className="meta"> · {m.department}</span></span>
+                    <span className="row-actions">
+                      <a className="quiet-link" href={link} target="_blank" rel="noreferrer">Open</a>
+                      <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={`Copy link for ${m.contact.name}`}>Copy</button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </section>
     </>
   );

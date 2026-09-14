@@ -71,7 +71,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a contact without a phone renders the name and role with "no number on file", never an empty row or a broken tel: link
 
 ## FR-13 · frontend · Personal call sheet: "your call", your department first
-- state: ready
+- state: done
+- note: delivered 2026-09-14 (feat/fr-13-personal-sheet): personal_token per crew member (migration 931c2ab3ce65 with backfill), public /me/{token} endpoint, viewer "Your call" block + department-first contacts + invalid-token fallback, editor lists personal links per crew member after publish. Per-person call time uses CrewMember.standard_call_time (per-day overrides are a later item).
 - gated: no
 - why: a crew member opens the link for one number, their own call time; today the sheet is the same for everyone (BRIEF Q3: wrong or missed call times; Q7: the wedge is the crew's pocket). Founder request 2026-09-14.
 - dod:
@@ -83,8 +84,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - blocked-until: FR-10 (editor) and FR-12 (auth model decided), because the personal token design must match the auth ADR
 
 ## FR-16 · frontend · Notifications on publish and revision
-- state: blocked
-- note: unblocks after FR-13 (needs the receiver's identity)
+- state: ready
+- note: FR-13 done; the receiver is identified by the personal token
 - gated: partial
 - why: "crew missing an update" is the failure the living call sheet exists to prevent (BRIEF Q3); a revision that nobody is told about is a PDF with extra steps. Founder request 2026-09-14.
 - dod:

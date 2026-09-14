@@ -46,6 +46,14 @@ export interface CallSheetContacts {
   nearest_hospital: string | null;
 }
 
+export interface PersonalSheet {
+  name: string;
+  department: string;
+  position: string;
+  personal_call: string | null;
+  department_head: ContactCard | null;
+}
+
 export interface CallSheet {
   id?: string;
   production_title?: string;
@@ -137,4 +145,5 @@ export interface CrewMember extends CrewMemberCreate {
   id: string;
   production_id: string;
   contact: Contact;
+  personal_token: string;
 }
