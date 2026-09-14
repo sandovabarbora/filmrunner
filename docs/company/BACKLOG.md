@@ -4,11 +4,11 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-8 · tech-lead · Hosted API and database for the PWA (second half of the demo deployment)
 - state: ready
-- note: first half done 2026-09-14 (GitHub Pages, `?demo=1`, pages.yml, PR #17). This item is now the API: ADR-002, fly.toml + Dockerfile release step for alembic, Neon connection via platform secrets, CORS for the Pages origin, INBOX items for the Fly and Neon accounts. The PWA must be able to load a real call sheet by id from the hosted API.
+- note: first half done 2026-09-14 (GitHub Pages, `?demo=1`, pages.yml, PR #17). This item is now the API: ADR-002, fly.toml + Dockerfile release step for alembic, Supabase Postgres connection via platform secrets (Postgres only; no Supabase-specific schema features), CORS for the Pages origin, INBOX items for the Fly and Supabase accounts. The PWA must be able to load a real call sheet by id from the hosted API. Founder chose Supabase over Neon on 2026-09-14 (DECISIONS.md).
 - gated: partial
 - why: showing an AD a call sheet that works on their own phone with no signal is stronger evidence than any interview question; the PWA needs HTTPS and a public API to exist outside localhost
 - dod:
-  - docs/adr/ADR-002-demo-hosting.md: frontend on Cloudflare Pages (or GitHub Pages), backend on Fly.io (or Railway) from the existing Dockerfile, Postgres on Neon; alternatives and costs stated; migrations run as a release step, not on every boot
+  - docs/adr/ADR-002-demo-hosting.md: frontend on GitHub Pages (done), backend on Fly.io (or Railway) from the existing Dockerfile, Postgres on Supabase used as plain Postgres; alternatives and costs stated; migrations run as a release step, not on every boot
   - deploy configs committed (fly.toml, Pages config, GitHub Actions deploy job triggered on main) with secrets read from the platform, never from the repo
   - INBOX items for every account, domain, or payment the founder must create; the routine never creates them
   - a seed script that loads one realistic demo production and call sheet so the URL shows something on first open
@@ -49,7 +49,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - gated: no
 - why: the editor cannot go to a real AD while every write is protected by a single token in an env var
 - dod:
-  - docs/adr/ADR-004-auth.md compares magic-link email login, per-production secret link, and a hosted provider; picks one for the pilot with the reason
+  - docs/adr/ADR-004-auth.md compares Supabase Auth (magic link, JWT verified in FastAPI), a per-production secret link, and a hand-rolled magic link; picks one for the pilot with the reason; the data model must stay plain Postgres (no RLS as business logic)
   - implementation with tests: unauthenticated writes 401, a token for production A cannot touch production B, public read stays public
   - failure case: a leaked per-production token can be rotated without losing data, and the test proves the old one stops working
 

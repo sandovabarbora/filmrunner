@@ -86,3 +86,9 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: founder's call ("musíme mířit na working věc"). The demo on GitHub Pages (PR #17) made the gap visible: the viewer exists, the AD side does not. A working slice is also the strongest artefact for the interviews.
 - Guardrail kept: every item cites the BRIEF question it serves in its `why`; anything that needs accounts or money stays gated through INBOX.
 - Revisit when: interviews (FR-3) contradict the AD-as-operator assumption; then the editor is re-scoped before more is built on it.
+
+## 2026-09-14: Supabase for hosted Postgres (and later Auth), not Neon
+- Decision: the hosted database is Supabase Postgres, used as plain Postgres through SQLAlchemy + Alembic. Supabase Auth is the leading candidate for FR-12. No Supabase-specific schema features (RLS as business logic, edge functions, storage) in the data model.
+- Why: founder knows it from the old repository; Auth with magic links makes FR-12 configuration rather than code; Realtime fits the living call sheet later. Neon was a default, not a considered choice. Guardrail: keep the model portable so the old repo's vendor sprawl does not repeat.
+- Known cost: free-tier projects pause after a week of inactivity; mitigate with a scheduled health ping from CI or accept until there are real users.
+- Revisit when: the free tier pause bites a demo, or a feature tempts us into Supabase-only logic.
