@@ -109,3 +109,88 @@ def test_contacts_render_with_tap_to_call_and_no_number_fallback(page: Page, fro
     assert tel_links.first.get_attribute("href").startswith("tel:+420")
     assert page.locator("#contacts .phone.none").count() == 1  # UPM has no number on file
     assert "Bulovka" in page.locator("#contacts .hospital").inner_text()
+
+
+_SHEET_BODY = (
+    '{"unit_name":"Second Unit","day_number":3,"day_count":9,"shoot_date":"2026-10-01",'
+    '"current_revision":{"revision_letter":"A","schedule_items":[]}}'
+)
+
+
+def test_going_offline_after_a_live_load_shows_cached_status_with_timestamp(page: Page, frontend_url: str) -> None:
+    """FR-9: the service worker's own cache can answer fetch() when offline,
+    which used to read as "Live data". The worker now stamps every response
+    with where it came from (vite.config.ts); loader.ts trusts the stamp,
+    not whether fetch() merely succeeded.
+    """
+    page.route(
+        "**/api/v1/public/call-sheets/xyz",
+        lambda route: route.fulfill(content_type="application/json", body=_SHEET_BODY),
+    )
+    url = f"{frontend_url}/index.html?sheet=xyz&api=http://api.test"
+    page.goto(url)
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert page.locator("#status").get_attribute("class") == "status online"
+
+    # Give the worker's own cache.put() (fired after fetchDidSucceed) a beat
+    # to land before we cut the network it would otherwise fall back to.
+    page.wait_for_function(
+        "caches.open('filmrunner-api-v1').then(c => c.keys()).then(k => k.length > 0)",
+        timeout=10_000,
+    )
+
+    # Simulate the network being down for this call specifically (not the
+    # whole page — the local test server standing in for "no signal on
+    # set" would otherwise fail the navigation itself, which isn't what
+    # this test is about; the app shell's own offline navigation is served
+    # by the precache route, unrelated to this API-freshness check).
+    page.unroute("**/api/v1/public/call-sheets/xyz")
+    page.route("**/api/v1/public/call-sheets/xyz", lambda route: route.abort())
+
+    page.goto(url)
+    page.wait_for_function(
+        "document.querySelector('#status').textContent.trim().length > 0", timeout=10_000
+    )
+    status = page.locator("#status")
+    assert status.get_attribute("class") == "status offline"
+    assert "Offline" in status.inner_text()
+    assert "saved" in status.inner_text()
+    assert "Day 3 of 9" in page.locator("#dayLabel").inner_text()
+
+
+def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, frontend_url: str) -> None:
+    """Failure case: an older service worker (deployed before this stamp
+    existed) can still be the one controlling the page after an upgrade,
+    since it keeps intercepting fetches until it is replaced. It cannot
+    tell live from cached either, so the app must not guess "Live" just
+    because fetch() succeeded.
+    """
+    stale_sw = (
+        "self.addEventListener('install', () => self.skipWaiting());"
+        "self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));"
+        "self.addEventListener('fetch', (e) => {"
+        "  if (e.request.url.includes('/api/v1/public/call-sheets/')) e.respondWith(fetch(e.request));"
+        "});"
+    )
+    # Service worker registration is a browser-context-level fetch, not a
+    # page-level one: it must be routed on the context, or the real built
+    # sw.js (which already carries the fix) answers instead of this stub.
+    page.context.route(
+        "**/sw.js",
+        lambda route: route.fulfill(content_type="application/javascript", body=stale_sw),
+    )
+    page.context.route(
+        "**/api/v1/public/call-sheets/xyz",
+        lambda route: route.fulfill(content_type="application/json", body=_SHEET_BODY),
+    )
+    page.goto(f"{frontend_url}/index.html?dev=1")
+    page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=10_000)
+
+    page.fill("#apiBase", "http://api.test")
+    page.fill("#callSheetId", "xyz")
+    page.click("#loadBtn")
+
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    status = page.locator("#status")
+    assert "Unknown freshness" in status.inner_text()
+    assert "Live" not in status.inner_text()
