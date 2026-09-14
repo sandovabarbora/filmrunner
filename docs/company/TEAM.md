@@ -20,8 +20,8 @@ about strategy, priorities, or approvals.
 | `LOG.md` | One line per unit of work; append-only | every session and routine |
 | `TEAM.md` | This file | founder approves changes |
 
-Reference material, never a source of truth: the June 2026
-`PRODUCT_BRIEF.md` and the old codebase in
+Reference material, never a source of truth: the June 2026 brief, copied
+to `docs/reference/PRODUCT_BRIEF-2026-06.md`, and the old codebase in
 `~/Documents/Coding/sandbox/film_production` (not in this repo).
 
 ## Approval contract
