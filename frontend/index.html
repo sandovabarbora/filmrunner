@@ -261,9 +261,13 @@ function renderCallSheet(callSheet, { fromCache, fetchedAt } = {}) {
   document.getElementById("dateLabel").textContent = callSheet.shoot_date;
 
   const revWrap = document.getElementById("revBadgeWrap");
-  revWrap.innerHTML = rev
-    ? `<span class="rev-badge">REV ${rev.revision_letter}</span>`
-    : "";
+  revWrap.textContent = "";
+  if (rev) {
+    const badge = document.createElement("span");
+    badge.className = "rev-badge";
+    badge.textContent = `REV ${rev.revision_letter}`;
+    revWrap.appendChild(badge);
+  }
 
   document.getElementById("crewCall").textContent = rev?.general_crew_call || "—";
   document.getElementById("shootingCall").textContent = rev?.shooting_call || "—";
@@ -288,14 +292,14 @@ function renderCallSheet(callSheet, { fromCache, fetchedAt } = {}) {
       const eighths = item.page_count_eighths;
       const pages = `${Math.floor(eighths / 8)} ${eighths % 8}/8`.trim();
       const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${item.order_index}</td>
-        <td>${item.scene_number}</td>
-        <td>${item.int_ext}</td>
-        <td>${item.day_night}</td>
-        <td>${item.set_description}</td>
-        <td>${pages}</td>
-      `;
+      // textContent, never innerHTML: schedule text comes from the server and
+      // a crew phone must not execute whatever someone typed into a set note.
+      [item.order_index, item.scene_number, item.int_ext, item.day_night, item.set_description, pages]
+        .forEach((value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value == null ? "" : String(value);
+          row.appendChild(cell);
+        });
       tbody.appendChild(row);
     });
 
@@ -313,9 +317,27 @@ async function loadCallSheet() {
     setStatus("error", "Enter a call sheet ID.");
     return;
   }
+  await loadFrom(`${apiBase}/api/v1/public/call-sheets/${id}`, id);
+}
 
+/**
+ * Demo mode (?demo=1): a bundled sample call sheet served next to the app,
+ * so the deployed page shows a real shoot day with no backend. It goes
+ * through the same cache path as API data, so it works offline too.
+ */
+const DEMO_URL = "demo/call-sheet.json";
+const DEMO_ID = "demo";
+
+async function loadDemo() {
+  document.querySelector(".lookup").style.display = "none";
+  document.querySelector(".sub").textContent =
+    "Demo shoot day. Add this page to your home screen; it keeps working with no signal.";
+  await loadFrom(DEMO_URL, DEMO_ID);
+}
+
+async function loadFrom(url, id) {
   try {
-    const resp = await fetch(`${apiBase}/api/v1/public/call-sheets/${id}`, {
+    const resp = await fetch(url, {
       signal: AbortSignal.timeout(5000),
     });
     if (!resp.ok) {
@@ -341,6 +363,10 @@ document.getElementById("loadBtn").addEventListener("click", loadCallSheet);
 document.getElementById("callSheetId").addEventListener("keydown", (e) => {
   if (e.key === "Enter") loadCallSheet();
 });
+
+if (new URLSearchParams(window.location.search).get("demo") === "1") {
+  loadDemo();
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

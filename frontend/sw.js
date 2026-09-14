@@ -6,9 +6,9 @@
  * Reference: https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers
  */
 
-const SHELL_CACHE = "filmrunner-shell-v1";
+const SHELL_CACHE = "filmrunner-shell-v2";
 const API_CACHE = "filmrunner-api-v1";
-const SHELL_ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const SHELL_ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg", "./demo/call-sheet.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
