@@ -17,7 +17,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
-from app.auth import require_api_token
+from app.auth import Principal, require_api_token, require_principal
 from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
@@ -28,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_api_token)])
 public_router = APIRouter()  # no auth — see module docstring
+
+
+def _audit_label(principal: Principal, body_value: str | None) -> str:
+    """Users are recorded by identity; service scripts may name themselves, prefixed so it is never mistaken for a person."""
+    if principal.kind == "user":
+        return principal.label
+    return f"service:{body_value or 'unknown'}"
 
 
 def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
@@ -51,12 +58,15 @@ def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
     status_code=status.HTTP_201_CREATED,
 )
 def create_call_sheet_endpoint(
-    production_id: uuid.UUID, payload: CallSheetCreate, db: Session = Depends(get_db)
+    production_id: uuid.UUID,
+    payload: CallSheetCreate,
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_principal),
 ) -> CallSheet:
     if db.get(Production, production_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Production not found")
     try:
-        call_sheet = create_call_sheet(db, production_id, payload)
+        call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except HeadOfDayNotOnProduction as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return _read_with_contacts(db, call_sheet.id)
@@ -68,11 +78,14 @@ def create_call_sheet_endpoint(
     status_code=status.HTTP_201_CREATED,
 )
 def publish_revision_endpoint(
-    call_sheet_id: uuid.UUID, payload: CallSheetRevisionCreate, db: Session = Depends(get_db)
+    call_sheet_id: uuid.UUID,
+    payload: CallSheetRevisionCreate,
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_principal),
 ):
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     try:
-        return publish_revision(db, call_sheet, payload)
+        return publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
     except HeadOfDayNotOnProduction as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:

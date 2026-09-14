@@ -39,7 +39,7 @@ def _next_revision_letter(call_sheet: CallSheet) -> str:
 
 
 def publish_revision(
-    db: Session, call_sheet: CallSheet, payload: CallSheetRevisionCreate
+    db: Session, call_sheet: CallSheet, payload: CallSheetRevisionCreate, created_by: str | None = None
 ) -> CallSheetRevision:
     """Create a new revision on an existing call sheet, marking prior
     revisions as no longer current.
@@ -63,7 +63,8 @@ def publish_revision(
         sunset=payload.sunset,
         weather_forecast=payload.weather_forecast,
         safety_notes=payload.safety_notes,
-        created_by=payload.created_by,
+        # Audit field comes from the authenticated caller, never from the body.
+        created_by=created_by if created_by is not None else payload.created_by,
         head_of_day_crew_member_id=head_of_day_id,
     )
     db.add(revision)
@@ -86,7 +87,7 @@ def publish_revision(
     return revision
 
 
-def create_call_sheet(db: Session, production_id, payload: CallSheetCreate) -> CallSheet:
+def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> CallSheet:
     """Create a call sheet together with its initial revision ('A')."""
     call_sheet = CallSheet(
         production_id=production_id,
@@ -98,7 +99,7 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate) -> C
     db.add(call_sheet)
     db.flush()
 
-    publish_revision(db, call_sheet, payload.initial_revision)
+    publish_revision(db, call_sheet, payload.initial_revision, created_by=created_by)
     db.refresh(call_sheet)
     return call_sheet
 
