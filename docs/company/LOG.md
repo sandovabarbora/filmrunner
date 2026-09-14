@@ -7,3 +7,4 @@ One line per unit of work: `YYYY-MM-DD HH:MM · role · text`.
 2026-09-14 · pm · FR-3 customer discovery plan delivered, PR #11; recruiting/inviting real candidates filed as INBOX #1 (needs founder's own network and identity).
 2026-09-14 08:00 · pm · Morning brief: planned FR-8, FR-4, FR-5, FR-7 into today's shifts; 17:00 idle, backlog has no further ready+ungated item; no refill needed (3 ready+gated:no items still meets the floor).
 2026-09-14 15:07 · tech-lead · FR-8 demo seed script delivered, PR #24; Fly/Supabase account and deploy step filed as INBOX #2 (needs founder's own accounts and machine).
+2026-09-14 16:30 · tech-lead · Session: FR-14 contacts (#29), FR-17 connected app (#31), FR-12 Supabase sign-in verified live (#33), FR-10 editor (#28), paper design (#26), React migration (#20), hosting Fly + Supabase (#22). Product rule "connect first" added to TEAM.md.
