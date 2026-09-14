@@ -159,33 +159,24 @@ def test_going_offline_after_a_live_load_shows_cached_status_with_timestamp(page
 
 
 def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, frontend_url: str) -> None:
-    """Failure case: an older service worker (deployed before this stamp
-    existed) can still be the one controlling the page after an upgrade,
-    since it keeps intercepting fetches until it is replaced. It cannot
-    tell live from cached either, so the app must not guess "Live" just
-    because fetch() succeeded.
+    """Failure case: a service worker controls the page but the response carries
+    no freshness stamp (an older worker version, still active after an upgrade,
+    that predates the marking). The app must not guess "Live" just because
+    fetch() succeeded.
+
+    The real built worker registers as usual (Playwright routes cannot replace
+    a worker script, the browser fetches it outside the page); the unstamped
+    response is produced by overriding window.fetch for the API call.
     """
-    stale_sw = (
-        "self.addEventListener('install', () => self.skipWaiting());"
-        "self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));"
-        "self.addEventListener('fetch', (e) => {"
-        "  if (e.request.url.includes('/api/v1/public/call-sheets/')) e.respondWith(fetch(e.request));"
-        "});"
-    )
-    # Service worker registration is a browser-context-level fetch, not a
-    # page-level one: it must be routed on the context, or the real built
-    # sw.js (which already carries the fix) answers instead of this stub.
-    page.context.route(
-        "**/sw.js",
-        lambda route: route.fulfill(content_type="application/javascript", body=stale_sw),
-    )
-    page.context.route(
-        "**/api/v1/public/call-sheets/xyz",
-        lambda route: route.fulfill(content_type="application/json", body=_SHEET_BODY),
-    )
     page.goto(f"{frontend_url}/index.html?dev=1")
     page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=10_000)
-
+    page.evaluate(
+        "body => { const real = window.fetch; window.fetch = (input, init) => {"
+        "  const url = typeof input === 'string' ? input : input.url;"
+        "  if (url.includes('/api/v1/public/call-sheets/')) return Promise.resolve(new Response(body, { headers: { 'content-type': 'application/json' } }));"
+        "  return real(input, init); }; }",
+        _SHEET_BODY,
+    )
     page.fill("#apiBase", "http://api.test")
     page.fill("#callSheetId", "xyz")
     page.click("#loadBtn")
