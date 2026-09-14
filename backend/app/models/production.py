@@ -5,6 +5,7 @@ References:
 """
 
 import enum
+import secrets
 import uuid
 from datetime import datetime
 
@@ -13,6 +14,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
+
+
+def new_personal_token() -> str:
+    """URL-safe token for a crew member's personal link; 32 bytes of randomness."""
+    return secrets.token_urlsafe(32)
 
 
 class ProductionStatus(str, enum.Enum):
@@ -91,6 +97,8 @@ class CrewMember(Base):
     standard_call_time: Mapped[str | None] = mapped_column(String(10))  # "06:30"
     # Heads of department are the "who to call" list on every call sheet.
     is_head_of_department: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Personal link token (FR-13): `?me=<token>` on a crew link shows this member's own call first.
+    personal_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, default=new_personal_token)
 
     production: Mapped["Production"] = relationship(back_populates="crew_members")
     contact: Mapped["Contact"] = relationship()

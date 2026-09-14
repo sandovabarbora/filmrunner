@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.production import CrewMember
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, ContactCard, CallSheetCreate, CallSheetRevisionCreate
+from app.schemas.call_sheet import CallSheetContacts, ContactCard, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate
 
 logger = logging.getLogger(__name__)
 
@@ -160,3 +160,35 @@ def build_contacts(db: Session, call_sheet: CallSheet) -> CallSheetContacts:
                 break
 
     return CallSheetContacts(head_of_day=head_of_day, department_heads=[card(m) for m in heads], nearest_hospital=hospital)
+
+
+def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSheet | None:
+    """The personal block for `?me=<token>`: None when the token is not a crew member of this production."""
+    member = (
+        db.query(CrewMember)
+        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
+        .first()
+    )
+    if member is None:
+        return None
+    revision = call_sheet.current_revision
+    general = revision.general_crew_call if revision is not None else None
+    head = (
+        db.query(CrewMember)
+        .filter(
+            CrewMember.production_id == call_sheet.production_id,
+            CrewMember.department == member.department,
+            CrewMember.is_head_of_department.is_(True),
+        )
+        .first()
+    )
+    head_card = None
+    if head is not None:
+        head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email)
+    return PersonalSheet(
+        name=member.contact.name,
+        department=member.department,
+        position=member.position,
+        personal_call=member.standard_call_time or general,
+        department_head=head_card,
+    )

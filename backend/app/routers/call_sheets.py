@@ -23,7 +23,8 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.services.call_sheets import HeadOfDayNotOnProduction, build_contacts, create_call_sheet, publish_revision
+from app.schemas.call_sheet import PersonalSheet
+from app.services.call_sheets import HeadOfDayNotOnProduction, build_contacts, build_personal, create_call_sheet, publish_revision
 
 logger = logging.getLogger(__name__)
 
@@ -131,3 +132,13 @@ def get_call_sheet(
 def get_call_sheet_public(call_sheet_id: uuid.UUID, db: Session = Depends(get_db)) -> CallSheetRead:
     """Unauthenticated read, fetched by the offline-first PWA for caching."""
     return _read_with_contacts(db, call_sheet_id)
+
+
+@public_router.get("/public/call-sheets/{call_sheet_id}/me/{token}", response_model=PersonalSheet)
+def get_personal_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends(get_db)) -> PersonalSheet:
+    """Unauthenticated: the personal block for a crew member's link. 404 for an unknown token."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    personal = build_personal(db, call_sheet, token)
+    if personal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
+    return personal

@@ -89,6 +89,16 @@ class ContactCard(BaseModel):
     email: str | None
 
 
+class PersonalSheet(BaseModel):
+    """What a crew member's personal link adds on top of the public sheet (FR-13)."""
+
+    name: str
+    department: str
+    position: str
+    personal_call: str | None
+    department_head: ContactCard | None
+
+
 class CallSheetContacts(BaseModel):
     """Contacts section of the public sheet: computed, never stored."""
 

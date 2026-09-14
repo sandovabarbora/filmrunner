@@ -12,7 +12,7 @@
  */
 
 import { cacheCallSheet, getCachedCallSheet } from "./cache";
-import type { CallSheet } from "./types";
+import type { CallSheet, PersonalSheet } from "./types";
 
 const SOURCE_HEADER = "x-filmrunner-source";
 const FETCHED_AT_HEADER = "x-filmrunner-fetched-at";
@@ -63,4 +63,25 @@ export async function loadCallSheet(url: string, id: string): Promise<LoadResult
 
 export function publicCallSheetUrl(apiBase: string, id: string): string {
   return `${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${id}`;
+}
+
+const PERSONAL_DB = "filmrunner-personal";
+
+/** Personal block: network first, last copy from localStorage second, "invalid" when the server says the token is unknown. */
+export async function loadPersonal(apiBase: string, sheetId: string, token: string): Promise<PersonalSheet | "invalid"> {
+  const key = `${PERSONAL_DB}:${sheetId}:${token}`;
+  try {
+    const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/me/${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(5000) });
+    if (resp.status === 404) return "invalid";
+    if (!resp.ok) throw new Error(`API returned ${resp.status}`);
+    const data = (await resp.json()) as PersonalSheet;
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* storage unavailable: fine */ }
+    return data;
+  } catch {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw) as PersonalSheet;
+    } catch { /* fall through */ }
+    return "invalid";
+  }
 }
