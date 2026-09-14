@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError, saveConnection, type Connection } from "./api";
-import { connectionFromSession, requestCode, serviceConnection, signInConfigured, signOut, supabase, verifyCode } from "./session";
+import { API_BASE, connectionFromSession, requestCode, serviceConnection, signInConfigured, signOut, supabase, verifyCode } from "./session";
 import { href, navigate, useRoute } from "./route";
 import { ProductionsScreen } from "./screens/Productions";
 import { ProductionScreen } from "./screens/Production";
@@ -18,9 +18,24 @@ export function noticeFromError(err: unknown, fallback: string): Notice {
   return { kind: "error", text: `${fallback}: ${String(err)}` };
 }
 
+/** Five taps on the logo within three seconds open the admin screen (service token entry). */
+function useTapGesture(onTrigger: () => void, taps = 5, windowMs = 3000) {
+  const stamps = useRef<number[]>([]);
+  return () => {
+    const now = Date.now();
+    stamps.current = [...stamps.current.filter((t) => now - t < windowMs), now];
+    if (stamps.current.length >= taps) {
+      stamps.current = [];
+      onTrigger();
+    }
+  };
+}
+
 export function EditorApp() {
   const [conn, setConn] = useState<Connection | null>(serviceConnection);
   const [authChecked, setAuthChecked] = useState(() => serviceConnection() !== null || !signInConfigured);
+  const [adminScreen, setAdminScreen] = useState(false);
+  const onLogoTap = useTapGesture(() => setAdminScreen(true));
 
   // Product path: a Supabase session (persisted by supabase-js) becomes the connection and follows token refreshes.
   useEffect(() => {
@@ -40,9 +55,18 @@ export function EditorApp() {
   }, [conn]);
 
   if (!authChecked) return <div className="wrap"><div className="skeleton" aria-hidden="true"><i /><i /><i /></div></div>;
+  if (adminScreen) {
+    return (
+      <Connect
+        admin
+        onConnect={(c) => { saveConnection(c); setConn(c); setAdminScreen(false); navigate({ screen: "productions" }); }}
+        onCancel={() => setAdminScreen(false)}
+      />
+    );
+  }
   if (!conn) return signInConfigured
-    ? <SignIn onSignedIn={() => navigate({ screen: "productions" })} />
-    : <Connect onConnect={(c) => { saveConnection(c); setConn(c); navigate({ screen: "productions" }); }} />;
+    ? <SignIn onSignedIn={() => navigate({ screen: "productions" })} onLogoTap={onLogoTap} />
+    : <Connect onConnect={(c) => { saveConnection(c); setConn(c); navigate({ screen: "productions" }); }} onLogoTap={onLogoTap} />;
 
   async function disconnect() {
     saveConnection(null);
@@ -55,8 +79,8 @@ export function EditorApp() {
   return (
     <div className="wrap">
       <header className="masthead">
-        <h1><a href="#/" className="plain">FilmRunner</a></h1>
-        <p className="sub">Editor · <button className="linklike" onClick={() => void disconnect()}>sign out</button></p>
+        <h1 id="logo" onClick={onLogoTap}><a href="#/" className="plain">FilmRunner</a></h1>
+        <p className="sub">{serviceConnection() ? "Admin" : "Editor"} · <button className="linklike" onClick={() => void disconnect()}>sign out</button></p>
       </header>
 
       <nav className="crumbs" aria-label="Breadcrumb">
@@ -85,7 +109,7 @@ export function EditorApp() {
   );
 }
 
-function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
+function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: () => void }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -107,7 +131,7 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
 
   return (
     <div className="wrap">
-      <header className="masthead"><h1>FilmRunner</h1><p className="sub">Editor</p></header>
+      <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">Editor</p></header>
       <section className="block" aria-label="Sign in">
         <h2>Sign in</h2>
         {error && <div id="notice" className="status error" role="status">{error}</div>}
@@ -130,18 +154,23 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   );
 }
 
-function Connect({ onConnect }: { onConnect: (c: Connection) => void }) {
-  const [apiBase, setApiBase] = useState("https://filmrunner-api.fly.dev");
+function Connect({ onConnect, admin = false, onCancel, onLogoTap }: { onConnect: (c: Connection) => void; admin?: boolean; onCancel?: () => void; onLogoTap?: () => void }) {
+  const [apiBase, setApiBase] = useState(API_BASE);
   const [token, setToken] = useState("");
   return (
     <div className="wrap">
-      <header className="masthead"><h1>FilmRunner</h1><p className="sub">Editor</p></header>
-      <section className="block" aria-label="Connect">
-        <h2>Connect</h2>
-        <p className="hint">Development build without sign-in configured: paste the API token once; it stays on this phone.</p>
+      <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{admin ? "Admin" : "Editor"}</p></header>
+      <section className="block" aria-label="Connect" id={admin ? "adminScreen" : "connectScreen"}>
+        <h2>{admin ? "Admin access" : "Connect"}</h2>
+        <p className="hint">
+          {admin
+            ? "Paste the service token once; it stays on this phone and bypasses sign-in. Sign out removes it. Nothing here is stored in the app itself."
+            : "Development build without sign-in configured: paste the API token once; it stays on this phone."}
+        </p>
         <label className="field" htmlFor="apiBase"><span className="label">API</span><input id="apiBase" value={apiBase} onChange={(e) => setApiBase(e.target.value)} /></label>
         <label className="field" htmlFor="token"><span className="label">Token</span><input id="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} /></label>
         <button id="connect" disabled={!token.trim() || !apiBase.trim()} onClick={() => onConnect({ apiBase: apiBase.trim(), token: token.trim() })}>Connect</button>
+        {onCancel && <button type="button" className="quiet" id="adminCancel" onClick={onCancel}>Back</button>}
       </section>
     </div>
   );

@@ -59,3 +59,5 @@ a.button { display: inline-block; margin-top: 12px; padding: 11px 14px; border: 
 .check { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; margin: 4px 0 12px; }
 .check input { width: auto; }
 input:disabled, select:disabled, textarea:disabled { background: var(--paper-2); color: var(--ink-2); }
+
+#logo { cursor: default; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
