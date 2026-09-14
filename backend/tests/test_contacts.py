@@ -6,7 +6,9 @@ nearest hospital from the day's first location.
 
 from fastapi.testclient import TestClient
 
-AUTH = {"Authorization": "Bearer dev-only-token-change-me"}
+from app.config import get_settings
+
+AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
 
 def _production(client: TestClient) -> str:
