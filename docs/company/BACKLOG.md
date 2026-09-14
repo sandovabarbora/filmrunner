@@ -83,6 +83,30 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a personal link that no longer matches a crew member shows the general sheet with a clear note, not a 404 that strands someone at 05:30
 - blocked-until: FR-10 (editor) and FR-12 (auth model decided), because the personal token design must match the auth ADR
 
+## FR-18 · frontend · Crew management: edit, remove, personal call time, photo
+- state: ready
+- gated: partial
+- why: the Crew tab can only add; a typo in a phone number or a wrong department cannot be fixed, a person who left cannot be removed, and the personal call time (FR-13 reads CrewMember.standard_call_time) has no field. Founder request 2026-09-14.
+- dod:
+  - backend: PATCH and DELETE /productions/{id}/crew-members/{member_id} (crew:edit); PATCH /contacts/{id} for name, phone, email; removing a member who is head of day on any revision is refused with 409 naming the day
+  - editor Crew tab: tap a person to edit name, phone, department, position, personal call time, head of department; remove with confirmation; changes show on the sheet immediately (contacts are computed on read)
+  - photo (gated): a small avatar per contact, stored in Supabase Storage (bucket `avatars`, public read, 256 px, resized in the browser before upload); shown on the personal sheet and in Who to call. Creating the bucket is an INBOX item; the data model stores only the URL, so storage can move
+  - failure case: editing a person offline keeps the change on the phone and marks it "not saved"; a failed upload never blocks saving the rest of the person
+- note: ordering: edit and remove first (no external dependency), photo last
+
+## FR-19 · tech-lead · Location-based services: sunrise and sunset, weather, nearest hospital from the address
+- state: ready
+- gated: partial
+- why: an AD types sunrise, sunset and weather by hand from other apps every evening; the location already has an address and fields for coordinates and the nearest hospital, which nobody fills. Founder request 2026-09-14.
+- dod:
+  - locations get a geocoding step on save (address to lat and lng) and the editor gets a Locations tab (name, address, parking notes, nearest hospital), with a scene able to pick a location
+  - sunrise and sunset are computed for the day's first location and date, no external service needed (astronomical formula, tested against a known Prague date)
+  - weather for the shoot date at the location from a forecast provider with a free tier (Open-Meteo needs no key; name the provider and quote its terms in the ADR); shown as a suggestion the AD accepts, never overwriting text they typed
+  - nearest hospital suggested from the coordinates (OpenStreetMap Overpass `amenity=hospital`, or the provider chosen in the ADR); the AD confirms, the sheet keeps the confirmed text
+  - every external call has a timeout and a fallback: the fields stay editable and empty, the sheet never waits on a third party
+  - failure case: a geocoder that returns the wrong place (common with Czech street names) must be visible: the editor shows the resolved place name next to the address so the AD can catch it
+- note: any provider that needs an account or a key is an INBOX item; prefer keyless providers for the pilot
+
 ## FR-16 · frontend · Notifications on publish and revision
 - state: ready
 - note: FR-13 done; the receiver is identified by the personal token
