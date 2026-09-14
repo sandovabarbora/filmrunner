@@ -80,3 +80,9 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: replace the single 05:00 shift with a morning brief at 08:00 (plans the day, refills the backlog via a proposals PR, emails the plan) and five two-hour shifts at 09, 11, 13, 15, 17. Shifts email only when productive; the 17:00 shift sends the day summary. Founder's call ("klasicky 9 až 6", every two hours).
 - Why: the founder wants a team that visibly works during the day, not one night run; two-hour spacing halves cost and review load versus hourly.
 - Cost: up to six runs per weekday on Sonnet. Revisit when: the day summary reports three or more idle shifts for a week (drop to every four hours) or PRs pile up unreviewed (drop a shift).
+
+## 2026-09-14: build the working vertical slice now, discovery in parallel
+- Decision: overrides the morning's "no product features until BRIEF.md v1". The team builds toward one working loop, AD publishes a call sheet, crew opens a link on a phone, it works offline, a hot revision propagates. Backlog order: FR-8 (hosted API + DB) → FR-10 (AD editor) → FR-11 (share link + QR) → FR-7 (security fixes) → FR-12 (real auth) → FR-9 (offline-honest status). Discovery (FR-3, INBOX #1) runs in parallel on the founder. ADRs and the gate checklist (FR-4, FR-5) move down.
+- Why: founder's call ("musíme mířit na working věc"). The demo on GitHub Pages (PR #17) made the gap visible: the viewer exists, the AD side does not. A working slice is also the strongest artefact for the interviews.
+- Guardrail kept: every item cites the BRIEF question it serves in its `why`; anything that needs accounts or money stays gated through INBOX.
+- Revisit when: interviews (FR-3) contradict the AD-as-operator assumption; then the editor is re-scoped before more is built on it.
