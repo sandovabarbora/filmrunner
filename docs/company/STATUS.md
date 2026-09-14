@@ -4,11 +4,9 @@ Updated: 2026-09-14 15:07 (15:00 shift)
 
 ## today
 
-Re-planned 13:55 by the founder's session after the course change (see DECISIONS.md): the working slice comes first.
+Re-planned 16:20 by the founder's session: FR-10 and FR-14 are done in session, FR-17 (connected app) is being built in session now, so the 17:00 shift must not touch the editor or the Connect screen.
 
-- 09:00, 11:00, 13:00 — already passed (founding work in the interactive session; GitHub Pages demo shipped in PR #17).
-- 15:00 — done: FR-8 seed script (PR #24). The founder's own interactive session had already delivered the rest of the planned 15:00 work (ADR-002, fly.toml, CORS-from-env, dev-token refusal — PR #22) before this shift started, so this shift picked up the remaining dod piece instead of duplicating it.
-- 17:00 — FR-10 · frontend: ADR-003 for the AD editor (API calls, save points, network-loss behaviour) and the first editor.html slice if the ADR is short; plus the day summary.
+- 17:00 — FR-7 · security: fix the remaining founding-commit finding (forgeable audit fields in backend/app/services/call_sheets.py; findings 1 and 2 are already done), with a test that sends spoofed created_by/created_at and asserts they are ignored. Backend only. Then the day summary.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands.

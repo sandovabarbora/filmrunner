@@ -36,6 +36,18 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - implementation with tests: unauthenticated writes 401, a token for production A cannot touch production B, public read stays public
   - failure case: a leaked per-production token can be rotated without losing data, and the test proves the old one stops working
 
+## FR-17 · frontend · Connected app: productions, days, crew, edit an existing day
+- state: in-progress
+- gated: no
+- why: the pieces exist (viewer, editor, contacts) but do not form one product: the editor cannot open an existing day, there is no production → days navigation, crew and contacts can only be entered through the API, and the root URL is a demo. Founder: "mělo by to být všechno napojený" (2026-09-14).
+- dod:
+  - backend: GET /productions/{id}/call-sheets lists the production's days with the current revision letter
+  - editor navigation Productions → Days → Day; a production shows its days (date, day X of Y, REV, crew link with copy) and a Crew tab (name, department, position, phone, head of department); a day loads its current revision into the form, save publishes the next revision, head of day is picked from the crew, crew link shown after publish
+  - the on-phone draft remains the safety net for a dropped connection, but the server is the source of truth for a day once it has been published
+  - root URL becomes a small entry page: crew opens the link they were sent (demo available), the AD goes to the editor
+  - E2E: create production, add a crew member as HoD, create a day, close and reopen the editor, open the day from the list, publish REV B with a head of day, crew link shows REV B and the contact
+  - failure case: opening a day while offline shows the last known revision read-only with a clear "reconnect to publish" state, never an empty form that could be published as a blank revision
+
 ## FR-11 · frontend · Share link and QR for the crew
 - state: ready
 - gated: no
