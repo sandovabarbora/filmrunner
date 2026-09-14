@@ -40,9 +40,12 @@ need the founder's own credentials (accounts, payments, sending from her
 address to third parties) are executed by the founder in an interactive
 session, never by the routine.
 
-`main` receives code only through a pull request with the `ci` check
-green. The routine commits exactly three files directly to `main`:
-`docs/company/STATUS.md`, `INBOX.md`, `LOG.md` (rebase first, never force).
+`main` accepts only commits whose `ci` check is green (GitHub ruleset;
+direct pushes are rejected). Code reaches `main` through a pull request the
+founder merges. The routine's state updates (`docs/company/STATUS.md`,
+`INBOX.md`, `LOG.md`) go through a state-only PR on `shift/state-<date>`
+with auto-merge enabled, so they land as soon as `ci` passes. The routine
+never enables auto-merge on a PR that touches anything else.
 
 ## Roles
 
@@ -101,7 +104,8 @@ this repo from GitHub, Gmail connector only. Its contract:
 4. When something needs approval, append an `INBOX.md` item and continue
    with the next ungated item. Never block.
 5. Write `STATUS.md` (per role: summary, tests, blockers, needs_approval)
-   and one `LOG.md` line. Commit these three files directly to `main`.
+   and one `LOG.md` line. Commit these files on `shift/state-<date>`, open
+   a PR, enable auto-merge (`gh pr merge --auto --squash`).
 6. Send the digest to `sandovabarb@gmail.com` only, in Czech, five lines
    max: what was done, what awaits approval (#id), what is blocked, PR link.
    On Mondays add a proposed plan for the week.
@@ -120,8 +124,8 @@ The exact prompt the routine runs is versioned in `routine-prompt.md`.
   winter time; update the cron expression at DST changes (late March, late
   October) or accept a one-hour drift.
 - Routine edit/disable: https://claude.ai/code/routines
-- If the routine sent email to anyone other than the founder, or pushed
-  code to `main`: disable it at the URL above, record the incident in
+- If the routine sent email to anyone other than the founder, or
+  auto-merged a PR containing code: disable it at the URL above, record the incident in
   `DECISIONS.md`, fix the prompt, re-enable.
 
 ## Status board
