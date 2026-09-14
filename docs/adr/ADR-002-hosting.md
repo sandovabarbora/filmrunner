@@ -1,0 +1,54 @@
+# ADR-002: Hosting for the working slice
+
+Date: 2026-09-14. Status: accepted (founder decision in session). Serves FR-8.
+
+## Context
+
+The PWA is on GitHub Pages (https://sandovabarbora.github.io/filmrunner/)
+with a bundled demo. For a working slice the API and database must run
+somewhere a phone can reach over HTTPS, at zero or near-zero cost, with
+no operations burden on a solo founder.
+
+## Options considered
+
+| Layer | Chosen | Alternatives | Why |
+|---|---|---|---|
+| Frontend | GitHub Pages (workflow build) | Cloudflare Pages, Vercel | already live, free, HTTPS, builds from `main` |
+| API | Fly.io, region `fra`, Dockerfile, `shared-cpu-1x` 256 MB, scale to zero | Railway, Render | existing Dockerfile works unchanged; release command for migrations; free-tier-sized; HTTPS |
+| Database | Supabase Postgres (Frankfurt), used as plain Postgres | Neon, Fly Postgres, Railway | founder knows it; Auth with magic links is the FR-12 candidate; Realtime fits the living call sheet later. Neon was a default, not a considered choice |
+
+## Decision
+
+Fly.io for the API, Supabase for Postgres, GitHub Pages for the PWA.
+Migrations run as Fly's `release_command` (`alembic upgrade head`), never
+at container start. All secrets live on the platforms: `fly secrets set`
+for the API, GitHub Actions secret `FLY_API_TOKEN` for deploys. The
+backend refuses to start outside `development` with the dev bearer token
+(config validator, tested).
+
+Guardrail: the data model stays plain Postgres. No row-level security as
+business logic, no edge functions, no Supabase storage in the schema, so
+the database can move to any Postgres host.
+
+## Costs
+
+Fly: within the free allowance at this size with scale-to-zero (cold start
+of a few seconds on the first request). Supabase: free tier; the project
+pauses after a week without activity, which would break a demo; mitigate
+with a scheduled `/healthz` ping from CI once there is a demo to protect.
+GitHub Pages: free.
+
+## Consequences
+
+- `backend/fly.toml` and `.github/workflows/fly.yml` are in the repo;
+  deploys happen on pushes to `main` touching `backend/`.
+- CORS is configured from `FILMRUNNER_CORS_ORIGINS` (production:
+  `https://sandovabarbora.github.io`).
+- The Supabase connection string uses the session pooler on port 5432
+  with `sslmode=require`, which works from Fly without IPv6 concerns.
+
+## Revisit when
+
+Cold starts annoy a real AD (set `min_machines_running = 1`, a few
+dollars a month), or the Supabase pause bites, or FR-12 picks something
+other than Supabase Auth.

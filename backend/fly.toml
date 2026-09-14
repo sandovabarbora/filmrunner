@@ -1,0 +1,35 @@
+# Fly.io app for the FilmRunner API. Deployed from this directory
+# (`fly deploy` here, or the fly.yml workflow). Secrets are set on the
+# platform (`fly secrets set`), never in this file:
+#   FILMRUNNER_DATABASE_URL, FILMRUNNER_API_BEARER_TOKEN,
+#   FILMRUNNER_ENVIRONMENT=production, FILMRUNNER_CORS_ORIGINS
+app = "filmrunner-api"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Migrations run once per release, before the new version serves traffic.
+  release_command = "alembic upgrade head"
+
+[env]
+  FILMRUNNER_LOG_LEVEL = "INFO"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
