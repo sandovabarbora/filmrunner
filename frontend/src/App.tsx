@@ -43,6 +43,7 @@ export function App() {
     setResult(r);
     if (r.kind === "live") setStatus({ kind: "online", text: "Live · saved on this phone for offline use." });
     if (r.kind === "cached") setStatus({ kind: "offline", text: `Offline · showing the copy saved ${new Date(r.fetchedAt).toLocaleString()}. Times may have changed since.` });
+    if (r.kind === "unknown") setStatus({ kind: "offline", text: "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening." });
     if (r.kind === "error") setStatus({ kind: "error", text: `Could not load this call sheet (${r.reason}).` });
   }
 

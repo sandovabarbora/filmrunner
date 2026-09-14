@@ -30,7 +30,39 @@ export default defineConfig({
           {
             urlPattern: ({ url }) => url.pathname.includes("/api/v1/public/call-sheets/"),
             handler: "NetworkFirst",
-            options: { cacheName: "filmrunner-api-v1", networkTimeoutSeconds: 5 },
+            options: {
+              cacheName: "filmrunner-api-v1",
+              networkTimeoutSeconds: 5,
+              plugins: [
+                {
+                  // fetch() resolving does not mean the data is fresh: when
+                  // this worker answers from its own cache (offline, or the
+                  // network timed out), the fetch the page sees still
+                  // "succeeds". Stamp every response with where it actually
+                  // came from so loader.ts never has to guess.
+                  fetchDidSucceed: async ({ response }) => {
+                    const headers = new Headers(response.headers);
+                    headers.set("x-filmrunner-source", "network");
+                    headers.set("x-filmrunner-fetched-at", new Date().toISOString());
+                    return new Response(await response.clone().blob(), {
+                      status: response.status,
+                      statusText: response.statusText,
+                      headers,
+                    });
+                  },
+                  cachedResponseWillBeUsed: async ({ cachedResponse }) => {
+                    if (!cachedResponse) return cachedResponse;
+                    const headers = new Headers(cachedResponse.headers);
+                    headers.set("x-filmrunner-source", "cache");
+                    return new Response(await cachedResponse.clone().blob(), {
+                      status: cachedResponse.status,
+                      statusText: cachedResponse.statusText,
+                      headers,
+                    });
+                  },
+                },
+              ],
+            },
           },
         ],
       },
