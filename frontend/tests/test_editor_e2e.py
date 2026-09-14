@@ -225,3 +225,40 @@ def test_owner_invites_members_and_sees_role_chip(page: Page, frontend_url: str,
     expect(page.locator("#members")).to_contain_text("not signed in yet")
     page.click("#members >> role=button[name='Remove viewer@example.com']")
     expect(page.locator("#members li")).to_have_count(0, timeout=10_000)
+
+
+def test_personal_link_shows_your_call_and_department_first(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-13: a crew member's personal link shows their name, own call and their department's HoD first;
+    an invalid token falls back to the general sheet with a note."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E me {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    for name, phone, dept, pos, hod in (("Eva Dvořáková", "+420 777 111 222", "AD", "1st AD", True), ("Petr Malý", "+420 602 000 000", "Electric", "Best boy", False), ("Tomáš Novák", "+420 601 234 567", "Electric", "Gaffer", True)):
+        page.fill("#crewName", name); page.fill("#crewPhone", phone); page.fill("#crewDept", dept); page.fill("#crewPos", pos)
+        if hod:
+            page.check("#crewHod")
+        page.click("#addCrew")
+        expect(page.locator("#crew")).to_contain_text(name, timeout=10_000)
+    page.click("role=tab[name='Days']")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+    petr_link = page.locator("#personalLinks li", has_text="Petr Malý").locator("a").get_attribute("href")
+    assert petr_link and "&me=" in petr_link
+
+    page.goto(petr_link)
+    page.wait_for_selector("#you", timeout=15_000)
+    assert "Petr Malý" in page.locator("#you").inner_text()
+    assert page.locator("#yourCall").inner_text().strip() == "06:30"  # no own call time: general crew call
+    assert "Tomáš Novák" in page.locator("#yourDepartment").inner_text()  # Electric HoD first
+    assert "Eva Dvořáková" not in page.locator("#yourDepartment").inner_text()
+    assert page.locator("#otherDepartments").count() == 1
+
+    page.goto(petr_link.replace("&me=", "&me=bogus"))
+    page.wait_for_selector("#sheet.visible", timeout=15_000)
+    page.wait_for_selector("#personalInvalid", timeout=10_000)
+    assert page.locator("#you").count() == 0

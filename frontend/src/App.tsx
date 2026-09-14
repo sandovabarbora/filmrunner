@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
-import { loadCallSheet, publicCallSheetUrl, type LoadResult } from "./loader";
+import { loadCallSheet, loadPersonal, publicCallSheetUrl, type LoadResult } from "./loader";
+import type { PersonalSheet } from "./types";
 
 /**
  * The URL decides what the page is:
@@ -9,7 +10,7 @@ import { loadCallSheet, publicCallSheetUrl, type LoadResult } from "./loader";
  *   anything else           the bundled demo, so the public URL never shows a form
  */
 type Mode =
-  | { kind: "share"; api: string; sheet: string }
+  | { kind: "share"; api: string; sheet: string; me: string | null }
   | { kind: "dev" }
   | { kind: "demo" }
   | { kind: "home" };
@@ -21,7 +22,7 @@ function modeFromLocation(): Mode {
   const params = new URLSearchParams(window.location.search);
   const sheet = params.get("sheet");
   const api = params.get("api");
-  if (sheet && api) return { kind: "share", api, sheet };
+  if (sheet && api) return { kind: "share", api, sheet, me: params.get("me") };
   if (params.get("dev") === "1") return { kind: "dev" };
   if (params.get("demo") === "1") return { kind: "demo" };
   return { kind: "home" };
@@ -35,6 +36,7 @@ export function App() {
   const [sheetId, setSheetId] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "", text: "" });
   const [result, setResult] = useState<LoadResult | null>(null);
+  const [personal, setPersonal] = useState<PersonalSheet | null | "invalid">(null);
 
   async function load(url: string, id: string) {
     const r = await loadCallSheet(url, id);
@@ -46,7 +48,10 @@ export function App() {
 
   useEffect(() => {
     if (mode.kind === "demo") void load(DEMO_URL, DEMO_ID);
-    if (mode.kind === "share") void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet);
+    if (mode.kind === "share") {
+      void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet);
+      if (mode.me) void loadPersonal(mode.api, mode.sheet, mode.me).then(setPersonal);
+    }
   }, [mode]);
 
   const subtitle =
@@ -100,9 +105,13 @@ export function App() {
         <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>
       )}
 
+      {personal === "invalid" && (
+        <div className="status offline" id="personalInvalid" role="status">This personal link is not on the crew list any more. Showing the general call sheet.</div>
+      )}
       {result && result.kind !== "error" && (
         <CallSheetView
           callSheet={result.data}
+          personal={personal && personal !== "invalid" ? personal : null}
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
         />
       )}

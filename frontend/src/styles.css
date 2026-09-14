@@ -95,6 +95,17 @@ button { font: inherit; }
 .rev-badge[data-rev="D"] { --rev: var(--rev-d); }
 .rev-badge[data-rev="E"] { --rev: var(--rev-e); }
 
+/* Personal block: the one number this person wakes up for. */
+.you { margin-top: 14px; padding: 12px 14px; border: 2px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.you-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.you .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.you .who { text-align: right; display: flex; flex-direction: column; }
+.you .name { font-weight: 600; }
+.you .role { font-size: 0.8125rem; color: var(--muted); }
+.you .value { font-family: var(--mono); font-weight: 700; font-size: 3.25rem; letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
+.contacts .hod.mine { border-width: 1px; }
+.others summary { cursor: pointer; padding: 10px 0; font-size: 0.875rem; color: var(--ink-2); }
+
 /* Calls: the two numbers a crew member wakes up for. */
 .calls {
   display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;

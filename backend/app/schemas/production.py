@@ -63,6 +63,7 @@ class CrewMemberRead(CrewMemberCreate):
     id: uuid.UUID
     production_id: uuid.UUID
     contact: ContactRead
+    personal_token: str
 
 
 class CastMemberCreate(BaseModel):
