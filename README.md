@@ -31,12 +31,13 @@ every push to `main` that touches `frontend/`.
 
 ## AD editor
 
-https://sandovabarbora.github.io/filmrunner/editor.html — one page: connect
-(API + token, kept on the phone until sign-in lands), pick or create a
-production, fill the day, calls, safety and scenes, publish. The draft is
-saved on the phone on every change; the server sees only publishes
-(revision A, then B, C...). After publishing, the crew link is shown.
-Design: `docs/adr/ADR-003-editor.md`.
+https://sandovabarbora.github.io/filmrunner/editor.html — connect once
+(API + token, kept on the phone until sign-in lands), then Productions →
+Days and Crew → Day. A day loads its current revision from the server;
+publishing sends the next revision (A, B, C...). Drafts are saved on the
+phone as a safety net; offline, a published day is read-only. Crew tab
+keeps names, numbers and heads of department, which appear on every sheet
+under "Who to call". Design: `docs/adr/ADR-003-editor.md`.
 
 ## Production (API)
 

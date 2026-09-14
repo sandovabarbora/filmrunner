@@ -68,69 +68,91 @@ def api_url() -> Iterator[str]:
     proc.wait(timeout=10)
 
 
-def test_ad_publishes_a_then_b_and_crew_sees_b(page: Page, frontend_url: str, api_url: str) -> None:
-    production = f"E2E {uuid.uuid4().hex[:6]}"
+def _connect(page: Page, frontend_url: str, api_url: str) -> None:
     page.goto(f"{frontend_url}/editor.html")
-
-    # Connect (temporary shared token, ADR-003 decision 3).
-    page.fill("#apiBase", api_url)
-    page.fill("#token", E2E_TOKEN)
-    page.click("#connect")
-
-    # Production.
+    if page.locator("#connect").count():
+        page.fill("#apiBase", api_url)
+        page.fill("#token", E2E_TOKEN)
+        page.click("#connect")
     page.wait_for_selector("#newProduction", timeout=10_000)
-    page.fill("#newProduction", production)
-    page.click("#createProduction")
-    page.wait_for_function("document.querySelector('#production') && document.querySelector('#production').value !== ''", timeout=10_000)
 
-    # Day and calls.
+
+def _create_production(page: Page, name: str) -> None:
+    page.fill("#newProduction", name)
+    page.click("#createProduction")
+    page.wait_for_selector("#newDay", timeout=10_000)  # lands on the production's Days tab
+
+
+def test_connected_app_production_crew_day_reopen_publish_b(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-17 dod: create production, add a HoD, create a day, reopen the editor,
+    open the day from the list, publish REV B with a head of day, crew link shows B and the contact."""
+    production = f"E2E {uuid.uuid4().hex[:6]}"
+    _connect(page, frontend_url, api_url)
+    _create_production(page, production)
+
+    # Crew tab: one head of department.
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Eva Dvořáková")
+    page.fill("#crewPhone", "+420 777 111 222")
+    page.fill("#crewDept", "AD")
+    page.fill("#crewPos", "1st AD")
+    page.check("#crewHod")
+    page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Eva Dvořáková", timeout=10_000)
+
+    # New day.
+    page.click("role=tab[name='Days']")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#shoot_date", "2026-09-22")
     page.fill("#day_number", "7")
     page.fill("#day_count", "24")
     page.fill("#general_crew_call", "06:30")
-    page.fill("#shooting_call", "07:30")
-    page.fill("#safety_notes", "Riverbank: life vests within 3 m of the water.")
-
-    # Two scenes.
     page.click("#addScene")
-    page.click("#addScene")
-    scenes = page.locator("#items .item")
-    assert scenes.count() == 2
-    scenes.nth(0).get_by_label("Scene").fill("42")
-    scenes.nth(0).get_by_label("Set").fill("RIVERBANK, TROJA. Marta finds the boat.")
-    scenes.nth(1).get_by_label("Scene").fill("17")
-    scenes.nth(1).get_by_label("Set").fill("COTTAGE KITCHEN. Breakfast.")
-
-    # Publish A.
+    page.locator("#items .item").nth(0).get_by_label("Scene").fill("42")
+    page.locator("#items .item").nth(0).get_by_label("Set").fill("RIVERBANK, TROJA.")
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
-    share = page.locator("#shareLink").get_attribute("href")
-    assert share and "?sheet=" in share and "api=" in share
+    assert "/day/new" not in page.url  # moved to the real day's URL
 
-    # Hot revision: crew call moves, publish B.
+    # Close and reopen: the day is found from the list, loaded from the server.
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#productions", timeout=10_000)
+    page.click(f"#productions >> text={production}")
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#days")).to_contain_text("Day 7 of 24")
+    expect(page.locator("#days")).to_contain_text("REV A")
+    page.click("#days >> text=Day 7 of 24")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    assert page.locator("#general_crew_call").input_value() == "06:30"
+    assert page.locator("#items .item").count() == 1
+    assert page.locator("#shoot_date").is_disabled()
+
+    # Hot revision with a head of day.
     page.fill("#general_crew_call", "07:30")
+    page.select_option("#headOfDay", label="Eva Dvořáková · 1st AD (HoD)")
     expect(page.locator("#publishState")).to_contain_text("Publish to send REV B")
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    share = page.locator("#shareLink").get_attribute("href")
+    assert share
 
-    # The crew link shows B with the new call.
+    # Crew link: REV B, new call, head of day and HoD with tap-to-call.
     page.goto(share)
     page.wait_for_selector("#sheet.visible", timeout=15_000)
     assert page.locator("#revBadgeWrap").inner_text().strip() == "REV B"
     assert page.locator("#crewCall").inner_text().strip() == "07:30"
-    assert page.locator("#scheduleBody tr").count() == 2
+    assert "Eva Dvořáková" in page.locator("#contacts .hod").inner_text()
+    assert page.locator("#contacts a.phone").first.get_attribute("href") == "tel:+420777111222"
 
 
 def test_publish_without_network_keeps_the_draft(page: Page, frontend_url: str, api_url: str) -> None:
     """Failure case (FR-10 dod): losing the network must not lose the draft."""
-    page.goto(f"{frontend_url}/editor.html")
-    page.fill("#apiBase", api_url)
-    page.fill("#token", E2E_TOKEN)
-    page.click("#connect")
-    page.wait_for_selector("#newProduction", timeout=10_000)
-    page.fill("#newProduction", f"E2E offline {uuid.uuid4().hex[:6]}")
-    page.click("#createProduction")
-    page.wait_for_function("document.querySelector('#production') && document.querySelector('#production').value !== ''", timeout=10_000)
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E offline {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#general_crew_call", "05:45")
     page.fill("#safety_notes", "draft must survive")
 
@@ -144,3 +166,20 @@ def test_publish_without_network_keeps_the_draft(page: Page, frontend_url: str, 
     assert page.locator("#general_crew_call").input_value() == "05:45"
     assert page.locator("#safety_notes").input_value() == "draft must survive"
     expect(page.locator("#publishState")).to_contain_text("Not published yet")
+
+
+def test_opening_a_published_day_offline_is_read_only(page: Page, frontend_url: str, api_url: str) -> None:
+    """Failure case (FR-17 dod): offline, a published day shows the last copy read-only, never a blank publishable form."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E ro {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:00")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.route(f"{api_url}/**", lambda route: route.abort())
+    page.reload()
+    page.wait_for_selector("#publishState", timeout=10_000)
+    expect(page.locator("#publishState")).to_contain_text("Read-only while offline")
+    assert page.locator("#publish").is_disabled()
+    assert page.locator("#general_crew_call").input_value() == "06:00"

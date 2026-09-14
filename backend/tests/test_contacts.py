@@ -58,6 +58,8 @@ def test_public_sheet_lists_head_of_day_department_heads_and_hospital(client: Te
     assert contacts["head_of_day"]["phone"] == "+420 777 111 222"
     heads = [(c["department"], c["name"]) for c in contacts["department_heads"]]
     assert heads == [("AD", "Eva Dvořáková"), ("Electric", "Tomáš Novák")]  # sorted by department, best boy excluded
+    listed = client.get(f"/api/v1/productions/{pid}/crew-members", headers=AUTH).json()
+    assert {m["contact"]["name"] for m in listed} == {"Eva Dvořáková", "Tomáš Novák", "Petr Malý"}
     assert contacts["nearest_hospital"] == "FN Bulovka, Budínova 2, Praha 8"
 
 
@@ -90,3 +92,22 @@ def test_head_of_day_must_belong_to_the_production(client: TestClient) -> None:
     )
     assert resp.status_code == 422
     assert "head of day" in resp.json()["detail"].lower()
+
+
+def test_list_call_sheets_of_a_production_with_current_revision(client: TestClient) -> None:
+    pid = _production(client)
+    for day in (1, 2):
+        client.post(
+            f"/api/v1/productions/{pid}/call-sheets",
+            json={"shoot_date": f"2026-09-2{day}", "day_number": day, "day_count": 2,
+                  "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
+            headers=AUTH,
+        )
+    crew = client.get(f"/api/v1/productions/{pid}/crew-members", headers=AUTH)
+    assert crew.status_code == 200 and crew.json() == []
+    resp = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH)
+    assert resp.status_code == 200
+    days = resp.json()
+    assert [d["day_number"] for d in days] == [1, 2]
+    assert all(d["current_revision"]["revision_letter"] == "A" for d in days)
+    assert client.get(f"/api/v1/productions/{pid}/call-sheets").status_code == 401

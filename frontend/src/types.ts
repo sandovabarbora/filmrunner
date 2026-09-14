@@ -28,6 +28,7 @@ export interface CallSheetRevision {
   weather_forecast: string | null;
   safety_notes: string | null;
   created_at?: string;
+  head_of_day_crew_member_id?: string | null;
   schedule_items: ScheduleItem[];
 }
 
@@ -68,6 +69,7 @@ export interface ScheduleItemCreate {
 }
 
 export interface RevisionCreate {
+  head_of_day_crew_member_id?: string | null;
   general_crew_call: string | null;
   shooting_call: string | null;
   sunrise: string | null;
@@ -97,4 +99,28 @@ export interface Production {
 export interface CallSheetCreated extends CallSheet {
   id: string;
   production_id: string;
+}
+
+export interface ContactCreate {
+  name: string;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface Contact extends ContactCreate {
+  id: string;
+}
+
+export interface CrewMemberCreate {
+  contact_id: string;
+  department: string;
+  position: string;
+  standard_call_time: string | null;
+  is_head_of_department: boolean;
+}
+
+export interface CrewMember extends CrewMemberCreate {
+  id: string;
+  production_id: string;
+  contact: Contact;
 }

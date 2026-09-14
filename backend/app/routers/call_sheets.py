@@ -81,6 +81,21 @@ def publish_revision_endpoint(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
+@router.get("/productions/{production_id}/call-sheets", response_model=list[CallSheetRead])
+def list_call_sheets(production_id: uuid.UUID, db: Session = Depends(get_db)) -> list[CallSheetRead]:
+    """The production's days, oldest first, each with its current revision."""
+    if db.get(Production, production_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Production not found")
+    sheets = (
+        db.query(CallSheet)
+        .options(selectinload(CallSheet.revisions).selectinload(CallSheetRevision.schedule_items))
+        .filter(CallSheet.production_id == production_id)
+        .order_by(CallSheet.shoot_date, CallSheet.day_number)
+        .all()
+    )
+    return [CallSheetRead.model_validate(sheet) for sheet in sheets]
+
+
 def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     read = CallSheetRead.model_validate(call_sheet)

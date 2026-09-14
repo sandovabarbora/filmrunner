@@ -11,7 +11,8 @@ import { loadCallSheet, publicCallSheetUrl, type LoadResult } from "./loader";
 type Mode =
   | { kind: "share"; api: string; sheet: string }
   | { kind: "dev" }
-  | { kind: "demo" };
+  | { kind: "demo" }
+  | { kind: "home" };
 
 const DEMO_URL = "demo/call-sheet.json";
 const DEMO_ID = "demo";
@@ -22,7 +23,8 @@ function modeFromLocation(): Mode {
   const api = params.get("api");
   if (sheet && api) return { kind: "share", api, sheet };
   if (params.get("dev") === "1") return { kind: "dev" };
-  return { kind: "demo" };
+  if (params.get("demo") === "1") return { kind: "demo" };
+  return { kind: "home" };
 }
 
 type Status = { kind: "" | "online" | "offline" | "error"; text: string };
@@ -48,8 +50,8 @@ export function App() {
   }, [mode]);
 
   const subtitle =
-    mode.kind === "dev" ? "Development" : mode.kind === "share" ? "Your call sheet" : "Demo shoot day";
-  const loading = result === null && mode.kind !== "dev";
+    mode.kind === "dev" ? "Development" : mode.kind === "share" ? "Your call sheet" : mode.kind === "demo" ? "Demo shoot day" : "The living call sheet";
+  const loading = result === null && (mode.kind === "demo" || mode.kind === "share");
 
   function onLookup() {
     const id = sheetId.trim();
@@ -66,6 +68,21 @@ export function App() {
         <h1>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
       </header>
+
+      {mode.kind === "home" && (
+        <section className="home" aria-label="Start">
+          <div className="home-card">
+            <h2>Crew</h2>
+            <p>Open the link your AD sent you. It works with no signal once opened, and updates itself when a revision goes out.</p>
+            <a className="button" id="openDemo" href="?demo=1">See a demo call sheet</a>
+          </div>
+          <div className="home-card">
+            <h2>Running a production</h2>
+            <p>Create shoot days, publish revisions, keep the crew and their numbers in one place.</p>
+            <a className="button primary" id="openEditor" href="editor.html">Open the editor</a>
+          </div>
+        </section>
+      )}
 
       {mode.kind === "dev" && (
         <div className="lookup" id="lookup">

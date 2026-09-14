@@ -60,6 +60,7 @@ class CrewMemberRead(CrewMemberCreate):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     production_id: uuid.UUID
+    contact: ContactRead
 
 
 class CastMemberCreate(BaseModel):
