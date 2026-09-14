@@ -63,6 +63,14 @@ report findings in `STATUS.md`; they are not daily reporters.
 | `security` (gate) | dev-team security + security-checklist | checklist before every merge |
 | `qa` (gate) | dev-team qa, sdet | tests first; every DoD has a failure case |
 
+## Product rule: connect first, then add
+
+Every item starts by naming how it plugs into the flow that already exists
+(entry page → editor → production → day → crew link → viewer), and the PR
+shows that path working end to end. A feature that works on its own but
+is reachable only by URL or curl is not done. Founder, 2026-09-14, after
+the first day produced working pieces that did not yet form one app.
+
 ## Conventions (checked in CI)
 
 - Branch: `<type>/<what-it-does>` where type is one of `feat`, `fix`,
