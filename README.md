@@ -34,7 +34,12 @@ every push to `main` that touches `frontend/`.
 API on Fly.io (`backend/fly.toml`, region fra), Postgres on Supabase used
 as plain Postgres, see `docs/adr/ADR-002-hosting.md`. Deploy is manual
 and founder-only: `cd backend && fly deploy` (migrations run as the
-release command). Secrets live in Fly only.
+release command). Secrets live in Fly only. After the first deploy, seed
+one realistic demo production and call sheet so the live URL shows
+something real on first open: `cd backend && python -m app.seed_demo`
+(idempotent — safe to re-run, it finds the existing demo call sheet by
+name instead of duplicating it). It prints the call sheet id to build the
+`?sheet=<id>&api=<base>` link from.
 
 ## Quick start
 
