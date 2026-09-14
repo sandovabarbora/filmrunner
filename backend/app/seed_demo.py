@@ -14,7 +14,7 @@ import logging
 
 from app.database import SessionLocal
 from app.models.call_sheet import CallSheetStatus
-from app.models.production import Contact, Location, Production
+from app.models.production import Contact, CrewMember, Location, Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate, ScheduleItemCreate
 from app.services.call_sheets import create_call_sheet
 
@@ -65,7 +65,21 @@ def seed() -> str:
         db.add(location)
 
         gaffer_contact = Contact(name="Tomáš Novák", phone="+420 601 234 567")
-        db.add(gaffer_contact)
+        ad_contact = Contact(name="Eva Dvořáková", phone="+420 777 111 222")
+        upm_contact = Contact(name="Jana Bílá", email="jana@example.com")  # no phone on file, on purpose
+        db.add_all([gaffer_contact, ad_contact, upm_contact])
+        db.flush()
+        first_ad = CrewMember(
+            production_id=production.id, contact_id=ad_contact.id, department="AD", position="1st AD",
+            is_head_of_department=True,
+        )
+        db.add_all([
+            first_ad,
+            CrewMember(production_id=production.id, contact_id=gaffer_contact.id, department="Electric",
+                       position="Gaffer", is_head_of_department=True),
+            CrewMember(production_id=production.id, contact_id=upm_contact.id, department="Production",
+                       position="UPM", is_head_of_department=True),
+        ])
         db.flush()
 
         payload = CallSheetCreate(
@@ -84,6 +98,7 @@ def seed() -> str:
                     "Nejbližší nemocnice viz lokace."
                 ),
                 created_by="seed_demo.py",
+                head_of_day_crew_member_id=first_ad.id,
                 schedule_items=[
                     ScheduleItemCreate(
                         order_index=1,

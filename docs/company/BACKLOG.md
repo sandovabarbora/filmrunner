@@ -58,7 +58,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a link to a call sheet that no longer exists or is not public shows a clear message, not a spinner
 
 ## FR-14 · tech-lead · Production contacts on the sheet: who to call, head of day, heads of department, nearest hospital
-- state: ready
+- state: done
+- note: delivered 2026-09-14 (feat/fr-14-contacts): migration 9520a7babf8c, crew-member endpoints, contacts computed on read, viewer section with tap-to-call, seed and demo updated. Editor cannot yet pick the head of day (needs crew UI); tracked under FR-17.
 - gated: no
 - why: a call sheet without phone numbers is not a call sheet; on set the questions are "who runs today", "who is my HoD", "where is the nearest hospital" (BRIEF Q3). Founder request 2026-09-14.
 - dod:

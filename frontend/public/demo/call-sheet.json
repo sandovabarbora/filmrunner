@@ -14,10 +14,92 @@
     "weather_forecast": "14 to 21 °C, scattered clouds, wind 3 m/s from NW, 10 % rain",
     "safety_notes": "Scenes 42 and 43 are on the riverbank at Troja: life vests for anyone within 3 m of the water, safety boat on standby from 07:00, no crew in the water without the water safety supervisor. Cottage kitchen (sc. 17, 18) has a low doorway, mind your head.",
     "schedule_items": [
-      {"order_index": 1, "scene_number": "42", "int_ext": "EXT", "day_night": "DAY", "set_description": "RIVERBANK, TROJA. Marta finds the boat. Water safety on set.", "page_count_eighths": 14},
-      {"order_index": 2, "scene_number": "43", "int_ext": "EXT", "day_night": "DAY", "set_description": "RIVERBANK, TROJA. Jonas rows across; drone for wide.", "page_count_eighths": 6},
-      {"order_index": 3, "scene_number": "17", "int_ext": "INT", "day_night": "DAY", "set_description": "COTTAGE KITCHEN. Breakfast, the letter. Continuity: wet hair from sc. 42.", "page_count_eighths": 21},
-      {"order_index": 4, "scene_number": "18", "int_ext": "INT", "day_night": "NIGHT", "set_description": "COTTAGE KITCHEN. Same setup, dusk for night; blackout windows from 16:00.", "page_count_eighths": 9}
+      {
+        "order_index": 1,
+        "scene_number": "42",
+        "int_ext": "EXT",
+        "day_night": "DAY",
+        "set_description": "RIVERBANK, TROJA. Marta finds the boat. Water safety on set.",
+        "page_count_eighths": 14
+      },
+      {
+        "order_index": 2,
+        "scene_number": "43",
+        "int_ext": "EXT",
+        "day_night": "DAY",
+        "set_description": "RIVERBANK, TROJA. Jonas rows across; drone for wide.",
+        "page_count_eighths": 6
+      },
+      {
+        "order_index": 3,
+        "scene_number": "17",
+        "int_ext": "INT",
+        "day_night": "DAY",
+        "set_description": "COTTAGE KITCHEN. Breakfast, the letter. Continuity: wet hair from sc. 42.",
+        "page_count_eighths": 21
+      },
+      {
+        "order_index": 4,
+        "scene_number": "18",
+        "int_ext": "INT",
+        "day_night": "NIGHT",
+        "set_description": "COTTAGE KITCHEN. Same setup, dusk for night; blackout windows from 16:00.",
+        "page_count_eighths": 9
+      }
     ]
+  },
+  "contacts": {
+    "head_of_day": {
+      "name": "Eva Dvořáková",
+      "department": "AD",
+      "position": "1st AD",
+      "phone": "+420 777 111 222",
+      "email": "eva@tichavoda.example"
+    },
+    "department_heads": [
+      {
+        "name": "Eva Dvořáková",
+        "department": "AD",
+        "position": "1st AD",
+        "phone": "+420 777 111 222",
+        "email": null
+      },
+      {
+        "name": "Marek Sýkora",
+        "department": "Camera",
+        "position": "DoP",
+        "phone": "+420 603 555 010",
+        "email": null
+      },
+      {
+        "name": "Tomáš Novák",
+        "department": "Electric",
+        "position": "Gaffer",
+        "phone": "+420 601 234 567",
+        "email": null
+      },
+      {
+        "name": "Klára Veselá",
+        "department": "Locations",
+        "position": "Location manager",
+        "phone": "+420 605 987 321",
+        "email": null
+      },
+      {
+        "name": "Jana Bílá",
+        "department": "Production",
+        "position": "UPM",
+        "phone": null,
+        "email": "jana@tichavoda.example"
+      },
+      {
+        "name": "Petra Horká",
+        "department": "Water safety",
+        "position": "Water safety supervisor",
+        "phone": "+420 608 111 999",
+        "email": null
+      }
+    ],
+    "nearest_hospital": "FN Bulovka, Budínova 67/2, Praha 8 (12 min by car from Troja)"
   }
 }

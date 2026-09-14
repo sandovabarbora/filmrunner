@@ -1,4 +1,4 @@
-import type { CallSheet, ScheduleItem } from "./types";
+import type { CallSheet, ContactCard, ScheduleItem } from "./types";
 
 function pages(eighths: number): string {
   const whole = Math.floor(eighths / 8);
@@ -81,6 +81,26 @@ export function CallSheetView({ callSheet, freshness }: CallSheetViewProps) {
         </table>
       </section>
 
+      {callSheet.contacts && (callSheet.contacts.head_of_day || callSheet.contacts.department_heads.length > 0 || callSheet.contacts.nearest_hospital) && (
+        <section className="contacts" id="contacts" aria-label="Who to call">
+          <h2>Who to call</h2>
+          {callSheet.contacts.head_of_day && (
+            <div className="hod">
+              <div className="label">Head of day</div>
+              <ContactRow c={callSheet.contacts.head_of_day} />
+            </div>
+          )}
+          {callSheet.contacts.department_heads.length > 0 && (
+            <ul className="contact-list">
+              {callSheet.contacts.department_heads.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
+            </ul>
+          )}
+          {callSheet.contacts.nearest_hospital && (
+            <p className="hospital"><span className="k">Nearest hospital </span>{callSheet.contacts.nearest_hospital}</p>
+          )}
+        </section>
+      )}
+
       {freshness.fromCache && (
         <p className="cached-at" id="cachedAt">
           Copy saved {new Date(freshness.fetchedAt).toLocaleString()}. You are offline; times may have changed since.
@@ -92,5 +112,18 @@ export function CallSheetView({ callSheet, freshness }: CallSheetViewProps) {
         <span className="hint">Add to home screen to open it with no signal.</span>
       </div>
     </article>
+  );
+}
+
+function ContactRow({ c }: { c: ContactCard }) {
+  const tel = c.phone ? `tel:${c.phone.replace(/[^+\d]/g, "")}` : null;
+  return (
+    <div className="contact">
+      <div className="who">
+        <span className="name">{c.name}</span>
+        <span className="role">{c.department} · {c.position}</span>
+      </div>
+      {tel ? <a className="phone" href={tel}>{c.phone}</a> : <span className="phone none">no number on file</span>}
+    </div>
   );
 }

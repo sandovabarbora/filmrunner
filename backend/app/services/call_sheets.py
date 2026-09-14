@@ -12,8 +12,9 @@ import string
 
 from sqlalchemy.orm import Session
 
+from app.models.production import CrewMember
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate
+from app.schemas.call_sheet import CallSheetContacts, ContactCard, CallSheetCreate, CallSheetRevisionCreate
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ def publish_revision(
     adding a new immutable revision, never by editing an existing one — see
     DESIGN.md for why.
     """
+    head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
+
     for existing in call_sheet.revisions:
         existing.is_current = False
 
@@ -61,6 +64,7 @@ def publish_revision(
         weather_forecast=payload.weather_forecast,
         safety_notes=payload.safety_notes,
         created_by=payload.created_by,
+        head_of_day_crew_member_id=head_of_day_id,
     )
     db.add(revision)
     db.flush()  # assign revision.id before building children
@@ -97,3 +101,61 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate) -> C
     publish_revision(db, call_sheet, payload.initial_revision)
     db.refresh(call_sheet)
     return call_sheet
+
+
+class HeadOfDayNotOnProduction(ValueError):
+    """The head of day must be a crew member of this production."""
+
+
+def _validate_head_of_day(db: Session, production_id, crew_member_id):
+    """Return the id if it names a crew member of the production, None if unset.
+
+    Raises:
+        HeadOfDayNotOnProduction: the crew member belongs to another production or does not exist.
+    """
+    if crew_member_id is None:
+        return None
+    member = db.get(CrewMember, crew_member_id)
+    if member is None or member.production_id != production_id:
+        raise HeadOfDayNotOnProduction("head of day must be a crew member of this production")
+    return crew_member_id
+
+
+def build_contacts(db: Session, call_sheet: CallSheet) -> CallSheetContacts:
+    """The "who to call" section: head of day, heads of department, nearest hospital.
+
+    Computed on read from the crew list and the day's locations, never stored,
+    so a phone-number correction in Contacts shows on every sheet at once.
+    """
+    revision = call_sheet.current_revision
+
+    def card(member: CrewMember) -> ContactCard:
+        return ContactCard(
+            name=member.contact.name,
+            department=member.department,
+            position=member.position,
+            phone=member.contact.phone,
+            email=member.contact.email,
+        )
+
+    heads = (
+        db.query(CrewMember)
+        .filter(CrewMember.production_id == call_sheet.production_id, CrewMember.is_head_of_department.is_(True))
+        .all()
+    )
+    heads.sort(key=lambda m: (m.department.lower(), m.contact.name.lower()))
+
+    head_of_day = None
+    if revision is not None and revision.head_of_day_crew_member_id is not None:
+        member = db.get(CrewMember, revision.head_of_day_crew_member_id)
+        if member is not None:
+            head_of_day = card(member)
+
+    hospital = None
+    if revision is not None:
+        for item in sorted(revision.schedule_items, key=lambda i: i.order_index):
+            if item.location is not None and item.location.nearest_hospital:
+                hospital = item.location.nearest_hospital
+                break
+
+    return CallSheetContacts(head_of_day=head_of_day, department_heads=[card(m) for m in heads], nearest_hospital=hospital)

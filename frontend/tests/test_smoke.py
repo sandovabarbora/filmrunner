@@ -95,3 +95,14 @@ def test_schedule_text_is_not_interpreted_as_html(page: Page, frontend_url: str)
     assert page.locator("#scheduleBody img").count() == 0
     assert "<img" in page.locator("#scheduleBody").inner_text()
     assert page.evaluate("window.__pwned") is None
+
+
+def test_contacts_render_with_tap_to_call_and_no_number_fallback(page: Page, frontend_url: str) -> None:
+    page.goto(f"{frontend_url}/index.html")
+    page.wait_for_selector("#contacts", timeout=10_000)
+    assert "Eva Dvořáková" in page.locator("#contacts .hod").inner_text()
+    tel_links = page.locator("#contacts a.phone")
+    assert tel_links.count() >= 5
+    assert tel_links.first.get_attribute("href").startswith("tel:+420")
+    assert page.locator("#contacts .phone.none").count() == 1  # UPM has no number on file
+    assert "Bulovka" in page.locator("#contacts .hospital").inner_text()

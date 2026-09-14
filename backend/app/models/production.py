@@ -8,7 +8,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -89,6 +89,8 @@ class CrewMember(Base):
     department: Mapped[str] = mapped_column(String(100), nullable=False)
     position: Mapped[str] = mapped_column(String(100), nullable=False)
     standard_call_time: Mapped[str | None] = mapped_column(String(10))  # "06:30"
+    # Heads of department are the "who to call" list on every call sheet.
+    is_head_of_department: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     production: Mapped["Production"] = relationship(back_populates="crew_members")
     contact: Mapped["Contact"] = relationship()

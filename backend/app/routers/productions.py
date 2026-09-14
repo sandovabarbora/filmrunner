@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_api_token
 from app.database import get_db
-from app.models.production import Contact, Location, Production
+from app.models.production import Contact, CrewMember, Location, Production
 from app.schemas.production import (
+    CrewMemberCreate,
+    CrewMemberRead,
     ContactCreate,
     ContactRead,
     LocationCreate,
@@ -82,3 +84,27 @@ def create_location(
 def list_locations(production_id: uuid.UUID, db: Session = Depends(get_db)) -> list[Location]:
     _get_production_or_404(db, production_id)
     return list(db.query(Location).filter(Location.production_id == production_id).all())
+
+
+@router.post(
+    "/productions/{production_id}/crew-members",
+    response_model=CrewMemberRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_crew_member(
+    production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db)
+) -> CrewMember:
+    _get_production_or_404(db, production_id)
+    if db.get(Contact, payload.contact_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    member = CrewMember(production_id=production_id, **payload.model_dump())
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@router.get("/productions/{production_id}/crew-members", response_model=list[CrewMemberRead])
+def list_crew_members(production_id: uuid.UUID, db: Session = Depends(get_db)) -> list[CrewMember]:
+    _get_production_or_404(db, production_id)
+    return list(db.query(CrewMember).filter(CrewMember.production_id == production_id).all())
