@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
-from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, visible_productions
+from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
@@ -212,10 +212,20 @@ def remove_crew_member(
 
 
 @router.patch("/contacts/{contact_id}", response_model=ContactRead)
-def update_contact(contact_id: uuid.UUID, payload: ContactUpdate, db: Session = Depends(get_db)) -> Contact:
+def update_contact(
+    contact_id: uuid.UUID, payload: ContactUpdate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> Contact:
+    """Contacts are shared rows; editing one needs crew:edit on a production that has this person in its crew."""
     contact = db.get(Contact, contact_id)
     if contact is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    if principal.kind != "service":
+        production_ids = {m.production_id for m in db.query(CrewMember).filter(CrewMember.contact_id == contact_id)}
+        allowed = any(
+            CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in production_ids
+        )
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person in its crew")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(contact, field, value)
     db.commit()

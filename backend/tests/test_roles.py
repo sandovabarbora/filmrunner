@@ -105,3 +105,23 @@ def test_service_token_is_owner_everywhere(client: TestClient, users) -> None:
     pid = client.post("/api/v1/productions", json={"name": "Svc"}, headers=owner).json()["id"]
     assert client.get(f"/api/v1/productions/{pid}", headers=SERVICE).json()["my_role"] == "owner"
     assert any(p["id"] == pid for p in client.get("/api/v1/productions", headers=SERVICE).json())
+
+
+def test_contact_edit_is_scoped_to_productions_where_the_caller_can_edit_crew(client: TestClient, users) -> None:
+    """IDOR guard: a contact can be edited only by someone with crew:edit on a production that uses it."""
+    ada, bob = users("ada2@example.com"), users("bob2@example.com")
+    pid_a = client.post("/api/v1/productions", json={"name": "A"}, headers=ada).json()["id"]
+    cid = client.post("/api/v1/contacts", json={"name": "Shared Person", "phone": "+420 1"}, headers=ada).json()["id"]
+    client.post(f"/api/v1/productions/{pid_a}/crew-members", json={"contact_id": cid, "department": "AD", "position": "2nd AD"}, headers=ada)
+    # bob owns another production but is not on A: cannot touch A's contact
+    client.post("/api/v1/productions", json={"name": "B"}, headers=bob)
+    assert client.patch(f"/api/v1/contacts/{cid}", json={"phone": "+420 hijacked"}, headers=bob).status_code == 403
+    # a viewer on A cannot either
+    client.post(f"/api/v1/productions/{pid_a}/members", json={"email": "bob2@example.com", "role": "viewer"}, headers=ada)
+    assert client.patch(f"/api/v1/contacts/{cid}", json={"phone": "+420 hijacked"}, headers=bob).status_code == 403
+    # the owner can
+    assert client.patch(f"/api/v1/contacts/{cid}", json={"phone": "+420 2"}, headers=ada).json()["phone"] == "+420 2"
+    # a contact used by no production is editable by nobody but the service token
+    loose = client.post("/api/v1/contacts", json={"name": "Loose"}, headers=ada).json()["id"]
+    assert client.patch(f"/api/v1/contacts/{loose}", json={"name": "x"}, headers=ada).status_code == 403
+    assert client.patch(f"/api/v1/contacts/{loose}", json={"name": "x"}, headers=SERVICE).status_code == 200
