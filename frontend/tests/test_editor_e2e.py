@@ -209,3 +209,19 @@ def test_four_taps_do_nothing(page: Page, frontend_url: str) -> None:
         page.click("#logo")
     page.wait_for_timeout(300)
     assert page.locator("#adminScreen").count() == 0
+
+
+def test_owner_invites_members_and_sees_role_chip(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-15: the Members tab (owner only) invites by email; a viewer row shows 'not signed in yet' until they do."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E roles {uuid.uuid4().hex[:6]}")
+    assert page.locator("#myRole").inner_text().strip().lower() == "owner"
+    page.click("role=tab[name='Members']")
+    page.wait_for_selector("#memberEmail", timeout=10_000)
+    page.fill("#memberEmail", "viewer@example.com")
+    page.select_option("#memberRole", "viewer")
+    page.click("#addMember")
+    expect(page.locator("#members")).to_contain_text("viewer@example.com", timeout=10_000)
+    expect(page.locator("#members")).to_contain_text("not signed in yet")
+    page.click("#members >> role=button[name='Remove viewer@example.com']")
+    expect(page.locator("#members li")).to_have_count(0, timeout=10_000)

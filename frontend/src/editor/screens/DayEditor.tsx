@@ -52,11 +52,13 @@ function nextLetter(letter: string): string {
   return String.fromCharCode(letter.charCodeAt(0) + 1);
 }
 
-export function DayEditor({ conn, productionId, productionName, callSheetId, setNotice }: {
-  conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; setNotice: (n: Notice) => void;
+export function DayEditor({ conn, productionId, productionName, callSheetId, canPublish, setNotice }: {
+  conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; canPublish: boolean; setNotice: (n: Notice) => void;
 }) {
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [readOnly, setReadOnly] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const readOnly = offline || !canPublish;
+  const setReadOnly = setOffline;
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [busy, setBusy] = useState(false);
   const latest = useRef<Draft | null>(null);
@@ -211,7 +213,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, set
 
       <section className="publish" aria-label="Publish">
         <div className="publish-state" id="publishState">
-          {readOnly && "Read-only while offline. Reconnect to publish."}
+          {offline && "Read-only while offline. Reconnect to publish."}
+          {!offline && !canPublish && "Read-only: your role on this production can view but not publish."}
           {!readOnly && !published && "Not published yet. Your draft is saved on this phone."}
           {!readOnly && published && !draft.dirtySincePublish && `REV ${draft.lastPublishedLetter} is live.`}
           {!readOnly && published && draft.dirtySincePublish && `Changes since REV ${draft.lastPublishedLetter}. Publish to send REV ${nextLetter(draft.lastPublishedLetter!)}.`}

@@ -88,12 +88,26 @@ export interface CallSheetCreate {
   initial_revision: RevisionCreate;
 }
 
+export type Permission = "production:read" | "production:manage_members" | "day:publish" | "crew:edit";
+export type ProductionRole = "owner" | "editor" | "viewer";
+
 export interface Production {
   id: string;
   name: string;
   working_title: string | null;
   production_company: string | null;
   status: "prep" | "shooting" | "wrapped" | string;
+  my_role?: ProductionRole | null;
+  permissions?: Permission[];
+}
+
+export interface Member {
+  id: string;
+  production_id: string;
+  email: string;
+  user_id: string | null;
+  role: ProductionRole;
+  invited_by: string | null;
 }
 
 export interface CallSheetCreated extends CallSheet {

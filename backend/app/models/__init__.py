@@ -12,6 +12,7 @@ from app.models.call_sheet import (  # noqa: F401
     DistributionLog,
     ScheduleItem,
 )
+from app.models.membership import ProductionMember, ProductionRole  # noqa: F401
 from app.models.production import CastMember, Contact, CrewMember, Location, Production  # noqa: F401
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "ScheduleItem",
     "CastCallEntry",
     "DistributionLog",
+    "ProductionMember",
+    "ProductionRole",
 ]

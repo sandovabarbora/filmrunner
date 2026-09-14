@@ -30,6 +30,8 @@ class ProductionCreate(BaseModel):
 
 class ProductionRead(ProductionCreate):
     model_config = ConfigDict(from_attributes=True)
+    my_role: str | None = None
+    permissions: list[str] = []
     id: uuid.UUID
 
 
@@ -73,3 +75,18 @@ class CastMemberRead(CastMemberCreate):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     production_id: uuid.UUID
+
+
+class MemberCreate(BaseModel):
+    email: str
+    role: str  # owner | editor | viewer
+
+
+class MemberRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    production_id: uuid.UUID
+    email: str
+    user_id: str | None
+    role: str
+    invited_by: str | None

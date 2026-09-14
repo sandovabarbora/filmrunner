@@ -71,7 +71,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a contact without a phone renders the name and role with "no number on file", never an empty row or a broken tel: link
 
 ## FR-13 · frontend · Personal call sheet: "your call", your department first
-- state: blocked
+- state: ready
 - gated: no
 - why: a crew member opens the link for one number, their own call time; today the sheet is the same for everyone (BRIEF Q3: wrong or missed call times; Q7: the wedge is the crew's pocket). Founder request 2026-09-14.
 - dod:
@@ -84,6 +84,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-16 · frontend · Notifications on publish and revision
 - state: blocked
+- note: unblocks after FR-13 (needs the receiver's identity)
 - gated: partial
 - why: "crew missing an update" is the failure the living call sheet exists to prevent (BRIEF Q3); a revision that nobody is told about is a PDF with extra steps. Founder request 2026-09-14.
 - dod:
@@ -95,7 +96,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - blocked-until: FR-13 (personal identity of the receiver)
 
 ## FR-15 · tech-lead · Roles and privileges per production
-- state: blocked
+- state: done
+- note: delivered 2026-09-14 (feat/fr-15-roles): ADR-005, production_members, policy in app/authz.py, members endpoints, editor Members tab and permission-aware UI, 5 backend role tests + E2E.
 - gated: no
 - why: an AD publishes, a coordinator edits, a department head sees and annotates their department, everyone else reads; one shared token cannot express that. Founder request 2026-09-14; builds on FR-12.
 - dod:

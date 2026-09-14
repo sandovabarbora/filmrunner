@@ -103,7 +103,8 @@ export function EditorApp() {
         <ProductionScreen conn={conn} productionId={route.productionId} production={production} tab={route.tab} setNotice={setNotice} />
       )}
       {route.screen === "day" && (
-        <DayEditor conn={conn} productionId={route.productionId} productionName={production?.name ?? null} callSheetId={route.callSheetId} setNotice={setNotice} />
+        <DayEditor conn={conn} productionId={route.productionId} productionName={production?.name ?? null} callSheetId={route.callSheetId}
+          canPublish={(production?.permissions ?? []).includes("day:publish")} setNotice={setNotice} />
       )}
     </div>
   );

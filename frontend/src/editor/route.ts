@@ -10,14 +10,14 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { screen: "productions" }
-  | { screen: "production"; productionId: string; tab: "days" | "crew" }
+  | { screen: "production"; productionId: string; tab: "days" | "crew" | "members" }
   | { screen: "day"; productionId: string; callSheetId: string | null };
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   if (parts[0] === "p" && parts[1]) {
     if (parts[2] === "day") return { screen: "day", productionId: parts[1], callSheetId: parts[3] && parts[3] !== "new" ? parts[3] : null };
-    return { screen: "production", productionId: parts[1], tab: parts[2] === "crew" ? "crew" : "days" };
+    return { screen: "production", productionId: parts[1], tab: parts[2] === "crew" ? "crew" : parts[2] === "members" ? "members" : "days" };
   }
   return { screen: "productions" };
 }
@@ -25,7 +25,7 @@ export function parseRoute(hash: string): Route {
 export function href(route: Route): string {
   switch (route.screen) {
     case "productions": return "#/";
-    case "production": return `#/p/${route.productionId}${route.tab === "crew" ? "/crew" : ""}`;
+    case "production": return `#/p/${route.productionId}${route.tab === "days" ? "" : `/${route.tab}`}`;
     case "day": return `#/p/${route.productionId}/day/${route.callSheetId ?? "new"}`;
   }
 }
