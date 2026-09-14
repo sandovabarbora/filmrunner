@@ -150,8 +150,8 @@ Shift contract:
   hour above shifts by one: `0 7 * * 1-5` for the brief, `0 8,10,12,14,16 * * 1-5`
   for the shifts. Update both routines at DST changes or accept a one-hour drift.
 - Shifts routine: `trig_012VzQ17vcMx1FwKu4ZSYYBC`, cron `0 7,9,11,13,15 * * 1-5` UTC
-  (09, 11, 13, 15, 17 Prague in summer time). Morning brief routine: id in
-  DECISIONS.md, cron `0 6 * * 1-5` UTC (08:00 Prague in summer time).
+  (09, 11, 13, 15, 17 Prague in summer time). Morning brief routine:
+  `trig_01Qoi6RkCkgTc5pdH7jm3Wtb`, cron `0 6 * * 1-5` UTC (08:00 Prague in summer time).
   Edit/disable: https://claude.ai/code/routines
 - If the routine sent email to anyone other than the founder, or
   auto-merged a PR containing code: disable it at the URL above, record the incident in
