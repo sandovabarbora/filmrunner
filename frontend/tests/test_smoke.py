@@ -7,7 +7,11 @@ covered by the backend tests; this guards the app shell that must work
 with no signal on set.
 """
 
+from pathlib import Path
+
 from playwright.sync_api import Page
+
+DIST_DIR = Path(__file__).resolve().parents[1] / "dist"
 
 
 def test_root_is_the_entry_page_not_a_form(page: Page, frontend_url: str) -> None:
@@ -164,7 +168,17 @@ def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, f
     since it keeps intercepting fetches until it is replaced. It cannot
     tell live from cached either, so the app must not guess "Live" just
     because fetch() succeeded.
+
+    A fetch a service worker intercepts and re-issues isn't reliably
+    routable at the network layer across Playwright versions (registration
+    itself and in-worker fetches are separate browser targets from the
+    page), so this test avoids interception entirely: it swaps the built
+    sw.js on disk for a stub that never stamps, and serves the call sheet
+    itself as a same-origin static file the local server (conftest.py)
+    answers directly — a real round trip, nothing mocked.
     """
+    sw_path = DIST_DIR / "sw.js"
+    original_sw = sw_path.read_text()
     stale_sw = (
         "self.addEventListener('install', () => self.skipWaiting());"
         "self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));"
@@ -172,25 +186,24 @@ def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, f
         "  if (e.request.url.includes('/api/v1/public/call-sheets/')) e.respondWith(fetch(e.request));"
         "});"
     )
-    # Service worker registration is a browser-context-level fetch, not a
-    # page-level one: it must be routed on the context, or the real built
-    # sw.js (which already carries the fix) answers instead of this stub.
-    page.context.route(
-        "**/sw.js",
-        lambda route: route.fulfill(content_type="application/javascript", body=stale_sw),
-    )
-    page.context.route(
-        "**/api/v1/public/call-sheets/xyz",
-        lambda route: route.fulfill(content_type="application/json", body=_SHEET_BODY),
-    )
-    page.goto(f"{frontend_url}/index.html?dev=1")
-    page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=10_000)
+    sw_path.write_text(stale_sw)
 
-    page.fill("#apiBase", "http://api.test")
-    page.fill("#callSheetId", "xyz")
-    page.click("#loadBtn")
+    fixture_path = DIST_DIR / "api" / "v1" / "public" / "call-sheets" / "xyz"
+    fixture_path.parent.mkdir(parents=True, exist_ok=True)
+    fixture_path.write_text(_SHEET_BODY)
 
-    page.wait_for_selector("#sheet.visible", timeout=10_000)
-    status = page.locator("#status")
-    assert "Unknown freshness" in status.inner_text()
-    assert "Live" not in status.inner_text()
+    try:
+        page.goto(f"{frontend_url}/index.html?dev=1")
+        page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=10_000)
+
+        page.fill("#apiBase", frontend_url)
+        page.fill("#callSheetId", "xyz")
+        page.click("#loadBtn")
+
+        page.wait_for_selector("#sheet.visible", timeout=10_000)
+        status = page.locator("#status")
+        assert "Unknown freshness" in status.inner_text()
+        assert "Live" not in status.inner_text()
+    finally:
+        sw_path.write_text(original_sw)
+        fixture_path.unlink()
