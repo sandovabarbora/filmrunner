@@ -7,29 +7,7 @@ covered by the backend tests; this guards the app shell that must work
 with no signal on set.
 """
 
-import http.server
-import socketserver
-import threading
-from collections.abc import Iterator
-from functools import partial
-from pathlib import Path
-
-import pytest
 from playwright.sync_api import Page
-
-DIST_DIR = Path(__file__).resolve().parents[1] / "dist"
-
-
-@pytest.fixture(scope="session")
-def frontend_url() -> Iterator[str]:
-    assert (DIST_DIR / "index.html").exists(), "run `npm run build` in frontend/ first"
-    handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(DIST_DIR))
-    with socketserver.TCPServer(("127.0.0.1", 0), handler) as server:
-        port = server.server_address[1]
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        yield f"http://127.0.0.1:{port}"
-        server.shutdown()
 
 
 def test_root_shows_demo_not_a_form(page: Page, frontend_url: str) -> None:

@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -35,5 +36,11 @@ export default defineConfig({
       },
     }),
   ],
-  build: { outDir: "dist", emptyOutDir: true },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: { viewer: resolve(__dirname, "index.html"), editor: resolve(__dirname, "editor.html") },
+    },
+  },
 });
