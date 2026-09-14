@@ -34,7 +34,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: delivered in PR #11 (branch docs/fr-3-discovery-plan) — target roles, a 30-minute script mapped to BRIEF.md Q1-Q4/Q6, a note-taking template, and draft invitation email text. Recruiting real candidates and sending the invitation needs the founder's own network and identity, not the routine; filed as INBOX #1.
 
 ## FR-8 · tech-lead · Demo deployment of the PWA for discovery interviews
-- state: ready
+- state: in-progress
+- note: 2026-09-14 interactive session: GitHub Pages enabled (workflow build), `?demo=1` mode with a bundled sample call sheet, pages.yml deploy on push to main. Remaining: ADR-002, Fly/Neon configs for the real API, INBOX items for accounts.
 - gated: partial
 - why: showing an AD a call sheet that works on their own phone with no signal is stronger evidence than any interview question; the PWA needs HTTPS and a public API to exist outside localhost
 - dod:
@@ -77,6 +78,6 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - why: an automated security review of commit 81e9fc4 found a hardcoded dev token default in backend/app/config.py, stored XSS in frontend/index.html (API data rendered via innerHTML without escaping), and forgeable audit fields in backend/app/services/call_sheets.py
 - dod:
   - config.py has no default bearer token; the app refuses to start without FILMRUNNER_API_BEARER_TOKEN outside development
-  - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text
+  - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text (done 2026-09-14 in feat/github-pages-demo, test_schedule_text_is_not_interpreted_as_html)
   - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored
   - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape

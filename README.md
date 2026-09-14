@@ -20,6 +20,14 @@ approval contract, roles and the daily routine are in
 work in `docs/company/BACKLOG.md`. Nothing with real-world effect happens
 without an approved item in `docs/company/INBOX.md`.
 
+## Live demo
+
+https://sandovabarbora.github.io/filmrunner/?demo=1 serves the PWA from
+GitHub Pages with a bundled sample shoot day (no backend). Open it on a
+phone, add it to the home screen, switch to airplane mode: the call sheet
+still renders from the cache. Deployed by `.github/workflows/pages.yml` on
+every push to `main` that touches `frontend/`.
+
 ## Quick start
 
 ```bash
