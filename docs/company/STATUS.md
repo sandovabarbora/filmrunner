@@ -1,6 +1,14 @@
 # Status
 
-Updated: 2026-09-14 (daily shift)
+Updated: 2026-09-14 (morning brief)
+
+## today
+
+- 09:00 — FR-8 · tech-lead: write ADR-002 (demo hosting choice: Cloudflare Pages/GitHub Pages + Fly.io/Railway + Neon), commit deploy configs and a demo seed script, and file INBOX items for every account/domain/payment needed.
+- 11:00 — FR-4 · tech-lead: write ADR-001 recording the stack restart (FastAPI + vanilla PWA over the old Next.js + Supabase), including what the old repo had that this one still lacks.
+- 13:00 — FR-5 · tech-lead: write the pre-merge security/QA checklist and wire it into the PR template.
+- 15:00 — FR-7 · security: fix the three founding-commit findings (hardcoded dev token default, innerHTML XSS, forgeable audit fields) with tests for each.
+- 17:00 — idle: after FR-8, FR-4, FR-5 and FR-7 are claimed, no `ready` item with `gated: no`/`partial` remains (FR-1 is in-progress, FR-6 is blocked on FR-1). Only 4 of 5 shifts have work today.
 
 ## pm
 - summary: FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11) — target roles (1st AD, 2nd AD, production coordinator), a 30-minute script mapped to BRIEF.md Q1-Q4/Q6, a note-taking template, sourcing/fallback channels (FAMU, Czech Film Commission, permit data), and draft invitation email text. Recruiting real candidates and sending the invitation needs the founder's own network/identity — filed as INBOX #1, pending. FR-2 teardown (docs/research/competitive-teardown.md, PR #8) still stands from the prior shift.
