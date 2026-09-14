@@ -35,7 +35,7 @@ def frontend_url() -> Iterator[str]:
 def test_root_shows_demo_not_a_form(page: Page, frontend_url: str) -> None:
     page.goto(f"{frontend_url}/index.html")
     page.wait_for_selector("#sheet.visible", timeout=10_000)
-    assert "FilmRunner" in page.locator("h1").inner_text()
+    assert "FilmRunner" in (page.locator("h1").text_content() or "")
     assert page.locator("#lookup").count() == 0
     assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
 

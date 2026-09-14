@@ -37,9 +37,9 @@ export function App() {
   async function load(url: string, id: string) {
     const r = await loadCallSheet(url, id);
     setResult(r);
-    if (r.kind === "live") setStatus({ kind: "online", text: "Live data, cached for offline viewing." });
-    if (r.kind === "cached") setStatus({ kind: "offline", text: `Network unavailable (${r.reason}). Showing last cached revision.` });
-    if (r.kind === "error") setStatus({ kind: "error", text: `Could not reach the server and nothing is cached for this ID yet (${r.reason}).` });
+    if (r.kind === "live") setStatus({ kind: "online", text: "Live · saved on this phone for offline use." });
+    if (r.kind === "cached") setStatus({ kind: "offline", text: `Offline · showing the copy saved ${new Date(r.fetchedAt).toLocaleString()}. Times may have changed since.` });
+    if (r.kind === "error") setStatus({ kind: "error", text: `Could not load this call sheet (${r.reason}).` });
   }
 
   useEffect(() => {
@@ -48,11 +48,8 @@ export function App() {
   }, [mode]);
 
   const subtitle =
-    mode.kind === "dev"
-      ? "Development mode: point at a FilmRunner API and enter a call sheet ID."
-      : mode.kind === "share"
-        ? "Your call sheet. Add this page to your home screen; it keeps working with no signal."
-        : "Demo shoot day. Add this page to your home screen; it keeps working with no signal.";
+    mode.kind === "dev" ? "Development" : mode.kind === "share" ? "Your call sheet" : "Demo shoot day";
+  const loading = result === null && mode.kind !== "dev";
 
   function onLookup() {
     const id = sheetId.trim();
@@ -65,8 +62,10 @@ export function App() {
 
   return (
     <div className="wrap">
-      <h1>FilmRunner · call sheet</h1>
-      <div className="sub" id="subtitle">{subtitle}</div>
+      <header className="masthead">
+        <h1>FilmRunner</h1>
+        <p className="sub" id="subtitle">{subtitle}</p>
+      </header>
 
       {mode.kind === "dev" && (
         <div className="lookup" id="lookup">
@@ -80,11 +79,20 @@ export function App() {
 
       <div id="status" className={`status ${status.kind}`}>{status.text}</div>
 
+      {loading && (
+        <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>
+      )}
+
       {result && result.kind !== "error" && (
         <CallSheetView
           callSheet={result.data}
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
         />
+      )}
+      {result?.kind === "error" && (
+        <div className="empty" role="status">
+          This call sheet is not on this phone yet and the server could not be reached. Get back in signal and reload; it will be saved for offline use after the first load.
+        </div>
       )}
       {(!result || result.kind === "error") && <div id="sheet" className="sheet" />}
     </div>
