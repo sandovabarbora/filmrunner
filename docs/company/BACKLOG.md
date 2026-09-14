@@ -8,7 +8,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - why: there is no constitution; every other item needs one to justify itself
 - dod:
   - each open question in BRIEF.md has an owner and a concrete way it gets answered
-  - the June 2026 brief is read and its claims are listed as hypotheses, not facts
+  - the June 2026 brief (docs/reference/PRODUCT_BRIEF-2026-06.md) is read and its claims are listed as hypotheses, not facts
   - failure case: a hypothesis we cannot test within a month is marked "parked", not deleted or silently believed
 
 ## FR-2 · pm · Competitive teardown of call-sheet tools
