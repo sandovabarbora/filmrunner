@@ -3,13 +3,14 @@
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-1 · pm · BRIEF.md v0 to v0.1: sharpen questions and hypotheses
-- state: ready
+- state: in-progress
 - gated: no
 - why: there is no constitution; every other item needs one to justify itself
 - dod:
   - each open question in BRIEF.md has an owner and a concrete way it gets answered
   - the June 2026 brief is read and its claims are listed as hypotheses, not facts
   - failure case: a hypothesis we cannot test within a month is marked "parked", not deleted or silently believed
+- note: v0.1 shipped (BRIEF.md). Dod bullet 2 is partly blocked — `PRODUCT_BRIEF.md` is not present in this repo or reachable from the routine's environment, so its claims could not be read directly; BRIEF.md now says so explicitly and lists only reconstructed, clearly-unverified hypotheses. Closing this fully needs the founder to add the source document to the repo.
 
 ## FR-2 · pm · Competitive teardown of call-sheet tools
 - state: ready
