@@ -1,141 +1,164 @@
+/* FilmRunner call sheet: paper, print typography, one accent (revision colour). */
+
 :root {
-    --bg: #0b0b0c;
-    --panel: #151517;
-    --border: #2a2a2e;
-    --text: #eef0f2;
-    --muted: #9a9ca1;
-    --accent: #f4c542;
-    --danger: #e2574c;
-    --ok: #4caf7d;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    padding: 16px;
-    padding-bottom: 48px;
-  }
-  .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 1.1rem; letter-spacing: 0.02em; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+  color-scheme: light;
+  --paper: #f7f4ee;
+  --paper-2: #efeae1;
+  --ink: #17150f;
+  --ink-2: #4d4842;
+  --muted: #7a746b;
+  --rule: #d8d1c4;
+  --rule-strong: #17150f;
+  --warn-bg: #fff2cc;
+  --warn-ink: #5a4300;
+  --err-bg: #f9dcd8;
+  --err-ink: #6b1d16;
+  --ok-ink: #1f5c3a;
+  /* Revision paper colours, as printed on set: A white, B blue, C pink, D yellow, E green. */
+  --rev-a: #ffffff; --rev-b: #cfe3f7; --rev-c: #f8d3dc; --rev-d: #f8ec9e; --rev-e: #cfeacb;
+  --rev: var(--rev-a);
+  --sans: -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-  .lookup {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .lookup input {
-    flex: 1;
-    min-width: 200px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 12px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-  }
-  .lookup button {
-    background: var(--accent);
-    color: #14140f;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
-  .lookup button:active { transform: translateY(1px); }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.45;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+button { font: inherit; }
 
-  .status {
-    font-size: 0.8rem;
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-bottom: 16px;
-    display: none;
-  }
-  .status.offline { display: block; background: rgba(226, 87, 76, 0.15); color: var(--danger); border: 1px solid rgba(226, 87, 76, 0.4); }
-  .status.online { display: block; background: rgba(76, 175, 125, 0.15); color: var(--ok); border: 1px solid rgba(76, 175, 125, 0.4); }
-  .status.error { display: block; background: rgba(226, 87, 76, 0.15); color: var(--danger); border: 1px solid rgba(226, 87, 76, 0.4); }
+.wrap { max-width: 40rem; margin: 0 auto; padding: 0 20px 56px; }
 
-  .sheet {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    display: none;
-  }
-  .sheet.visible { display: block; }
+/* Masthead: what this is, at a glance. */
+.masthead {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 14px 0 10px;
+  border-bottom: 2px solid var(--rule-strong);
+}
+.masthead h1 {
+  margin: 0; font-size: 0.8125rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.masthead .sub { margin: 0; font-size: 0.8125rem; color: var(--muted); text-align: right; }
 
-  .sheet-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 14px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .sheet-header .day { font-size: 1.3rem; font-weight: 700; }
-  .rev-badge {
-    display: inline-block;
-    background: var(--accent);
-    color: #14140f;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    margin-left: 8px;
-  }
+/* Freshness strip: honest, quiet, always visible when it matters. */
+.status { display: none; margin: 10px 0 0; padding: 8px 12px; font-size: 0.8125rem; border-radius: 4px; }
+.status.online { display: block; color: var(--ok-ink); background: #e5f0e8; }
+.status.offline { display: block; color: var(--warn-ink); background: var(--warn-bg); }
+.status.error { display: block; color: var(--err-ink); background: var(--err-bg); }
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .info-box {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-  .info-box .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .info-box .value { font-size: 1rem; font-weight: 600; margin-top: 2px; }
+/* Dev lookup, only with ?dev=1. */
+.lookup { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
+.lookup input {
+  padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  background: #fff; color: var(--ink); font: inherit;
+}
+.lookup input:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lookup button, .actions button {
+  padding: 10px 14px; border: 1px solid var(--rule-strong); border-radius: 4px;
+  background: var(--ink); color: var(--paper); cursor: pointer; font-weight: 600;
+}
+.actions button:hover, .lookup button:hover { background: #2a2620; }
+.actions button:active, .lookup button:active { transform: translateY(1px); }
+@media (min-width: 480px) { .lookup { grid-template-columns: 1fr 1fr auto; } }
 
-  .safety {
-    background: rgba(226, 87, 76, 0.1);
-    border: 1px solid rgba(226, 87, 76, 0.35);
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: 0.85rem;
-    margin-bottom: 16px;
+/* Loading: two paper-grey bars, no spinner. */
+.skeleton { margin-top: 24px; }
+.skeleton i { display: block; height: 14px; border-radius: 3px; background: var(--paper-2); margin-bottom: 10px; }
+.skeleton i:first-child { width: 55%; height: 44px; }
+.skeleton i:nth-child(2) { width: 80%; }
+.skeleton i:last-child { width: 65%; }
+
+/* The sheet itself. */
+.sheet { display: none; }
+.sheet.visible { display: block; animation: settle 220ms var(--ease) both; }
+@keyframes settle { from { opacity: 0.6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.sheet-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 0 6px; }
+.production { margin: 0; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.day { margin: 4px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
+.day .date { color: var(--muted); }
+.rev-badge {
+  flex: none; display: inline-block; padding: 5px 10px; border: 1.5px solid var(--rule-strong); border-radius: 3px;
+  background: var(--rev); font-family: var(--mono); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em;
+}
+.rev-badge[data-rev="B"] { --rev: var(--rev-b); }
+.rev-badge[data-rev="C"] { --rev: var(--rev-c); }
+.rev-badge[data-rev="D"] { --rev: var(--rev-d); }
+.rev-badge[data-rev="E"] { --rev: var(--rev-e); }
+
+/* Calls: the two numbers a crew member wakes up for. */
+.calls {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;
+  margin: 14px 0 0; padding: 14px 0; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule);
+}
+.call .label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.call .value { font-family: var(--mono); font-weight: 700; letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
+.call.crew .value { font-size: 3.25rem; }
+.call.shoot .value { font-size: 2rem; margin-top: 12px; }
+
+/* Light and weather on one line. */
+.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; color: var(--ink-2); }
+.meta .k { color: var(--muted); }
+.meta .v { font-family: var(--mono); }
+.meta .weather { flex-basis: 100%; }
+
+/* Safety: framed, not shouted. */
+.safety { margin: 16px 0 0; padding: 12px 14px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.safety .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.safety p { margin: 6px 0 0; font-size: 0.9375rem; }
+
+/* Schedule as a set table: scene in mono, description wraps, pages right. */
+.schedule { margin-top: 22px; }
+.schedule h2 { margin: 0 0 6px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; }
+thead th { text-align: left; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--rule-strong); white-space: nowrap; }
+thead th:last-child { text-align: right; padding-right: 0; }
+tbody td { padding: 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-size: 0.9375rem; }
+td.n { width: 2ch; color: var(--muted); font-family: var(--mono); font-size: 0.8125rem; padding-right: 8px; }
+td.scene { width: 6ch; font-family: var(--mono); font-weight: 700; padding-right: 12px; }
+td.ie, td.dn { width: 5ch; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-2); padding-right: 12px; padding-top: 12px; }
+td.pages { width: 6ch; text-align: right; font-family: var(--mono); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
+
+/* Phone: fold the six columns into two lines per scene. */
+@media (max-width: 560px) {
+  thead { display: none; }
+  tbody tr {
+    display: grid; grid-template-columns: 4.5ch max-content 1fr auto; column-gap: 8px;
+    grid-template-areas: "scene set set pages" "n ie dn dn";
+    padding: 10px 0; border-bottom: 1px solid var(--rule);
   }
-  .safety .label { color: var(--danger); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; }
+  tbody td { display: block; padding: 0; border: 0; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.scene { grid-area: scene; }
+  td.set { grid-area: set; }
+  td.pages { grid-area: pages; padding-left: 6px; }
+  td.n { display: none; }
+  td.ie { grid-area: ie; padding-top: 3px; }
+  td.dn { grid-area: dn; padding-top: 3px; }
+  td.ie::after { content: "·"; color: var(--muted); margin-left: 6px; }
+  tbody tr:last-child { border-bottom: 1px solid var(--rule-strong); }
+}
 
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+.cached-at { margin-top: 12px; font-size: 0.8125rem; color: var(--muted); }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+.hint { font-size: 0.8125rem; color: var(--muted); }
 
-  .cached-at { color: var(--muted); font-size: 0.75rem; margin-top: 16px; }
+/* Error state with a way out. */
+.empty { margin-top: 24px; padding: 16px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-2); font-size: 0.9375rem; }
 
-  .actions { margin-top: 16px; display: flex; gap: 8px; }
-  .actions button {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-
-  @media print {
-    body { background: #fff; color: #000; padding: 0; }
-    .lookup, .status, .actions { display: none !important; }
-    .sheet { border: none; box-shadow: none; }
-    .info-box, .safety { background: #fff; border: 1px solid #999; }
-  }
+@media print {
+  body { background: #fff; }
+  .wrap { max-width: none; padding: 0; }
+  .status, .actions, .hint, .lookup, .cached-at { display: none !important; }
+  .sheet.visible { animation: none; }
+}

@@ -16,8 +16,8 @@ export default defineConfig({
         description: "Offline-capable shoot-day call sheet viewer",
         start_url: ".",
         display: "standalone",
-        background_color: "#0b0b0c",
-        theme_color: "#0b0b0c",
+        background_color: "#f7f4ee",
+        theme_color: "#f7f4ee",
         icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
       },
       workbox: {
