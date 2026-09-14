@@ -59,3 +59,13 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: run cse_013HbrCVEvh1npHTE199Lou4 behaved per contract on FR-1 (PR #5, no invented content, in-progress not done, asked for the missing source) but then blocked on an unanswered permission prompt for the board write, so no state PR and no digest were sent. Research items need the web to cite sources.
 - Also: repository merges restricted to squash with the commit title, so `main` history reads as commit messages, not "Merge pull request #n".
 - Revisit when: a run again stalls on any prompt (then remove the tool rather than tune the prompt).
+
+## 2026-09-14: branch and commit conventions, enforced in CI
+- Decision: branches `<type>/<what-it-does>` (feat, fix, docs, chore, refactor, test, ci); commits and PR titles in Conventional Commits form; `main` squash-only with the commit title. `scripts/check_conventions.py` runs on every PR.
+- Why: founder's call; a convention the linter enforces survives, one that lives in a doc does not.
+- Revisit when: a type is missing often enough that people reach for `chore` as a catch-all.
+
+## 2026-09-14: the routine does not touch the status board
+- Decision: Artifact removed from the routine's tools; the board is synced by interactive sessions.
+- Why: two runs (cse_013HbrCVEvh1npHTE199Lou4, cse_015G75GF4eJwZJ6FrhfxDSCv) stalled on the Artifact permission prompt even with the tool allow-listed; a stalled run also never sends its digest.
+- Revisit when: routines can pre-approve Artifact writes.

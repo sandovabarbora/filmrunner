@@ -34,6 +34,12 @@ jobs:
         run: |
           pip install -r backend/requirements.txt -r frontend/tests/requirements.txt
           python -m playwright install --with-deps chromium
+      - name: Branch and PR title conventions
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: python scripts/check_conventions.py "$BRANCH" "$TITLE"
       - name: Company docs format
         run: python scripts/check_company_docs.py docs/company
       - name: Checker tests

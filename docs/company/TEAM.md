@@ -43,7 +43,7 @@ session, never by the routine.
 `main` accepts only commits whose `ci` check is green (GitHub ruleset;
 direct pushes are rejected). Code reaches `main` through a pull request the
 founder merges. The routine's state updates (`docs/company/STATUS.md`,
-`INBOX.md`, `LOG.md`) go through a state-only PR on `shift/state-<date>`
+`INBOX.md`, `LOG.md`) go through a state-only PR on `chore/shift-state-<date>`
 with auto-merge enabled, so they land as soon as `ci` passes. The routine
 never enables auto-merge on a PR that touches anything else.
 
@@ -62,6 +62,18 @@ report findings in `STATUS.md`; they are not daily reporters.
 | `marketing` | product-marketing, launch, content-strategy, cold-email | positioning, Prague go-to-market, outreach drafts (gated) |
 | `security` (gate) | dev-team security + security-checklist | checklist before every merge |
 | `qa` (gate) | dev-team qa, sdet | tests first; every DoD has a failure case |
+
+## Conventions (checked in CI)
+
+- Branch: `<type>/<what-it-does>` where type is one of `feat`, `fix`,
+  `docs`, `chore`, `refactor`, `test`, `ci`; lowercase, hyphens.
+  Examples: `docs/fr-2-competitive-teardown`, `chore/shift-state-2026-09-14`,
+  `feat/call-sheet-pdf-export`.
+- Commit and PR title: Conventional Commits, `type(scope): subject`, scope
+  optional, subject in the imperative, no trailing period.
+  Examples: `docs(pm): FR-2 competitive teardown`, `fix(api): reject 27th revision`.
+- `main` history is squash-only; the squash title is the commit title.
+- CI rejects a PR whose branch or title breaks these rules.
 
 ## Item grammar (checked by `scripts/check_company_docs.py`)
 
@@ -90,8 +102,9 @@ Run `python scripts/check_company_docs.py` before committing either file.
 
 One routine, daily at 05:00 Europe/Prague, model claude-sonnet-5, clones
 this repo from GitHub, Gmail connector only. Tools: Bash, Read, Write,
-Edit, Glob, Grep, WebSearch, WebFetch, Artifact (the cloud environment
-also provides a GitHub MCP for PRs). Its contract:
+Edit, Glob, Grep, WebSearch, WebFetch (the cloud environment also
+provides a GitHub MCP for PRs; WebFetch is blocked for most external
+domains by the sandbox egress proxy, WebSearch works). Its contract:
 
 1. Read `TEAM.md`, `BRIEF.md`, `BACKLOG.md`, `INBOX.md`, `STATUS.md`.
 2. Execute `approved` inbox items that are doable inside the repo
@@ -99,15 +112,15 @@ also provides a GitHub MCP for PRs). Its contract:
    credentials or money: do not execute; write "waiting for founder,
    manual" in `STATUS.md`.
 3. Take the highest `ready` backlog item with `gated: no`. Work in the role
-   the item names, to its DoD. Code only on branch `shift/<id>`; tests must
-   pass; open a PR. Discovery and marketing outputs are markdown under
+   the item names, to its DoD. Code only on branch `<type>/<id>-<slug>`
+   (e.g. `docs/fr-2-competitive-teardown`); tests must pass; open a PR. Discovery and marketing outputs are markdown under
    `docs/` on the same branch. Set the item to `in-progress` (or `done`
    when the PR is the whole deliverable and only awaits merge).
 4. When something needs approval, append an `INBOX.md` item and continue
    with the next ungated item. Never block.
 5. Write `STATUS.md` (per role: summary, tests, blockers, needs_approval)
-   and one `LOG.md` line. Commit these files on `shift/state-<date>`, open
-   a PR, enable auto-merge (`gh pr merge --auto --squash`).
+   and one `LOG.md` line. Commit these files on `chore/shift-state-<date>`,
+   open a PR, enable auto-merge (`gh pr merge --auto --squash`).
 6. Send the digest to `sandovabarb@gmail.com` only, in Czech, five lines
    max: what was done, what awaits approval (#id), what is blocked, PR link.
    On Mondays add a proposed plan for the week.
@@ -134,9 +147,9 @@ The exact prompt the routine runs is versioned in `routine-prompt.md`.
 ## Status board
 
 The "AI Team Status" artifact (four cards: product, engineering, security,
-marketing; activity log) is a projection of `STATUS.md` and `LOG.md`. The
-routine has the Artifact tool and syncs the board at the end of each run
-(verified 2026-09-14: the first run found the board; its write needed the
-tool allow-listed, which is now done). Interactive sessions sync it too
-when they change `STATUS.md`. The email digest is always the current
-channel; the board may lag by one run.
+marketing; activity log) is a projection of `STATUS.md` and `LOG.md`. It is
+synced by interactive sessions (step "sync board": read `STATUS.md` and
+`LOG.md`, write `status/<role>` and `log/<id>` via the Artifact tool).
+The routine does not sync it: verified 2026-09-14 in two runs that the
+Artifact write raises a permission prompt no one can answer in the cloud,
+which stalls the run. The email digest is always the current channel.
