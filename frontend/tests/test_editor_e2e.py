@@ -185,3 +185,27 @@ def test_opening_a_published_day_offline_is_read_only(page: Page, frontend_url: 
     expect(page.locator("#publishState")).to_contain_text("Read-only while offline")
     assert page.locator("#publish").is_disabled()
     assert page.locator("#general_crew_call").input_value() == "06:00"
+
+
+def test_five_taps_on_the_logo_open_admin_access(page: Page, frontend_url: str, api_url: str) -> None:
+    """Founder's gesture: 5 taps on the logo within 3 s reveal the service-token screen; the token then bypasses sign-in."""
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#logo", timeout=10_000)
+    for _ in range(5):
+        page.click("#logo")
+    page.wait_for_selector("#adminScreen", timeout=5_000)
+    assert "Admin access" in (page.locator("#adminScreen h2").text_content() or "")
+    page.fill("#apiBase", api_url)
+    page.fill("#token", E2E_TOKEN)
+    page.click("#connect")
+    page.wait_for_selector("#newProduction", timeout=10_000)
+    assert "Admin" in page.locator(".masthead .sub").inner_text()
+
+
+def test_four_taps_do_nothing(page: Page, frontend_url: str) -> None:
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#logo", timeout=10_000)
+    for _ in range(4):
+        page.click("#logo")
+    page.wait_for_timeout(300)
+    assert page.locator("#adminScreen").count() == 0

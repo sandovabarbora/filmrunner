@@ -46,6 +46,14 @@ minutes; the shared HS256 secret is discouraged and not used.
 - Authorisation is still "any signed-in user may do anything"; per
   production roles are FR-15.
 
+## Admin access (founder's gesture)
+
+Five taps on the FilmRunner logo within three seconds open an "Admin
+access" screen where the service token can be pasted once; it is kept in
+the phone's localStorage and bypasses sign-in until "sign out". The
+gesture only reveals the screen; the token never ships in the bundle, so
+a public visitor who discovers the gesture gets an empty form.
+
 ## Supabase project setup (founder, once)
 
 1. Authentication → Providers → Email: enabled; "Confirm email" may stay on.
