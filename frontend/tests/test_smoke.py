@@ -1,9 +1,10 @@
 """Smoke test for the offline-first call sheet PWA.
 
-Serves frontend/ over a local static server and checks the shell renders
-and the service worker registers. Data loading against the API is covered
-by the backend tests; this guards the app shell that must work with no
-signal on set.
+Serves the built app (frontend/dist, run `npm run build` first) over a
+local static server and checks the shell renders, the service worker
+registers, and the URL modes behave. Data loading against the API is
+covered by the backend tests; this guards the app shell that must work
+with no signal on set.
 """
 
 import http.server
@@ -16,12 +17,13 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page
 
-FRONTEND_DIR = Path(__file__).resolve().parents[1]
+DIST_DIR = Path(__file__).resolve().parents[1] / "dist"
 
 
 @pytest.fixture(scope="session")
 def frontend_url() -> Iterator[str]:
-    handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(FRONTEND_DIR))
+    assert (DIST_DIR / "index.html").exists(), "run `npm run build` in frontend/ first"
+    handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(DIST_DIR))
     with socketserver.TCPServer(("127.0.0.1", 0), handler) as server:
         port = server.server_address[1]
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -34,12 +36,13 @@ def test_root_shows_demo_not_a_form(page: Page, frontend_url: str) -> None:
     page.goto(f"{frontend_url}/index.html")
     page.wait_for_selector("#sheet.visible", timeout=10_000)
     assert "FilmRunner" in page.locator("h1").inner_text()
-    assert not page.locator("#lookup").is_visible()
+    assert page.locator("#lookup").count() == 0
     assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
 
 
 def test_dev_mode_shows_the_lookup_form(page: Page, frontend_url: str) -> None:
     page.goto(f"{frontend_url}/index.html?dev=1")
+    page.wait_for_selector("#loadBtn", timeout=10_000)
     assert page.locator("#loadBtn").is_visible()
     assert not page.locator("#sheet").evaluate("el => el.classList.contains('visible')")
 
@@ -56,7 +59,7 @@ def test_share_link_loads_from_api_without_form(page: Page, frontend_url: str) -
     page.goto(f"{frontend_url}/index.html?sheet=abc&api=http://api.test")
     page.wait_for_selector("#sheet.visible", timeout=10_000)
     assert "Day 3 of 9" in page.locator("#dayLabel").inner_text()
-    assert not page.locator("#lookup").is_visible()
+    assert page.locator("#lookup").count() == 0
 
 
 def test_service_worker_registers(page: Page, frontend_url: str) -> None:
@@ -85,7 +88,7 @@ def test_demo_mode_renders_bundled_call_sheet(page: Page, frontend_url: str) -> 
     assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
     assert page.locator("#scheduleBody tr").count() == 4
     assert page.locator("#revBadgeWrap").inner_text().strip() == "REV B"
-    assert not page.locator(".lookup").is_visible()
+    assert page.locator("#lookup").count() == 0
 
 
 def test_demo_mode_missing_json_shows_error_not_blank(page: Page, frontend_url: str) -> None:

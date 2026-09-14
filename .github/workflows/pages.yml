@@ -24,13 +24,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Package the PWA (frontend/ only, tests excluded)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the PWA for the /filmrunner/ subpath
+        working-directory: frontend
+        env:
+          VITE_BASE: /filmrunner/
         run: |
-          mkdir -p site
-          rsync -a --exclude tests --exclude __pycache__ frontend/ site/
-          ls -R site
+          npm ci
+          npm run build
+          ls -R dist
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: frontend/dist
       - id: deployment
         uses: actions/deploy-pages@v4

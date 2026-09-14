@@ -31,13 +31,14 @@ services:
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   frontend:
-    image: python:3.11-slim
-    working_dir: /site
+    image: node:22-alpine
+    working_dir: /app
     volumes:
-      - ./frontend:/site
+      - ./frontend:/app
     ports:
       - "8080:8080"
-    command: python3 -m http.server 8080
+    # Vite dev server with hot reload; `npm run build` produces dist/ for Pages.
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 8080"
 
 volumes:
   filmrunner_pgdata:
