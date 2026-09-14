@@ -26,6 +26,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - Playwright test against the real API: create, publish A, publish B, assert the viewer shows REV B and the schedule
   - failure case: losing the network while editing must not lose the draft; the draft is kept in IndexedDB and the app says it is unsaved
 
+## FR-12 · tech-lead · Real auth: per-production access instead of one shared dev token
+- state: ready
+- gated: no
+- why: the editor cannot go to a real AD while every write is protected by a single token in an env var
+- dod:
+  - docs/adr/ADR-004-auth.md compares Supabase Auth (magic link, JWT verified in FastAPI), a per-production secret link, and a hand-rolled magic link; picks one for the pilot with the reason; the data model must stay plain Postgres (no RLS as business logic)
+  - implementation with tests: unauthenticated writes 401, a token for production A cannot touch production B, public read stays public
+  - failure case: a leaked per-production token can be rotated without losing data, and the test proves the old one stops working
+
 ## FR-11 · frontend · Share link and QR for the crew
 - state: ready
 - gated: no
@@ -34,6 +43,52 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - viewer accepts `?sheet=<id>&api=<base>` and loads without showing the lookup form (done 2026-09-14, fix/pwa-root-shows-demo); the editor shows the link and a QR code after publishing
   - the link survives a hot revision: reopening it shows the current revision, and a visible "REV B replaces A" note
   - failure case: a link to a call sheet that no longer exists or is not public shows a clear message, not a spinner
+
+## FR-14 · tech-lead · Production contacts on the sheet: who to call, head of day, heads of department, nearest hospital
+- state: ready
+- gated: no
+- why: a call sheet without phone numbers is not a call sheet; on set the questions are "who runs today", "who is my HoD", "where is the nearest hospital" (BRIEF Q3). Founder request 2026-09-14.
+- dod:
+  - data model: CrewMember gains `is_head_of_department`; CallSheetRevision gains `head_of_day_crew_member_id` (the person running the day, usually the 1st AD); Location already has `nearest_hospital`
+  - the public sheet includes a Contacts section: head of day, production office, 1st and 2nd AD, location manager, one line per department head; nearest hospital with address from the day's first location
+  - phone numbers render as tap-to-call links; email as mailto
+  - migration + tests; the seed script gets contacts so the demo shows the section
+  - failure case: a contact without a phone renders the name and role with "no number on file", never an empty row or a broken tel: link
+
+## FR-13 · frontend · Personal call sheet: "your call", your department first
+- state: blocked
+- gated: no
+- why: a crew member opens the link for one number, their own call time; today the sheet is the same for everyone (BRIEF Q3: wrong or missed call times; Q7: the wedge is the crew's pocket). Founder request 2026-09-14.
+- dod:
+  - each crew member gets a personal link (token per CrewMember, not per person globally) that renders their name, department, position, personal call and pickup at the top, then the full sheet
+  - the department's own notes and HoD are shown before the rest; unrelated departments are collapsed, never hidden
+  - backend: CrewMember gains a per-production personal token and an endpoint that resolves it; CastCallEntry already holds per-person times
+  - Playwright: two personal links for the same sheet show different "your call" blocks
+  - failure case: a personal link that no longer matches a crew member shows the general sheet with a clear note, not a 404 that strands someone at 05:30
+- blocked-until: FR-10 (editor) and FR-12 (auth model decided), because the personal token design must match the auth ADR
+
+## FR-16 · frontend · Notifications on publish and revision
+- state: blocked
+- gated: partial
+- why: "crew missing an update" is the failure the living call sheet exists to prevent (BRIEF Q3); a revision that nobody is told about is a PDF with extra steps. Founder request 2026-09-14.
+- dod:
+  - Web Push for the installed PWA (VAPID keys as Fly secrets; iOS supports push for home-screen PWAs since 16.4, verified against Apple's documentation with the date checked); subscription stored per CrewMember
+  - on publish of a new revision, every subscribed crew member gets "REV B replaces A: crew call 07:30" with a tap-through to the sheet; the sheet shows a "REV B replaces A" line (also serves FR-11)
+  - fallback channels (SMS, email) are designed but not built; any account or paid service is an INBOX item
+  - Playwright or unit tests for the subscription flow; a manual test protocol on a real iPhone recorded in docs/research
+  - failure case: a push that cannot be delivered is logged per crew member so the AD can see who did not get the update, instead of assuming everyone did
+- blocked-until: FR-13 (personal identity of the receiver)
+
+## FR-15 · tech-lead · Roles and privileges per production
+- state: blocked
+- gated: no
+- why: an AD publishes, a coordinator edits, a department head sees and annotates their department, everyone else reads; one shared token cannot express that. Founder request 2026-09-14; builds on FR-12.
+- dod:
+  - docs/adr/ADR-005-roles.md: roles `ad` (edit + publish), `coordinator` (edit drafts), `hod` (read all, edit own department notes), `crew` (read own personal sheet); roles are per production, one person can differ across productions
+  - enforcement in the API (dependency that resolves user + production role), with tests: hod cannot publish, coordinator cannot publish, crew cannot read drafts
+  - the editor shows only what the role may do; the viewer is unchanged for crew
+  - failure case: a user with no role on a production gets 403 with a message naming the production, and nothing leaks about its existence beyond the name they already have
+- blocked-until: FR-12
 
 ## FR-7 · security · Fix three findings from the founding commit review
 - state: ready
@@ -44,15 +99,6 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text (done 2026-09-14 in feat/github-pages-demo, test_schedule_text_is_not_interpreted_as_html)
   - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored
   - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape
-
-## FR-12 · tech-lead · Real auth: per-production access instead of one shared dev token
-- state: ready
-- gated: no
-- why: the editor cannot go to a real AD while every write is protected by a single token in an env var
-- dod:
-  - docs/adr/ADR-004-auth.md compares Supabase Auth (magic link, JWT verified in FastAPI), a per-production secret link, and a hand-rolled magic link; picks one for the pilot with the reason; the data model must stay plain Postgres (no RLS as business logic)
-  - implementation with tests: unauthenticated writes 401, a token for production A cannot touch production B, public read stays public
-  - failure case: a leaked per-production token can be rotated without losing data, and the test proves the old one stops working
 
 ## FR-9 · frontend · Offline-honest status when the service worker serves from cache
 - state: ready
