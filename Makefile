@@ -19,4 +19,4 @@ check-docs:
 	python3 scripts/check_company_docs.py docs/company
 
 smoke:
-	cd frontend && python3 -m pytest tests -q
+	cd frontend && npm run build && python3 -m pytest tests -q

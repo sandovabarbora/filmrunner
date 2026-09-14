@@ -19,7 +19,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - gated: no
 - why: the wedge is "AD publishes, crew receives"; today a call sheet can only be created with curl against the API, so nothing is usable by a real AD
 - dod:
-  - frontend/editor.html (same stack: single file, no build) lets an AD pick or create a production, create a shoot day, add schedule items (scene, int/ext, day/night, set, pages in eighths), set crew call and safety notes, and publish; publishing again creates the next revision letter through the existing API
+  - a React route/screen in frontend/ (ADR-001 stack) lets an AD pick or create a production, create a shoot day, add schedule items (scene, int/ext, day/night, set, pages in eighths), set crew call and safety notes, and publish; publishing again creates the next revision letter through the existing API
   - works on a phone screen width first (the AD's Tuesday is on set, not at a desk); desktop is a bonus
   - the design is discussed in a short docs/adr/ADR-003-editor.md before code: which API calls, what is saved when, what happens when the network drops mid-edit
   - Playwright test against the real API: create, publish A, publish B, assert the viewer shows REV B and the schedule
@@ -103,7 +103,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if FR-2 shows a competitor already owns the chosen position, the draft says so and proposes another, rather than ignoring it
 
 ## FR-4 · tech-lead · ADR-001: stack of the skeleton
-- state: ready
+- state: in-progress
+- note: frontend half decided and written 2026-09-14 (docs/adr/ADR-001-frontend-stack.md, React + Vite + TS). Remaining: the backend half (why FastAPI + Postgres over the old Next.js + Supabase, what the old repo had that this lacks and when to port).
 - gated: no
 - why: the restart from Next.js + Supabase to FastAPI + vanilla PWA must be a recorded decision, not an accident
 - dod:

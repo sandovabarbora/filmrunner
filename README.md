@@ -9,7 +9,7 @@ and why, and what's deliberately deferred.
 ## Stack
 
 - **Backend**: FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL, stub bearer-token auth.
-- **Frontend**: single-file offline-first PWA (vanilla HTML/CSS/JS, no build step), IndexedDB cache + service worker.
+- **Frontend**: React + Vite + TypeScript PWA (`frontend/`), IndexedDB cache + Workbox service worker via `vite-plugin-pwa`. See `docs/adr/ADR-001-frontend-stack.md`.
 - **Local dev**: docker-compose (Postgres + backend + a static file server for the frontend).
 
 ## How this company runs
@@ -36,8 +36,8 @@ docker compose up --build
 ```
 
 - API: http://localhost:8000 (docs at `/docs`, health at `/healthz`)
-- Frontend: http://localhost:8080 — open `index.html`, set API base to
-  `http://localhost:8000`, and paste in a call sheet ID.
+- Frontend: http://localhost:8080 (Vite dev server). `?dev=1` shows the
+  lookup form: API base `http://localhost:8000` and a call sheet ID.
 - Default dev bearer token: `dev-only-token-change-me` (set via
   `FILMRUNNER_API_BEARER_TOKEN`; change it before this goes anywhere
   outside your own machine).
