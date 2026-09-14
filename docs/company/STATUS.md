@@ -4,9 +4,9 @@ Updated: 2026-09-14 15:07 (15:00 shift)
 
 ## today
 
-Re-planned 16:20 by the founder's session: FR-10 and FR-14 are done in session, FR-17 (connected app) is being built in session now, so the 17:00 shift must not touch the editor or the Connect screen.
+Re-planned 17:00 by the founder's session: FR-17 landed (#31). Auth (FR-12) is being built in session now and touches backend/app/auth.py, the services and the editor, so the shift must stay out of those.
 
-- 17:00 — FR-7 · security: fix the remaining founding-commit finding (forgeable audit fields in backend/app/services/call_sheets.py; findings 1 and 2 are already done), with a test that sends spoofed created_by/created_at and asserts they are ignored. Backend only. Then the day summary.
+- 17:00 — FR-9 · frontend: offline-honest status in the viewer (frontend/src/loader.ts, vite.config.ts service worker config, frontend/tests/test_smoke.py only). Do not touch backend/ or frontend/src/editor/. Then the day summary.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands.
