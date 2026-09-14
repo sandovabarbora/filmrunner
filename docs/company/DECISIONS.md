@@ -53,3 +53,9 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: ruleset "main: ci required" (id 23282045) requires the `ci` status check on every commit reaching main. Verified: this rejects direct pushes outright ("Required status check ci is expected"), so the routine cannot commit STATUS/INBOX/LOG straight to main as the spec first said. Instead the routine opens a state-only PR on branch `shift/state-<date>` and enables auto-merge (`gh pr merge --auto --squash`); it lands when ci is green. Code PRs are never auto-merged by the routine.
 - Why: enforced beats agreed; a three-minute delay on state updates costs nothing, and the digest email is the live channel anyway.
 - Revisit when: state PRs pile up unmerged (ci flaky) or the founder wants state changes instantly visible on main.
+
+## 2026-09-14: first routine run, what it proved and what changed
+- Decision: the routine keeps the Artifact tool (allow-listed) and gains WebSearch/WebFetch; the prompt tells it never to wait on a permission prompt.
+- Why: run cse_013HbrCVEvh1npHTE199Lou4 behaved per contract on FR-1 (PR #5, no invented content, in-progress not done, asked for the missing source) but then blocked on an unanswered permission prompt for the board write, so no state PR and no digest were sent. Research items need the web to cite sources.
+- Also: repository merges restricted to squash with the commit title, so `main` history reads as commit messages, not "Merge pull request #n".
+- Revisit when: a run again stalls on any prompt (then remove the tool rather than tune the prompt).
