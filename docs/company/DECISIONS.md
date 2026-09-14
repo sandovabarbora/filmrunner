@@ -75,3 +75,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: three runs were needed; the first two stalled on the Artifact permission prompt and never reached the digest step. Removing the tool fixed it.
 - Learned: cloud runs use the founder's GitHub identity (mergedBy shows her login either way), so "who merged" must be read from the run log, not from GitHub; WebFetch is egress-blocked for most vendor domains, WebSearch works.
 - Revisit when: a run stalls again for any reason, or digests start arriving without a matching state PR.
+
+## 2026-09-14: working hours are 08:00 to 18:00 Prague, Monday to Friday
+- Decision: replace the single 05:00 shift with a morning brief at 08:00 (plans the day, refills the backlog via a proposals PR, emails the plan) and five two-hour shifts at 09, 11, 13, 15, 17. Shifts email only when productive; the 17:00 shift sends the day summary. Founder's call ("klasicky 9 až 6", every two hours).
+- Why: the founder wants a team that visibly works during the day, not one night run; two-hour spacing halves cost and review load versus hourly.
+- Cost: up to six runs per weekday on Sonnet. Revisit when: the day summary reports three or more idle shifts for a week (drop to every four hours) or PRs pile up unreviewed (drop a shift).
