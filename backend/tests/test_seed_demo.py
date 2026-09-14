@@ -8,7 +8,7 @@ import uuid
 
 from app.database import SessionLocal
 from app.models.call_sheet import CallSheet
-from app.models.production import Location, Production
+from app.models.production import CrewMember, Location, Production
 from app.seed_demo import DEMO_PRODUCTION_NAME, seed
 
 
@@ -26,6 +26,8 @@ def _cleanup(production_id):
             db.delete(call_sheet)
         for location in db.query(Location).filter(Location.production_id == production_id):
             db.delete(location)
+        for member in db.query(CrewMember).filter(CrewMember.production_id == production_id):
+            db.delete(member)
         db.flush()  # children must be gone before the production row is deleted
         db.query(Production).filter(Production.id == production_id).delete()
         db.commit()

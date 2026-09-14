@@ -31,6 +31,20 @@ export interface CallSheetRevision {
   schedule_items: ScheduleItem[];
 }
 
+export interface ContactCard {
+  name: string;
+  department: string;
+  position: string;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface CallSheetContacts {
+  head_of_day: ContactCard | null;
+  department_heads: ContactCard[];
+  nearest_hospital: string | null;
+}
+
 export interface CallSheet {
   id?: string;
   production_title?: string;
@@ -39,6 +53,7 @@ export interface CallSheet {
   day_count: number;
   unit_name: string;
   current_revision: CallSheetRevision | null;
+  contacts?: CallSheetContacts | null;
 }
 
 /* Create payloads (backend/app/schemas). */

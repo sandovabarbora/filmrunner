@@ -106,8 +106,11 @@ class CallSheetRevision(Base):
     safety_notes: Mapped[str | None] = mapped_column(String(2000))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     created_by: Mapped[str | None] = mapped_column(String(255))
+    # The person running the day on set (usually the 1st AD); shown first in contacts.
+    head_of_day_crew_member_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("crew_members.id"))
 
     call_sheet: Mapped["CallSheet"] = relationship(back_populates="revisions")
+    head_of_day: Mapped["CrewMember | None"] = relationship()  # noqa: F821
     schedule_items: Mapped[list["ScheduleItem"]] = relationship(
         back_populates="revision", order_by="ScheduleItem.order_index"
     )

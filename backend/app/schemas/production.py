@@ -53,6 +53,7 @@ class CrewMemberCreate(BaseModel):
     department: str
     position: str
     standard_call_time: str | None = None
+    is_head_of_department: bool = False
 
 
 class CrewMemberRead(CrewMemberCreate):

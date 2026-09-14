@@ -55,6 +55,7 @@ class CallSheetRevisionCreate(BaseModel):
     weather_forecast: str | None = None
     safety_notes: str | None = None
     created_by: str | None = None
+    head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemCreate] = Field(default_factory=list)
     cast_calls: list[CastCallEntryCreate] = Field(default_factory=list)
 
@@ -73,8 +74,27 @@ class CallSheetRevisionRead(BaseModel):
     safety_notes: str | None
     created_at: datetime
     created_by: str | None
+    head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemRead] = []
     cast_calls: list[CastCallEntryRead] = []
+
+
+class ContactCard(BaseModel):
+    """One line of the "who to call" list on the sheet."""
+
+    name: str
+    department: str
+    position: str
+    phone: str | None
+    email: str | None
+
+
+class CallSheetContacts(BaseModel):
+    """Contacts section of the public sheet: computed, never stored."""
+
+    head_of_day: ContactCard | None
+    department_heads: list[ContactCard]
+    nearest_hospital: str | None
 
 
 class CallSheetCreate(BaseModel):
@@ -96,3 +116,4 @@ class CallSheetRead(BaseModel):
     status: CallSheetStatus
     created_at: datetime
     current_revision: CallSheetRevisionRead | None = None
+    contacts: CallSheetContacts | None = None
