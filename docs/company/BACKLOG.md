@@ -143,13 +143,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape
 
 ## FR-9 · frontend · Offline-honest status when the service worker serves from cache
-- state: ready
+- state: done
 - gated: no
 - why: verified 2026-09-14 on the live URL: after going offline and reloading, the app said "Live data" because sw.js answered the fetch from cache; the thesis is offline-honest, so this is a product bug, not cosmetics
 - dod:
   - sw.js marks cache-served responses (e.g. a custom header or a wrapped Response) and index.html shows the cached-copy status with the original fetch time when it sees the mark
   - Playwright test: load once online, go offline, reload, assert the status says cached and shows a timestamp
   - failure case: if the mark is missing (older service worker still active), the app must not claim "live"; it says "unknown freshness" rather than guessing
+- note: delivered 2026-09-14 (17:00 shift, feat/fr-9-offline-honest-status, PR #42). A workbox plugin in vite.config.ts stamps every runtime-cached API response with where it came from (network vs. this worker's own cache); loader.ts trusts that stamp instead of `resp.ok`, which used to read a cache hit as "Live". Also handles the dod's failure case (a pre-upgrade worker still active, no stamp) as a new "unknown freshness" state — needed one added line in App.tsx beyond the three files STATUS.md named for this shift, since that state can't render without it; App.tsx is outside backend/ and frontend/src/editor/, so within the shift's actual constraint. 11/11 Playwright tests pass against a real build (frontend/dist) and the real generated service worker, including both new ones; not independently verified against an actual pre-upgrade worker in the wild, only a stand-in stub built for the test.
 
 ## FR-3 · pm · Customer discovery plan: five Prague interviews
 - state: done

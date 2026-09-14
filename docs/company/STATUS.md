@@ -1,27 +1,25 @@
 # Status
 
-Updated: 2026-09-14 15:07 (15:00 shift)
+Updated: 2026-09-14 17:12 (17:00 shift)
 
 ## today
 
-Re-planned 17:00 by the founder's session: FR-17 landed (#31). Auth (FR-12) is being built in session now and touches backend/app/auth.py, the services and the editor, so the shift must stay out of those.
-
-- 17:00 — FR-9 · frontend: offline-honest status in the viewer (frontend/src/loader.ts, vite.config.ts service worker config, frontend/tests/test_smoke.py only). Do not touch backend/ or frontend/src/editor/. Then the day summary.
+17:00 shift done: FR-9 delivered (PR #42, open — CI must go green before the founder merges). This was the last scheduled shift of the day; see LOG.md for the full day and the day-summary email for what awaits the founder. Tomorrow's brief plans fresh.
 
 ## pm
-- summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands.
+- summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
 - tests: n/a (research/planning docs, no executable code)
 - blockers: `WebFetch` remains blocked by this session's egress proxy for external vendor domains.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: FR-8 — added `backend/app/seed_demo.py`, an idempotent seed script that loads one realistic demo production and call sheet through the real `create_call_sheet` service path, so the Fly/Supabase-hosted API shows real data on first open once deployed. README documents running it after `fly deploy`. PR #24 (branch `feat/fr-8-demo-seed-script`) open, CI pending. This closes another FR-8 dod bullet; still open on FR-8: the GitHub Actions deploy job (deliberately dropped per ADR-002 — manual founder-only deploy) and re-verifying the iOS Safari service-worker failure case against the Fly-hosted API. FR-8 stays in-progress.
-- tests: 17 pytest (backend, run against a real local Postgres 16 this shift — all passing, up from 11: 6 new tests for the seed script, including the idempotency failure case)
+- summary: FR-9 delivered this shift (PR #42, branch `feat/fr-9-offline-honest-status`): the service worker's own cache used to answer `fetch()` when offline, which loader.ts read as "Live" because it only checked `resp.ok`. A workbox plugin in vite.config.ts now stamps every runtime-cached API response with where it came from (network vs. this worker's cache); loader.ts trusts the stamp. Added an "unknown freshness" state for a pre-upgrade worker that never stamped (dod's failure case), which needed one line in App.tsx beyond the loader/vite/test scope named for this shift — still clear of backend/ and frontend/src/editor/. Separately, the founder's own interactive session delivered a large slice of today's product outside the shift routine: FR-10 (editor), FR-12 (Supabase auth), FR-14 (contacts), FR-15 (roles), FR-17 (connected app), FR-13 (personal sheets), and opened FR-18/FR-19 (crew edit, location services) with FR-18 mid-flight in PR #41 (open). FR-8 (hosting) remains in-progress: deploy/seed is done (INBOX #2), the GitHub Actions deploy job stays deliberately dropped per ADR-002, and the iOS Safari service-worker check against the Fly-hosted API is still unverified.
+- tests: frontend — 11/11 Playwright (`frontend/tests/test_smoke.py`) against a real build and the real generated service worker, up from 9: 2 new for FR-9 (cached-with-timestamp after going offline; unknown-freshness with a stub pre-upgrade worker). Backend suite unchanged this shift (17 pytest per the 15:00 shift's run).
 - blockers: none
-- needs_approval: no (the seed script only writes to a database the process can already reach; it does not create accounts, deploy, or spend money)
+- needs_approval: no
 
 ## security (gate)
-- summary: no gate run yet; checklist is FR-5 (still ready, not yet picked up). FR-7 (three founding-commit security findings: hardcoded dev token default, stored XSS via innerHTML, forgeable audit fields) is still open.
+- summary: no gate run yet; checklist is FR-5 (still ready, not yet picked up). FR-7's three dod bullets are each individually marked done in BACKLOG.md (delivered piecemeal in other PRs), but the item's own `state:` was never flipped from `ready` — worth a future shift closing that out explicitly rather than leaving it looking outstanding.
 - tests: n/a
 - blockers: none
 - needs_approval: no
