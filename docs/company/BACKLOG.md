@@ -30,7 +30,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - gated: no
 - why: "in everyone's pocket" needs one tap: the AD sends a link, the crew opens it, no typing of IDs or API URLs
 - dod:
-  - viewer accepts `?sheet=<id>&api=<base>` and loads without showing the lookup form; the editor shows the link and a QR code after publishing
+  - viewer accepts `?sheet=<id>&api=<base>` and loads without showing the lookup form (done 2026-09-14, fix/pwa-root-shows-demo); the editor shows the link and a QR code after publishing
   - the link survives a hot revision: reopening it shows the current revision, and a visible "REV B replaces A" note
   - failure case: a link to a call sheet that no longer exists or is not public shows a clear message, not a spinner
 

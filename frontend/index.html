@@ -152,10 +152,10 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>// call sheet viewer</h1>
-    <div class="sub">Skeleton — fetches from FilmRunner API, caches locally for offline viewing on set.</div>
+    <h1>FilmRunner · call sheet</h1>
+    <div class="sub" id="subtitle">Loading…</div>
 
-    <div class="lookup">
+    <div class="lookup" id="lookup" style="display:none;">
       <input type="text" id="apiBase" placeholder="API base, e.g. http://localhost:8000" value="http://localhost:8000" />
       <input type="text" id="callSheetId" placeholder="Call sheet ID" />
       <button id="loadBtn">Load</button>
@@ -329,10 +329,36 @@ const DEMO_URL = "demo/call-sheet.json";
 const DEMO_ID = "demo";
 
 async function loadDemo() {
-  document.querySelector(".lookup").style.display = "none";
-  document.querySelector(".sub").textContent =
+  document.getElementById("subtitle").textContent =
     "Demo shoot day. Add this page to your home screen; it keeps working with no signal.";
   await loadFrom(DEMO_URL, DEMO_ID);
+}
+
+/**
+ * Entry point. The URL decides what the page is:
+ *   ?sheet=<id>&api=<base>  a shared call sheet from a FilmRunner API (crew link)
+ *   ?dev=1                  the lookup form, for local development
+ *   anything else           the bundled demo, so the public URL never shows a form
+ */
+function boot() {
+  const params = new URLSearchParams(window.location.search);
+  const sheet = params.get("sheet");
+  const api = params.get("api");
+  if (sheet && api) {
+    document.getElementById("apiBase").value = api;
+    document.getElementById("callSheetId").value = sheet;
+    document.getElementById("subtitle").textContent =
+      "Your call sheet. Add this page to your home screen; it keeps working with no signal.";
+    loadCallSheet();
+    return;
+  }
+  if (params.get("dev") === "1") {
+    document.getElementById("lookup").style.display = "";
+    document.getElementById("subtitle").textContent =
+      "Development mode: point at a FilmRunner API and enter a call sheet ID.";
+    return;
+  }
+  loadDemo();
 }
 
 async function loadFrom(url, id) {
@@ -364,9 +390,7 @@ document.getElementById("callSheetId").addEventListener("keydown", (e) => {
   if (e.key === "Enter") loadCallSheet();
 });
 
-if (new URLSearchParams(window.location.search).get("demo") === "1") {
-  loadDemo();
-}
+boot();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
