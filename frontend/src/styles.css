@@ -170,6 +170,15 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
 .hint { font-size: 0.8125rem; color: var(--muted); }
 
+/* Entry page: two doors, no marketing. */
+.home { display: grid; gap: 14px; margin-top: 22px; }
+.home-card { padding: 16px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; }
+.home-card h2 { margin: 0 0 6px; font-size: 1rem; }
+.home-card p { margin: 0 0 12px; color: var(--ink-2); font-size: 0.9375rem; }
+.home-card .button { display: inline-block; padding: 10px 14px; border: 1px solid var(--rule-strong); border-radius: 4px; color: var(--ink); background: #fff; font-weight: 600; text-decoration: none; }
+.home-card .button.primary { background: var(--ink); color: var(--paper); }
+@media (min-width: 560px) { .home { grid-template-columns: 1fr 1fr; } }
+
 /* Error state with a way out. */
 .empty { margin-top: 24px; padding: 16px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-2); font-size: 0.9375rem; }
 

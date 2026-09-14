@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, Production, RevisionCreate } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Production, RevisionCreate } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -49,6 +49,15 @@ export const api = {
     request<CallSheetCreated>(c, "POST", `/api/v1/productions/${productionId}/call-sheets`, payload),
   publishRevision: (c: Connection, callSheetId: string, payload: RevisionCreate) =>
     request<CallSheetRevision>(c, "POST", `/api/v1/call-sheets/${callSheetId}/revisions`, payload),
+  listCallSheets: (c: Connection, productionId: string) =>
+    request<CallSheetCreated[]>(c, "GET", `/api/v1/productions/${productionId}/call-sheets`),
+  getCallSheet: (c: Connection, callSheetId: string) =>
+    request<CallSheetCreated>(c, "GET", `/api/v1/call-sheets/${callSheetId}`),
+  listCrew: (c: Connection, productionId: string) =>
+    request<CrewMember[]>(c, "GET", `/api/v1/productions/${productionId}/crew-members`),
+  createContact: (c: Connection, payload: ContactCreate) => request<Contact>(c, "POST", "/api/v1/contacts", payload),
+  createCrewMember: (c: Connection, productionId: string, payload: CrewMemberCreate) =>
+    request<CrewMember>(c, "POST", `/api/v1/productions/${productionId}/crew-members`, payload),
 };
 
 const CONNECTION_KEY = "filmrunner.editor.connection";

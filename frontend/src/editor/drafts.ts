@@ -11,6 +11,7 @@ export interface Draft {
   productionId: string | null;
   productionName: string | null;
   callSheetId: string | null;
+  headOfDayId: string | null;
   lastPublishedLetter: string | null;
   publishedAt: string | null;
   dirtySincePublish: boolean;
@@ -30,14 +31,18 @@ export interface Draft {
 
 const DB_NAME = "filmrunner-editor";
 const STORE = "drafts";
-export const CURRENT_DRAFT_ID = "current";
+/** Drafts are keyed by day: the call sheet id, or `new:<productionId>` before the first publish. */
+export function draftKey(productionId: string, callSheetId: string | null): string {
+  return callSheetId ?? `new:${productionId}`;
+}
 
-export function emptyDraft(): Draft {
+export function emptyDraft(productionId: string, productionName: string | null): Draft {
   return {
-    id: CURRENT_DRAFT_ID,
-    productionId: null,
-    productionName: null,
+    id: draftKey(productionId, null),
+    productionId,
+    productionName,
     callSheetId: null,
+    headOfDayId: null,
     lastPublishedLetter: null,
     publishedAt: null,
     dirtySincePublish: false,
@@ -65,10 +70,10 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function loadDraft(): Promise<Draft | null> {
+export async function loadDraft(key: string): Promise<Draft | null> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE, "readonly").objectStore(STORE).get(CURRENT_DRAFT_ID);
+    const req = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
     req.onsuccess = () => resolve((req.result as Draft | undefined) ?? null);
     req.onerror = () => reject(req.error);
   });
@@ -84,11 +89,11 @@ export async function saveDraft(draft: Draft): Promise<void> {
   });
 }
 
-export async function clearDraft(): Promise<void> {
+export async function clearDraft(key: string): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(CURRENT_DRAFT_ID);
+    tx.objectStore(STORE).delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

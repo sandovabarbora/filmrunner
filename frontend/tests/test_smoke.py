@@ -10,11 +10,14 @@ with no signal on set.
 from playwright.sync_api import Page
 
 
-def test_root_shows_demo_not_a_form(page: Page, frontend_url: str) -> None:
+def test_root_is_the_entry_page_not_a_form(page: Page, frontend_url: str) -> None:
     page.goto(f"{frontend_url}/index.html")
-    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    page.wait_for_selector("#openEditor", timeout=10_000)
     assert "FilmRunner" in (page.locator("h1").text_content() or "")
     assert page.locator("#lookup").count() == 0
+    assert page.locator("#openEditor").get_attribute("href") == "editor.html"
+    page.click("#openDemo")
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
     assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
 
 
@@ -98,7 +101,7 @@ def test_schedule_text_is_not_interpreted_as_html(page: Page, frontend_url: str)
 
 
 def test_contacts_render_with_tap_to_call_and_no_number_fallback(page: Page, frontend_url: str) -> None:
-    page.goto(f"{frontend_url}/index.html")
+    page.goto(f"{frontend_url}/index.html?demo=1")
     page.wait_for_selector("#contacts", timeout=10_000)
     assert "Eva Dvořáková" in page.locator("#contacts .hod").inner_text()
     tel_links = page.locator("#contacts a.phone")
