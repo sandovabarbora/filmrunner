@@ -33,6 +33,9 @@ jobs:
         working-directory: frontend
         env:
           VITE_BASE: /filmrunner/
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm ci
           npm run build

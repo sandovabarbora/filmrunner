@@ -31,8 +31,8 @@ every push to `main` that touches `frontend/`.
 
 ## AD editor
 
-https://sandovabarbora.github.io/filmrunner/editor.html — connect once
-(API + token, kept on the phone until sign-in lands), then Productions →
+https://sandovabarbora.github.io/filmrunner/editor.html — sign in with
+your email (6-digit code or link, no password), then Productions →
 Days and Crew → Day. A day loads its current revision from the server;
 publishing sends the next revision (A, B, C...). Drafts are saved on the
 phone as a safety net; offline, a published day is read-only. Crew tab

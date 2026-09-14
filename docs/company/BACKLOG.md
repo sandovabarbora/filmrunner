@@ -28,7 +28,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: losing the network while editing must not lose the draft; the draft is kept in IndexedDB and the app says it is unsaved
 
 ## FR-12 · tech-lead · Real auth: per-production access instead of one shared dev token
-- state: ready
+- state: done
+- note: delivered 2026-09-14 (feat/fr-12-supabase-auth): ADR-004, JWKS verification in the API, email code / magic link sign-in in the editor, created_by from identity. Per-production roles remain FR-15.
 - gated: no
 - why: the editor cannot go to a real AD while every write is protected by a single token in an env var
 - dod:
@@ -111,7 +112,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - dod:
   - config.py has no default bearer token; the app refuses to start without FILMRUNNER_API_BEARER_TOKEN outside development (done 2026-09-14, feat/fly-supabase-hosting, backend/tests/test_config.py)
   - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text (done 2026-09-14 in feat/github-pages-demo, test_schedule_text_is_not_interpreted_as_html)
-  - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored
+  - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored (done 2026-09-14 with FR-12, backend/tests/test_auth.py)
   - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape
 
 ## FR-9 · frontend · Offline-honest status when the service worker serves from cache

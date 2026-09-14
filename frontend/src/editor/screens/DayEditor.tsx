@@ -226,7 +226,6 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, set
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
           </div>
         )}
-        <p className="hint">Connected with a shared token (temporary until sign-in lands).</p>
       </section>
     </>
   );

@@ -69,11 +69,13 @@ def api_url() -> Iterator[str]:
 
 
 def _connect(page: Page, frontend_url: str, api_url: str) -> None:
+    """Inject the service connection the way a tool would (no sign-in UI), so the
+    suite runs the same against a build with or without Supabase configured."""
+    page.add_init_script(
+        "localStorage.setItem('filmrunner.editor.connection', JSON.stringify("
+        + f"{{apiBase: {api_url!r}, token: {E2E_TOKEN!r}}}))"
+    )
     page.goto(f"{frontend_url}/editor.html")
-    if page.locator("#connect").count():
-        page.fill("#apiBase", api_url)
-        page.fill("#token", E2E_TOKEN)
-        page.click("#connect")
     page.wait_for_selector("#newProduction", timeout=10_000)
 
 

@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # development; any other environment must set its own token.
     api_bearer_token: str = DEV_BEARER_TOKEN
 
+    # Supabase project URL (https://<ref>.supabase.co); its JWKS verifies user sign-in tokens.
+    supabase_url: str | None = None
+
     # Comma-separated list of allowed browser origins, or "*" for local dev.
     # Production sets it to the deployed frontend origin.
     cors_origins: str = "*"
