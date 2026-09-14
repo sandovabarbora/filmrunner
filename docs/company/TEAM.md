@@ -98,13 +98,24 @@ Inbox item:
 
 Run `python scripts/check_company_docs.py` before committing either file.
 
-## The daily shift (cloud routine)
+## Working hours (cloud routines)
 
-One routine, daily at 05:00 Europe/Prague, model claude-sonnet-5, clones
-this repo from GitHub, Gmail connector only. Tools: Bash, Read, Write,
-Edit, Glob, Grep, WebSearch, WebFetch (the cloud environment also
-provides a GitHub MCP for PRs; WebFetch is blocked for most external
-domains by the sandbox egress proxy, WebSearch works). Its contract:
+The team works Monday to Friday, 08:00 to 18:00 Europe/Prague, as two
+cloud routines (model claude-sonnet-5, clone of this repo, Gmail connector
+only; tools Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch; the
+cloud also provides a GitHub MCP for PRs; WebFetch is egress-blocked for
+most external domains, WebSearch works):
+
+- **Morning brief, 08:00**: plans the day into a `## today` section of
+  `STATUS.md` (one backlog item per shift), refills the backlog with a
+  proposals PR when fewer than three ready items remain, and emails the
+  founder the plan plus what awaits her. Prompt: `routine-brief-prompt.md`.
+- **Shifts at 09, 11, 13, 15, 17**: each works one item per the contract
+  below. Shifts 09 to 15 email only when they produced a PR or an INBOX
+  item; the 17 shift always emails the day summary. Prompt:
+  `routine-shift-prompt.md`.
+
+Shift contract:
 
 1. Read `TEAM.md`, `BRIEF.md`, `BACKLOG.md`, `INBOX.md`, `STATUS.md`.
 2. Execute `approved` inbox items that are doable inside the repo
@@ -119,15 +130,15 @@ domains by the sandbox egress proxy, WebSearch works). Its contract:
 4. When something needs approval, append an `INBOX.md` item and continue
    with the next ungated item. Never block.
 5. Write `STATUS.md` (per role: summary, tests, blockers, needs_approval)
-   and one `LOG.md` line. Commit these files on `chore/shift-state-<date>`,
-   open a PR, enable auto-merge (`gh pr merge --auto --squash`).
-6. Send the digest to `sandovabarb@gmail.com` only, in Czech, five lines
-   max: what was done, what awaits approval (#id), what is blocked, PR link.
-   On Mondays add a proposed plan for the week.
-7. At most one backlog item per run. If nothing is workable, send a one-line
-   digest ("nic k práci, backlog potřebuje tebe") and stop.
-
-The exact prompt the routine runs is versioned in `routine-prompt.md`.
+   and one `LOG.md` line. Commit these files on
+   `chore/shift-state-<date>-<HHMM>`, open a PR, enable auto-merge
+   (`gh pr merge --auto --squash`).
+6. Digest to `sandovabarb@gmail.com` only, in Czech: shifts 09 to 15 only
+   when they produced something (five lines: what, what awaits approval,
+   what is blocked, PR link); the 17 shift always sends the day summary.
+7. At most one backlog item per run. Never start an item whose dod depends
+   on a pull request that is still open. Idle shifts write their state PR
+   and stay silent.
 
 ### Runbook
 
@@ -135,11 +146,13 @@ The exact prompt the routine runs is versioned in `routine-prompt.md`.
   `RemoteTrigger` and call `list_runs` then `get_run_log` for the run in
   question. A run that was skipped before a session existed leaves no run;
   check the routine itself with `get`.
-- Cron is in UTC. 05:00 Prague is 03:00 UTC in summer time and 04:00 UTC in
-  winter time; update the cron expression at DST changes (late March, late
-  October) or accept a one-hour drift.
-- Routine: `trig_012VzQ17vcMx1FwKu4ZSYYBC`, created 2026-09-14, cron `0 3 * * *` UTC.
-  Edit/disable: https://claude.ai/code/routines/trig_012VzQ17vcMx1FwKu4ZSYYBC
+- Cron is in UTC. In winter time (after the last Sunday of October) every
+  hour above shifts by one: `0 7 * * 1-5` for the brief, `0 8,10,12,14,16 * * 1-5`
+  for the shifts. Update both routines at DST changes or accept a one-hour drift.
+- Shifts routine: `trig_012VzQ17vcMx1FwKu4ZSYYBC`, cron `0 7,9,11,13,15 * * 1-5` UTC
+  (09, 11, 13, 15, 17 Prague in summer time). Morning brief routine: id in
+  DECISIONS.md, cron `0 6 * * 1-5` UTC (08:00 Prague in summer time).
+  Edit/disable: https://claude.ai/code/routines
 - If the routine sent email to anyone other than the founder, or
   auto-merged a PR containing code: disable it at the URL above, record the incident in
   `DECISIONS.md`, fix the prompt, re-enable.
