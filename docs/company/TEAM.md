@@ -89,7 +89,9 @@ Run `python scripts/check_company_docs.py` before committing either file.
 ## The daily shift (cloud routine)
 
 One routine, daily at 05:00 Europe/Prague, model claude-sonnet-5, clones
-this repo from GitHub, Gmail connector only. Its contract:
+this repo from GitHub, Gmail connector only. Tools: Bash, Read, Write,
+Edit, Glob, Grep, WebSearch, WebFetch, Artifact (the cloud environment
+also provides a GitHub MCP for PRs). Its contract:
 
 1. Read `TEAM.md`, `BRIEF.md`, `BACKLOG.md`, `INBOX.md`, `STATUS.md`.
 2. Execute `approved` inbox items that are doable inside the repo
@@ -132,7 +134,9 @@ The exact prompt the routine runs is versioned in `routine-prompt.md`.
 ## Status board
 
 The "AI Team Status" artifact (four cards: product, engineering, security,
-marketing; activity log) is a projection of `STATUS.md` and `LOG.md`. It is
-synced from an interactive session with the step "sync board" unless the
-routine is verified to have the Artifact tool (see `DECISIONS.md`). The
-email digest is always the current channel; the board may lag.
+marketing; activity log) is a projection of `STATUS.md` and `LOG.md`. The
+routine has the Artifact tool and syncs the board at the end of each run
+(verified 2026-09-14: the first run found the board; its write needed the
+tool allow-listed, which is now done). Interactive sessions sync it too
+when they change `STATUS.md`. The email digest is always the current
+channel; the board may lag by one run.
