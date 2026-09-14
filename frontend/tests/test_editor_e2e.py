@@ -262,3 +262,41 @@ def test_personal_link_shows_your_call_and_department_first(page: Page, frontend
     page.wait_for_selector("#sheet.visible", timeout=15_000)
     page.wait_for_selector("#personalInvalid", timeout=10_000)
     assert page.locator("#you").count() == 0
+
+
+def test_crew_edit_personal_call_and_remove(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-18: edit a person (phone, personal call, HoD), see it on the sheet, remove another."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E crew {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    for name, dept, pos in (("Petr Malý", "Electric", "Best boy"), ("Jana Bílá", "Production", "UPM")):
+        page.fill("#crewName", name); page.fill("#crewDept", dept); page.fill("#crewPos", pos); page.click("#addCrew")
+        expect(page.locator("#crew")).to_contain_text(name, timeout=10_000)
+
+    page.click("#crew >> role=button[name='Edit Petr Malý']")
+    expect(page.locator("#crewFormTitle")).to_contain_text("Editing Petr Malý")
+    page.fill("#crewPhone", "+420 777 000 111")
+    page.fill("#crewCall", "05:45")
+    page.check("#crewHod")
+    page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("call 05:45", timeout=10_000)
+    expect(page.locator("#crew")).to_contain_text("+420 777 000 111")
+    expect(page.locator("#crewFormTitle")).to_contain_text("Add a person")
+
+    page.once("dialog", lambda d: d.accept())
+    page.click("#crew >> role=button[name='Remove Jana Bílá']")
+    expect(page.locator("#crew")).not_to_contain_text("Jana Bílá", timeout=10_000)
+
+    # The personal sheet uses the edited call time.
+    page.click("role=tab[name='Days']")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+    link = page.locator("#personalLinks li", has_text="Petr Malý").locator("a").get_attribute("href")
+    page.goto(link)
+    page.wait_for_selector("#you", timeout=15_000)
+    assert page.locator("#yourCall").inner_text().strip() == "05:45"

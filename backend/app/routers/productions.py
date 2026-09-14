@@ -11,10 +11,13 @@ from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
 from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, visible_productions
+from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
 from app.models.production import Contact, CrewMember, Location, Production
 from app.schemas.production import (
+    ContactUpdate,
+    CrewMemberUpdate,
     MemberCreate,
     MemberRead,
     CrewMemberCreate,
@@ -164,3 +167,57 @@ def create_crew_member(
 @router.get("/productions/{production_id}/crew-members", response_model=list[CrewMemberRead])
 def list_crew_members(production_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))) -> list[CrewMember]:
     return list(db.query(CrewMember).filter(CrewMember.production_id == production_id).all())
+
+
+def _member_of_production_or_404(db: Session, production_id: uuid.UUID, member_id: uuid.UUID) -> CrewMember:
+    member = db.get(CrewMember, member_id)
+    if member is None or member.production_id != production_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crew member not found")
+    return member
+
+
+@router.patch("/productions/{production_id}/crew-members/{member_id}", response_model=CrewMemberRead)
+def update_crew_member(
+    production_id: uuid.UUID, member_id: uuid.UUID, payload: CrewMemberUpdate,
+    db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT)),
+) -> CrewMember:
+    """Edit role fields; the personal link token is never rotated here."""
+    member = _member_of_production_or_404(db, production_id, member_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(member, field, value)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@router.delete("/productions/{production_id}/crew-members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_crew_member(
+    production_id: uuid.UUID, member_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+) -> None:
+    member = _member_of_production_or_404(db, production_id, member_id)
+    heads_day = (
+        db.query(CallSheet)
+        .join(CallSheetRevision, CallSheetRevision.call_sheet_id == CallSheet.id)
+        .filter(CallSheetRevision.head_of_day_crew_member_id == member.id)
+        .order_by(CallSheet.shoot_date)
+        .first()
+    )
+    if heads_day is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"{member.contact.name} is head of day on Day {heads_day.day_number} ({heads_day.shoot_date}); pick another head of day first",
+        )
+    db.delete(member)
+    db.commit()
+
+
+@router.patch("/contacts/{contact_id}", response_model=ContactRead)
+def update_contact(contact_id: uuid.UUID, payload: ContactUpdate, db: Session = Depends(get_db)) -> Contact:
+    contact = db.get(Contact, contact_id)
+    if contact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(contact, field, value)
+    db.commit()
+    db.refresh(contact)
+    return contact
