@@ -1,4 +1,4 @@
-.PHONY: up down migrate test backend-shell logs
+.PHONY: up down migrate test backend-shell logs check-docs smoke
 
 up:
 	docker compose up --build
@@ -14,3 +14,9 @@ test:
 
 logs:
 	docker compose logs -f backend
+
+check-docs:
+	python3 scripts/check_company_docs.py docs/company
+
+smoke:
+	cd frontend && python3 -m pytest tests -q

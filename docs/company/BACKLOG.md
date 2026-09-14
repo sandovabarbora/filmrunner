@@ -56,3 +56,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - docs/marketing/positioning.md with alternatives considered and the chosen one, grounded in FR-1 and FR-2 findings
   - blocked until FR-1 and FR-2 are done
   - failure case: if FR-2 shows a competitor already owns the chosen position, the draft says so and proposes another, rather than ignoring it
+
+## FR-7 · security · Fix three findings from the founding commit review
+- state: ready
+- gated: no
+- why: an automated security review of commit 81e9fc4 found a hardcoded dev token default in backend/app/config.py, stored XSS in frontend/index.html (API data rendered via innerHTML without escaping), and forgeable audit fields in backend/app/services/call_sheets.py
+- dod:
+  - config.py has no default bearer token; the app refuses to start without FILMRUNNER_API_BEARER_TOKEN outside development
+  - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text
+  - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored
+  - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape
