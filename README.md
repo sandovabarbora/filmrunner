@@ -29,6 +29,13 @@ phone, add it to the home screen, switch to airplane mode: the call sheet
 still renders from the cache. Deployed by `.github/workflows/pages.yml` on
 every push to `main` that touches `frontend/`.
 
+## Production (API)
+
+API on Fly.io (`backend/fly.toml`, region fra), Postgres on Supabase used
+as plain Postgres, see `docs/adr/ADR-002-hosting.md`. Deploy is manual
+and founder-only: `cd backend && fly deploy` (migrations run as the
+release command). Secrets live in Fly only.
+
 ## Quick start
 
 ```bash

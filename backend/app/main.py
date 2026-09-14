@@ -29,12 +29,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Permissive CORS for the skeleton stage: the offline-first PWA is served
-# from a different origin during local dev. TODO: lock this to the deployed
-# frontend origin before this goes anywhere near production.
+# The PWA is served from another origin (GitHub Pages in production, the
+# Vite dev server locally), so CORS is required. Origins come from
+# FILMRUNNER_CORS_ORIGINS; "*" is the local-dev default.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )
