@@ -69,3 +69,9 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: Artifact removed from the routine's tools; the board is synced by interactive sessions.
 - Why: two runs (cse_013HbrCVEvh1npHTE199Lou4, cse_015G75GF4eJwZJ6FrhfxDSCv) stalled on the Artifact permission prompt even with the tool allow-listed; a stalled run also never sends its digest.
 - Revisit when: routines can pre-approve Artifact writes.
+
+## 2026-09-14: the daily shift is verified end to end
+- Decision: routine v3 (trig_012VzQ17vcMx1FwKu4ZSYYBC) is the production operating loop. Run cse_01UhjcTrP22PUegDgdo7z9qK proved the full cycle: clone, FR-3 delivered on `docs/fr-3-discovery-plan` (PR #11), gated part filed as INBOX #1, state PR `chore/shift-state-2026-09-14` (#12) with auto-merge, digest emailed at 11:19 UTC to the founder only.
+- Why: three runs were needed; the first two stalled on the Artifact permission prompt and never reached the digest step. Removing the tool fixed it.
+- Learned: cloud runs use the founder's GitHub identity (mergedBy shows her login either way), so "who merged" must be read from the run log, not from GitHub; WebFetch is egress-blocked for most vendor domains, WebSearch works.
+- Revisit when: a run stalls again for any reason, or digests start arriving without a matching state PR.
