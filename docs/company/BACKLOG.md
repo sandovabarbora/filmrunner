@@ -13,7 +13,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: v0.1 shipped (BRIEF.md). Dod bullet 2 is partly blocked — `PRODUCT_BRIEF.md` is not present in this repo or reachable from the routine's environment, so its claims could not be read directly; BRIEF.md now says so explicitly and lists only reconstructed, clearly-unverified hypotheses. Closing this fully needs the founder to add the source document to the repo.
 
 ## FR-2 · pm · Competitive teardown of call-sheet tools
-- state: ready
+- state: done
 - gated: no
 - why: we must know what an AD would have to give up to switch
 - dod:
@@ -21,6 +21,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - for each: how a call sheet is built, revised, distributed, viewed offline; pricing; who the buyer is
   - every claim cites the vendor page or docs it came from, with the date checked
   - failure case: a tool whose behaviour cannot be verified from public sources is marked "unverified", not guessed
+- note: delivered in PR #8 (branch shift/FR-2). `WebFetch` was blocked by this session's egress proxy for every vendor domain, so the teardown is built from `WebSearch` snippets, not directly-read vendor pages; several items are flagged "unverified" and a follow-up re-verification pass is requested in the doc.
 
 ## FR-3 · pm · Customer discovery plan: five Prague interviews
 - state: ready
