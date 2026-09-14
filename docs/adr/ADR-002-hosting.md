@@ -21,8 +21,9 @@ no operations burden on a solo founder.
 
 Fly.io for the API, Supabase for Postgres, GitHub Pages for the PWA.
 Migrations run as Fly's `release_command` (`alembic upgrade head`), never
-at container start. All secrets live on the platforms: `fly secrets set`
-for the API, GitHub Actions secret `FLY_API_TOKEN` for deploys. The
+at container start. All API secrets live in Fly (`fly secrets set`).
+Deploys are run by the founder from her machine (`cd backend && fly
+deploy`), on purpose: no deploy-capable token is stored in GitHub. The
 backend refuses to start outside `development` with the dev bearer token
 (config validator, tested).
 
@@ -40,8 +41,10 @@ GitHub Pages: free.
 
 ## Consequences
 
-- `backend/fly.toml` and `.github/workflows/fly.yml` are in the repo;
-  deploys happen on pushes to `main` touching `backend/`.
+- `backend/fly.toml` is in the repo; there is no deploy workflow. After a
+  backend change lands on `main`, the founder runs `cd backend && fly
+  deploy`. The AI team cannot deploy (no Fly access), which matches the
+  approval contract.
 - CORS is configured from `FILMRUNNER_CORS_ORIGINS` (production:
   `https://sandovabarbora.github.io`).
 - The Supabase connection string uses the session pooler on port 5432
@@ -49,6 +52,8 @@ GitHub Pages: free.
 
 ## Revisit when
 
-Cold starts annoy a real AD (set `min_machines_running = 1`, a few
+Manual deploys become a bottleneck (then a GitHub Actions secret with an
+app-scoped, expiring Fly deploy token is the next step), cold starts annoy
+a real AD (set `min_machines_running = 1`, a few
 dollars a month), or the Supabase pause bites, or FR-12 picks something
 other than Supabase Auth.
