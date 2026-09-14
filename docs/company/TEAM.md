@@ -123,7 +123,8 @@ The exact prompt the routine runs is versioned in `routine-prompt.md`.
 - Cron is in UTC. 05:00 Prague is 03:00 UTC in summer time and 04:00 UTC in
   winter time; update the cron expression at DST changes (late March, late
   October) or accept a one-hour drift.
-- Routine edit/disable: https://claude.ai/code/routines
+- Routine: `trig_012VzQ17vcMx1FwKu4ZSYYBC`, created 2026-09-14, cron `0 3 * * *` UTC.
+  Edit/disable: https://claude.ai/code/routines/trig_012VzQ17vcMx1FwKu4ZSYYBC
 - If the routine sent email to anyone other than the founder, or
   auto-merged a PR containing code: disable it at the URL above, record the incident in
   `DECISIONS.md`, fix the prompt, re-enable.
