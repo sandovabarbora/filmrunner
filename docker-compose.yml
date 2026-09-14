@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: filmrunner
+      POSTGRES_PASSWORD: filmrunner_dev
+      POSTGRES_DB: filmrunner
+    ports:
+      - "5432:5432"
+    volumes:
+      - filmrunner_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filmrunner"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      FILMRUNNER_DATABASE_URL: postgresql+psycopg://filmrunner:filmrunner_dev@db:5432/filmrunner
+      FILMRUNNER_ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Runs migrations on every start, then boots the API — fine for local
+    # dev; a real deploy would run migrations as a separate release step.
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    image: python:3.11-slim
+    working_dir: /site
+    volumes:
+      - ./frontend:/site
+    ports:
+      - "8080:8080"
+    command: python3 -m http.server 8080
+
+volumes:
+  filmrunner_pgdata:
