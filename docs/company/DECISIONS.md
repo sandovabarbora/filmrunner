@@ -48,3 +48,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: building features against an unvalidated thesis is the trap the old
   repo fell into.
 - Revisit when: BRIEF.md reaches v1.
+
+## 2026-09-14: main accepts only CI-green commits, state files go via auto-merged PRs
+- Decision: ruleset "main: ci required" (id 23282045) requires the `ci` status check on every commit reaching main. Verified: this rejects direct pushes outright ("Required status check ci is expected"), so the routine cannot commit STATUS/INBOX/LOG straight to main as the spec first said. Instead the routine opens a state-only PR on branch `shift/state-<date>` and enables auto-merge (`gh pr merge --auto --squash`); it lands when ci is green. Code PRs are never auto-merged by the routine.
+- Why: enforced beats agreed; a three-minute delay on state updates costs nothing, and the digest email is the live channel anyway.
+- Revisit when: state PRs pile up unmerged (ci flaky) or the founder wants state changes instantly visible on main.
