@@ -91,3 +91,16 @@ class MemberRead(BaseModel):
     user_id: str | None
     role: str
     invited_by: str | None
+
+
+class ContactUpdate(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+
+
+class CrewMemberUpdate(BaseModel):
+    department: str | None = None
+    position: str | None = None
+    standard_call_time: str | None = None
+    is_head_of_department: bool | None = None

@@ -45,7 +45,10 @@ notes to exist first), audit log of role changes, SSO groups.
 - Existing productions created before this ADR have no members; an owner
   is added with the service token once after deploy.
 - `POST /contacts` is not production-scoped (address book rows); any
-  signed-in user can create a contact. Revisit when contacts get sensitive.
+  signed-in user can create a contact. `PATCH /contacts/{id}` is guarded:
+  the caller needs `crew:edit` on a production that has the person in its
+  crew (a contact used nowhere is editable only by the service token).
+  Found by the automated commit review on 2026-09-14 as an IDOR.
 
 ## Revisit when
 

@@ -59,6 +59,12 @@ export const api = {
   createContact: (c: Connection, payload: ContactCreate) => request<Contact>(c, "POST", "/api/v1/contacts", payload),
   createCrewMember: (c: Connection, productionId: string, payload: CrewMemberCreate) =>
     request<CrewMember>(c, "POST", `/api/v1/productions/${productionId}/crew-members`, payload),
+  updateCrewMember: (c: Connection, productionId: string, memberId: string, patch: Partial<CrewMemberCreate>) =>
+    request<CrewMember>(c, "PATCH", `/api/v1/productions/${productionId}/crew-members/${memberId}`, patch),
+  removeCrewMember: (c: Connection, productionId: string, memberId: string) =>
+    request<void>(c, "DELETE", `/api/v1/productions/${productionId}/crew-members/${memberId}`),
+  updateContact: (c: Connection, contactId: string, patch: Partial<ContactCreate>) =>
+    request<Contact>(c, "PATCH", `/api/v1/contacts/${contactId}`, patch),
   listMembers: (c: Connection, productionId: string) => request<Member[]>(c, "GET", `/api/v1/productions/${productionId}/members`),
   addMember: (c: Connection, productionId: string, email: string, role: ProductionRole) =>
     request<Member>(c, "POST", `/api/v1/productions/${productionId}/members`, { email, role }),

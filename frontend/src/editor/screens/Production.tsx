@@ -67,33 +67,65 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
   );
 }
 
+type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean };
+const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false };
+
 function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", department: "", position: "", hod: false });
+  const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
+  const [editing, setEditing] = useState<CrewMember | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.listCrew(conn, productionId).then(setCrew).catch((err: unknown) => { setCrew([]); setNotice(noticeFromError(err, "Cannot load crew")); });
   }, [conn, productionId, setNotice]);
 
-  async function add() {
+  function startEdit(m: CrewMember) {
+    setEditing(m);
+    setForm({ name: m.contact.name, phone: m.contact.phone ?? "", department: m.department, position: m.position, call: m.standard_call_time ?? "", hod: m.is_head_of_department });
+  }
+  function cancelEdit() { setEditing(null); setForm({ ...EMPTY_FORM, department: form.department }); }
+
+  async function save() {
     setBusy(true);
     try {
-      const contact = await api.createContact(conn, { name: form.name.trim(), phone: form.phone.trim() || null, email: null });
-      const member = await api.createCrewMember(conn, productionId, {
-        contact_id: contact.id, department: form.department.trim(), position: form.position.trim(), standard_call_time: null, is_head_of_department: form.hod,
-      });
-      setCrew((c) => [...(c ?? []), member]);
-      setForm({ name: "", phone: "", department: form.department, position: "", hod: false });
-      setNotice({ kind: "ok", text: `${contact.name} added${form.hod ? " as head of department" : ""}.` });
+      if (editing) {
+        const contact = await api.updateContact(conn, editing.contact_id, { name: form.name.trim(), phone: form.phone.trim() || null });
+        const member = await api.updateCrewMember(conn, productionId, editing.id, {
+          department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
+        });
+        setCrew((c) => (c ?? []).map((x) => (x.id === member.id ? { ...member, contact } : x)));
+        setNotice({ kind: "ok", text: `${contact.name} updated. The sheet shows it immediately.` });
+        cancelEdit();
+      } else {
+        const contact = await api.createContact(conn, { name: form.name.trim(), phone: form.phone.trim() || null, email: null });
+        const member = await api.createCrewMember(conn, productionId, {
+          contact_id: contact.id, department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
+        });
+        setCrew((c) => [...(c ?? []), member]);
+        setForm({ ...EMPTY_FORM, department: form.department });
+        setNotice({ kind: "ok", text: `${contact.name} added${form.hod ? " as head of department" : ""}.` });
+      }
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not add the crew member"));
+      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the crew member"));
     } finally {
       setBusy(false);
     }
   }
 
-  const canAdd = form.name.trim() && form.department.trim() && form.position.trim() && !busy;
+  async function remove(m: CrewMember) {
+    if (!window.confirm(`Remove ${m.contact.name} from the crew? Their personal link stops working.`)) return;
+    try {
+      await api.removeCrewMember(conn, productionId, m.id);
+      setCrew((c) => (c ?? []).filter((x) => x.id !== m.id));
+      if (editing?.id === m.id) cancelEdit();
+      setNotice({ kind: "ok", text: `${m.contact.name} removed.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not remove"));
+    }
+  }
+
+  const canSave = form.name.trim() && form.department.trim() && form.position.trim() && !busy;
   return (
     <section className="block" aria-label="Crew">
       <h2>Crew</h2>
@@ -102,22 +134,34 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       {crew && crew.length > 0 && (
         <ul className="list" id="crew">
           {crew.map((m) => (
-            <li key={m.id} className="row static">
-              <span className="name">{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}</span>
-              <span className="meta">{m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}</span>
+            <li key={m.id} className={`row static${editing?.id === m.id ? " editing" : ""}`}>
+              <span className="name">{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
+                <span className="meta"> · {m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}{m.standard_call_time ? ` · call ${m.standard_call_time}` : ""}</span>
+              </span>
+              {canEdit && (
+                <span className="row-actions">
+                  <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={`Edit ${m.contact.name}`}>Edit</button>
+                  <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.contact.name}`}>Remove</button>
+                </span>
+              )}
             </li>
           ))}
         </ul>
       )}
       {canEdit && (<>
+      <h3 className="subhead" id="crewFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add a person"}</h3>
       <div className="grid2">
         <label className="field" htmlFor="crewName"><span className="label">Name</span><input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
         <label className="field" htmlFor="crewPhone"><span className="label">Phone</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
         <label className="field" htmlFor="crewDept"><span className="label">Department</span><input id="crewDept" placeholder="Camera" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></label>
         <label className="field" htmlFor="crewPos"><span className="label">Position</span><input id="crewPos" placeholder="DoP" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></label>
+        <label className="field" htmlFor="crewCall"><span className="label">Personal call (optional)</span><input id="crewCall" className="mono" placeholder="05:45" value={form.call} onChange={(e) => setForm({ ...form, call: e.target.value })} /></label>
       </div>
       <label className="check"><input id="crewHod" type="checkbox" checked={form.hod} onChange={(e) => setForm({ ...form, hod: e.target.checked })} /> Head of department (shown under "Who to call")</label>
-      <button type="button" id="addCrew" className="secondary" disabled={!canAdd} onClick={() => void add()}>Add to crew</button>
+      <div className="inline">
+        <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to crew"}</button>
+        {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>Cancel</button>}
+      </div>
       </>)}
     </section>
   );

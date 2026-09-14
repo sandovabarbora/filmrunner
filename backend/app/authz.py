@@ -68,6 +68,14 @@ def resolve_access(db: Session, principal: Principal, production_id: uuid.UUID) 
     return Access(principal=principal, production=production, role=role, permissions=ROLE_PERMISSIONS[role])
 
 
+def resolve_access_or_none(db: Session, principal: Principal, production_id: uuid.UUID) -> frozenset[str]:
+    """Permissions on a production, or an empty set when the caller is not a member (no exception)."""
+    try:
+        return resolve_access(db, principal, production_id).permissions
+    except HTTPException:
+        return frozenset()
+
+
 def require(permission: str):
     """Dependency factory: `access: Access = Depends(require(DAY_PUBLISH))`.
 
