@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Production, RevisionCreate } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Member, Production, ProductionRole, RevisionCreate } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -38,6 +38,7 @@ async function request<T>(conn: Connection, method: string, path: string, body?:
     }
     throw new ApiError(resp.status, detail);
   }
+  if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
 }
 
@@ -58,6 +59,11 @@ export const api = {
   createContact: (c: Connection, payload: ContactCreate) => request<Contact>(c, "POST", "/api/v1/contacts", payload),
   createCrewMember: (c: Connection, productionId: string, payload: CrewMemberCreate) =>
     request<CrewMember>(c, "POST", `/api/v1/productions/${productionId}/crew-members`, payload),
+  listMembers: (c: Connection, productionId: string) => request<Member[]>(c, "GET", `/api/v1/productions/${productionId}/members`),
+  addMember: (c: Connection, productionId: string, email: string, role: ProductionRole) =>
+    request<Member>(c, "POST", `/api/v1/productions/${productionId}/members`, { email, role }),
+  removeMember: (c: Connection, productionId: string, memberId: string) =>
+    request<void>(c, "DELETE", `/api/v1/productions/${productionId}/members/${memberId}`),
 };
 
 const CONNECTION_KEY = "filmrunner.editor.connection";

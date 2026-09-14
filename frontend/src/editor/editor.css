@@ -61,3 +61,4 @@ a.button { display: inline-block; margin-top: 12px; padding: 11px 14px; border: 
 input:disabled, select:disabled, textarea:disabled { background: var(--paper-2); color: var(--ink-2); }
 
 #logo { cursor: default; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.role-chip { margin-left: auto; align-self: center; font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }

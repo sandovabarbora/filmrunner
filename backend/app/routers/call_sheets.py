@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.auth import Principal, require_api_token, require_principal
+from app.authz import DAY_PUBLISH, PRODUCTION_READ, require_on
 from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
@@ -63,8 +64,7 @@ def create_call_sheet_endpoint(
     db: Session = Depends(get_db),
     principal: Principal = Depends(require_principal),
 ) -> CallSheet:
-    if db.get(Production, production_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Production not found")
+    require_on(db, principal, production_id, DAY_PUBLISH)
     try:
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except HeadOfDayNotOnProduction as exc:
@@ -84,6 +84,7 @@ def publish_revision_endpoint(
     principal: Principal = Depends(require_principal),
 ):
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
     try:
         return publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
     except HeadOfDayNotOnProduction as exc:
@@ -95,10 +96,11 @@ def publish_revision_endpoint(
 
 
 @router.get("/productions/{production_id}/call-sheets", response_model=list[CallSheetRead])
-def list_call_sheets(production_id: uuid.UUID, db: Session = Depends(get_db)) -> list[CallSheetRead]:
+def list_call_sheets(
+    production_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> list[CallSheetRead]:
     """The production's days, oldest first, each with its current revision."""
-    if db.get(Production, production_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Production not found")
+    require_on(db, principal, production_id, PRODUCTION_READ)
     sheets = (
         db.query(CallSheet)
         .options(selectinload(CallSheet.revisions).selectinload(CallSheetRevision.schedule_items))
@@ -117,7 +119,11 @@ def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
 
 
 @router.get("/call-sheets/{call_sheet_id}", response_model=CallSheetRead)
-def get_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db)) -> CallSheetRead:
+def get_call_sheet(
+    call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> CallSheetRead:
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, PRODUCTION_READ)
     return _read_with_contacts(db, call_sheet_id)
 
 

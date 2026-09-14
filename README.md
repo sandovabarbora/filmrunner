@@ -37,7 +37,9 @@ Days and Crew → Day. A day loads its current revision from the server;
 publishing sends the next revision (A, B, C...). Drafts are saved on the
 phone as a safety net; offline, a published day is read-only. Crew tab
 keeps names, numbers and heads of department, which appear on every sheet
-under "Who to call". Design: `docs/adr/ADR-003-editor.md`.
+under "Who to call". Members tab (owners) invites people by email as
+owner, editor or viewer; the API enforces the role (`docs/adr/ADR-005-roles.md`).
+Design: `docs/adr/ADR-003-editor.md`.
 
 ## Production (API)
 
