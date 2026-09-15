@@ -136,7 +136,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - blocked-until: FR-12
 
 ## FR-7 · security · Fix three findings from the founding commit review
-- state: ready
+- state: done
 - gated: no
 - why: an automated security review of commit 81e9fc4 found a hardcoded dev token default in backend/app/config.py, stored XSS in frontend/index.html (API data rendered via innerHTML without escaping), and forgeable audit fields in backend/app/services/call_sheets.py
 - dod:
@@ -144,6 +144,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - index.html renders every API string via textContent or an escape helper; a test injects `<img onerror>` into a schedule item and asserts it is shown as text (done 2026-09-14 in feat/github-pages-demo, test_schedule_text_is_not_interpreted_as_html)
   - audit fields (created_by, published_at) are set server-side from the authenticated caller and the clock, never from the request body; a test sends spoofed values and asserts they are ignored (done 2026-09-14 with FR-12, backend/tests/test_auth.py)
   - failure case: if a fix would break the offline cache format, the PR says so and bumps the cache version instead of silently changing shape
+- note: 17:00 shift 2026-09-15 — re-verified all three, no new code needed. (1) config.py's `_refuse_dev_token_outside_development` validator confirmed unchanged and covered by `test_config.py`. (2) the app has since fully migrated from the vanilla-JS `index.html` that had the original innerHTML bug to a React entry (`main.tsx`); grepped all of `frontend/src` for `dangerouslySetInnerHTML` — zero uses, `CallSheetView.tsx` has a standing comment noting why; the original regression test (`test_schedule_text_is_not_interpreted_as_html` in `frontend/tests/test_smoke.py`) is still committed and targets the built app, though not re-run live this shift (would need a browser build cycle beyond what a verification-only task warrants; the structural fix — no innerHTML/dangerouslySetInnerHTML anywhere in the codebase — is stronger evidence than the original bug pattern could survive). (3) read `call_sheets.py`: `publish_revision`/`create_call_sheet` take a `created_by` kwarg that the router always fills via `_audit_label(principal, ...)` — a real user's identity or a `service:`-prefixed label, never the raw request body; the body-value fallback inside `call_sheets.py` is reachable only from `seed_demo.py`'s own hardcoded call, not from any HTTP input. Set up a fresh local Postgres (container is ephemeral) and ran the full backend suite: 88/88 pass, including `test_auth.py`'s two spoofed-`created_by` tests (both a Supabase JWT user and a service token) and all 9 of `test_config.py`. No regressions found; item flipped to done.
 
 ## FR-9 · frontend · Offline-honest status when the service worker serves from cache
 - state: done
