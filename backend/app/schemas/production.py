@@ -46,10 +46,25 @@ class LocationCreate(BaseModel):
     geo_lng: float | None = None
 
 
+class LocationUpdate(BaseModel):
+    name: str | None = None
+    address: str | None = None
+    parking_notes: str | None = None
+    nearest_hospital: str | None = None
+
+
 class LocationRead(LocationCreate):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     production_id: uuid.UUID
+    geocoded_display_name: str | None = None
+
+
+class LocationSuggestion(BaseModel):
+    """A weather or nearest-hospital guess the AD accepts or ignores; never
+    saved until they explicitly confirm it (ADR-006)."""
+
+    suggestion: str | None
 
 
 class CrewMemberCreate(BaseModel):

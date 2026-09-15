@@ -68,3 +68,15 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .row.editing { background: #fff; outline: 1.5px solid var(--rule-strong); outline-offset: -1px; border-radius: 3px; padding-left: 8px; padding-right: 8px; }
 .crew-name { display: flex; align-items: center; gap: 10px; }
 .photo-field { align-items: center; margin-bottom: 12px; }
+
+/* First run. */
+.intro { margin: 8px 0 12px; padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-2); font-size: 0.9375rem; }
+.intro p { margin: 0; }
+.checklist { margin-top: 14px; padding: 12px 14px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.checklist h2 { margin: 0 0 8px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.checklist ol { list-style: none; margin: 0; padding: 0; }
+.checklist li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; font-size: 0.9375rem; color: var(--muted); }
+.checklist li.done { text-decoration: line-through; }
+.checklist li.next { color: var(--ink); font-weight: 600; }
+.checklist .mark { font-family: var(--mono); width: 1.2em; }
+.checklist a { color: inherit; }

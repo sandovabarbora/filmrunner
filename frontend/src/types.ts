@@ -14,6 +14,7 @@ export interface ScheduleItem {
   int_ext: IntExt | string;
   day_night: DayNight | string;
   set_description: string;
+  location_id?: string | null;
   page_count_eighths: number;
 }
 
@@ -74,6 +75,7 @@ export interface ScheduleItemCreate {
   int_ext: "INT" | "EXT";
   day_night: "DAY" | "NIGHT";
   set_description: string;
+  location_id?: string | null;
   page_count_eighths: number;
 }
 
@@ -148,4 +150,30 @@ export interface CrewMember extends CrewMemberCreate {
   production_id: string;
   contact: Contact;
   personal_token: string;
+}
+
+export interface LocationCreate {
+  name: string;
+  address: string | null;
+  parking_notes: string | null;
+  nearest_hospital: string | null;
+}
+
+export interface LocationUpdate {
+  name?: string;
+  address?: string | null;
+  parking_notes?: string | null;
+  nearest_hospital?: string | null;
+}
+
+export interface Location extends LocationCreate {
+  id: string;
+  production_id: string;
+  geo_lat: number | null;
+  geo_lng: number | null;
+  geocoded_display_name: string | null;
+}
+
+export interface LocationSuggestion {
+  suggestion: string | null;
 }

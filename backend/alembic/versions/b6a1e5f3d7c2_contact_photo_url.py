@@ -1,7 +1,7 @@
 """contact photo url
 
 Revision ID: b6a1e5f3d7c2
-Revises: 931c2ab3ce65
+Revises: d353e6845c8e
 Create Date: 2026-09-15 11:05:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'b6a1e5f3d7c2'
-down_revision: Union[str, None] = '931c2ab3ce65'
+down_revision: Union[str, None] = 'd353e6845c8e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

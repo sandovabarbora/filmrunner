@@ -5,7 +5,7 @@ import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink } from "./Production";
 import { QrCode } from "./QrCode";
-import type { CallSheetCreated, CrewMember, RevisionCreate, ScheduleItemCreate } from "../../types";
+import type { CallSheetCreated, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -45,7 +45,7 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     safety_notes: rev?.safety_notes ?? "",
     items: [...(rev?.schedule_items ?? [])]
       .sort((a, b) => a.order_index - b.order_index)
-      .map((it) => ({ order_index: it.order_index, scene_number: it.scene_number, int_ext: (it.int_ext === "INT" ? "INT" : "EXT"), day_night: (it.day_night === "NIGHT" ? "NIGHT" : "DAY"), set_description: it.set_description, page_count_eighths: it.page_count_eighths })),
+      .map((it) => ({ order_index: it.order_index, scene_number: it.scene_number, int_ext: (it.int_ext === "INT" ? "INT" : "EXT"), day_night: (it.day_night === "NIGHT" ? "NIGHT" : "DAY"), set_description: it.set_description, location_id: it.location_id ?? null, page_count_eighths: it.page_count_eighths })),
   };
 }
 
@@ -61,6 +61,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const readOnly = offline || !canPublish;
   const setReadOnly = setOffline;
   const [crew, setCrew] = useState<CrewMember[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [weatherSuggestion, setWeatherSuggestion] = useState<string | null>(null);
+  const [suggestingWeather, setSuggestingWeather] = useState(false);
   const [busy, setBusy] = useState(false);
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
@@ -89,6 +92,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       }
     })();
     api.listCrew(conn, productionId).then((c) => { if (!cancelled) setCrew(c); }).catch(() => undefined);
+    api.listLocations(conn, productionId).then((l) => { if (!cancelled) setLocations(l); }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [conn, productionId, productionName, callSheetId, key, setNotice]);
 
@@ -114,6 +118,27 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       [items[i], items[j]] = [items[j], items[i]];
       return { ...d, items, dirtySincePublish: !!d.callSheetId };
     });
+  }
+
+  function firstLocationId(): string | null {
+    const ordered = [...(draft?.items ?? [])].sort((a, b) => a.order_index - b.order_index);
+    return ordered.find((it) => it.location_id)?.location_id ?? null;
+  }
+
+  async function suggestWeather() {
+    if (!draft) return;
+    const locationId = firstLocationId();
+    if (!locationId) { setNotice({ kind: "warn", text: "Pick a location for the first scene to get a weather suggestion." }); return; }
+    setSuggestingWeather(true);
+    try {
+      const { suggestion } = await api.weatherSuggestion(conn, productionId, locationId, draft.shoot_date);
+      setWeatherSuggestion(suggestion ?? null);
+      if (!suggestion) setNotice({ kind: "warn", text: "No weather suggestion available for that date/location." });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not get a weather suggestion"));
+    } finally {
+      setSuggestingWeather(false);
+    }
   }
 
   async function publish() {
@@ -170,6 +195,19 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           <Field label="Sunset" id="sunset" placeholder="19:03" mono value={draft.sunset} onChange={(v) => update({ sunset: v })} disabled={dis} />
         </div>
         <Field label="Weather" id="weather_forecast" value={draft.weather_forecast} onChange={(v) => update({ weather_forecast: v })} disabled={dis} />
+        {!dis && (
+          <div className="inline">
+            <button type="button" className="quiet" disabled={suggestingWeather} onClick={() => void suggestWeather()}>
+              {suggestingWeather ? "Looking…" : "Suggest weather"}
+            </button>
+            {weatherSuggestion && (
+              <button type="button" className="quiet" onClick={() => { update({ weather_forecast: weatherSuggestion }); setWeatherSuggestion(null); }}>
+                Use: {weatherSuggestion}
+              </button>
+            )}
+          </div>
+        )}
+        <p className="hint">Sunrise and sunset fill in automatically from the first scene's location when left blank on publish.</p>
         <Field label="Safety notes" id="safety_notes" textarea value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
         <label className="field" htmlFor="headOfDay">
           <span className="label">Head of day</span>
@@ -195,6 +233,10 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 <span className="hint">/8</span>
               </div>
               <input className="set" aria-label="Set" placeholder="RIVERBANK, TROJA. Marta finds the boat." value={it.set_description} disabled={dis} onChange={(e) => updateItem(i, { set_description: e.target.value })} />
+              <select aria-label="Location" value={it.location_id ?? ""} disabled={dis} onChange={(e) => updateItem(i, { location_id: e.target.value || null })}>
+                <option value="">— no location —</option>
+                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
               {!dis && (
                 <div className="item-actions">
                   <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
@@ -206,7 +248,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           ))}
         </ol>
         {!dis && (
-          <button type="button" id="addScene" className="secondary" onClick={() => setDraft((d) => d ? { ...d, items: [...d.items, { order_index: d.items.length + 1, scene_number: "", int_ext: "EXT", day_night: "DAY", set_description: "", page_count_eighths: 8 }] } : d)}>
+          <button type="button" id="addScene" className="secondary" onClick={() => setDraft((d) => d ? { ...d, items: [...d.items, { order_index: d.items.length + 1, scene_number: "", int_ext: "EXT", day_night: "DAY", set_description: "", location_id: null, page_count_eighths: 8 }] } : d)}>
             + Add scene
           </button>
         )}

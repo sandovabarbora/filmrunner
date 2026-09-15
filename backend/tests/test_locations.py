@@ -1,0 +1,178 @@
+"""FR-19: geocoding on location save, weather/nearest-hospital suggestion
+endpoints, and sunrise/sunset auto-computed on publish from the day's
+first scheduled location. Geocoding/weather/hospital calls are monkeypatched
+at the service module used by the router — see test_location_services.py
+for the services' own request/response handling."""
+
+from fastapi.testclient import TestClient
+
+from app.config import get_settings
+from app.routers import productions as productions_router
+from app.services.geocoding import GeocodeResult
+
+AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
+
+
+def _production(client: TestClient) -> str:
+    return client.post("/api/v1/productions", json={"name": "Locations test"}, headers=AUTH).json()["id"]
+
+
+def test_create_location_geocodes_address(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0870, lng=14.4208, display_name="Staroměstské náměstí, Praha 1, Česko"),
+    )
+    pid = _production(client)
+    resp = client.post(
+        f"/api/v1/productions/{pid}/locations",
+        json={"name": "Old Town Square", "address": "Staroměstské náměstí, Praha"},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["geo_lat"] == 50.0870
+    assert body["geo_lng"] == 14.4208
+    assert body["geocoded_display_name"] == "Staroměstské náměstí, Praha 1, Česko"
+
+
+def test_create_location_without_address_skips_geocoding(client: TestClient, monkeypatch) -> None:
+    def fail(*a, **k):
+        raise AssertionError("should not geocode without an address")
+
+    monkeypatch.setattr(productions_router.geocoding, "geocode", fail)
+    pid = _production(client)
+    resp = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Studio, no address yet"}, headers=AUTH)
+    assert resp.status_code == 201
+    assert resp.json()["geo_lat"] is None
+
+
+def test_create_location_geocoder_miss_leaves_coordinates_editable_and_empty(client: TestClient, monkeypatch) -> None:
+    """Failure case: the fields stay editable and empty rather than the
+    request failing — the sheet never waits on / is blocked by a third party."""
+    monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: None)
+    pid = _production(client)
+    resp = client.post(
+        f"/api/v1/productions/{pid}/locations", json={"name": "Somewhere unmapped", "address": "??"}, headers=AUTH
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["geo_lat"] is None and body["geocoded_display_name"] is None
+
+
+def test_update_location_regeocodes_only_when_address_changes(client: TestClient, monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: calls.append(address) or GeocodeResult(lat=1.0, lng=2.0, display_name=f"resolved: {address}"),
+    )
+    pid = _production(client)
+    loc_id = client.post(
+        f"/api/v1/productions/{pid}/locations", json={"name": "Set A", "address": "Address 1"}, headers=AUTH
+    ).json()["id"]
+    assert calls == ["Address 1"]
+
+    # Editing an unrelated field must not re-geocode.
+    resp = client.patch(f"/api/v1/productions/{pid}/locations/{loc_id}", json={"parking_notes": "Behind the church"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert calls == ["Address 1"]
+
+    # Changing the address re-geocodes.
+    resp = client.patch(f"/api/v1/productions/{pid}/locations/{loc_id}", json={"address": "Address 2"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert calls == ["Address 1", "Address 2"]
+    assert resp.json()["geocoded_display_name"] == "resolved: Address 2"
+
+
+def test_weather_suggestion_without_coordinates_returns_null(client: TestClient) -> None:
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "No address"}, headers=AUTH).json()["id"]
+    resp = client.get(f"/api/v1/productions/{pid}/locations/{loc_id}/weather-suggestion", params={"shoot_date": "2026-06-21"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == {"suggestion": None}
+
+
+def test_weather_suggestion_with_coordinates_calls_the_service(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: GeocodeResult(lat=50.0, lng=14.0, display_name="X"))
+    seen = {}
+
+    def fake(lat, lng, on_date):
+        seen["args"] = (lat, lng, on_date)
+        return "9-18°C, slight rain"
+
+    monkeypatch.setattr(productions_router.weather, "weather_suggestion", fake)
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Loc", "address": "A"}, headers=AUTH).json()["id"]
+    resp = client.get(f"/api/v1/productions/{pid}/locations/{loc_id}/weather-suggestion", params={"shoot_date": "2026-06-21"}, headers=AUTH)
+    assert resp.json() == {"suggestion": "9-18°C, slight rain"}
+    assert seen["args"][0] == 50.0 and seen["args"][1] == 14.0
+
+
+def test_hospital_suggestion_with_coordinates_calls_the_service(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: GeocodeResult(lat=50.0, lng=14.0, display_name="X"))
+    monkeypatch.setattr(productions_router.hospitals, "nearest_hospital_suggestion", lambda lat, lng: "FN Motol, V Úvalu 84")
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Loc", "address": "A"}, headers=AUTH).json()["id"]
+    resp = client.get(f"/api/v1/productions/{pid}/locations/{loc_id}/hospital-suggestion", headers=AUTH)
+    assert resp.json() == {"suggestion": "FN Motol, V Úvalu 84"}
+
+
+def test_publish_computes_sunrise_sunset_from_first_located_scene(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
+    )
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja, Praha"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "general_crew_call": "05:00",
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    rev = resp.json()["current_revision"]
+    assert rev["sunrise"] is not None and rev["sunset"] is not None
+    # 2026-06-21 near the summer solstice at Prague's latitude: sanity bounds, not exact-minute.
+    assert "04:" in rev["sunrise"] or "05:" in rev["sunrise"]
+    assert "21:" in rev["sunset"]
+
+
+def test_publish_does_not_overwrite_sunrise_typed_by_the_ad(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
+    )
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "sunrise": "05:00", "sunset": "21:30",
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    rev = resp.json()["current_revision"]
+    assert rev["sunrise"] == "05:00"
+    assert rev["sunset"] == "21:30"
+
+
+def test_publish_without_located_scenes_leaves_sunrise_sunset_null(client: TestClient) -> None:
+    pid = _production(client)
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={"shoot_date": "2026-06-21", "day_number": 1, "day_count": 1, "initial_revision": {"schedule_items": []}},
+        headers=AUTH,
+    )
+    rev = resp.json()["current_revision"]
+    assert rev["sunrise"] is None and rev["sunset"] is None

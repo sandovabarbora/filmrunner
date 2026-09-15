@@ -4,7 +4,7 @@ import { api, type Connection } from "../api";
 import { resizeImageToBlob } from "../resizeImage";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
-import type { CallSheetCreated, CrewMember, Member, Production, ProductionRole } from "../../types";
+import type { CallSheetCreated, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
 
 export function crewLink(apiBase: string, sheetId: string): string {
   const base = window.location.href.replace(/editor\.html.*$/, "");
@@ -15,20 +15,57 @@ export function can(production: Production | null, permission: string): boolean 
   return (production?.permissions ?? []).includes(permission as never);
 }
 
+/** First-run guidance: the four things a production needs before the crew gets a link. Hidden once all are done. */
+function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connection; productionId: string; canEdit: boolean; refreshKey: number }) {
+  const [state, setState] = useState<{ crew: number; days: number; published: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.listCrew(conn, productionId), api.listCallSheets(conn, productionId)])
+      .then(([crew, days]) => { if (!cancelled) setState({ crew: crew.length, days: days.length, published: days.filter((d) => d.current_revision).length }); })
+      .catch(() => { if (!cancelled) setState(null); });
+    return () => { cancelled = true; };
+  }, [conn, productionId, refreshKey]);
+  if (!state || !canEdit) return null;
+  const steps = [
+    { done: true, text: "Production created" },
+    { done: state.crew > 0, text: "Add the crew: names, numbers, heads of department", href: href({ screen: "production", productionId, tab: "crew" }) },
+    { done: state.days > 0, text: "Create the first shoot day", href: href({ screen: "day", productionId, callSheetId: null }) },
+    { done: state.published > 0, text: "Publish it and send the crew link (or personal links)", href: href({ screen: "production", productionId, tab: "days" }) },
+  ];
+  if (steps.every((st) => st.done)) return null;
+  const next = steps.find((st) => !st.done);
+  return (
+    <section className="checklist" id="checklist" aria-label="Getting started">
+      <h2>Getting started</h2>
+      <ol>
+        {steps.map((st) => (
+          <li key={st.text} className={st.done ? "done" : st === next ? "next" : ""}>
+            <span className="mark" aria-hidden="true">{st.done ? "✓" : "○"}</span>
+            {st.href && !st.done ? <a href={st.href}>{st.text}</a> : <span>{st.text}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function ProductionScreen({ conn, productionId, production, tab, setNotice }: {
-  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "members"; setNotice: (n: Notice) => void;
+  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "locations" | "members"; setNotice: (n: Notice) => void;
 }) {
   const manage = can(production, "production:manage_members");
   return (
     <>
+      <Checklist conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} refreshKey={tab === "days" ? 0 : 1} />
       <div className="tabs" role="tablist">
         <a role="tab" aria-selected={tab === "days"} className={tab === "days" ? "on" : ""} href={href({ screen: "production", productionId, tab: "days" })}>Days</a>
         <a role="tab" aria-selected={tab === "crew"} className={tab === "crew" ? "on" : ""} href={href({ screen: "production", productionId, tab: "crew" })}>Crew</a>
+        <a role="tab" aria-selected={tab === "locations"} className={tab === "locations" ? "on" : ""} href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>
         {manage && <a role="tab" aria-selected={tab === "members"} className={tab === "members" ? "on" : ""} href={href({ screen: "production", productionId, tab: "members" })}>Members</a>}
         {production?.my_role && <span className="role-chip" id="myRole">{production.my_role}</span>}
       </div>
       {tab === "days" && <Days conn={conn} productionId={productionId} canPublish={can(production, "day:publish")} setNotice={setNotice} />}
       {tab === "crew" && <Crew conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
+      {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
       {production === null && <p className="hint">Production not found in this list; go back to Productions.</p>}
     </>
@@ -223,6 +260,127 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       <div className="inline">
         <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to crew"}</button>
         {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>Cancel</button>}
+      </div>
+      </>)}
+    </section>
+  );
+}
+
+type LocationForm = { name: string; address: string; parking_notes: string; nearest_hospital: string };
+const EMPTY_LOCATION_FORM: LocationForm = { name: "", address: "", parking_notes: "", nearest_hospital: "" };
+
+function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const [locations, setLocations] = useState<Location[] | null>(null);
+  const [form, setForm] = useState<LocationForm>(EMPTY_LOCATION_FORM);
+  const [editing, setEditing] = useState<Location | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [hospitalSuggestion, setHospitalSuggestion] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+
+  useEffect(() => {
+    api.listLocations(conn, productionId).then(setLocations).catch((err: unknown) => { setLocations([]); setNotice(noticeFromError(err, "Cannot load locations")); });
+  }, [conn, productionId, setNotice]);
+
+  function startEdit(l: Location) {
+    setEditing(l);
+    setHospitalSuggestion(null);
+    setForm({ name: l.name, address: l.address ?? "", parking_notes: l.parking_notes ?? "", nearest_hospital: l.nearest_hospital ?? "" });
+  }
+  function cancelEdit() { setEditing(null); setHospitalSuggestion(null); setForm(EMPTY_LOCATION_FORM); }
+
+  async function save() {
+    setBusy(true);
+    try {
+      if (editing) {
+        const updated = await api.updateLocation(conn, productionId, editing.id, {
+          name: form.name.trim(), address: form.address.trim() || null,
+          parking_notes: form.parking_notes.trim() || null, nearest_hospital: form.nearest_hospital.trim() || null,
+        } satisfies LocationUpdate);
+        setLocations((ls) => (ls ?? []).map((x) => (x.id === updated.id ? updated : x)));
+        setNotice({ kind: "ok", text: `${updated.name} updated.` });
+        cancelEdit();
+      } else {
+        const created = await api.createLocation(conn, productionId, {
+          name: form.name.trim(), address: form.address.trim() || null,
+          parking_notes: form.parking_notes.trim() || null, nearest_hospital: form.nearest_hospital.trim() || null,
+        });
+        setLocations((ls) => [...(ls ?? []), created]);
+        setForm(EMPTY_LOCATION_FORM);
+        setNotice({ kind: "ok", text: `${created.name} added${created.address ? (created.geocoded_display_name ? `, resolved to ${created.geocoded_display_name}` : ", could not resolve that address — check it") : ""}.` });
+      }
+    } catch (err) {
+      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the location"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function suggestHospital() {
+    if (!editing) return;
+    setSuggesting(true);
+    try {
+      const { suggestion } = await api.hospitalSuggestion(conn, productionId, editing.id);
+      setHospitalSuggestion(suggestion ?? null);
+      if (!suggestion) setNotice({ kind: "warn", text: "No hospital suggestion nearby; enter one by hand." });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not get a suggestion"));
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  const canSave = form.name.trim() && !busy;
+  return (
+    <section className="block" aria-label="Locations">
+      <h2>Locations</h2>
+      <p className="hint">An address is geocoded on save so a scene can be tied to it for sunrise/sunset and a nearby hospital can be suggested.</p>
+      {locations === null && <p className="hint">Loading…</p>}
+      {locations && locations.length === 0 && <p className="hint">No locations yet.</p>}
+      {locations && locations.length > 0 && (
+        <ul className="list" id="locations">
+          {locations.map((l) => (
+            <li key={l.id} className={`row static${editing?.id === l.id ? " editing" : ""}`}>
+              <span className="name">{l.name}
+                <span className="meta">
+                  {l.address ? ` · ${l.address}` : ""}
+                  {l.address && !l.geocoded_display_name ? " · not resolved, check the address" : ""}
+                  {l.geocoded_display_name ? ` · resolved: ${l.geocoded_display_name}` : ""}
+                  {l.nearest_hospital ? ` · hospital: ${l.nearest_hospital}` : ""}
+                </span>
+              </span>
+              {canEdit && (
+                <span className="row-actions">
+                  <button type="button" className="quiet" onClick={() => startEdit(l)} aria-label={`Edit ${l.name}`}>Edit</button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canEdit && (<>
+      <h3 className="subhead" id="locationFormTitle">{editing ? `Editing ${editing.name}` : "Add a location"}</h3>
+      <div className="grid2">
+        <label className="field" htmlFor="locName"><span className="label">Name</span><input id="locName" placeholder="Riverbank, Troja" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="field" htmlFor="locAddress"><span className="label">Address</span><input id="locAddress" placeholder="Nábřeží, Praha" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+      </div>
+      {editing?.address === form.address && editing?.geocoded_display_name && (
+        <p className="hint">Resolved to: {editing.geocoded_display_name}. Wrong place? Change the address and save again.</p>
+      )}
+      <label className="field" htmlFor="locParking"><span className="label">Parking notes</span><input id="locParking" value={form.parking_notes} onChange={(e) => setForm({ ...form, parking_notes: e.target.value })} /></label>
+      <label className="field" htmlFor="locHospital"><span className="label">Nearest hospital</span><input id="locHospital" value={form.nearest_hospital} onChange={(e) => setForm({ ...form, nearest_hospital: e.target.value })} /></label>
+      {editing && editing.geo_lat != null && (
+        <div className="inline">
+          <button type="button" className="quiet" disabled={suggesting} onClick={() => void suggestHospital()}>{suggesting ? "Looking…" : "Suggest nearest hospital"}</button>
+          {hospitalSuggestion && (
+            <button type="button" className="quiet" onClick={() => { setForm({ ...form, nearest_hospital: hospitalSuggestion }); setHospitalSuggestion(null); }}>
+              Use: {hospitalSuggestion}
+            </button>
+          )}
+        </div>
+      )}
+      <div className="inline">
+        <button type="button" id="addLocation" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add location"}</button>
+        {editing && <button type="button" className="quiet" id="cancelLocationEdit" onClick={cancelEdit}>Cancel</button>}
       </div>
       </>)}
     </section>

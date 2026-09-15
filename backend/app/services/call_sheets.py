@@ -12,9 +12,10 @@ import string
 
 from sqlalchemy.orm import Session
 
-from app.models.production import CrewMember
+from app.models.production import CrewMember, Location
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, ScheduleItem
 from app.schemas.call_sheet import CallSheetContacts, ContactCard, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate
+from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,23 @@ def _next_revision_letter(call_sheet: CallSheet) -> str:
             "refusing to generate a 27th (A-Z exhausted)."
         )
     return _REVISION_LETTERS[count]
+
+
+def _fill_computed_sunrise_sunset(db: Session, revision: CallSheetRevision, shoot_date, schedule_items) -> None:
+    """FR-19/ADR-006: sunrise and sunset are a computed value, not a
+    provider guess, so they auto-fill from the day's first scheduled
+    location when the AD leaves both fields blank — same as an AD would
+    otherwise type them from another app. Never overwrites a value the AD
+    did type (checked by the caller: only called when both are None)."""
+    ordered = sorted((i for i in schedule_items if i.location_id is not None), key=lambda i: i.order_index)
+    if not ordered:
+        return
+    location = db.get(Location, ordered[0].location_id)
+    if location is None or location.geo_lat is None or location.geo_lng is None:
+        return
+    rise, sset = sunrise_sunset(location.geo_lat, location.geo_lng, shoot_date)
+    revision.sunrise = rise
+    revision.sunset = sset
 
 
 def publish_revision(
@@ -74,6 +92,9 @@ def publish_revision(
         db.add(ScheduleItem(revision_id=revision.id, **item.model_dump()))
     for cast_call in payload.cast_calls:
         db.add(CastCallEntry(revision_id=revision.id, **cast_call.model_dump()))
+
+    if revision.sunrise is None and revision.sunset is None:
+        _fill_computed_sunrise_sunset(db, revision, call_sheet.shoot_date, payload.schedule_items)
 
     db.commit()
     db.refresh(revision)

@@ -6,66 +6,11 @@ connect, create a production, fill a day, publish A, change the crew
 call, publish B, open the crew link and see REV B.
 """
 
-import os
-import socket
-import subprocess
-import sys
-import time
 import uuid
-from collections.abc import Iterator
-from pathlib import Path
 
-import pytest
 from playwright.sync_api import Page, expect
 
-BACKEND_DIR = Path(__file__).resolve().parents[2] / "backend"
-TEST_DB_URL = os.environ.get(
-    "FILMRUNNER_DATABASE_URL",
-    "postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test",
-)
-E2E_TOKEN = "e2e-token"
-
-
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-@pytest.fixture(scope="session")
-def api_url() -> Iterator[str]:
-    env = {
-        **os.environ,
-        "FILMRUNNER_DATABASE_URL": TEST_DB_URL,
-        "FILMRUNNER_API_BEARER_TOKEN": E2E_TOKEN,
-        "FILMRUNNER_ENVIRONMENT": "development",
-        "FILMRUNNER_CORS_ORIGINS": "*",
-    }
-    subprocess.run(
-        [sys.executable, "-c", "from app.database import Base, engine; import app.models; Base.metadata.create_all(engine)"],
-        cwd=BACKEND_DIR, env=env, check=True,
-    )
-    port = _free_port()
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=BACKEND_DIR, env=env,
-    )
-    url = f"http://127.0.0.1:{port}"
-    deadline = time.time() + 30
-    import urllib.request
-    while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(f"{url}/healthz", timeout=1) as r:
-                if r.status == 200:
-                    break
-        except Exception:
-            time.sleep(0.3)
-    else:
-        proc.kill()
-        raise RuntimeError("API did not start")
-    yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+from conftest import E2E_TOKEN
 
 
 def _connect(page: Page, frontend_url: str, api_url: str) -> None:
@@ -331,3 +276,29 @@ def test_photo_upload_failure_does_not_block_other_edits(page: Page, frontend_ur
     page.fill("#crewPhone", "+420 777 000 111")
     page.click("#addCrew")
     expect(page.locator("#crew")).to_contain_text("+420 777 000 111", timeout=10_000)
+
+
+def test_first_run_checklist_guides_and_disappears(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E first {uuid.uuid4().hex[:6]}")
+    page.wait_for_selector("#checklist", timeout=10_000)
+    items = page.locator("#checklist li")
+    assert items.count() == 4
+    assert "done" in (items.nth(0).get_attribute("class") or "")
+    assert "next" in (items.nth(1).get_attribute("class") or "")  # add the crew is the next step
+    items.nth(1).locator("a").click()
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Eva"); page.fill("#crewDept", "AD"); page.fill("#crewPos", "1st AD"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Eva", timeout=10_000)
+    page.click("role=tab[name='Days']")
+    expect(page.locator("#checklist li").nth(2)).to_have_class("next", timeout=10_000)  # now: create the first day
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.click("text=Productions")
+    page.wait_for_selector("#productions", timeout=10_000)
+    page.click(f"#productions >> text=E2E first")
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#checklist")).to_have_count(0, timeout=10_000)  # everything done: the guide is gone
