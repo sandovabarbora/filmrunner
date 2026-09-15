@@ -1,11 +1,12 @@
 """End-to-end: the Locations tab and a scene's location picker (FR-19),
 against the real API — same harness as test_editor_e2e.py.
 
-The geocoder call genuinely goes out over the network (Nominatim); in a
-network-restricted environment it genuinely fails, which exercises the
-dod's own failure case for real rather than through a mock: the location
-stays editable with coordinates empty and the editor shows "not resolved"
-rather than silently trusting an unverified address.
+The geocoder call genuinely goes out over the network (Nominatim), like
+every other external call this suite makes to the real subprocess API and
+a real Postgres. Where CI has open egress, a real address genuinely
+resolves; a nonsense one genuinely doesn't. Both branches are exercised
+for real rather than through a mock — the dod's own failure case (a miss
+must stay visible, never silently trusted) included.
 """
 
 import uuid
@@ -15,7 +16,10 @@ from playwright.sync_api import Page, expect
 from test_editor_e2e import _connect, _create_production
 
 
-def test_add_location_geocode_unreachable_stays_editable_and_visible(page: Page, frontend_url: str, api_url: str) -> None:
+def test_add_location_with_real_address_shows_resolved_place_name(page: Page, frontend_url: str, api_url: str) -> None:
+    """dod: "the editor shows the resolved place name next to the address
+    so the AD can catch it" — a Czech street name can resolve to the wrong
+    place, so the resolution itself must be visible, not just trusted."""
     _connect(page, frontend_url, api_url)
     _create_production(page, f"E2E loc {uuid.uuid4().hex[:6]}")
 
@@ -25,8 +29,21 @@ def test_add_location_geocode_unreachable_stays_editable_and_visible(page: Page,
     page.fill("#locAddress", "Trojská 1, Praha 7")
     page.click("#addLocation")
     expect(page.locator("#locations")).to_contain_text("Riverbank, Troja", timeout=15_000)
-    # Failure case (dod): the geocoder being unreachable never blocks saving
-    # the location, and the editor makes the miss visible rather than silent.
+    expect(page.locator("#locations")).to_contain_text("resolved:")
+
+
+def test_add_location_with_unresolvable_address_stays_editable_and_visible(page: Page, frontend_url: str, api_url: str) -> None:
+    """Failure case (dod): a geocoder miss never blocks saving the location,
+    and the editor makes the miss visible rather than silent."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E loc-miss {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Nowhere")
+    page.fill("#locAddress", "zzqzzq nonexistent street 000000, nowhereville")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Nowhere", timeout=15_000)
     expect(page.locator("#locations")).to_contain_text("not resolved")
 
 
