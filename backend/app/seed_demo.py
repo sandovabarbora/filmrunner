@@ -61,6 +61,12 @@ def seed() -> str:
             address="Řípská 1, Praha 3",
             parking_notes="Ulice pouze pro rezidenty; parkujte na Olšanském náměstí, 4 min pěšky.",
             nearest_hospital="Fakultní nemocnice Královské Vinohrady, Šrobárova 50, Praha 10",
+            # Pre-filled rather than geocoded live: this script may run without
+            # internet (or against Nominatim's rate limit) from a routine or CI.
+            # A real save through the API geocodes on its own (ADR-006).
+            geo_lat=50.0847,
+            geo_lng=14.4759,
+            geocoded_display_name="Řípská, Žižkov, Praha 3, Česko",
         )
         db.add(location)
 
