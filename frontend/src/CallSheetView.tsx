@@ -1,3 +1,4 @@
+import { Avatar } from "./Avatar";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem } from "./types";
 
 function pages(eighths: number): string {
@@ -161,8 +162,11 @@ function ContactRow({ c }: { c: ContactCard }) {
   return (
     <div className="contact">
       <div className="who">
-        <span className="name">{c.name}</span>
-        <span className="role">{c.department} · {c.position}</span>
+        <Avatar name={c.name} photoUrl={c.photo_url} />
+        <div className="who-text">
+          <span className="name">{c.name}</span>
+          <span className="role">{c.department} · {c.position}</span>
+        </div>
       </div>
       {tel ? <a className="phone" href={tel}>{c.phone}</a> : <span className="phone none">no number on file</span>}
     </div>

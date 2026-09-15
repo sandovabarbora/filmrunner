@@ -69,6 +69,8 @@ class Contact(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(50))
     email: Mapped[str | None] = mapped_column(String(255))
+    # Set only via POST /contacts/{id}/photo (Supabase Storage public URL), never by direct PATCH.
+    photo_url: Mapped[str | None] = mapped_column(String(500))
 
 
 class Location(Base):

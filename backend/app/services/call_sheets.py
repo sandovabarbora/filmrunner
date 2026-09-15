@@ -158,6 +158,7 @@ def build_contacts(db: Session, call_sheet: CallSheet) -> CallSheetContacts:
             position=member.position,
             phone=member.contact.phone,
             email=member.contact.email,
+            photo_url=member.contact.photo_url,
         )
 
     heads = (
@@ -205,7 +206,7 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     )
     head_card = None
     if head is not None:
-        head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email)
+        head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email, photo_url=head.contact.photo_url)
     return PersonalSheet(
         name=member.contact.name,
         department=member.department,
