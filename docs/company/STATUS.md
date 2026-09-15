@@ -1,10 +1,16 @@
 # Status
 
-Updated: 2026-09-14 17:12 (17:00 shift)
+Updated: 2026-09-15 08:00 (morning brief)
 
 ## today
 
-17:00 shift done: FR-9 delivered (PR #42, open — CI must go green before the founder merges). This was the last scheduled shift of the day; see LOG.md for the full day and the day-summary email for what awaits the founder. Tomorrow's brief plans fresh.
+- 09:00 · FR-11 · frontend — add a QR code to the editor's publish flow so the crew link can be scanned instead of typed.
+- 11:00 · FR-18 · frontend — ship the crew photo upload (gated: Supabase Storage `avatars` bucket, files an INBOX item) on top of the edit/remove flow PR #41 already delivered.
+- 13:00 · FR-19 · tech-lead — add geocoding, computed sunrise/sunset, a weather suggestion, and a nearest-hospital suggestion for locations, using keyless providers per the item's own note.
+- 15:00 · FR-16 · frontend — ship Web Push notifications on revision publish (VAPID keys as a Fly secret) so crew are told when a call sheet changes.
+- 17:00 · FR-7 · security — verify each of the three founding-commit security fixes is actually in place and flip the item's own `state` to `done`.
+
+No open PRs this morning, so nothing was skipped for depending on one still open. Backlog refill not needed: 3 ready+`gated: no` items (FR-11, FR-7, FR-5) still meet the floor before today's picks consume two of them.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
