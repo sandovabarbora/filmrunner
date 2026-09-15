@@ -50,13 +50,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: opening a day while offline shows the last known revision read-only with a clear "reconnect to publish" state, never an empty form that could be published as a blank revision
 
 ## FR-11 · frontend · Share link and QR for the crew
-- state: ready
+- state: in-progress
 - gated: no
 - why: "in everyone's pocket" needs one tap: the AD sends a link, the crew opens it, no typing of IDs or API URLs
 - dod:
   - viewer accepts `?sheet=<id>&api=<base>` and loads without showing the lookup form (done 2026-09-14, fix/pwa-root-shows-demo); the editor shows the link (done, FR-17) and a QR code after publishing
   - the link survives a hot revision: reopening it shows the current revision, and a visible "REV B replaces A" note
   - failure case: a link to a call sheet that no longer exists or is not public shows a clear message, not a spinner
+- note: 09:00 shift 2026-09-15 (PR #45, branch feat/fr-11-qr-crew-link) — a QR code for the crew link now renders next to `#shareLink` after publish, built with `qrcode-generator` (zero deps) as plain SVG rects, no `dangerouslySetInnerHTML`. Verified against a real build and a real API: publish REV A, the QR svg has a real module count. Still open: the "REV B replaces A" note on a hot revision is left for FR-16 to add (it already plans that line for its own push-notification copy); the not-found/not-public failure case for the direct-load link is unverified this shift.
 
 ## FR-14 · tech-lead · Production contacts on the sheet: who to call, head of day, heads of department, nearest hospital
 - state: done
