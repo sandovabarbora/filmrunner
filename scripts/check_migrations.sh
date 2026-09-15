@@ -3,7 +3,7 @@
 # would otherwise break `alembic upgrade head` in the release command.
 set -eu
 PY="${PYTHON:-python3}"
-case "$PY" in /*) ;; *) PY="$(pwd)/$PY" ;; esac
+case "$PY" in /*) ;; */*) PY="$(pwd)/$PY" ;; *) ;; esac
 cd "$(dirname "$0")/../backend"
 count=$("$PY" -m alembic heads | grep -c "(head)" || true)
 if [ "$count" -ne 1 ]; then
