@@ -28,7 +28,11 @@ export function ProductionsScreen({ conn, productions, onCreated, setNotice }: {
     <section className="block" aria-label="Productions">
       <h2>Productions</h2>
       {productions === null && <p className="hint">Loading…</p>}
-      {productions && productions.length === 0 && <p className="hint">No productions yet. Create the first one; days and crew live inside it.</p>}
+      {productions && productions.length === 0 && (
+        <div className="intro" id="intro">
+          <p>A production holds its crew and its shoot days. Create one, add the crew once, then publish a call sheet per day; every revision reaches the same link.</p>
+        </div>
+      )}
       {productions && productions.length > 0 && (
         <ul className="list" id="productions">
           {productions.map((p) => (
