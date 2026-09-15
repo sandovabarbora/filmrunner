@@ -6,66 +6,11 @@ connect, create a production, fill a day, publish A, change the crew
 call, publish B, open the crew link and see REV B.
 """
 
-import os
-import socket
-import subprocess
-import sys
-import time
 import uuid
-from collections.abc import Iterator
-from pathlib import Path
 
-import pytest
 from playwright.sync_api import Page, expect
 
-BACKEND_DIR = Path(__file__).resolve().parents[2] / "backend"
-TEST_DB_URL = os.environ.get(
-    "FILMRUNNER_DATABASE_URL",
-    "postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test",
-)
-E2E_TOKEN = "e2e-token"
-
-
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-@pytest.fixture(scope="session")
-def api_url() -> Iterator[str]:
-    env = {
-        **os.environ,
-        "FILMRUNNER_DATABASE_URL": TEST_DB_URL,
-        "FILMRUNNER_API_BEARER_TOKEN": E2E_TOKEN,
-        "FILMRUNNER_ENVIRONMENT": "development",
-        "FILMRUNNER_CORS_ORIGINS": "*",
-    }
-    subprocess.run(
-        [sys.executable, "-c", "from app.database import Base, engine; import app.models; Base.metadata.create_all(engine)"],
-        cwd=BACKEND_DIR, env=env, check=True,
-    )
-    port = _free_port()
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=BACKEND_DIR, env=env,
-    )
-    url = f"http://127.0.0.1:{port}"
-    deadline = time.time() + 30
-    import urllib.request
-    while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(f"{url}/healthz", timeout=1) as r:
-                if r.status == 200:
-                    break
-        except Exception:
-            time.sleep(0.3)
-    else:
-        proc.kill()
-        raise RuntimeError("API did not start")
-    yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+from conftest import E2E_TOKEN
 
 
 def _connect(page: Page, frontend_url: str, api_url: str) -> None:
