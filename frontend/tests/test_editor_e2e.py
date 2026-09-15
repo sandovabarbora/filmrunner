@@ -304,3 +304,29 @@ def test_crew_edit_personal_call_and_remove(page: Page, frontend_url: str, api_u
     page.goto(link)
     page.wait_for_selector("#you", timeout=15_000)
     assert page.locator("#yourCall").inner_text().strip() == "05:45"
+
+
+def test_first_run_checklist_guides_and_disappears(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E first {uuid.uuid4().hex[:6]}")
+    page.wait_for_selector("#checklist", timeout=10_000)
+    items = page.locator("#checklist li")
+    assert items.count() == 4
+    assert "done" in (items.nth(0).get_attribute("class") or "")
+    assert "next" in (items.nth(1).get_attribute("class") or "")  # add the crew is the next step
+    items.nth(1).locator("a").click()
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Eva"); page.fill("#crewDept", "AD"); page.fill("#crewPos", "1st AD"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Eva", timeout=10_000)
+    page.click("role=tab[name='Days']")
+    expect(page.locator("#checklist li").nth(2)).to_have_class("next", timeout=10_000)  # now: create the first day
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.click("text=Productions")
+    page.wait_for_selector("#productions", timeout=10_000)
+    page.click(f"#productions >> text=E2E first")
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#checklist")).to_have_count(0, timeout=10_000)  # everything done: the guide is gone

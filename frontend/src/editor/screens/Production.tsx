@@ -13,12 +13,47 @@ export function can(production: Production | null, permission: string): boolean 
   return (production?.permissions ?? []).includes(permission as never);
 }
 
+/** First-run guidance: the four things a production needs before the crew gets a link. Hidden once all are done. */
+function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connection; productionId: string; canEdit: boolean; refreshKey: number }) {
+  const [state, setState] = useState<{ crew: number; days: number; published: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.listCrew(conn, productionId), api.listCallSheets(conn, productionId)])
+      .then(([crew, days]) => { if (!cancelled) setState({ crew: crew.length, days: days.length, published: days.filter((d) => d.current_revision).length }); })
+      .catch(() => { if (!cancelled) setState(null); });
+    return () => { cancelled = true; };
+  }, [conn, productionId, refreshKey]);
+  if (!state || !canEdit) return null;
+  const steps = [
+    { done: true, text: "Production created" },
+    { done: state.crew > 0, text: "Add the crew: names, numbers, heads of department", href: href({ screen: "production", productionId, tab: "crew" }) },
+    { done: state.days > 0, text: "Create the first shoot day", href: href({ screen: "day", productionId, callSheetId: null }) },
+    { done: state.published > 0, text: "Publish it and send the crew link (or personal links)", href: href({ screen: "production", productionId, tab: "days" }) },
+  ];
+  if (steps.every((st) => st.done)) return null;
+  const next = steps.find((st) => !st.done);
+  return (
+    <section className="checklist" id="checklist" aria-label="Getting started">
+      <h2>Getting started</h2>
+      <ol>
+        {steps.map((st) => (
+          <li key={st.text} className={st.done ? "done" : st === next ? "next" : ""}>
+            <span className="mark" aria-hidden="true">{st.done ? "✓" : "○"}</span>
+            {st.href && !st.done ? <a href={st.href}>{st.text}</a> : <span>{st.text}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function ProductionScreen({ conn, productionId, production, tab, setNotice }: {
   conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "members"; setNotice: (n: Notice) => void;
 }) {
   const manage = can(production, "production:manage_members");
   return (
     <>
+      <Checklist conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} refreshKey={tab === "days" ? 0 : 1} />
       <div className="tabs" role="tablist">
         <a role="tab" aria-selected={tab === "days"} className={tab === "days" ? "on" : ""} href={href({ screen: "production", productionId, tab: "days" })}>Days</a>
         <a role="tab" aria-selected={tab === "crew"} className={tab === "crew" ? "on" : ""} href={href({ screen: "production", productionId, tab: "crew" })}>Crew</a>
