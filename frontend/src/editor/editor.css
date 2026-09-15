@@ -66,3 +66,5 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .role-chip { margin-left: auto; align-self: center; font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .subhead { margin: 16px 0 8px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-2); }
 .row.editing { background: #fff; outline: 1.5px solid var(--rule-strong); outline-offset: -1px; border-radius: 3px; padding-left: 8px; padding-right: 8px; }
+.crew-name { display: flex; align-items: center; gap: 10px; }
+.photo-field { align-items: center; margin-bottom: 12px; }

@@ -75,7 +75,7 @@ def test_head_of_department_without_phone_is_listed_with_null_phone(client: Test
     contacts = client.get(f"/api/v1/public/call-sheets/{sheet['id']}").json()["contacts"]
     assert contacts["head_of_day"] is None
     assert contacts["department_heads"] == [
-        {"name": "Jana Bez Čísla", "department": "Costume", "position": "Costume designer", "phone": None, "email": None}
+        {"name": "Jana Bez Čísla", "department": "Costume", "position": "Costume designer", "phone": None, "email": None, "photo_url": None}
     ]
     assert contacts["nearest_hospital"] is None
 

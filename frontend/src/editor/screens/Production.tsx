@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Avatar } from "../../Avatar";
 import { api, type Connection } from "../api";
+import { resizeImageToBlob } from "../resizeImage";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CrewMember, Member, Production, ProductionRole } from "../../types";
@@ -75,6 +77,8 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
   const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
   const [editing, setEditing] = useState<CrewMember | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.listCrew(conn, productionId).then(setCrew).catch((err: unknown) => { setCrew([]); setNotice(noticeFromError(err, "Cannot load crew")); });
@@ -125,6 +129,38 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
     }
   }
 
+  function applyContactPhoto(contactId: string, photoUrl: string | null) {
+    setCrew((c) => (c ?? []).map((x) => (x.contact_id === contactId ? { ...x, contact: { ...x.contact, photo_url: photoUrl } } : x)));
+    setEditing((e) => (e && e.contact_id === contactId ? { ...e, contact: { ...e.contact, photo_url: photoUrl } } : e));
+  }
+
+  async function uploadPhoto(m: CrewMember, file: File) {
+    setPhotoBusy(true);
+    try {
+      const resized = await resizeImageToBlob(file);
+      const contact = await api.uploadContactPhoto(conn, m.contact_id, resized);
+      applyContactPhoto(m.contact_id, contact.photo_url);
+      setNotice({ kind: "ok", text: `Photo updated for ${m.contact.name}.` });
+    } catch (err) {
+      // A failed upload never touches the rest of the person's saved fields.
+      setNotice(noticeFromError(err, "Could not upload the photo"));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function removePhoto(m: CrewMember) {
+    setPhotoBusy(true);
+    try {
+      const contact = await api.removeContactPhoto(conn, m.contact_id);
+      applyContactPhoto(m.contact_id, contact.photo_url);
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not remove the photo"));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   const canSave = form.name.trim() && form.department.trim() && form.position.trim() && !busy;
   return (
     <section className="block" aria-label="Crew">
@@ -135,8 +171,11 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         <ul className="list" id="crew">
           {crew.map((m) => (
             <li key={m.id} className={`row static${editing?.id === m.id ? " editing" : ""}`}>
-              <span className="name">{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
-                <span className="meta"> · {m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}{m.standard_call_time ? ` · call ${m.standard_call_time}` : ""}</span>
+              <span className="name crew-name">
+                <Avatar name={m.contact.name} photoUrl={m.contact.photo_url} size={28} />
+                <span>{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
+                  <span className="meta"> · {m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}{m.standard_call_time ? ` · call ${m.standard_call_time}` : ""}</span>
+                </span>
               </span>
               {canEdit && (
                 <span className="row-actions">
@@ -150,6 +189,29 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       )}
       {canEdit && (<>
       <h3 className="subhead" id="crewFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add a person"}</h3>
+      {editing && (
+        <div className="inline photo-field" id="crewPhotoField">
+          <Avatar name={editing.contact.name} photoUrl={editing.contact.photo_url} size={48} />
+          <button type="button" className="quiet" disabled={photoBusy} onClick={() => photoInputRef.current?.click()}>
+            {photoBusy ? "Uploading…" : editing.contact.photo_url ? "Change photo" : "Add photo"}
+          </button>
+          {editing.contact.photo_url && (
+            <button type="button" className="quiet danger" disabled={photoBusy} onClick={() => void removePhoto(editing)}>Remove photo</button>
+          )}
+          <input
+            ref={photoInputRef}
+            id="crewPhotoInput"
+            type="file"
+            accept="image/jpeg,image/png"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file && editing) void uploadPhoto(editing, file);
+            }}
+          />
+        </div>
+      )}
       <div className="grid2">
         <label className="field" htmlFor="crewName"><span className="label">Name</span><input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
         <label className="field" htmlFor="crewPhone"><span className="label">Phone</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>

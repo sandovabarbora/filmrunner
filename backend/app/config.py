@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     # Supabase project URL (https://<ref>.supabase.co); its JWKS verifies user sign-in tokens.
     supabase_url: str | None = None
 
+    # Service-role key for Supabase Storage uploads (crew photos, FR-18). Unset until
+    # INBOX #4 (create the `avatars` bucket) is done by the founder; the upload endpoint
+    # refuses with 503 until both this and supabase_url are set.
+    supabase_service_role_key: str | None = None
+    avatar_bucket: str = "avatars"
+
     # Comma-separated list of allowed browser origins, or "*" for local dev.
     # Production sets it to the deployed frontend origin.
     cors_origins: str = "*"

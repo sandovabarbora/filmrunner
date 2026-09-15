@@ -87,6 +87,7 @@ class ContactCard(BaseModel):
     position: str
     phone: str | None
     email: str | None
+    photo_url: str | None
 
 
 class PersonalSheet(BaseModel):

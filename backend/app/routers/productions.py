@@ -6,7 +6,7 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
@@ -15,6 +15,7 @@ from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
 from app.models.production import Contact, CrewMember, Location, Production
+from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, upload_contact_photo
 from app.schemas.production import (
     ContactUpdate,
     CrewMemberUpdate,
@@ -211,23 +212,70 @@ def remove_crew_member(
     db.commit()
 
 
+def _require_contact_edit(db: Session, principal: Principal, contact_id: uuid.UUID) -> None:
+    """Contacts are shared rows; editing one needs crew:edit on a production that has this person in its crew."""
+    if principal.kind == "service":
+        return
+    production_ids = {m.production_id for m in db.query(CrewMember).filter(CrewMember.contact_id == contact_id)}
+    allowed = any(CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in production_ids)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person in its crew")
+
+
 @router.patch("/contacts/{contact_id}", response_model=ContactRead)
 def update_contact(
     contact_id: uuid.UUID, payload: ContactUpdate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
 ) -> Contact:
-    """Contacts are shared rows; editing one needs crew:edit on a production that has this person in its crew."""
     contact = db.get(Contact, contact_id)
     if contact is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
-    if principal.kind != "service":
-        production_ids = {m.production_id for m in db.query(CrewMember).filter(CrewMember.contact_id == contact_id)}
-        allowed = any(
-            CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in production_ids
-        )
-        if not allowed:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person in its crew")
+    _require_contact_edit(db, principal, contact_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(contact, field, value)
+    db.commit()
+    db.refresh(contact)
+    return contact
+
+
+@router.post("/contacts/{contact_id}/photo", response_model=ContactRead)
+async def upload_contact_photo_endpoint(
+    contact_id: uuid.UUID, file: UploadFile = File(...), db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> Contact:
+    """Crew avatar upload (FR-18, gated on the `avatars` Supabase Storage bucket).
+
+    Decoupled from `PATCH /contacts/{id}`: a failed upload (415/413/503/502)
+    never touches the contact's other fields, so an editor's name/phone/etc.
+    change already saved stays saved.
+    """
+    contact = db.get(Contact, contact_id)
+    if contact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    _require_contact_edit(db, principal, contact_id)
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"Photo must be JPEG or PNG, got {file.content_type!r}")
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
+    try:
+        contact.photo_url = upload_contact_photo(str(contact_id), data, file.content_type)
+    except PhotoUploadNotConfigured as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except PhotoUploadFailed as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(contact)
+    return contact
+
+
+@router.delete("/contacts/{contact_id}/photo", response_model=ContactRead)
+def remove_contact_photo(
+    contact_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> Contact:
+    contact = db.get(Contact, contact_id)
+    if contact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    _require_contact_edit(db, principal, contact_id)
+    contact.photo_url = None
     db.commit()
     db.refresh(contact)
     return contact
