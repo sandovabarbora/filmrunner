@@ -74,6 +74,7 @@ export function App() {
         <h1>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
       </header>
+      <p className="print-meta" aria-hidden="true">Printed {new Date().toLocaleString()} · check the live link before call; revisions replace this page.</p>
 
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
