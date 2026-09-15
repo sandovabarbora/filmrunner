@@ -205,8 +205,55 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .empty { margin-top: 24px; padding: 16px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-2); font-size: 0.9375rem; }
 
 @media print {
-  body { background: #fff; }
+  /* A4 call sheet: the same information, set for paper. */
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  html, body { background: #fff; color: #000; font-size: 10.5pt; line-height: 1.35; }
   .wrap { max-width: none; padding: 0; }
-  .status, .actions, .hint, .lookup, .cached-at { display: none !important; }
+  .status, .actions, .hint, .lookup, .cached-at, .skeleton, .home, .others summary { display: none !important; }
   .sheet.visible { animation: none; }
+
+  .masthead { border-bottom: 1.5pt solid #000; padding: 0 0 4pt; }
+  .masthead h1 { font-size: 9pt; }
+  .masthead .sub { font-size: 9pt; color: #444; }
+  .print-meta { display: block !important; font-size: 8.5pt; color: #444; margin: 2pt 0 0; }
+
+  .sheet-header { padding: 8pt 0 4pt; }
+  .production { font-size: 16pt; }
+  .day { font-size: 10pt; color: #222; }
+  .rev-badge { border: 1pt solid #000; padding: 2pt 6pt; font-size: 9pt; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .you { border: 1.5pt solid #000; padding: 6pt 8pt; margin-top: 6pt; }
+  .you .value { font-size: 22pt; }
+  .calls { grid-template-columns: 1fr 1fr 1fr 1fr; padding: 8pt 0; border-top: 1pt solid #000; border-bottom: 0.5pt solid #999; }
+  .call.crew .value { font-size: 26pt; }
+  .call.shoot .value { font-size: 18pt; margin-top: 6pt; }
+  .meta { padding: 5pt 0; border-bottom: 0.5pt solid #999; font-size: 9.5pt; }
+  .meta .weather { flex-basis: auto; }
+
+  .safety { margin-top: 8pt; padding: 6pt 8pt; border: 1pt solid #000; page-break-inside: avoid; }
+  .safety p { font-size: 9.5pt; }
+
+  .schedule { margin-top: 10pt; }
+  .schedule h2, .contacts h2 { font-size: 8pt; color: #444; }
+  thead { display: table-header-group; }
+  thead th { font-size: 7.5pt; padding: 3pt 8pt 3pt 0; border-bottom: 1pt solid #000; }
+  tbody td { padding: 4pt 8pt 4pt 0; font-size: 9.5pt; border-bottom: 0.5pt solid #bbb; }
+  tbody tr { page-break-inside: avoid; }
+  tbody tr:last-child td { border-bottom: 1pt solid #000; }
+  td.scene { width: 6ch; }
+  td.ie, td.dn { padding-top: 4pt; font-size: 8pt; }
+
+  .contacts { margin-top: 10pt; page-break-inside: avoid; }
+  .contacts .hod { border: 1pt solid #000; padding: 5pt 8pt; background: #fff !important; }
+  .contact { padding: 3pt 0; }
+  .contact .phone { padding: 0 0 0 8pt; font-size: 9.5pt; }
+  .others { display: block; }
+  .others[open] > summary, .others > summary { display: none !important; }
+  .others .contact-list { display: block; }
+  .hospital { font-size: 9.5pt; }
+
+  .print-foot { display: block !important; margin-top: 12pt; padding-top: 4pt; border-top: 0.5pt solid #999; font-size: 8pt; color: #444; }
 }
+
+/* Print-only elements stay hidden on screen. */
+.print-meta, .print-foot { display: none; }

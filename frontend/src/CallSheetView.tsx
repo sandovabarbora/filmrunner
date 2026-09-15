@@ -141,9 +141,16 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         </p>
       )}
 
+      <p className="print-foot" id="printFoot">
+        {title} · Day {callSheet.day_number} of {callSheet.day_count} · {callSheet.shoot_date}
+        {rev ? ` · REV ${rev.revision_letter}` : ""}
+        {rev?.created_at ? ` · issued ${new Date(rev.created_at).toLocaleString()}` : ""}
+        {" · FilmRunner"}
+      </p>
+
       <div className="actions">
-        <button onClick={() => window.print()}>Print</button>
-        <span className="hint">Add to home screen to open it with no signal.</span>
+        <button onClick={() => window.print()}>Print / Save PDF</button>
+        <span className="hint">Add to home screen to open it with no signal. On iPhone: Share → Print → pinch out for PDF.</span>
       </div>
     </article>
   );
