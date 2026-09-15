@@ -1,7 +1,7 @@
 """location geocoded display name
 
 Revision ID: d353e6845c8e
-Revises: 931c2ab3ce65
+Revises: c2a1f9e7b3d4
 Create Date: 2026-09-15 11:07:33.783261
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'd353e6845c8e'
-down_revision: Union[str, None] = '931c2ab3ce65'
+down_revision: Union[str, None] = 'c2a1f9e7b3d4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

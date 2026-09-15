@@ -39,6 +39,7 @@ export interface ContactCard {
   position: string;
   phone: string | null;
   email: string | null;
+  photo_url: string | null;
 }
 
 export interface CallSheetContacts {
@@ -133,6 +134,7 @@ export interface ContactCreate {
 
 export interface Contact extends ContactCreate {
   id: string;
+  photo_url: string | null;
 }
 
 export interface CrewMemberCreate {

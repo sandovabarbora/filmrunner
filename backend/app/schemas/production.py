@@ -19,6 +19,8 @@ class ContactCreate(BaseModel):
 class ContactRead(ContactCreate):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
+    # Set only via POST/DELETE /contacts/{id}/photo, never accepted on create or PATCH.
+    photo_url: str | None = None
 
 
 class ProductionCreate(BaseModel):
