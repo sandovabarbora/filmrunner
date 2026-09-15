@@ -35,6 +35,8 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .share { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; word-break: break-all; }
 .share .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .share a { display: block; margin: 6px 0 8px; color: var(--ink); font-family: var(--mono); font-size: 0.8125rem; }
+.share .qr { margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.share .qr svg { border: 1px solid var(--rule); border-radius: 3px; }
 .publish .quiet { margin-top: 12px; }
 
 /* App navigation. */
