@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadPersonal, publicCallSheetUrl, type LoadResult } from "./loader";
+import { NotificationToggle } from "./NotificationToggle";
 import type { PersonalSheet } from "./types";
 
 /**
@@ -108,6 +109,9 @@ export function App() {
 
       {personal === "invalid" && (
         <div className="status offline" id="personalInvalid" role="status">This personal link is not on the crew list any more. Showing the general call sheet.</div>
+      )}
+      {mode.kind === "share" && mode.me && personal && personal !== "invalid" && (
+        <NotificationToggle apiBase={mode.api} token={mode.me} />
       )}
       {result && result.kind !== "error" && (
         <CallSheetView

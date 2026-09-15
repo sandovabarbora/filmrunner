@@ -14,6 +14,7 @@ from app.models.call_sheet import (  # noqa: F401
 )
 from app.models.membership import ProductionMember, ProductionRole  # noqa: F401
 from app.models.production import CastMember, Contact, CrewMember, Location, Production  # noqa: F401
+from app.models.push import PushSubscription  # noqa: F401
 
 __all__ = [
     "Production",
@@ -28,4 +29,5 @@ __all__ = [
     "DistributionLog",
     "ProductionMember",
     "ProductionRole",
+    "PushSubscription",
 ]

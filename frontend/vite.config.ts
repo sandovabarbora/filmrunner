@@ -26,6 +26,10 @@ export default defineConfig({
         // network-first with a cache fallback (second offline layer under
         // the IndexedDB store in cache.ts).
         globPatterns: ["**/*.{js,css,html,svg,json}"],
+        // generateSW cannot add custom event listeners itself; push-sw.js
+        // (self.addEventListener('push', ...)) is imported into the
+        // generated service worker instead (FR-16, ADR-007).
+        importScripts: ["push-sw.js"],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes("/api/v1/public/call-sheets/"),

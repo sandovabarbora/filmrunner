@@ -13,6 +13,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.call_sheet import CallSheetStatus, CastStatusCode, DayNight, IntExt
+from app.schemas.push import NotificationSummaryRead
 
 
 class ScheduleItemCreate(BaseModel):
@@ -77,6 +78,10 @@ class CallSheetRevisionRead(BaseModel):
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemRead] = []
     cast_calls: list[CastCallEntryRead] = []
+    # Not a stored field: set by the publish endpoint after sending (FR-16),
+    # so the AD sees delivery status without a second request. Absent on a
+    # plain GET of an existing revision.
+    notifications: NotificationSummaryRead | None = None
 
 
 class ContactCard(BaseModel):

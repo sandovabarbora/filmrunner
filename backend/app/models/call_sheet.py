@@ -39,6 +39,7 @@ class DistributionChannel(str, enum.Enum):
     EMAIL = "email"
     SMS = "sms"
     LINK = "link"
+    PUSH = "push"
 
 
 class IntExt(str, enum.Enum):
@@ -169,6 +170,10 @@ class DistributionLog(Base):
     channel: Mapped[DistributionChannel] = mapped_column(Enum(DistributionChannel, name="distribution_channel"))
     sent_at: Mapped[datetime | None]
     viewed_at: Mapped[datetime | None]
+    # Set when an attempt failed (e.g. a push service rejected the
+    # subscription); null means delivered. Lets the AD see who did not
+    # get an update instead of assuming everyone did (FR-16 failure case).
+    error: Mapped[str | None] = mapped_column(String(500))
 
     revision: Mapped["CallSheetRevision"] = relationship(back_populates="distribution_log")
     contact: Mapped["Contact"] = relationship()  # noqa: F821
