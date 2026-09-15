@@ -5,6 +5,7 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 import logging
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -26,9 +27,12 @@ from app.schemas.production import (
     ContactRead,
     LocationCreate,
     LocationRead,
+    LocationSuggestion,
+    LocationUpdate,
     ProductionCreate,
     ProductionRead,
 )
+from app.services import geocoding, hospitals, weather
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +131,23 @@ def create_contact(payload: ContactCreate, db: Session = Depends(get_db)) -> Con
     return contact
 
 
+def _geocode_into(location: Location) -> None:
+    """Fill geo_lat/geo_lng/geocoded_display_name from `location.address`.
+
+    A geocoder miss or timeout leaves the coordinate fields untouched (they
+    stay editable and empty) rather than raising — ADR-006's "the sheet
+    never waits on a third party" rule.
+    """
+    if not location.address:
+        return
+    result = geocoding.geocode(location.address)
+    if result is None:
+        return
+    location.geo_lat = result.lat
+    location.geo_lng = result.lng
+    location.geocoded_display_name = result.display_name
+
+
 @router.post(
     "/productions/{production_id}/locations",
     response_model=LocationRead,
@@ -136,6 +157,7 @@ def create_location(
     production_id: uuid.UUID, payload: LocationCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
 ) -> Location:
     location = Location(production_id=production_id, **payload.model_dump())
+    _geocode_into(location)
     db.add(location)
     db.commit()
     db.refresh(location)
@@ -145,6 +167,52 @@ def create_location(
 @router.get("/productions/{production_id}/locations", response_model=list[LocationRead])
 def list_locations(production_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))) -> list[Location]:
     return list(db.query(Location).filter(Location.production_id == production_id).all())
+
+
+def _location_of_production_or_404(db: Session, production_id: uuid.UUID, location_id: uuid.UUID) -> Location:
+    location = db.get(Location, location_id)
+    if location is None or location.production_id != production_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+    return location
+
+
+@router.patch("/productions/{production_id}/locations/{location_id}", response_model=LocationRead)
+def update_location(
+    production_id: uuid.UUID, location_id: uuid.UUID, payload: LocationUpdate,
+    db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT)),
+) -> Location:
+    location = _location_of_production_or_404(db, production_id, location_id)
+    changes = payload.model_dump(exclude_unset=True)
+    address_changed = "address" in changes and changes["address"] != location.address
+    for field, value in changes.items():
+        setattr(location, field, value)
+    if address_changed:
+        _geocode_into(location)
+    db.commit()
+    db.refresh(location)
+    return location
+
+
+@router.get("/productions/{production_id}/locations/{location_id}/weather-suggestion", response_model=LocationSuggestion)
+def get_weather_suggestion(
+    production_id: uuid.UUID, location_id: uuid.UUID, shoot_date: date,
+    db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ)),
+) -> LocationSuggestion:
+    location = _location_of_production_or_404(db, production_id, location_id)
+    if location.geo_lat is None or location.geo_lng is None:
+        return LocationSuggestion(suggestion=None)
+    return LocationSuggestion(suggestion=weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date))
+
+
+@router.get("/productions/{production_id}/locations/{location_id}/hospital-suggestion", response_model=LocationSuggestion)
+def get_hospital_suggestion(
+    production_id: uuid.UUID, location_id: uuid.UUID,
+    db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ)),
+) -> LocationSuggestion:
+    location = _location_of_production_or_404(db, production_id, location_id)
+    if location.geo_lat is None or location.geo_lng is None:
+        return LocationSuggestion(suggestion=None)
+    return LocationSuggestion(suggestion=hospitals.nearest_hospital_suggestion(location.geo_lat, location.geo_lng))
 
 
 @router.post(

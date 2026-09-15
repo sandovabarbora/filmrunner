@@ -82,6 +82,10 @@ class Location(Base):
     nearest_hospital: Mapped[str | None] = mapped_column(String(500))
     geo_lat: Mapped[float | None]
     geo_lng: Mapped[float | None]
+    # The place name the geocoder resolved `address` to (FR-19/ADR-006), shown
+    # next to the address in the editor so a wrong match (common with Czech
+    # street names) is visible rather than silently trusted. Not user-edited.
+    geocoded_display_name: Mapped[str | None] = mapped_column(String(500))
 
     production: Mapped["Production"] = relationship(back_populates="locations")
 
