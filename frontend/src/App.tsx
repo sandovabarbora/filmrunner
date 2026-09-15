@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadPersonal, publicCallSheetUrl, type LoadResult } from "./loader";
+import { NotificationToggle } from "./NotificationToggle";
 import type { PersonalSheet } from "./types";
 
 /**
@@ -74,6 +75,7 @@ export function App() {
         <h1>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
       </header>
+      <p className="print-meta" aria-hidden="true">Printed {new Date().toLocaleString()} · check the live link before call; revisions replace this page.</p>
 
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
@@ -108,6 +110,9 @@ export function App() {
 
       {personal === "invalid" && (
         <div className="status offline" id="personalInvalid" role="status">This personal link is not on the crew list any more. Showing the general call sheet.</div>
+      )}
+      {mode.kind === "share" && mode.me && personal && personal !== "invalid" && (
+        <NotificationToggle apiBase={mode.api} token={mode.me} />
       )}
       {result && result.kind !== "error" && (
         <CallSheetView

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import call_sheets, productions
+from app.routers import call_sheets, productions, push
 
 settings = get_settings()
 
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(productions.router, prefix="/api/v1", tags=["productions"])
 app.include_router(call_sheets.router, prefix="/api/v1", tags=["call-sheets"])
 app.include_router(call_sheets.public_router, prefix="/api/v1", tags=["call-sheets-public"])
+app.include_router(push.router, prefix="/api/v1", tags=["push"])
 
 
 @app.get("/healthz", tags=["ops"])

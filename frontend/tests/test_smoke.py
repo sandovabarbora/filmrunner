@@ -207,3 +207,18 @@ def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, f
     finally:
         sw_path.write_text(original_sw)
         fixture_path.unlink()
+
+
+def test_print_media_shows_paper_chrome_and_hides_screen_controls(page: Page, frontend_url: str) -> None:
+    """The printed sheet carries its own header line and footer; screen-only controls disappear."""
+    page.goto(f"{frontend_url}/index.html?demo=1")
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    page.emulate_media(media="print")
+    assert page.locator("#printFoot").is_visible()
+    assert "REV B" in page.locator("#printFoot").inner_text()
+    assert not page.locator(".actions").is_visible()
+    assert not page.locator("#status").is_visible()
+    assert page.locator("#otherDepartments summary").count() == 0 or not page.locator("#otherDepartments summary").is_visible()
+    page.emulate_media(media="screen")
+    assert not page.locator("#printFoot").is_visible()
+    assert page.locator(".actions").is_visible()

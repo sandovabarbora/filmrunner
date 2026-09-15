@@ -8,6 +8,7 @@ pydantic-settings==2.5.2
 python-dotenv==1.0.1
 PyJWT[crypto]==2.9.0
 python-multipart==0.0.12
+pywebpush==2.5.0
 
 # testing
 pytest==8.3.3
