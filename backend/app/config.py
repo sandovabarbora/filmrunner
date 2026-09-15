@@ -38,6 +38,17 @@ class Settings(BaseSettings):
     # Production sets it to the deployed frontend origin.
     cors_origins: str = "*"
 
+    # Web Push (FR-16, ADR-007). Unset in development and until the founder
+    # runs backend/scripts/generate_vapid_keys.py and sets these as Fly
+    # secrets (INBOX #5) — the feature stays inert (no "Enable notifications"
+    # control shown) rather than erroring when they are absent.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    # RFC 8292 requires a contact URI the push services may use to reach the
+    # site operator; a generic mailto keeps a real person's address out of
+    # this config, but the founder may set her own.
+    vapid_subject: str = "mailto:admin@filmrunner.app"
+
     @model_validator(mode="after")
     def _refuse_dev_token_outside_development(self) -> "Settings":
         if self.environment != "development" and self.api_bearer_token == DEV_BEARER_TOKEN:

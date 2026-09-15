@@ -50,6 +50,12 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         </div>
       </header>
 
+      {rev && rev.revision_letter !== "A" && (
+        <p className="rev-replaces" id="revReplaces">
+          REV {rev.revision_letter} replaces {String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1)}
+        </p>
+      )}
+
       {personal && (
         <section className="you" id="you" aria-label="Your call">
           <div className="you-head">

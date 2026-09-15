@@ -24,7 +24,9 @@ from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import PersonalSheet
+from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
 from app.services.call_sheets import HeadOfDayNotOnProduction, build_contacts, build_personal, create_call_sheet, publish_revision
+from app.services.notifications import NotificationSummary, notify_subscribers
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,14 @@ def _audit_label(principal: Principal, body_value: str | None) -> str:
     if principal.kind == "user":
         return principal.label
     return f"service:{body_value or 'unknown'}"
+
+
+def _summary_read(summary: NotificationSummary) -> NotificationSummaryRead:
+    return NotificationSummaryRead(
+        attempted=summary.attempted,
+        delivered=summary.delivered,
+        failed=[DeliveryFailureRead(crew_member_name=f.crew_member_name, reason=f.reason) for f in summary.failed],
+    )
 
 
 def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
@@ -70,7 +80,11 @@ def create_call_sheet_endpoint(
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except HeadOfDayNotOnProduction as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    return _read_with_contacts(db, call_sheet.id)
+    summary = notify_subscribers(db, call_sheet, call_sheet.current_revision)
+    read = _read_with_contacts(db, call_sheet.id)
+    if read.current_revision is not None:
+        read.current_revision.notifications = _summary_read(summary)
+    return read
 
 
 @router.post(
@@ -87,13 +101,17 @@ def publish_revision_endpoint(
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
     try:
-        return publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
+        revision = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
     except HeadOfDayNotOnProduction as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
         # 26 revisions/day exhausted — a real operational limit, not a bug,
         # so it's a 409 (Conflict) rather than a 500.
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    summary = notify_subscribers(db, call_sheet, revision)
+    read = CallSheetRevisionRead.model_validate(revision)
+    read.notifications = _summary_read(summary)
+    return read
 
 
 @router.get("/productions/{production_id}/call-sheets", response_model=list[CallSheetRead])

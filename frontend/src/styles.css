@@ -95,6 +95,17 @@ button { font: inherit; }
 .rev-badge[data-rev="D"] { --rev: var(--rev-d); }
 .rev-badge[data-rev="E"] { --rev: var(--rev-e); }
 
+.rev-replaces { margin: 2px 0 0; font-size: 0.8125rem; color: var(--muted); }
+
+/* FR-16: opt in to push notifications from a personal link. */
+.notify { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
+.notify-on { font-size: 0.875rem; color: var(--ink-2); }
+.notify button.secondary {
+  padding: 8px 12px; border: 1.5px solid var(--rule-strong); border-radius: 4px; background: #fff;
+  font-weight: 600; font-size: 0.875rem; cursor: pointer;
+}
+.notify button.quiet { border: 0; background: none; color: var(--muted); font-size: 0.8125rem; text-decoration: underline; cursor: pointer; padding: 0; }
+
 /* Personal block: the one number this person wakes up for. */
 .you { margin-top: 14px; padding: 12px 14px; border: 2px solid var(--rule-strong); border-radius: 3px; background: #fff; }
 .you-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
