@@ -85,7 +85,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - blocked-until: FR-10 (editor) and FR-12 (auth model decided), because the personal token design must match the auth ADR
 
 ## FR-18 · frontend · Crew management: edit, remove, personal call time, photo
-- state: ready
+- state: in-progress
 - gated: partial
 - why: the Crew tab can only add; a typo in a phone number or a wrong department cannot be fixed, a person who left cannot be removed, and the personal call time (FR-13 reads CrewMember.standard_call_time) has no field. Founder request 2026-09-14.
 - dod:
@@ -93,7 +93,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - editor Crew tab: tap a person to edit name, phone, department, position, personal call time, head of department; remove with confirmation; changes show on the sheet immediately (contacts are computed on read)
   - photo (gated): a small avatar per contact, stored in Supabase Storage (bucket `avatars`, public read, 256 px, resized in the browser before upload); shown on the personal sheet and in Who to call. Creating the bucket is an INBOX item; the data model stores only the URL, so storage can move
   - failure case: editing a person offline keeps the change on the phone and marks it "not saved"; a failed upload never blocks saving the rest of the person
-- note: ordering: edit and remove first (no external dependency), photo last
+- note: ordering: edit and remove first (no external dependency), photo last. Edit/remove delivered 2026-09-14 (PR #41). 11:00 shift 2026-09-15 (PR #48, branch feat/fr-18-crew-photo, open) added the photo bullet: `contacts.photo_url` column, `POST`/`DELETE /contacts/{id}/photo` (crew:edit, JPEG/PNG, 300 KB cap, `app/services/storage.py` uploads to Supabase Storage with the service-role key and returns a cache-busted public URL), `ContactCard.photo_url` threaded through Who to call and the personal sheet's department-head block, editor Crew tab gets a resize-to-256px-then-upload control with an avatar in the list and edit form. Verified live in a real headless-Chromium browser against a real build and API: with a stub storage server the upload succeeds and the avatar renders in the crew list and in the public sheet's Who to call; with no Supabase secret configured (today's actual state) the upload 503s with a clear message and the person's other fields still save. 46/46 backend tests pass (7 new); `npm run typecheck` and `npm run build` clean. Filed INBOX #4 for the founder to create the `avatars` bucket and set the service-role key — until then the photo control is visible but always 503s. Still open: the dod's other failure-case half, an offline edit of an *existing* person keeping its change locally marked "not saved", is not built; today it just surfaces the generic "No connection" notice with nothing queued.
 
 ## FR-19 · tech-lead · Location-based services: sunrise and sunset, weather, nearest hospital from the address
 - state: ready
