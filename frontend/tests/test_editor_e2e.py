@@ -140,6 +140,10 @@ def test_connected_app_production_crew_day_reopen_publish_b(page: Page, frontend
     share = page.locator("#shareLink").get_attribute("href")
     assert share
 
+    # FR-11: a scannable QR code for the crew link sits next to it.
+    expect(page.locator("#shareQr svg")).to_be_visible()
+    assert page.locator("#shareQr svg rect").count() > 20  # a real QR code, not a placeholder
+
     # Crew link: REV B, new call, head of day and HoD with tap-to-call.
     page.goto(share)
     page.wait_for_selector("#sheet.visible", timeout=15_000)

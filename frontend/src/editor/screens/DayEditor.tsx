@@ -4,6 +4,7 @@ import { clearDraft, draftKey, emptyDraft, loadDraft, saveDraft, type Draft } fr
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink } from "./Production";
+import { QrCode } from "./QrCode";
 import type { CallSheetCreated, CrewMember, RevisionCreate, ScheduleItemCreate } from "../../types";
 
 function revisionPayload(d: Draft): RevisionCreate {
@@ -227,6 +228,10 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <div className="label">Crew link</div>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
+            <div className="qr" id="shareQr">
+              <QrCode value={crewLink(conn.apiBase, draft.callSheetId!)} />
+              <span className="hint">Scan to open the crew link</span>
+            </div>
           </div>
         )}
         {published && crew.length > 0 && (
