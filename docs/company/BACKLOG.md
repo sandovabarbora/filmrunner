@@ -207,10 +207,11 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if a hard requirement in BRIEF.md later contradicts the choice, the ADR names the trigger to revisit rather than being rewritten
 
 ## FR-5 · tech-lead · Security and QA gate checklist
-- state: ready
+- state: done
 - gated: no
 - why: gates exist as roles in TEAM.md but not as a checklist anyone can run
 - dod:
   - docs/gates/pre-merge-checklist.md with security items (secrets, auth on every non-public route, input validation, dependency pins) and QA items (tests for the change, failure case covered, CI green)
   - the PR template references it
   - failure case: a PR that skips the checklist is visible as such in the template, not silently merged
+- note: 09:00 shift 2026-09-16 (PR #59, branch docs/fr-5-pre-merge-checklist) delivered the whole dod: docs/gates/pre-merge-checklist.md (security: no secrets, auth on every non-public route via require_principal/authz.require_on, input validation, no unescaped external data in HTML citing the FR-7 regression test, server-set audit fields, exact-pinned dependencies, no unapproved spend/account/deploy; QA: tests including the failure case, CI green on the PR's own head, real verification when a dod demands it) and the PR template, expanded from 5 to 8 checkboxes and linking the file, so a skipped item is visible on the PR itself. Doc-only change, `python scripts/check_company_docs.py` clean; no code, so no test suite applies. Awaits founder merge.
