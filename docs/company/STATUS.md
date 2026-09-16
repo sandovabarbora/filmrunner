@@ -1,16 +1,16 @@
 # Status
 
-Updated: 2026-09-15 17:20 (17:00 shift)
+Updated: 2026-09-16 08:00 (morning brief)
 
 ## today
 
-- 09:00 · FR-11 · frontend — done: QR code added to the editor's publish flow (PR #45, merged).
-- 11:00 · FR-18 · frontend — done (code side): crew photo upload shipped (PR #48, merged); gated on INBOX #4 (Supabase Storage bucket + secret) before it works for real.
-- 13:00 · FR-19 · tech-lead — done: geocoding, computed sunrise/sunset, a weather suggestion, and a nearest-hospital suggestion for locations, using keyless providers (PR #51, merged).
-- 15:00 · FR-16 · frontend — done (code side): Web Push notifications on revision publish shipped (PR #53, merged); gated on INBOX #5 (VAPID keys as a Fly secret) before the "Enable notifications" control appears for real.
-- 17:00 · FR-7 · security — done: re-verified all three founding-commit security fixes are actually in place (no new code needed) and flipped the backlog item's own state to done. See BACKLOG.md FR-7 note for detail.
+- 09:00 · FR-5 · tech-lead — write `docs/gates/pre-merge-checklist.md` (security + QA items) and reference it from the PR template.
+- 11:00 · idle — no further `ready` item with `gated: no`/`partial` in the backlog; everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
+- 13:00 · idle — same reason as 11:00.
+- 15:00 · idle — same reason as 11:00.
+- 17:00 · idle — same reason as 11:00; the 17:00 shift still sends the day summary regardless.
 
-Last scheduled shift of the day; day summary follows. Backlog refill not needed (FR-5 and FR-17/FR-18's remaining pieces still meet the ready+gated:no/partial floor).
+Backlog is thin: only FR-5 is `ready` and ungated today. Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PR #55 (`fix/alembic-merge-heads`) is still the only open code PR; it was skipped as a backlog source (it isn't a backlog item) but remains an unmerged deploy blocker from a prior shift.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
