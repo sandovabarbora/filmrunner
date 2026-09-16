@@ -1,16 +1,16 @@
 # Status
 
-Updated: 2026-09-16 08:00 (morning brief)
+Updated: 2026-09-16 09:12 (09:00 shift)
 
 ## today
 
-- 09:00 · FR-5 · tech-lead — write `docs/gates/pre-merge-checklist.md` (security + QA items) and reference it from the PR template.
+- 09:00 · FR-5 · tech-lead — done. `docs/gates/pre-merge-checklist.md` written and the PR template wired to it, PR #59.
 - 11:00 · idle — no further `ready` item with `gated: no`/`partial` in the backlog; everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
 - 13:00 · idle — same reason as 11:00.
 - 15:00 · idle — same reason as 11:00.
 - 17:00 · idle — same reason as 11:00; the 17:00 shift still sends the day summary regardless.
 
-Backlog is thin: only FR-5 is `ready` and ungated today. Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PR #55 (`fix/alembic-merge-heads`) is still the only open code PR; it was skipped as a backlog source (it isn't a backlog item) but remains an unmerged deploy blocker from a prior shift.
+Backlog is thin: FR-5 (today's only `ready`+ungated item) is now done, pending merge. Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` (PR #58) for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PR #55 (`fix/alembic-merge-heads`) is still the only other open code PR besides #58 and #59; it was skipped as a backlog source (it isn't a backlog item) but remains an unmerged deploy blocker from a prior shift.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
@@ -19,13 +19,13 @@ Backlog is thin: only FR-5 is `ready` and ungated today. Filed one refill propos
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: no new feature work this shift; it was FR-7's security-gate verification (see security below). Noted for the founder: PR #55 (`fix/alembic-merge-heads`, opened by an interactive session at 14:15, not this routine) fixes a real deploy blocker — the 13:00 (FR-19) and 15:00 (FR-16) shifts each added an Alembic migration from the same parent, so `alembic upgrade head` has two heads and would fail in the Fly release command. PR #55's CI is green and it is mergeable; it just awaits the founder's merge (this routine cannot merge a non-state PR without an approved INBOX item naming it). All four of today's feature PRs (#45, #48, #51, #53) are merged to main. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5, both unchanged from earlier shifts' notes.
-- tests: n/a this shift (no code changed by this routine); see security below for the verification run.
-- blockers: PR #55 (migration-head fix) is unmerged, so `main`'s Alembic history still has two heads until the founder merges it — worth doing before the next deploy.
+- summary: 09:00 shift delivered FR-5, the security/QA pre-merge checklist (`docs/gates/pre-merge-checklist.md`), PR #59 (`docs/fr-5-pre-merge-checklist`) — doc-only, no application code touched. The PR template's gate section now links the checklist and expanded from 5 to 8 boxes (added: input validation/audit-field handling, dependency pinning, CI-green-on-this-PR). FR-5 set to done; the whole dod shipped in this one PR. Noted for the founder, unchanged from prior shifts: PR #55 (`fix/alembic-merge-heads`, opened by an interactive session, not this routine) fixes the two-Alembic-heads deploy blocker from the 2026-09-15 13:00/15:00 shifts' parallel migrations; CI green, mergeable, still awaiting her merge (this routine cannot merge a non-state PR without an approved INBOX item naming it). PR #58 (backlog proposals, FR-20) also still open and unmerged. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
+- tests: n/a — docs-only change; `python scripts/check_company_docs.py docs/company` clean.
+- blockers: PR #55 (migration-head fix) and PR #58 (backlog refill) both unmerged; PR #55 in particular is worth doing before the next deploy.
 - needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
-- summary: FR-7 re-verified this shift and flipped from `ready` to `done`. All three founding-commit findings hold: (1) `config.py` still refuses to boot with the default bearer token outside development; (2) the original innerHTML/XSS vector is now structurally impossible — the frontend fully migrated to React and `dangerouslySetInnerHTML` is used nowhere in `frontend/src`; the original regression test is still committed but was not re-run live this shift (would need a fresh build+browser cycle; the structural fix is stronger evidence than the original bug pattern could survive under); (3) `created_by`/`published_at` audit fields are confirmed server-set from the authenticated principal in both API entry points (`_audit_label` in `app/routers/call_sheets.py`), with the one body-value fallback inside the service layer reachable only from `seed_demo.py`'s own hardcoded call, not from any HTTP input. Ran the full backend suite against a freshly created local Postgres (container is ephemeral, so filmrunner/filmrunner_test roles and DBs were recreated this shift): 88/88 pass, including all spoofed-`created_by` and dev-token tests. FR-5 (the gate checklist itself) is still `ready`, not yet picked up — a future shift's task.
+- summary: FR-7 re-verified this shift and flipped from `ready` to `done`. All three founding-commit findings hold: (1) `config.py` still refuses to boot with the default bearer token outside development; (2) the original innerHTML/XSS vector is now structurally impossible — the frontend fully migrated to React and `dangerouslySetInnerHTML` is used nowhere in `frontend/src`; the original regression test is still committed but was not re-run live this shift (would need a fresh build+browser cycle; the structural fix is stronger evidence than the original bug pattern could survive under); (3) `created_by`/`published_at` audit fields are confirmed server-set from the authenticated principal in both API entry points (`_audit_label` in `app/routers/call_sheets.py`), with the one body-value fallback inside the service layer reachable only from `seed_demo.py`'s own hardcoded call, not from any HTTP input. Ran the full backend suite against a freshly created local Postgres (container is ephemeral, so filmrunner/filmrunner_test roles and DBs were recreated this shift): 88/88 pass, including all spoofed-`created_by` and dev-token tests. FR-5 (the gate checklist itself) delivered this morning by the 09:00 shift (PR #59) — see engineering above.
 - tests: backend full suite 88/88 (fresh Postgres 16 this shift, no regressions since 2026-09-14's original fixes).
 - blockers: none.
 - needs_approval: no.
