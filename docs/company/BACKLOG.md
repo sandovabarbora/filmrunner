@@ -214,3 +214,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - docs/gates/pre-merge-checklist.md with security items (secrets, auth on every non-public route, input validation, dependency pins) and QA items (tests for the change, failure case covered, CI green)
   - the PR template references it
   - failure case: a PR that skips the checklist is visible as such in the template, not silently merged
+
+## FR-20 · marketing · Prague market sizing: how many active productions are there
+- state: ready
+- gated: no
+- why: BRIEF.md Q5 asks whether Prague is dense enough for word-of-mouth distribution; this is answerable from public listings, unlike Q1-Q4/Q6 which need real interviews (INBOX #1, blocked on the founder). The backlog otherwise has no item against Q5.
+- dod:
+  - docs/research/prague-market-sizing.md defines "active production" as one that issued a call sheet in the last 30 days, per BRIEF.md Q5
+  - counts it from Czech Film Commission listings, FAMU student/graduate productions, and any public filming-permit data findable by WebSearch
+  - the count is compared against a stated word-of-mouth sample-size threshold, citing the source for that threshold
+  - every claim cites its source and the date checked
+  - failure case: if no public source can establish a count, the doc says so explicitly and proposes the narrowest fallback (e.g. asking FR-3 interviewees to estimate) instead of guessing a number
