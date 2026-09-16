@@ -1,16 +1,16 @@
 # Status
 
-Updated: 2026-09-16 09:12 (09:00 shift)
+Updated: 2026-09-16 11:07 (11:00 shift)
 
 ## today
 
 - 09:00 · FR-5 · tech-lead — done. `docs/gates/pre-merge-checklist.md` written and the PR template wired to it, PR #59.
-- 11:00 · idle — no further `ready` item with `gated: no`/`partial` in the backlog; everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
-- 13:00 · idle — same reason as 11:00.
+- 11:00 · idle — confirmed: `INBOX.md` has no `approved` item; `BACKLOG.md`'s only `state: ready` item is FR-5 itself, already delivered whole in PR #59 (open, awaiting founder merge, not a new item to work) and everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
+- 13:00 · idle — same reason as 11:00, unless FR-20 or another PR lands first.
 - 15:00 · idle — same reason as 11:00.
 - 17:00 · idle — same reason as 11:00; the 17:00 shift still sends the day summary regardless.
 
-Backlog is thin: FR-5 (today's only `ready`+ungated item) is now done, pending merge. Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` (PR #58) for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PR #55 (`fix/alembic-merge-heads`) is still the only other open code PR besides #58 and #59; it was skipped as a backlog source (it isn't a backlog item) but remains an unmerged deploy blocker from a prior shift.
+Backlog is thin: FR-5 (today's only `ready`+ungated item) is done, pending merge; its `BACKLOG.md` `state:` line is still `ready` (the 09:00 shift's state PR #60 only updated `STATUS.md`/`LOG.md`, not the item line — left as-is this shift since FR-5 is not an item this shift worked, noted here for whoever next touches it). Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` (PR #58) for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PRs #55 (`fix/alembic-merge-heads`) and #58 are still open and unmerged; no INBOX item approves merging either, so this shift cannot merge them.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
@@ -19,9 +19,9 @@ Backlog is thin: FR-5 (today's only `ready`+ungated item) is now done, pending m
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: 09:00 shift delivered FR-5, the security/QA pre-merge checklist (`docs/gates/pre-merge-checklist.md`), PR #59 (`docs/fr-5-pre-merge-checklist`) — doc-only, no application code touched. The PR template's gate section now links the checklist and expanded from 5 to 8 boxes (added: input validation/audit-field handling, dependency pinning, CI-green-on-this-PR). FR-5 set to done; the whole dod shipped in this one PR. Noted for the founder, unchanged from prior shifts: PR #55 (`fix/alembic-merge-heads`, opened by an interactive session, not this routine) fixes the two-Alembic-heads deploy blocker from the 2026-09-15 13:00/15:00 shifts' parallel migrations; CI green, mergeable, still awaiting her merge (this routine cannot merge a non-state PR without an approved INBOX item naming it). PR #58 (backlog proposals, FR-20) also still open and unmerged. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
-- tests: n/a — docs-only change; `python scripts/check_company_docs.py docs/company` clean.
-- blockers: PR #55 (migration-head fix) and PR #58 (backlog refill) both unmerged; PR #55 in particular is worth doing before the next deploy.
+- summary: 11:00 shift — idle, nothing new to build (see `## today`). Re-checked `gh pr list --state open`: still exactly #55, #58, #59, all unchanged since the 09:00 shift; no CI or review activity on any of them this shift. Carried over from 09:00: FR-5 delivered whole in PR #59 (doc-only), awaiting founder merge. Noted for the founder, unchanged from prior shifts: PR #55 (`fix/alembic-merge-heads`, opened by an interactive session, not this routine) fixes the two-Alembic-heads deploy blocker from the 2026-09-15 13:00/15:00 shifts' parallel migrations; CI green, mergeable, still awaiting her merge (this routine cannot merge a non-state PR without an approved INBOX item naming it). PR #58 (backlog proposals, FR-20) also still open and unmerged. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
+- tests: n/a — no code touched this shift.
+- blockers: PR #55 (migration-head fix), #58 (backlog refill), and #59 (FR-5) all unmerged; PR #55 in particular is worth doing before the next deploy.
 - needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
