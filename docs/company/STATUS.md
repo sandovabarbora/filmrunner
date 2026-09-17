@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-17 09:00 (09:00 shift)
+Updated: 2026-09-17 11:00 (11:00 shift)
 
 ## today
 
@@ -15,7 +15,7 @@ five shifts are idle unless `INBOX.md` gains an `approved` item or one of
 PR #55/#58/#59/#66 lands and unblocks a real `ready`+ungated item.
 
 - 09:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
-- 11:00 · not yet run
+- 11:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
 - 13:00 · not yet run
 - 15:00 · not yet run
 - 17:00 · not yet run; day summary sent regardless of idleness
@@ -27,7 +27,7 @@ PR #55/#58/#59/#66 lands and unblocks a real `ready`+ungated item.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: 09:00 shift — idle, nothing new to build (see `## today`). Checked `gh pr list --state open`: #55 (`fix/alembic-merge-heads`), #58 (backlog proposals, FR-20), #59 (FR-5 checklist, doc-only, awaiting merge), #66 (backlog proposals, FR-21, opened by this morning's brief) — all open, no INBOX approval to merge any of them. PR #55 (`fix/alembic-merge-heads`, opened by an interactive session, not this routine) fixes the two-Alembic-heads deploy blocker from the 2026-09-15 13:00/15:00 shifts' parallel migrations; CI green, mergeable, still awaiting founder merge. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
+- summary: 11:00 shift — idle, same reason as 09:00 (see `## today`). Re-checked `gh pr list --state open`: #55 (`fix/alembic-merge-heads`), #58 (backlog proposals, FR-20), #59 (FR-5 checklist, doc-only, awaiting merge), #66 (backlog proposals, FR-21) — all unchanged, all open, no INBOX approval to merge any of them. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
 - tests: n/a — no code touched this shift.
 - blockers: PR #55 (migration-head fix, worth doing before the next deploy), #58, #59, #66 all unmerged.
 - needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
