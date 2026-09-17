@@ -214,3 +214,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - docs/gates/pre-merge-checklist.md with security items (secrets, auth on every non-public route, input validation, dependency pins) and QA items (tests for the change, failure case covered, CI green)
   - the PR template references it
   - failure case: a PR that skips the checklist is visible as such in the template, not silently merged
+
+## FR-21 · pm · Switching-cost research: what would make an AD leave a named incumbent mid-season
+- state: ready
+- gated: no
+- why: BRIEF.md Q6 asks what would make an AD switch tools mid-season; FR-2's teardown named the incumbent per production size but did not investigate lock-in mechanics, and FR-3's interviews (the primary source for this question) are blocked on the founder recruiting real candidates (INBOX #1). This half of Q6 is answerable now from public sources while interviews remain blocked.
+- dod:
+  - docs/research/switching-cost-teardown.md covers the incumbents named in FR-2's teardown (StudioBinder, Yamdu, SetHero, Movie Magic Scheduling, Croogloo): what data an AD or production office would lose or have to re-enter if they left (schedules, contact lists, templates, revision history), whether each offers a working export function, and any lock-in signals found in public reviews or forums (e.g. G2, Capterra, Reddit)
+  - every claim cites its source and the date checked, the same convention FR-2 uses
+  - the doc explicitly separates these desk-research findings from FR-3's own interview question ("what would have to be true for you to switch") so a future shift never treats desk research as a substitute for a real interview answer
+  - failure case: a lock-in or export claim that cannot be verified from a public source is marked "unverified", not guessed, same convention as FR-2
