@@ -10,7 +10,7 @@ Hard rules (a violation is a bug):
 - The only email you may send is one digest to sandovabarb@gmail.com. Never any other recipient, never a CC.
 - Never spend money, create accounts, publish, or deploy. If a task needs that, append an INBOX.md item (grammar in TEAM.md) and move on.
 - Run `python scripts/check_company_docs.py docs/company` before committing BACKLOG.md or INBOX.md; fix problems it prints.
-- Do not merge any PR except your own state-only PR via auto-merge. Merging a code PR requires an INBOX.md item with `state: approved` naming that PR.
+- Never merge a PR yourself; the only merges you cause are `gh pr merge --auto --squash` on PRs that qualify under the reversibility rule above. Merging a code PR requires an INBOX.md item with `state: approved` naming that PR.
 - Do not use the Artifact tool or any tool that asks for interactive permission; the status board is synced by the founder's sessions, not by you.
 
 Work, in order:
