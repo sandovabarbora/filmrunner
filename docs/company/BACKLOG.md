@@ -216,6 +216,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a PR that skips the checklist is visible as such in the template, not silently merged
 - note: 09:00 shift 2026-09-16 (PR #59, branch docs/fr-5-pre-merge-checklist) delivered the whole dod: docs/gates/pre-merge-checklist.md (security: no secrets, auth on every non-public route via require_principal/authz.require_on, input validation, no unescaped external data in HTML citing the FR-7 regression test, server-set audit fields, exact-pinned dependencies, no unapproved spend/account/deploy; QA: tests including the failure case, CI green on the PR's own head, real verification when a dod demands it) and the PR template, expanded from 5 to 8 checkboxes and linking the file, so a skipped item is visible on the PR itself. Doc-only change, `python scripts/check_company_docs.py` clean; no code, so no test suite applies. Awaits founder merge.
 
+## FR-21 · pm · Switching-cost research: what would make an AD leave a named incumbent mid-season
+- state: ready
+- gated: no
+- why: BRIEF.md Q6 asks what would make an AD switch tools mid-season; FR-2's teardown named the incumbent per production size but did not investigate lock-in mechanics, and FR-3's interviews (the primary source for this question) are blocked on the founder recruiting real candidates (INBOX #1). This half of Q6 is answerable now from public sources while interviews remain blocked.
+- dod:
+  - docs/research/switching-cost-teardown.md covers the incumbents named in FR-2's teardown (StudioBinder, Yamdu, SetHero, Movie Magic Scheduling, Croogloo): what data an AD or production office would lose or have to re-enter if they left (schedules, contact lists, templates, revision history), whether each offers a working export function, and any lock-in signals found in public reviews or forums (e.g. G2, Capterra, Reddit)
+  - every claim cites its source and the date checked, the same convention FR-2 uses
+  - the doc explicitly separates these desk-research findings from FR-3's own interview question ("what would have to be true for you to switch") so a future shift never treats desk research as a substitute for a real interview answer
+  - failure case: a lock-in or export claim that cannot be verified from a public source is marked "unverified", not guessed, same convention as FR-2
 ## FR-20 · marketing · Prague market sizing: how many active productions are there
 - state: ready
 - gated: no
