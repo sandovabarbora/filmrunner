@@ -41,11 +41,21 @@ address to third parties) are executed by the founder in an interactive
 session, never by the routine.
 
 `main` accepts only commits whose `ci` check is green (GitHub ruleset;
-direct pushes are rejected). Code reaches `main` through a pull request the
-founder merges. The routine's state updates (`docs/company/STATUS.md`,
-`INBOX.md`, `LOG.md`) go through a state-only PR on `chore/shift-state-<date>`
-with auto-merge enabled, so they land as soon as `ci` passes. The routine
-never enables auto-merge on a PR that touches anything else.
+direct pushes are rejected). What may auto-merge is decided by
+reversibility, not by who wrote it:
+
+- **Auto-merge (reversible, the founder can edit or revert any time):**
+  state files (`docs/company/STATUS.md`, `INBOX.md`, `LOG.md`), backlog
+  proposals (`docs/company/BACKLOG.md` additions and `state:` changes),
+  research and marketing documents (`docs/research/**`, `docs/marketing/**`),
+  gate checklists (`docs/gates/**`), and `.github/pull_request_template.md`.
+  A PR that touches only these paths gets `gh pr merge --auto --squash`.
+- **Founder merges (decisions and code):** anything under `backend/`,
+  `frontend/`, `scripts/`, `.github/workflows/`, and the decision documents
+  `docs/adr/**`, `docs/company/BRIEF.md`, `TEAM.md`, `DECISIONS.md`.
+
+Rule added 2026-09-17 after two idle days: every proposal and every docs
+deliverable had waited on a founder merge, so no item was ever `ready`.
 
 ## Roles
 
@@ -144,9 +154,14 @@ Shift contract:
 6. Digest to `sandovabarb@gmail.com` only, in Czech: shifts 09 to 15 only
    when they produced something (five lines: what, what awaits approval,
    what is blocked, PR link); the 17 shift always sends the day summary.
+6b. An `in-progress` item whose note names remaining ungated work is
+   plannable; finishing a half-done item beats starting a new one.
 7. At most one backlog item per run. Never start an item whose dod depends
-   on a pull request that is still open. Idle shifts write their state PR
-   and stay silent.
+   on a pull request that is still open. A shift with nothing workable acts
+   as the pm for that run: it proposes one new backlog item (serving an
+   open BRIEF question, with dod and failure case, `state: ready`) in an
+   auto-merged proposals PR, so the next shift has work; then it writes
+   its state PR and stays silent.
 
 ### Runbook
 
