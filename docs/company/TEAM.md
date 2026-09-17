@@ -154,6 +154,8 @@ Shift contract:
 6. Digest to `sandovabarb@gmail.com` only, in Czech: shifts 09 to 15 only
    when they produced something (five lines: what, what awaits approval,
    what is blocked, PR link); the 17 shift always sends the day summary.
+6b. An `in-progress` item whose note names remaining ungated work is
+   plannable; finishing a half-done item beats starting a new one.
 7. At most one backlog item per run. Never start an item whose dod depends
    on a pull request that is still open. A shift with nothing workable acts
    as the pm for that run: it proposes one new backlog item (serving an
