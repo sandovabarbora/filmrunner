@@ -52,6 +52,8 @@ jobs:
         run: python scripts/check_conventions.py "$BRANCH" "$TITLE"
       - name: Company docs format
         run: python scripts/check_company_docs.py docs/company
+      - name: One Alembic head
+        run: sh scripts/check_migrations.sh
       - name: Checker tests
         run: python -m pytest scripts/tests -q
       - name: Backend tests

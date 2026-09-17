@@ -224,3 +224,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - every claim cites its source and the date checked, the same convention FR-2 uses
   - the doc explicitly separates these desk-research findings from FR-3's own interview question ("what would have to be true for you to switch") so a future shift never treats desk research as a substitute for a real interview answer
   - failure case: a lock-in or export claim that cannot be verified from a public source is marked "unverified", not guessed, same convention as FR-2
+## FR-20 · marketing · Prague market sizing: how many active productions are there
+- state: ready
+- gated: no
+- why: BRIEF.md Q5 asks whether Prague is dense enough for word-of-mouth distribution; this is answerable from public listings, unlike Q1-Q4/Q6 which need real interviews (INBOX #1, blocked on the founder). The backlog otherwise has no item against Q5.
+- dod:
+  - docs/research/prague-market-sizing.md defines "active production" as one that issued a call sheet in the last 30 days, per BRIEF.md Q5
+  - counts it from Czech Film Commission listings, FAMU student/graduate productions, and any public filming-permit data findable by WebSearch
+  - the count is compared against a stated word-of-mouth sample-size threshold, citing the source for that threshold
+  - every claim cites its source and the date checked
+  - failure case: if no public source can establish a count, the doc says so explicitly and proposes the narrowest fallback (e.g. asking FR-3 interviewees to estimate) instead of guessing a number
