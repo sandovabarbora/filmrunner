@@ -1,32 +1,41 @@
 # Status
 
-Updated: 2026-09-16 08:00 (morning brief)
+Updated: 2026-09-17 17:01 (17:00 shift)
 
 ## today
 
-- 09:00 · FR-5 · tech-lead — write `docs/gates/pre-merge-checklist.md` (security + QA items) and reference it from the PR template.
-- 11:00 · idle — no further `ready` item with `gated: no`/`partial` in the backlog; everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
-- 13:00 · idle — same reason as 11:00.
-- 15:00 · idle — same reason as 11:00.
-- 17:00 · idle — same reason as 11:00; the 17:00 shift still sends the day summary regardless.
+No backlog item qualified for a shift all day. FR-5 is the only
+`state: ready` item in `BACKLOG.md`, but its entire dod already shipped in
+PR #59 (`docs/fr-5-pre-merge-checklist`), which stayed open all day
+awaiting the founder's merge — its dod depends on that open PR, so per the
+brief contract it was skipped at every shift. Every other item is
+`in-progress`, `blocked`, or `done`. FR-20 (proposed in PR #58) and FR-21
+(proposed in PR #66) never became `ready` in `main` either, since both PRs
+stayed open. Result: all five shifts were idle; nothing unblocked all day
+(`INBOX.md` gained no `approved` item, and none of PR #55/#58/#59/#66
+landed).
 
-Backlog is thin: only FR-5 is `ready` and ungated today. Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PR #55 (`fix/alembic-merge-heads`) is still the only open code PR; it was skipped as a backlog source (it isn't a backlog item) but remains an unmerged deploy blocker from a prior shift.
+- 09:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
+- 11:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
+- 13:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
+- 15:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
+- 17:00 · idle — same reason; day summary sent regardless of idleness
 
 ## pm
-- summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
+- summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo. Morning brief's FR-21 backlog proposal (PR #66) still open and unmerged.
 - tests: n/a (research/planning docs, no executable code)
-- blockers: `WebFetch`/`WebSearch` remain blocked by this session's egress proxy for most external domains (vendor pages, and confirmed earlier today for `timeanddate.com` and `api.sunrise-sunset.org`).
+- blockers: `WebFetch`/`WebSearch` remain blocked by this session's egress proxy for most external domains.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: no new feature work this shift; it was FR-7's security-gate verification (see security below). Noted for the founder: PR #55 (`fix/alembic-merge-heads`, opened by an interactive session at 14:15, not this routine) fixes a real deploy blocker — the 13:00 (FR-19) and 15:00 (FR-16) shifts each added an Alembic migration from the same parent, so `alembic upgrade head` has two heads and would fail in the Fly release command. PR #55's CI is green and it is mergeable; it just awaits the founder's merge (this routine cannot merge a non-state PR without an approved INBOX item naming it). All four of today's feature PRs (#45, #48, #51, #53) are merged to main. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5, both unchanged from earlier shifts' notes.
-- tests: n/a this shift (no code changed by this routine); see security below for the verification run.
-- blockers: PR #55 (migration-head fix) is unmerged, so `main`'s Alembic history still has two heads until the founder merges it — worth doing before the next deploy.
+- summary: 17:00 shift — idle, same reason as 09:00/11:00/13:00/15:00 (see `## today`). Re-checked `gh pr list --state open`: #55 (`fix/alembic-merge-heads`), #58 (backlog proposals, FR-20), #59 (FR-5 checklist, doc-only, awaiting merge), #66 (backlog proposals, FR-21) — all unchanged all day, all open, no INBOX approval to merge any of them. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5. Last scheduled shift of the day; day summary follows.
+- tests: n/a — no code touched this shift.
+- blockers: PR #55 (migration-head fix, worth doing before the next deploy), #58, #59, #66 all unmerged all day.
 - needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
-- summary: FR-7 re-verified this shift and flipped from `ready` to `done`. All three founding-commit findings hold: (1) `config.py` still refuses to boot with the default bearer token outside development; (2) the original innerHTML/XSS vector is now structurally impossible — the frontend fully migrated to React and `dangerouslySetInnerHTML` is used nowhere in `frontend/src`; the original regression test is still committed but was not re-run live this shift (would need a fresh build+browser cycle; the structural fix is stronger evidence than the original bug pattern could survive under); (3) `created_by`/`published_at` audit fields are confirmed server-set from the authenticated principal in both API entry points (`_audit_label` in `app/routers/call_sheets.py`), with the one body-value fallback inside the service layer reachable only from `seed_demo.py`'s own hardcoded call, not from any HTTP input. Ran the full backend suite against a freshly created local Postgres (container is ephemeral, so filmrunner/filmrunner_test roles and DBs were recreated this shift): 88/88 pass, including all spoofed-`created_by` and dev-token tests. FR-5 (the gate checklist itself) is still `ready`, not yet picked up — a future shift's task.
-- tests: backend full suite 88/88 (fresh Postgres 16 this shift, no regressions since 2026-09-14's original fixes).
+- summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) delivered 2026-09-16 09:00 (PR #59), still awaiting founder merge.
+- tests: n/a — no code touched this shift.
 - blockers: none.
 - needs_approval: no.
 
