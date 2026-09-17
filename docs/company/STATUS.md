@@ -1,16 +1,33 @@
 # Status
 
-Updated: 2026-09-16 17:01 (17:00 shift)
+Updated: 2026-09-17 08:00 (morning brief)
 
 ## today
 
-- 09:00 · FR-5 · tech-lead — done. `docs/gates/pre-merge-checklist.md` written and the PR template wired to it, PR #59.
-- 11:00 · idle — confirmed: `INBOX.md` has no `approved` item; `BACKLOG.md`'s only `state: ready` item is FR-5 itself, already delivered whole in PR #59 (open, awaiting founder merge, not a new item to work) and everything else is `in-progress`, `blocked`, or `done`. See `docs/company/BACKLOG.md` FR-20 (proposed this morning, pending founder merge) for a candidate once it lands.
-- 13:00 · idle — same reason as 11:00: re-checked `gh pr list --state open`, still exactly #55, #58, #59, unchanged since 11:00; no `approved` INBOX item; no new `state: ready` backlog item.
-- 15:00 · idle — same reason as 11:00/13:00: re-checked `gh pr list --state open`, still exactly #55, #58, #59, unchanged since 13:00 (FR-20 in PR #58 has not landed); `INBOX.md` re-read, no `approved` item; no new `state: ready`+`gated: no` backlog item.
-- 17:00 · idle — same reason as 11:00/13:00/15:00: re-checked `gh pr list --state open`, still exactly #55, #58, #59, unchanged all day; `INBOX.md` re-read, no `approved` item; no new `state: ready`+`gated: no` backlog item. Last scheduled shift of the day; day summary follows regardless of idleness.
+No backlog item qualifies for a shift today. FR-5 is the only `state: ready`
+item in `BACKLOG.md`, but its entire dod already shipped in PR #59
+(`docs/fr-5-pre-merge-checklist`), which is still open awaiting the
+founder's merge — its dod depends on that open PR, so per the brief
+contract it is skipped. Every other item is `in-progress`, `blocked`, or
+`done`. FR-20 (Prague market sizing, proposed 2026-09-16 in PR #58) is not
+yet `ready` in `main` either, since PR #58 is still open. Result: all five
+shifts are idle unless `INBOX.md` gains an `approved` item or one of
+PR #55/#58/#59 lands and unblocks a real `ready`+ungated item.
 
-Backlog is thin: FR-5 (today's only `ready`+ungated item) is done, pending merge; its `BACKLOG.md` `state:` line is still `ready` (left as-is, not an item this shift worked). Filed one refill proposal (FR-20, Prague market sizing, BRIEF Q5) on `docs/backlog-proposals-2026-09-16` (PR #58) for the founder to merge or edit — it does not count toward today's plan since it is not yet `ready` in `main`. PRs #55 (`fix/alembic-merge-heads`), #58 (backlog refill) and #59 (FR-5) are still open and unmerged all day; no INBOX item approves merging any of them, so no shift today could merge them. PR #55's CI is green on its current head (run 34981319586, conclusion success) and it is a real deploy blocker (two Alembic heads) — worth the founder's merge before the next deploy.
+- 09:00 · idle — no qualifying backlog item
+- 11:00 · idle — same
+- 13:00 · idle — same
+- 15:00 · idle — same
+- 17:00 · idle — same; day summary sent regardless of idleness
+
+Backlog refill: filed FR-21 (pm, switching-cost desk research, BRIEF Q6) on
+`docs/backlog-proposals-2026-09-17` for the founder to merge or edit — the
+ready+ungated count is otherwise 1 (FR-5), below the floor of three. PRs
+#55 (`fix/alembic-merge-heads`), #58 (backlog refill, FR-20) and #59 (FR-5)
+are still open and unmerged, unchanged since yesterday's 17:00 shift; no
+INBOX item approves merging any of them. PR #55's CI is green on its
+current head and is a real deploy blocker (two Alembic heads) — worth the
+founder's merge before the next deploy.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
