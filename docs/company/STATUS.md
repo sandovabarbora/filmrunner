@@ -1,8 +1,33 @@
 # Status
 
-Updated: 2026-09-18 15:00 (15:00 shift)
+Updated: 2026-09-18 17:00 (17:00 shift, last of the day)
 
 ## today
+
+**17:00 update**: took the plan's own item, **FR-4** (tech-lead): wrote
+the remaining backend half of ADR-001, `docs/adr/ADR-001-backend-stack.md`
+(the frontend half was already written 2026-09-14). States the three
+options considered (keep the old Next.js + FastAPI + Supabase repo, this
+FastAPI + Postgres skeleton, a hybrid vendoring the old repo's auth
+code), the decision (this skeleton, citing `DECISIONS.md` 2026-09-14),
+and — the dod's harder bullet — what the old repo had that this one
+lacks: script-to-breakdown AI drafting, RLS-based authorization,
+budgeting, deeper scheduling depth, and a general change-log feed, each
+with the specific BRIEF.md trigger that would justify porting it, cited
+directly against the June 2026 brief's real content
+(`docs/reference/PRODUCT_BRIEF-2026-06.md`, verified in full by this
+same day's 15:00 shift, so this ADR could cite it rather than guess).
+Names the failure-case revisit trigger the dod asks for: a future ADR
+supersedes this one if a hard BRIEF.md requirement contradicts the
+choice, rather than editing this decision in place. Cross-linked with
+`ADR-001-frontend-stack.md`. PR #83 (`docs/fr-4-adr-001-backend-half`) —
+touches `docs/adr/`, so per `TEAM.md` this needs the founder's own merge,
+no auto-merge. All three dod bullets are now delivered, so FR-4 is set
+to `done` in `BACKLOG.md` (the PR is the whole remaining deliverable).
+`gh pr list --state open` before this shift showed #79 (FR-18) and #81
+(FR-1), neither of which FR-4 depended on, so nothing was skipped for
+depending on an open PR. Also noted: PR #77 (FR-11) was merged by the
+founder herself at 09:27 today, so FR-11 needed no further action.
 
 **15:00 update**: the plan's own item, **FR-16** (verify push end to end
 against the live Fly-hosted configuration), was undoable this shift: both
@@ -143,10 +168,10 @@ should pull the next one from that trio rather than sit idle.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine); PR #81 needs the founder's own merge (BRIEF.md/DECISIONS.md).
 
 ## engineering (tech-lead + frontend)
-- summary: 13:00 shift (frontend) delivered FR-18's remaining failure-case half: an edit to an existing crew member made offline now queues in IndexedDB (`frontend/src/editor/crewEdits.ts`), the row shows it with a "not saved" tag via an optimistic overlay, and it syncs automatically next time the Crew tab loads or on demand via a "Sync" button. PR #79 (`feat/fr-18-crew-offline-edit-queue`), awaiting founder merge (touches `frontend/`). FR-18 stays `in-progress`: the photo bullet remains gated on INBOX #4. Earlier, 11:00 shift (frontend) delivered FR-11's remaining dod bullet: the crew-link failure case for a call sheet that no longer exists or isn't public. `loadCallSheet` (`frontend/src/loader.ts`) now returns a distinct `not_found` result on an HTTP 404, checked before the generic error path, with no cache fallback; `App.tsx` shows a plain "does not exist or is not available any more" message instead of the network-error copy that used to invite a pointless retry. The backend has no separate "not public" concept yet — `_get_call_sheet_or_404` 404s for both cases, so both collapse to the same message by design, noted in the PR for whoever adds real visibility control later. PR #77, awaiting founder merge (touches `frontend/`). FR-11 set to `done`. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) was already reported skipped this morning — unchanged, still `in-progress`.
-- tests: 13:00 shift — 11/11 `test_editor_e2e.py` pass, one new (`test_crew_edit_offline_queues_locally_and_shows_not_saved`); wider frontend E2E suite 29/30 (one pre-existing, unrelated geocoding-test failure — Nominatim blocked by this sandbox's egress proxy). 11:00 shift — 13/13 frontend Playwright tests passed (`frontend/tests/test_smoke.py`, one new).
+- summary: 17:00 shift (tech-lead) delivered FR-4's remaining backend half: `docs/adr/ADR-001-backend-stack.md` states the stack options, the decision (FastAPI + Postgres skeleton, citing `DECISIONS.md` 2026-09-14), and what the old Next.js + FastAPI + Supabase repo had that this one lacks (AI script-to-breakdown drafting, RLS-based auth, budgeting, deeper scheduling, a general change-log feed) with the specific BRIEF.md trigger to port each, cited against the June 2026 brief's actual content. PR #83 (`docs/fr-4-adr-001-backend-half`), no auto-merge (touches `docs/adr/`), awaiting founder. FR-4 set to `done` — all three dod bullets now delivered. Earlier, 13:00 shift (frontend) delivered FR-18's remaining failure-case half: an edit to an existing crew member made offline now queues in IndexedDB (`frontend/src/editor/crewEdits.ts`), the row shows it with a "not saved" tag via an optimistic overlay, and it syncs automatically next time the Crew tab loads or on demand via a "Sync" button. PR #79 (`feat/fr-18-crew-offline-edit-queue`), still awaiting founder merge (touches `frontend/`). FR-18 stays `in-progress`: the photo bullet remains gated on INBOX #4. 11:00 shift (frontend) delivered FR-11's remaining dod bullet (the crew-link not-found failure case, PR #77) — the founder merged it herself at 09:27 today, so FR-11 is `done` and fully landed on `main`, no longer awaiting anything. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) remains skipped for lack of environment access — unchanged, still `in-progress`.
+- tests: 17:00 shift — docs-only, no executable code, n/a. 13:00 shift — 11/11 `test_editor_e2e.py` pass, one new (`test_crew_edit_offline_queues_locally_and_shows_not_saved`); wider frontend E2E suite 29/30 (one pre-existing, unrelated geocoding-test failure — Nominatim blocked by this sandbox's egress proxy). 11:00 shift — 13/13 frontend Playwright tests passed (`frontend/tests/test_smoke.py`, one new).
 - blockers: 15:00 shift's FR-16 live-verification task confirmed undoable — `filmrunner-api.fly.dev` and `api.fly.io` both 403 through this session's egress proxy, no `fly` CLI installed either, so there is no way to reach the deployed API or even check Fly secrets from here; FR-16 stays `in-progress` unchanged. Carried over: FR-18's photo upload gated on INBOX #4.
-- needs_approval: yes — PR #79 and PR #77 both need the founder's own merge (code, not state); INBOX #4 (Supabase Storage bucket/secret), carried over, needing the founder's own credentials.
+- needs_approval: yes — PR #83 and PR #79 both need the founder's own merge (docs/adr and frontend code respectively, not state); INBOX #4 (Supabase Storage bucket/secret), carried over, needing the founder's own credentials.
 
 ## security (gate)
 - summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) confirmed merged (PR #59, part of the overnight 2026-09-17 clearing) and stands `done`.

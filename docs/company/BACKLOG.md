@@ -200,8 +200,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: 15:00 shift 2026-09-18 — unblocked: FR-1 flipped to `done` this shift (PR #81), FR-2 was already `done`. Not worked this shift (this shift's own item was FR-1); next shift or a future run can take it.
 
 ## FR-4 · tech-lead · ADR-001: stack of the skeleton
-- state: in-progress
-- note: frontend half decided and written 2026-09-14 (docs/adr/ADR-001-frontend-stack.md, React + Vite + TS). Remaining: the backend half (why FastAPI + Postgres over the old Next.js + Supabase, what the old repo had that this lacks and when to port).
+- state: done
+- note: frontend half decided and written 2026-09-14 (docs/adr/ADR-001-frontend-stack.md, React + Vite + TS).
+- note: 17:00 shift 2026-09-18 (PR #83, branch docs/fr-4-adr-001-backend-half) delivered the remaining backend half: docs/adr/ADR-001-backend-stack.md states the three options (keep the old Next.js + FastAPI + Supabase repo, this FastAPI + Postgres skeleton, a hybrid vendoring the old repo's auth code), the decision (this skeleton, citing DECISIONS.md 2026-09-14), and lists what the old repo had that this one lacks — script-to-breakdown AI drafting, RLS-based authorization, budgeting, deeper scheduling depth, a general change-log feed — each with the specific BRIEF.md trigger that would justify porting it, cited against the June 2026 brief's actual content (docs/reference/PRODUCT_BRIEF-2026-06.md, verified in full by the 15:00 shift the same day). Names the revisit trigger per the dod's own failure case: a new ADR supersedes this one rather than editing the decision in place. Cross-linked with ADR-001-frontend-stack.md. Doc-only (docs/adr/**), so per TEAM.md this needs the founder's own merge, no auto-merge; all three dod bullets are now delivered so this PR is the whole remaining deliverable.
 - gated: no
 - why: the restart from Next.js + Supabase to FastAPI + vanilla PWA must be a recorded decision, not an accident
 - dod:
