@@ -1,8 +1,21 @@
 # Status
 
-Updated: 2026-09-18 08:00 (morning brief)
+Updated: 2026-09-18 09:00 (09:00 shift)
 
 ## today
+
+**09:00 update**: the FR-8 item below (iOS Safari over the real deployed
+URL) could not be attempted this shift — `curl` to `filmrunner-api.fly.dev`
+was rejected outright by this session's egress proxy ("organization
+policy"), and there is no iOS device in this environment regardless (the
+same gap FR-8's own notes have flagged since 2026-09-14). Skipping per the
+shift contract; FR-8 stays `in-progress` with its note unchanged. Took the
+next-highest-priority ready+ungated item instead: **FR-21** (switching-cost
+teardown, pm), delivered in PR #75 (branch
+`docs/fr-21-switching-cost-teardown`, auto-merge enabled, doc-only). FR-8
+remains open for whichever future shift runs from an environment that can
+reach the deployed API and has a real iOS device — neither is a routine
+capability gap this shift can close by working harder.
 
 The founder cleared the backlog overnight (2026-09-17, after the 17:00
 shift): PRs #55, #58, #59, #66 and #72 all merged into `main` (confirmed
@@ -41,15 +54,15 @@ only five shifts run; whichever of today's five items finishes early
 should pull the next one from that trio rather than sit idle.
 
 ## pm
-- summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo. Morning brief's FR-21 backlog proposal (PR #66) still open and unmerged.
+- summary: 09:00 shift delivered FR-21 (switching-cost teardown, docs/research/switching-cost-teardown.md, PR #75, auto-merge enabled) — now `done` in BACKLOG.md. Covers all five FR-2 incumbents: documented export functions (StudioBinder, SetHero, Croogloo confirmed from their own help centers; Yamdu and Movie Magic partial/version-gated) and two sourced lock-in signals (Yamdu's tiered contact-retention complaint, Movie Magic's proprietary schedule format). No forum/Reddit discussion of switching found despite four targeted searches — marked unverified, not assumed absent. Otherwise unchanged: FR-3 discovery plan stands (PR #11); FR-2 teardown stands (PR #8); FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo.
 - tests: n/a (research/planning docs, no executable code)
-- blockers: `WebFetch`/`WebSearch` remain blocked by this session's egress proxy for most external domains.
+- blockers: `WebFetch` remains blocked by this session's egress proxy for most external domains (confirmed again this shift for a non-vendor `fly.dev` host, so this is a proxy-wide policy, not a vendor-specific block); `WebSearch` works.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: 17:00 shift — idle, same reason as 09:00/11:00/13:00/15:00 (see `## today`). Re-checked `gh pr list --state open`: #55 (`fix/alembic-merge-heads`), #58 (backlog proposals, FR-20), #59 (FR-5 checklist, doc-only, awaiting merge), #66 (backlog proposals, FR-21) — all unchanged all day, all open, no INBOX approval to merge any of them. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5. Last scheduled shift of the day; day summary follows.
+- summary: FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) could not run this shift — confirmed by direct `curl` that this session's egress proxy rejects `filmrunner-api.fly.dev` outright ("organization policy", connect_rejected), on top of the already-known no-iOS-device gap. FR-8 stays `in-progress`, unchanged otherwise. Worth flagging for whoever plans future shifts: this specific dod bullet needs either a routine environment with unrestricted egress or a founder-run manual check, not more shift attempts. No other engineering work this shift (today's schedule gives 11:00/13:00/15:00/17:00 to FR-11/FR-18/FR-16/FR-4).
 - tests: n/a — no code touched this shift.
-- blockers: PR #55 (migration-head fix, worth doing before the next deploy), #58, #59, #66 all unmerged all day.
+- blockers: unchanged from the morning brief; `gh pr list --state open` is empty (all prior PRs merged 2026-09-17). Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
 - needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
