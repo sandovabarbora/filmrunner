@@ -1,8 +1,24 @@
 # Status
 
-Updated: 2026-09-18 09:00 (09:00 shift)
+Updated: 2026-09-18 11:00 (11:00 shift)
 
 ## today
+
+**11:00 update**: took the plan's own item, **FR-11** (verify/build the
+crew-link failure case for a call sheet that no longer exists or isn't
+public, frontend). `loader.ts` was collapsing a 404 from the public
+call-sheet API into the same path as a network timeout, so the viewer
+told the crew member to "get back in signal and reload" for a link that
+can never load. Fixed: `loadCallSheet` now returns a distinct `not_found`
+result on HTTP 404 (no cache fallback, same pattern `loadPersonal` already
+used for an unknown personal token), and the UI shows "this call sheet
+does not exist or is not available any more" instead. New Playwright test
+added; full suite 13/13 passing against a real build. PR #77
+(`fix/fr-11-not-found-failure-case`) — touches `frontend/`, so per TEAM.md
+this needs the founder's own merge, no auto-merge. FR-11 set to `done` in
+BACKLOG.md (all three dod bullets now hold). `gh pr list --state open`
+was empty before this shift opened #77, so nothing was skipped for
+depending on an open PR.
 
 **09:00 update**: the FR-8 item below (iOS Safari over the real deployed
 URL) could not be attempted this shift — `curl` to `filmrunner-api.fly.dev`
@@ -60,13 +76,13 @@ should pull the next one from that trio rather than sit idle.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) could not run this shift — confirmed by direct `curl` that this session's egress proxy rejects `filmrunner-api.fly.dev` outright ("organization policy", connect_rejected), on top of the already-known no-iOS-device gap. FR-8 stays `in-progress`, unchanged otherwise. Worth flagging for whoever plans future shifts: this specific dod bullet needs either a routine environment with unrestricted egress or a founder-run manual check, not more shift attempts. No other engineering work this shift (today's schedule gives 11:00/13:00/15:00/17:00 to FR-11/FR-18/FR-16/FR-4).
-- tests: n/a — no code touched this shift.
-- blockers: unchanged from the morning brief; `gh pr list --state open` is empty (all prior PRs merged 2026-09-17). Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
-- needs_approval: yes — INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
+- summary: 11:00 shift (frontend) delivered FR-11's remaining dod bullet: the crew-link failure case for a call sheet that no longer exists or isn't public. `loadCallSheet` (`frontend/src/loader.ts`) now returns a distinct `not_found` result on an HTTP 404, checked before the generic error path, with no cache fallback; `App.tsx` shows a plain "does not exist or is not available any more" message instead of the network-error copy that used to invite a pointless retry. The backend has no separate "not public" concept yet — `_get_call_sheet_or_404` 404s for both cases, so both collapse to the same message by design, noted in the PR for whoever adds real visibility control later. New Playwright test (`test_share_link_to_a_missing_or_non_public_sheet_shows_a_clear_message_not_a_spinner`); full suite 13/13 passing against a real build, verified against the pre-installed Chromium (this sandbox's pinned revision is absent, the same known gap prior shifts noted for their own E2E runs). `npm run typecheck` and `npm run build` clean. PR #77, awaiting founder merge (touches `frontend/`). FR-11 set to `done`. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) was already reported skipped this morning — unchanged, still `in-progress`.
+- tests: 13/13 frontend Playwright tests pass (`frontend/tests/test_smoke.py`, one new).
+- blockers: none new. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
+- needs_approval: yes — PR #77 needs the founder's own merge (code, not state); INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
-- summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) delivered 2026-09-16 09:00 (PR #59), still awaiting founder merge.
+- summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) confirmed merged (PR #59, part of the overnight 2026-09-17 clearing) and stands `done`.
 - tests: n/a — no code touched this shift.
 - blockers: none.
 - needs_approval: no.
