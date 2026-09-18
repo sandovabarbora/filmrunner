@@ -1,8 +1,30 @@
 # Status
 
-Updated: 2026-09-18 11:00 (11:00 shift)
+Updated: 2026-09-18 13:00 (13:00 shift)
 
 ## today
+
+**13:00 update**: took the plan's own item, **FR-18** (build the
+offline-edit failure case for an *existing* crew member, frontend).
+`Crew.save()`'s catch block used to fall through to the generic "No
+connection, nothing was lost, try again" notice on a PATCH failure —
+misleading, since nothing was actually kept. Added a small IndexedDB
+queue (`frontend/src/editor/crewEdits.ts`, its own store, separate from
+the day draft's `drafts.ts`) keyed by crew-member id: an offline edit now
+saves there, the crew row shows the change immediately via an optimistic
+overlay tagged "not saved", and the queue retries automatically the next
+time the Crew tab loads (plus a manual "Sync" button per row). New
+Playwright test; full `test_editor_e2e.py` (11/11) and the wider frontend
+E2E suite (29/30 — one pre-existing, unrelated geocoding-test failure,
+Nominatim blocked by this sandbox's egress proxy) verified against a real
+build, a real API, and the pre-installed Chromium. `npm run typecheck`
+and `npm run build` clean. PR #79 (`feat/fr-18-crew-offline-edit-queue`)
+— touches `frontend/`, so per TEAM.md this needs the founder's own merge,
+no auto-merge. FR-18 stays `in-progress` in BACKLOG.md: every ungated dod
+bullet is now delivered, but the photo bullet itself remains gated on
+INBOX #4 (Supabase Storage bucket + key), still `state: pending`.
+`gh pr list --state open` was empty before this shift opened #79, so
+nothing was skipped for depending on an open PR.
 
 **11:00 update**: took the plan's own item, **FR-11** (verify/build the
 crew-link failure case for a call sheet that no longer exists or isn't
@@ -76,10 +98,10 @@ should pull the next one from that trio rather than sit idle.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine)
 
 ## engineering (tech-lead + frontend)
-- summary: 11:00 shift (frontend) delivered FR-11's remaining dod bullet: the crew-link failure case for a call sheet that no longer exists or isn't public. `loadCallSheet` (`frontend/src/loader.ts`) now returns a distinct `not_found` result on an HTTP 404, checked before the generic error path, with no cache fallback; `App.tsx` shows a plain "does not exist or is not available any more" message instead of the network-error copy that used to invite a pointless retry. The backend has no separate "not public" concept yet — `_get_call_sheet_or_404` 404s for both cases, so both collapse to the same message by design, noted in the PR for whoever adds real visibility control later. New Playwright test (`test_share_link_to_a_missing_or_non_public_sheet_shows_a_clear_message_not_a_spinner`); full suite 13/13 passing against a real build, verified against the pre-installed Chromium (this sandbox's pinned revision is absent, the same known gap prior shifts noted for their own E2E runs). `npm run typecheck` and `npm run build` clean. PR #77, awaiting founder merge (touches `frontend/`). FR-11 set to `done`. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) was already reported skipped this morning — unchanged, still `in-progress`.
-- tests: 13/13 frontend Playwright tests pass (`frontend/tests/test_smoke.py`, one new).
+- summary: 13:00 shift (frontend) delivered FR-18's remaining failure-case half: an edit to an existing crew member made offline now queues in IndexedDB (`frontend/src/editor/crewEdits.ts`), the row shows it with a "not saved" tag via an optimistic overlay, and it syncs automatically next time the Crew tab loads or on demand via a "Sync" button. PR #79 (`feat/fr-18-crew-offline-edit-queue`), awaiting founder merge (touches `frontend/`). FR-18 stays `in-progress`: the photo bullet remains gated on INBOX #4. Earlier, 11:00 shift (frontend) delivered FR-11's remaining dod bullet: the crew-link failure case for a call sheet that no longer exists or isn't public. `loadCallSheet` (`frontend/src/loader.ts`) now returns a distinct `not_found` result on an HTTP 404, checked before the generic error path, with no cache fallback; `App.tsx` shows a plain "does not exist or is not available any more" message instead of the network-error copy that used to invite a pointless retry. The backend has no separate "not public" concept yet — `_get_call_sheet_or_404` 404s for both cases, so both collapse to the same message by design, noted in the PR for whoever adds real visibility control later. PR #77, awaiting founder merge (touches `frontend/`). FR-11 set to `done`. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) was already reported skipped this morning — unchanged, still `in-progress`.
+- tests: 13:00 shift — 11/11 `test_editor_e2e.py` pass, one new (`test_crew_edit_offline_queues_locally_and_shows_not_saved`); wider frontend E2E suite 29/30 (one pre-existing, unrelated geocoding-test failure — Nominatim blocked by this sandbox's egress proxy). 11:00 shift — 13/13 frontend Playwright tests passed (`frontend/tests/test_smoke.py`, one new).
 - blockers: none new. Carried over: FR-18's photo upload gated on INBOX #4, FR-16's push gated on INBOX #5.
-- needs_approval: yes — PR #77 needs the founder's own merge (code, not state); INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
+- needs_approval: yes — PR #79 and PR #77 both need the founder's own merge (code, not state); INBOX #5 (VAPID keypair) and INBOX #4 (Supabase Storage bucket/secret), both carried over, both needing the founder's own credentials.
 
 ## security (gate)
 - summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) confirmed merged (PR #59, part of the overnight 2026-09-17 clearing) and stands `done`.
