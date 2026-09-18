@@ -1,7 +1,9 @@
 # ADR-001: Frontend stack is React + Vite + TypeScript
 
 Date: 2026-09-14. Status: accepted (founder decision in session). Serves FR-4
-(partially) and unblocks FR-10.
+(partially) and unblocks FR-10. See `ADR-001-backend-stack.md` for the
+backend half of the same FR-4 decision (FastAPI + Postgres vs. the old
+Next.js + Supabase repo).
 
 ## Context
 
