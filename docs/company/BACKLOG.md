@@ -217,7 +217,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: 09:00 shift 2026-09-16 (PR #59, branch docs/fr-5-pre-merge-checklist) delivered the whole dod: docs/gates/pre-merge-checklist.md (security: no secrets, auth on every non-public route via require_principal/authz.require_on, input validation, no unescaped external data in HTML citing the FR-7 regression test, server-set audit fields, exact-pinned dependencies, no unapproved spend/account/deploy; QA: tests including the failure case, CI green on the PR's own head, real verification when a dod demands it) and the PR template, expanded from 5 to 8 checkboxes and linking the file, so a skipped item is visible on the PR itself. Doc-only change, `python scripts/check_company_docs.py` clean; no code, so no test suite applies. Awaits founder merge.
 
 ## FR-21 · pm · Switching-cost research: what would make an AD leave a named incumbent mid-season
-- state: ready
+- state: done
 - gated: no
 - why: BRIEF.md Q6 asks what would make an AD switch tools mid-season; FR-2's teardown named the incumbent per production size but did not investigate lock-in mechanics, and FR-3's interviews (the primary source for this question) are blocked on the founder recruiting real candidates (INBOX #1). This half of Q6 is answerable now from public sources while interviews remain blocked.
 - dod:
@@ -225,6 +225,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - every claim cites its source and the date checked, the same convention FR-2 uses
   - the doc explicitly separates these desk-research findings from FR-3's own interview question ("what would have to be true for you to switch") so a future shift never treats desk research as a substitute for a real interview answer
   - failure case: a lock-in or export claim that cannot be verified from a public source is marked "unverified", not guessed, same convention as FR-2
+- note: 09:00 shift 2026-09-18 (branch docs/fr-21-switching-cost-teardown) delivered docs/research/switching-cost-teardown.md covering all five FR-2 incumbents: documented export functions (StudioBinder PDF/CSV, SetHero's full export collection, Croogloo's contact export, Movie Magic's version-gated native/third-party exports), and two sourced lock-in signals (Yamdu's tiered contact-retention complaint from Capterra reviews, Movie Magic's "locked in" framing from a competitor page, flagged as needing neutral re-verification). No Reddit/forum discussion of switching surfaced despite four targeted searches; marked unverified rather than assumed absent. The doc explicitly separates these desk findings from FR-3's own interview question, which stays blocked on INBOX #1. This shift's originally-assigned item (FR-8: verify the PWA service worker on the real Fly-hosted URL over iOS Safari) was skipped — this session's egress proxy rejects `filmrunner-api.fly.dev` outright (confirmed with a direct curl) and no iOS device exists here either, so the check is undoable this shift; noted in STATUS.md.
 ## FR-20 · marketing · Prague market sizing: how many active productions are there
 - state: ready
 - gated: no
