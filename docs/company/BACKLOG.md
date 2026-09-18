@@ -169,14 +169,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: delivered in PR #11 (branch docs/fr-3-discovery-plan) — target roles, a 30-minute script mapped to BRIEF.md Q1-Q4/Q6, a note-taking template, and draft invitation email text. Recruiting real candidates and sending the invitation needs the founder's own network and identity, not the routine; filed as INBOX #1.
 
 ## FR-1 · pm · BRIEF.md v0 to v0.1: sharpen questions and hypotheses
-- state: done
+- state: in-progress
 - gated: no
 - why: there is no constitution; every other item needs one to justify itself
 - dod:
   - each open question in BRIEF.md has an owner and a concrete way it gets answered
   - the June 2026 brief (docs/reference/PRODUCT_BRIEF-2026-06.md) is read and its claims are listed as hypotheses, not facts
   - failure case: a hypothesis we cannot test within a month is marked "parked", not deleted or silently believed
-- note: v0.1 shipped (BRIEF.md). 15:00 shift 2026-09-18 closed dod bullet 2: `docs/reference/PRODUCT_BRIEF-2026-06.md` was not actually missing — it has been in this repo since commit `b918215` (2026-09-14, the founder's own commit), but every shift since, including the one that wrote the "could not open it" note, searched the old external path or fetched vendor-style URLs instead of checking `docs/reference/` in the local checkout. Read in full this shift; BRIEF.md's "Assumptions" section is rewritten from the real content (H1 corrected — budgeting is explicitly cut from the June brief's own v1, not assumed included; H2 confirmed — the brief argues for keeping Next.js+FastAPI+Supabase, the restart was a scope choice not a technical finding; H3 replaced with the real figures: €99–499 tiered flat fee, free for film schools, Prague-first; two new hypotheses H4/H5 added), each cited to a section of the source and dated. No hypothesis is parked: FR-3 (the trigger for the one-month parking clock) has not started, still blocked on INBOX #1. Also recorded in `DECISIONS.md` as a process-gap correction. Failure case holds: nothing here is asserted as fact, only as a hypothesis for FR-3 or the marked-owner question to test.
+- note: v0.1 shipped (BRIEF.md). Dod bullet 2 is partly blocked — `PRODUCT_BRIEF.md` is not present in this repo or reachable from the routine's environment, so its claims could not be read directly; BRIEF.md now says so explicitly and lists only reconstructed, clearly-unverified hypotheses. Closing this fully needs the founder to add the source document to the repo.
 
 ## FR-2 · pm · Competitive teardown of call-sheet tools
 - state: done
@@ -190,14 +190,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: delivered in PR #8 (branch shift/FR-2). `WebFetch` was blocked by this session's egress proxy for every vendor domain, so the teardown is built from `WebSearch` snippets, not directly-read vendor pages; several items are flagged "unverified" and a follow-up re-verification pass is requested in the doc.
 
 ## FR-6 · marketing · Positioning draft
-- state: ready
+- state: blocked
 - gated: no
 - why: outreach and landing need one sentence of positioning that survives contact with an AD
 - dod:
   - docs/marketing/positioning.md with alternatives considered and the chosen one, grounded in FR-1 and FR-2 findings
   - blocked until FR-1 and FR-2 are done
   - failure case: if FR-2 shows a competitor already owns the chosen position, the draft says so and proposes another, rather than ignoring it
-- note: 15:00 shift 2026-09-18 — unblocked: FR-1 flipped to `done` this shift, FR-2 was already `done`. Not worked this shift (this shift's own item); next shift or a future run can take it.
 
 ## FR-4 · tech-lead · ADR-001: stack of the skeleton
 - state: in-progress
