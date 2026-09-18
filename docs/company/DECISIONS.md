@@ -93,6 +93,25 @@ Append-only. Format: date, decision, why, revisit when.
 - Known cost: free-tier projects pause after a week of inactivity; mitigate with a scheduled health ping from CI or accept until there are real users.
 - Revisit when: the free tier pause bites a demo, or a feature tempts us into Supabase-only logic.
 
+## 2026-09-18: the June 2026 product brief was in the repo the whole time
+- Decision: none — a correction to the record. `docs/reference/PRODUCT_BRIEF-2026-06.md`
+  has existed in this repo since commit `b918215` (2026-09-14 15:54 CEST,
+  the founder's own commit), but `BRIEF.md`'s "Assumptions" section — written
+  in that same commit — said the source could not be opened, and every
+  shift through 2026-09-18 09:00 repeated that claim without checking
+  `docs/reference/` in the local checkout; they instead tried the old
+  external repo path or a fetch that this environment's egress policy
+  blocks. The 15:00 shift on 2026-09-18 found it with a plain `find`,
+  read it in full, and rewrote `BRIEF.md`'s assumptions from the real
+  content (FR-1, now `done`).
+- Why: four days of shifts treated an unreachable-source claim as settled
+  without re-checking it, because "unreachable" sounded like an
+  environment limit (like the `fly.dev` egress block FR-8/FR-16 hit) and
+  nobody tested that assumption against the local filesystem specifically.
+- Revisit when: never scheduled — this is the fix. General lesson for any
+  future "could not access X" note: check the local repo tree directly
+  before accepting it, since a teammate may have already added the file.
+
 ## 2026-09-17: auto-merge by reversibility, and idle shifts propose work
 - Decision: PRs touching only reversible documents (state files, backlog proposals, research, marketing, gate checklists, PR template) auto-merge after CI; code and decision documents (ADRs, BRIEF, TEAM, DECISIONS) still wait for the founder. A shift with no workable item proposes one backlog item as pm. The brief lists PRs waiting more than a working day.
 - Why: 2026-09-16 and 09-17 the team idled ten shifts: the only `ready` item depended on an open docs PR and two proposal PRs waited for a merge nobody was around to give. The founder's attention is the scarce resource; it should go to code and decisions, not to research documents she can edit at will.
