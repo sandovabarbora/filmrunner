@@ -50,7 +50,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: opening a day while offline shows the last known revision read-only with a clear "reconnect to publish" state, never an empty form that could be published as a blank revision
 
 ## FR-11 · frontend · Share link and QR for the crew
-- state: in-progress
+- state: done
 - gated: no
 - why: "in everyone's pocket" needs one tap: the AD sends a link, the crew opens it, no typing of IDs or API URLs
 - dod:
@@ -58,6 +58,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the link survives a hot revision: reopening it shows the current revision, and a visible "REV B replaces A" note
   - failure case: a link to a call sheet that no longer exists or is not public shows a clear message, not a spinner
 - note: 09:00 shift 2026-09-15 (PR #45, branch feat/fr-11-qr-crew-link) — a QR code for the crew link now renders next to `#shareLink` after publish, built with `qrcode-generator` (zero deps) as plain SVG rects, no `dangerouslySetInnerHTML`. Verified against a real build and a real API: publish REV A, the QR svg has a real module count. Still open: the "REV B replaces A" note on a hot revision is left for FR-16 to add (it already plans that line for its own push-notification copy); the not-found/not-public failure case for the direct-load link is unverified this shift.
+- note: 11:00 shift 2026-09-18 (PR TBD, branch fix/fr-11-not-found-failure-case) closed the remaining dod bullet. `loader.ts` was collapsing a 404 from the public call-sheet API into the same generic path as a network failure, so a deleted or never-existing sheet showed "the server could not be reached... reload once you have signal" — misleading, since reloading can never fix it. `loadCallSheet` now returns a distinct `not_found` result on an HTTP 404 (checked before the generic `!resp.ok` throw, no cache fallback — the same immediate-status pattern `loadPersonal` already used for an unknown personal token), and `App.tsx` renders it as "This call sheet does not exist or is not available any more... reloading will not help", never the sheet skeleton or a spinner. The backend has no separate "not public" concept yet (`_get_call_sheet_or_404` in `call_sheets.py` 404s for both "never existed" and any future "exists but not public"), so both collapse to the same message by design — noted in the PR for whoever adds real visibility control later. New Playwright test `test_share_link_to_a_missing_or_non_public_sheet_shows_a_clear_message_not_a_spinner` (`frontend/tests/test_smoke.py`) mocks a 404 and asserts the distinct text, no skeleton, and no `#sheet.visible`. `npm run typecheck` and `npm run build` clean; full suite 13/13 passing against a real build — this sandbox's pinned Chromium revision (1134) is absent as prior shifts noted, verified instead against the pre-installed `/opt/pw-browsers/chromium` with `--headless=new` via a temporary local-only fixture override, reverted before commit (not part of the diff).
 
 ## FR-14 · tech-lead · Production contacts on the sheet: who to call, head of day, heads of department, nearest hospital
 - state: done
