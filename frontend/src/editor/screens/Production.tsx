@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../../Avatar";
-import { api, type Connection } from "../api";
+import { api, ApiError, type Connection } from "../api";
+import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
@@ -109,6 +110,18 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
 type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean };
 const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false };
 
+/** A pending edit overlaid onto the server's copy of a crew member, for display and for re-editing. */
+function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
+  return {
+    ...m,
+    contact: { ...m.contact, name: p.name, phone: p.phone || null },
+    department: p.department,
+    position: p.position,
+    standard_call_time: p.standard_call_time,
+    is_head_of_department: p.is_head_of_department,
+  };
+}
+
 function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
   const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
@@ -116,10 +129,42 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  // Edits made offline (FR-18 failure case): kept in IndexedDB and overlaid on the crew list until they sync.
+  const [pending, setPending] = useState<Map<string, PendingCrewEdit>>(new Map());
+
+  async function syncPendingEdit(edit: PendingCrewEdit, announce: boolean): Promise<void> {
+    try {
+      const contact = await api.updateContact(conn, edit.contactId, { name: edit.name, phone: edit.phone || null });
+      const member = await api.updateCrewMember(conn, productionId, edit.memberId, {
+        department: edit.department, position: edit.position, standard_call_time: edit.standard_call_time, is_head_of_department: edit.is_head_of_department,
+      });
+      await clearPendingCrewEdit(edit.memberId);
+      setCrew((c) => (c ?? []).map((x) => (x.id === member.id ? { ...member, contact } : x)));
+      setPending((p) => { if (!p.has(edit.memberId)) return p; const n = new Map(p); n.delete(edit.memberId); return n; });
+      if (announce) setNotice({ kind: "ok", text: `${contact.name} synced.` });
+    } catch (err) {
+      if (announce) setNotice(err instanceof ApiError && err.status === 0
+        ? { kind: "warn", text: "Still offline; the change stays on this phone." }
+        : noticeFromError(err, "Could not sync the change"));
+    }
+  }
 
   useEffect(() => {
-    api.listCrew(conn, productionId).then(setCrew).catch((err: unknown) => { setCrew([]); setNotice(noticeFromError(err, "Cannot load crew")); });
+    let cancelled = false;
+    api.listCrew(conn, productionId)
+      .then(async (list) => {
+        if (cancelled) return;
+        setCrew(list);
+        const stored = await loadAllPendingCrewEdits(productionId).catch(() => []);
+        if (cancelled || stored.length === 0) return;
+        setPending(new Map(stored.map((e) => [e.memberId, e])));
+        for (const edit of stored) void syncPendingEdit(edit, false);
+      })
+      .catch((err: unknown) => { setCrew([]); setNotice(noticeFromError(err, "Cannot load crew")); });
+    return () => { cancelled = true; };
   }, [conn, productionId, setNotice]);
+
+  const visibleCrew = crew ? crew.map((m) => (pending.has(m.id) ? applyPendingEdit(m, pending.get(m.id)!) : m)) : null;
 
   function startEdit(m: CrewMember) {
     setEditing(m);
@@ -136,6 +181,10 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
           department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
         });
         setCrew((c) => (c ?? []).map((x) => (x.id === member.id ? { ...member, contact } : x)));
+        if (pending.has(editing.id)) {
+          await clearPendingCrewEdit(editing.id);
+          setPending((p) => { const n = new Map(p); n.delete(editing.id); return n; });
+        }
         setNotice({ kind: "ok", text: `${contact.name} updated. The sheet shows it immediately.` });
         cancelEdit();
       } else {
@@ -148,7 +197,23 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         setNotice({ kind: "ok", text: `${contact.name} added${form.hod ? " as head of department" : ""}.` });
       }
     } catch (err) {
-      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the crew member"));
+      // An edit to an existing person is never lost offline: it queues on this phone (FR-18 failure case).
+      // Adding a new person offline has nothing to queue against yet (no crew-member id), so it just fails as before.
+      if (editing && err instanceof ApiError && err.status === 0) {
+        const edit: PendingCrewEdit = {
+          memberId: editing.id, productionId, contactId: editing.contact_id,
+          name: form.name.trim(), phone: form.phone.trim(),
+          department: form.department.trim(), position: form.position.trim(),
+          standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
+          savedAt: new Date().toISOString(),
+        };
+        await savePendingCrewEdit(edit);
+        setPending((p) => new Map(p).set(edit.memberId, edit));
+        setNotice({ kind: "warn", text: "No connection. The change is kept on this phone as not saved; it will sync when you are back online." });
+        cancelEdit();
+      } else {
+        setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the crew member"));
+      }
     } finally {
       setBusy(false);
     }
@@ -160,6 +225,10 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       await api.removeCrewMember(conn, productionId, m.id);
       setCrew((c) => (c ?? []).filter((x) => x.id !== m.id));
       if (editing?.id === m.id) cancelEdit();
+      if (pending.has(m.id)) {
+        await clearPendingCrewEdit(m.id);
+        setPending((p) => { const n = new Map(p); n.delete(m.id); return n; });
+      }
       setNotice({ kind: "ok", text: `${m.contact.name} removed.` });
     } catch (err) {
       setNotice(noticeFromError(err, "Could not remove"));
@@ -204,18 +273,22 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       <h2>Crew</h2>
       {crew === null && <p className="hint">Loading…</p>}
       {crew && crew.length === 0 && <p className="hint">No crew yet. Heads of department appear on every call sheet under "Who to call".</p>}
-      {crew && crew.length > 0 && (
+      {visibleCrew && visibleCrew.length > 0 && (
         <ul className="list" id="crew">
-          {crew.map((m) => (
+          {visibleCrew.map((m) => (
             <li key={m.id} className={`row static${editing?.id === m.id ? " editing" : ""}`}>
               <span className="name crew-name">
                 <Avatar name={m.contact.name} photoUrl={m.contact.photo_url} size={28} />
                 <span>{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
+                  {pending.has(m.id) && <span className="tag warn" id={`notSaved-${m.id}`}>not saved</span>}
                   <span className="meta"> · {m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}{m.standard_call_time ? ` · call ${m.standard_call_time}` : ""}</span>
                 </span>
               </span>
               {canEdit && (
                 <span className="row-actions">
+                  {pending.has(m.id) && (
+                    <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={`Sync ${m.contact.name}`}>Sync</button>
+                  )}
                   <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={`Edit ${m.contact.name}`}>Edit</button>
                   <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.contact.name}`}>Remove</button>
                 </span>

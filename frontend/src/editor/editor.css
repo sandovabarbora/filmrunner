@@ -57,6 +57,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .quiet-link { font-size: 0.8125rem; color: var(--ink-2); }
 .rev-badge.small { font-size: 0.6875rem; padding: 3px 7px; }
 .tag { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid var(--rule-strong); border-radius: 3px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; vertical-align: middle; }
+.tag.warn { border-color: var(--warn-ink); color: var(--warn-ink); }
 a.button { display: inline-block; margin-top: 12px; padding: 11px 14px; border: 1px solid var(--rule-strong); border-radius: 4px; background: #fff; color: var(--ink); font-weight: 600; text-decoration: none; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; margin: 4px 0 12px; }
 .check input { width: auto; }
