@@ -235,3 +235,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the count is compared against a stated word-of-mouth sample-size threshold, citing the source for that threshold
   - every claim cites its source and the date checked
   - failure case: if no public source can establish a count, the doc says so explicitly and proposes the narrowest fallback (e.g. asking FR-3 interviewees to estimate) instead of guessing a number
+
+## FR-22 · pm · Desk research: who assembles call sheets and what they use today (Q1/Q2 public-source proxy)
+- state: ready
+- gated: no
+- why: BRIEF.md Q1 and Q2 can only be fully answered by real interviews (FR-3), which stay blocked on the founder recruiting candidates (INBOX #1); public crew job postings and industry discussion can give an early, weaker signal on who drafts/approves/distributes call sheets and what tool a production names today, the same kind of desk-research complement FR-21 already built for Q6
+- dod:
+  - docs/research/call-sheet-role-and-tooling-signals.md gathers public Czech production crew job postings and classifieds (e.g. filmtalent.cz, Facebook crew groups, LinkedIn) and any public forum or discussion (Reddit, industry groups) that names who assembles, approves, or distributes call sheets, and what tool or workflow (email+PDF, WhatsApp, StudioBinder, etc.) a production names using
+  - findings are coded by production size (short <15 crew, feature <50, feature/TV >50) wherever a source states or implies it, the same convention FR-3's interview script uses
+  - the doc states explicitly, wherever cited elsewhere, that this is a public-source proxy and never a substitute for FR-3's real interview answers
+  - failure case: if no public source names a role and a tool/workflow together, the doc says so explicitly rather than inferring a link between separately-found facts
