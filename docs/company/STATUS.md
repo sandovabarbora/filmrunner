@@ -1,25 +1,44 @@
 # Status
 
-Updated: 2026-09-17 17:01 (17:00 shift)
+Updated: 2026-09-18 08:00 (morning brief)
 
 ## today
 
-No backlog item qualified for a shift all day. FR-5 is the only
-`state: ready` item in `BACKLOG.md`, but its entire dod already shipped in
-PR #59 (`docs/fr-5-pre-merge-checklist`), which stayed open all day
-awaiting the founder's merge — its dod depends on that open PR, so per the
-brief contract it was skipped at every shift. Every other item is
-`in-progress`, `blocked`, or `done`. FR-20 (proposed in PR #58) and FR-21
-(proposed in PR #66) never became `ready` in `main` either, since both PRs
-stayed open. Result: all five shifts were idle; nothing unblocked all day
-(`INBOX.md` gained no `approved` item, and none of PR #55/#58/#59/#66
-landed).
+The founder cleared the backlog overnight (2026-09-17, after the 17:00
+shift): PRs #55, #58, #59, #66 and #72 all merged into `main` (confirmed
+in `main`'s history), along with #48 and #51 from 2026-09-15 that had
+also sat open. That ends the four idle days recorded 2026-09-15 to
+2026-09-17 and unblocks real work again; `gh pr list --state open` is
+now empty, so no item is skipped for depending on an open PR. `TEAM.md`
+also picked up a 2026-09-17 rule auto-merging reversible docs-only PRs by
+default, which should keep this from recurring for state/backlog PRs
+specifically.
 
-- 09:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
-- 11:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
-- 13:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
-- 15:00 · idle — no qualifying backlog item; no digest sent (produced nothing)
-- 17:00 · idle — same reason; day summary sent regardless of idleness
+Five items qualify (`ready`, or `in-progress` with a note naming
+remaining ungated work), taken in `BACKLOG.md` priority order:
+
+- 09:00 · FR-8 — verify the PWA's service worker actually registers over
+  the real deployed Fly-hosted HTTPS URL on iOS Safari (not just the
+  GitHub Pages demo bundle), closing ADR-002's one unverified failure case.
+- 11:00 · FR-11 — verify (and build if missing) the failure-case UI for a
+  crew link to a call sheet that no longer exists or isn't public, so it
+  shows a clear message instead of a spinner.
+- 13:00 · FR-18 — build the offline-edit failure case for an *existing*
+  crew member: an edit made offline should queue locally and show "not
+  saved", not the generic "No connection" notice with nothing kept.
+- 15:00 · FR-16 — INBOX #5's VAPID keys are now set; verify the push flow
+  end to end against the live configuration and flip FR-16 to `done` if
+  it holds (the real-iPhone check stays out of scope, no device here).
+- 17:00 · FR-4 — write ADR-001's remaining backend half: why FastAPI +
+  Postgres over the abandoned Next.js + Supabase stack, and what the old
+  repo had that this one still lacks.
+
+`BACKLOG.md` had only 2 `ready`+ungated items (FR-20, FR-21), below the
+3-item floor, so this brief also proposed FR-22 (pm, Q1/Q2 desk-research
+proxy) in PR #73 (`docs/backlog-proposals-2026-09-18`, auto-merge
+enabled). FR-20, FR-21, and FR-22 stay `ready` but unscheduled today —
+only five shifts run; whichever of today's five items finishes early
+should pull the next one from that trio rather than sit idle.
 
 ## pm
 - summary: unchanged this shift. FR-3 customer discovery plan delivered (docs/research/discovery-plan.md, PR #11); FR-2 teardown (docs/research/competitive-teardown.md, PR #8) stands. FR-1 (BRIEF.md v0.1) still in-progress, blocked on the founder adding the June 2026 source brief to the repo. Morning brief's FR-21 backlog proposal (PR #66) still open and unmerged.
