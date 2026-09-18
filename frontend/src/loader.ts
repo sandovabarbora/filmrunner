@@ -21,11 +21,20 @@ export type LoadResult =
   | { kind: "live"; data: CallSheet }
   | { kind: "cached"; data: CallSheet; fetchedAt: string; reason: string }
   | { kind: "unknown"; data: CallSheet }
+  | { kind: "not_found" }
   | { kind: "error"; reason: string };
 
 export async function loadCallSheet(url: string, id: string): Promise<LoadResult> {
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (resp.status === 404) {
+      // The server has spoken authoritatively: this id does not exist (the
+      // same response the API gives for a sheet that exists but is not
+      // public, since it has no separate concept for that yet). Unlike a
+      // network failure, no retry or cached copy fixes this, so it must
+      // never be shown as "could not be reached, try again".
+      return { kind: "not_found" };
+    }
     if (!resp.ok) {
       throw new Error(`API returned ${resp.status}`);
     }

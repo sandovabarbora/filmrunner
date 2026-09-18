@@ -45,6 +45,7 @@ export function App() {
     if (r.kind === "live") setStatus({ kind: "online", text: "Live · saved on this phone for offline use." });
     if (r.kind === "cached") setStatus({ kind: "offline", text: `Offline · showing the copy saved ${new Date(r.fetchedAt).toLocaleString()}. Times may have changed since.` });
     if (r.kind === "unknown") setStatus({ kind: "offline", text: "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening." });
+    if (r.kind === "not_found") setStatus({ kind: "error", text: "This call sheet does not exist or is not available any more." });
     if (r.kind === "error") setStatus({ kind: "error", text: `Could not load this call sheet (${r.reason}).` });
   }
 
@@ -114,7 +115,7 @@ export function App() {
       {mode.kind === "share" && mode.me && personal && personal !== "invalid" && (
         <NotificationToggle apiBase={mode.api} token={mode.me} />
       )}
-      {result && result.kind !== "error" && (
+      {result && result.kind !== "error" && result.kind !== "not_found" && (
         <CallSheetView
           callSheet={result.data}
           personal={personal && personal !== "invalid" ? personal : null}
@@ -126,7 +127,12 @@ export function App() {
           This call sheet is not on this phone yet and the server could not be reached. Get back in signal and reload; it will be saved for offline use after the first load.
         </div>
       )}
-      {(!result || result.kind === "error") && <div id="sheet" className="sheet" />}
+      {result?.kind === "not_found" && (
+        <div className="empty" id="notFound" role="status">
+          This call sheet does not exist or is not available any more. Check the link with whoever sent it — reloading will not help.
+        </div>
+      )}
+      {(!result || result.kind === "error" || result.kind === "not_found") && <div id="sheet" className="sheet" />}
     </div>
   );
 }

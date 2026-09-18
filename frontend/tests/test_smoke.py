@@ -209,6 +209,29 @@ def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, f
         fixture_path.unlink()
 
 
+def test_share_link_to_a_missing_or_non_public_sheet_shows_a_clear_message_not_a_spinner(page: Page, frontend_url: str) -> None:
+    """FR-11 failure case: a crew link to a call sheet that no longer
+    exists (or, once the API has that concept, is not public — both are
+    404 today) must say so plainly, never sit on a spinner or claim the
+    server "could not be reached" (that phrasing invites a retry that
+    can never succeed for a sheet that simply is not there).
+    """
+    page.route(
+        "**/api/v1/public/call-sheets/gone",
+        lambda route: route.fulfill(status=404, content_type="application/json", body='{"detail":"Call sheet not found"}'),
+    )
+    page.goto(f"{frontend_url}/index.html?sheet=gone&api=http://api.test")
+    page.wait_for_function(
+        "document.querySelector('#status').textContent.trim().length > 0", timeout=10_000
+    )
+    status = page.locator("#status")
+    assert "does not exist" in status.inner_text()
+    assert "could not be reached" not in status.inner_text()
+    assert page.locator(".skeleton").count() == 0
+    assert page.locator("#notFound").is_visible()
+    assert not page.locator("#sheet").evaluate("el => el.classList.contains('visible')")
+
+
 def test_print_media_shows_paper_chrome_and_hides_screen_controls(page: Page, frontend_url: str) -> None:
     """The printed sheet carries its own header line and footer; screen-only controls disappear."""
     page.goto(f"{frontend_url}/index.html?demo=1")
