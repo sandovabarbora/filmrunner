@@ -74,6 +74,61 @@ no signed-in user sees it. **27 PASS, 0 FAIL.**
 
 Still for the phone only: the WhatsApp share sheet itself (`navigator.share`), `wa.me` deep links opening the app, the push on cancel, install and offline.
 
+## Third pass, 16:00 shift 2026-09-21 (FR-40) — coverage check for everything added on 2026-09-21
+
+Role: qa. This pass did not run new traffic against the live API: a direct
+`curl` to `https://filmrunner-api.fly.dev/` from this session timed out at
+the egress proxy (`CONNECT tunnel failed, response 403`), the same block
+every FR-8/FR-16 attempt has hit since 2026-09-14 — no `fly` CLI is
+installed here either. Instead of re-stating that as a fresh gap, this
+pass did two things a blocked session can still do honestly: (1) checked
+whether the "Second run" above, taken at 13:40, already answers FR-40's
+own scope, and (2) named exactly what is left uncovered rather than
+guessing at it.
+
+**FR-40's own `why` names six surfaces (WhatsApp share, one link per
+person, cast, cancel, Where, who opened REV B) as what needed checking
+against the live API before the founder takes a phone to a set. All six
+are already in the "Second run" table above, run live against
+`filmrunner-api.fly.dev` on the same day: FR-29 (rows "FR-29 day WhatsApp
+text" / "FR-29 personal WhatsApp carries the day's own call"), FR-32
+(rows "FR-32 stable link resolves to the day" / "FR-32 other-days nav
+lists both days"), FR-33 ("FR-33 cast member added" / "FR-33 cast table on
+the sheet"), FR-34 (the two "FR-34 cancel…" rows and restore/wrap), FR-35
+("FR-35 Where block on the sheet"), FR-36 (both "FR-36 seen panel" rows).
+17/17 pass, 0 fail. The dod's named public-endpoint checks are also
+already there: `/public/call-sheets/{id}` (read to confirm cancelled
+status), `/public/crew/{token}/next` and the `seen` endpoint, both with a
+throwaway token → 404 (last two rows of the script). Nothing here needed
+re-running; citing it closes that half of the dod.**
+
+What the second run does **not** cover, because it predates them: FR-38
+(delete a location, merged 14:00), FR-39 (weather fills in on publish,
+merged 15:00), and three items from the founder's own 09:00–14:00 session
+that landed after the 13:40 snapshot — FR-42 (tomorrow at a glance), FR-43
+(days list at a glance), FR-44 (personal calls picker). For these, this
+pass is **NOT VERIFIED against the live API** — the egress block above
+made that impossible this shift, and no substitute (mocked or local
+service) stands in for a live check without misrepresenting it as one.
+What is true instead, cited from each item's own delivering shift:
+
+| Item | What backs it today (not a live check) | Live API status |
+|---|---|---|
+| FR-38 delete a location | 118/118 backend tests (2 new), E2E against a real local build+API (BACKLOG note, 14:00 shift) | NOT VERIFIED live |
+| FR-39 weather on publish | 122/122 backend tests (4 new incl. the CI-caught null-temperature fix), `npm test` 26/26 (BACKLOG note, 15:00 shift) | NOT VERIFIED live |
+| FR-42 tomorrow at a glance | 1 backend test, 1 E2E (BACKLOG note, founder's session) | NOT VERIFIED live |
+| FR-43 days list at a glance | 1 backend test, 2 E2E extended (BACKLOG note, founder's session) | NOT VERIFIED live |
+| FR-44 personal calls picker | E2E tests adapted, frontend-only (BACKLOG note, founder's session) | NOT VERIFIED live |
+
+Failure case: this pass exercised nothing new against the live API, so
+nothing new can have failed live — there is no result here to misreport
+as PASS, and no fabricated bug to file. The five rows above are the
+concrete, named gap for the next shift or the founder's own session, the
+moment `fly`/direct HTTPS egress is available: re-run
+`pilot-readiness-live3.py` (or a small extension of it covering these
+five) against the live stack and fold PASS/FAIL back into this file, the
+same pattern FR-28 already uses for the phone-only steps.
+
 ## For the founder's phone (step-by-step)
 
 1. Safari → https://sandovabarbora.github.io/filmrunner/editor.html → email → code from the mail (needs INBOX #3) → Productions visible.
