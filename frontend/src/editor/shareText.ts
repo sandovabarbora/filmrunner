@@ -8,13 +8,27 @@
  */
 
 import type { Draft } from "./drafts";
-import type { CrewMember, Location } from "../types";
+import type { CastMember, CrewMember, Location } from "../types";
 
 /** Day-level facts the text needs; a subset of Draft so callers can pass a published snapshot. */
 export type DayFacts = Pick<
   Draft,
   "productionName" | "shoot_date" | "day_number" | "day_count" | "unit_name" | "general_crew_call" | "shooting_call" | "sunrise" | "sunset" | "weather_forecast" | "safety_notes" | "items" | "crewCalls" | "lastPublishedLetter"
->;
+> & Partial<Pick<Draft, "castCalls">>;
+
+/** Cast lines for the group message: who works, status, and the times that exist, in call order. */
+function castLines(day: DayFacts, cast: CastMember[]): string[] {
+  const entries = Object.entries(day.castCalls ?? {});
+  if (entries.length === 0 || cast.length === 0) return [];
+  const rows = entries
+    .map(([id, v]) => ({ actor: cast.find((a) => a.id === id), v }))
+    .filter((r): r is { actor: CastMember; v: NonNullable<typeof r.v> } => !!r.actor)
+    .sort((a, b) => (a.v.call || a.v.pickup || "99:99").localeCompare(b.v.call || b.v.pickup || "99:99"));
+  return ["", "_Cast_", ...rows.map(({ actor, v }) => {
+    const times = [v.pickup && `pickup ${v.pickup}`, v.call && `call ${v.call}`, v.makeup && `M/H ${v.makeup}`, v.onSet && `on set ${v.onSet}`].filter(Boolean).join(", ");
+    return `${actor.contact.name} (${actor.character_name}) ${v.status}${times ? ` – ${times}` : ""}`;
+  })];
+}
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // Fixed tables, not toLocaleDateString: ICU versions disagree ("Sep" vs "Sept") and the message must read the same on every phone.
@@ -49,7 +63,7 @@ function locationLines(loc: Location | null): string[] {
 }
 
 /** The whole day for the crew group: calls, where, weather, the schedule, and the crew link last so it is tappable. */
-export function daySummaryText(day: DayFacts, locations: Location[], crewLink: string): string {
+export function daySummaryText(day: DayFacts, locations: Location[], crewLink: string, cast: CastMember[] = []): string {
   const lines: string[] = [heading(day), ""];
   if (day.general_crew_call) lines.push(`Crew call: *${day.general_crew_call}*`);
   if (day.shooting_call) lines.push(`Shooting call: ${day.shooting_call}`);
@@ -64,6 +78,7 @@ export function daySummaryText(day: DayFacts, locations: Location[], crewLink: s
       lines.push(`${it.order_index}. Sc ${it.scene_number}${tag ? ` ${tag}` : ""} – ${it.set_description}`);
     }
   }
+  lines.push(...castLines(day, cast));
   if (day.safety_notes) lines.push("", `Safety: ${day.safety_notes}`);
   lines.push("", "Live call sheet (updates itself):", crewLink);
   return lines.join("\n");
