@@ -144,7 +144,7 @@ class CastCallEntry(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     revision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("call_sheet_revisions.id"), nullable=False)
-    cast_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cast_members.id"), nullable=False)
+    cast_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cast_members.id", ondelete="CASCADE"), nullable=False, index=True)
     status_code: Mapped[CastStatusCode] = mapped_column(Enum(CastStatusCode, name="cast_status_code"), nullable=False)
     pickup_time: Mapped[str | None] = mapped_column(String(10))
     call_time: Mapped[str | None] = mapped_column(String(10))
@@ -152,7 +152,7 @@ class CastCallEntry(Base):
     on_set_time: Mapped[str | None] = mapped_column(String(10))
 
     revision: Mapped["CallSheetRevision"] = relationship(back_populates="cast_calls")
-    cast_member: Mapped["CastMember"] = relationship()  # noqa: F821
+    cast_member: Mapped["CastMember"] = relationship(passive_deletes=True)  # noqa: F821
 
 
 class CrewCallEntry(Base):

@@ -16,7 +16,7 @@ from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Acc
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
-from app.models.production import Contact, ContactPhoto, CrewMember, Location, Production
+from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production
 from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, delete_contact_photo, store_contact_photo
 from app.schemas.production import (
     ContactUpdate,
@@ -31,6 +31,9 @@ from app.schemas.production import (
     LocationRead,
     LocationSuggestion,
     SunTimes,
+    CastMemberCreate,
+    CastMemberRead,
+    CastMemberUpdate,
     LocationUpdate,
     ProductionCreate,
     ProductionRead,
@@ -206,6 +209,57 @@ def get_weather_suggestion(
     if location.geo_lat is None or location.geo_lng is None:
         return LocationSuggestion(suggestion=None)
     return LocationSuggestion(suggestion=weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date))
+
+
+# --- Cast (FR-33): the people in front of the camera; per-day times live on the revision as cast calls.
+
+
+@router.post("/productions/{production_id}/cast-members", response_model=CastMemberRead, status_code=status.HTTP_201_CREATED)
+def create_cast_member(
+    production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+) -> CastMember:
+    if db.get(Contact, payload.contact_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    actor = CastMember(production_id=production_id, **payload.model_dump())
+    db.add(actor)
+    db.commit()
+    db.refresh(actor)
+    return actor
+
+
+@router.get("/productions/{production_id}/cast-members", response_model=list[CastMemberRead])
+def list_cast_members(production_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))) -> list[CastMember]:
+    return list(db.query(CastMember).filter(CastMember.production_id == production_id).all())
+
+
+def _cast_member_of_production_or_404(db: Session, production_id: uuid.UUID, cast_member_id: uuid.UUID) -> CastMember:
+    actor = db.get(CastMember, cast_member_id)
+    if actor is None or actor.production_id != production_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cast member not found")
+    return actor
+
+
+@router.patch("/productions/{production_id}/cast-members/{cast_member_id}", response_model=CastMemberRead)
+def update_cast_member(
+    production_id: uuid.UUID, cast_member_id: uuid.UUID, payload: CastMemberUpdate,
+    db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT)),
+) -> CastMember:
+    actor = _cast_member_of_production_or_404(db, production_id, cast_member_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(actor, field, value)
+    db.commit()
+    db.refresh(actor)
+    return actor
+
+
+@router.delete("/productions/{production_id}/cast-members/{cast_member_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_cast_member(
+    production_id: uuid.UUID, cast_member_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+) -> None:
+    """Their per-day cast calls go with them (DB cascade), the same rule as crew (FR-24)."""
+    actor = _cast_member_of_production_or_404(db, production_id, cast_member_id)
+    db.delete(actor)
+    db.commit()
 
 
 @router.get("/productions/{production_id}/locations/{location_id}/sun", response_model=SunTimes)

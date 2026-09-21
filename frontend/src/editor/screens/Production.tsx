@@ -6,7 +6,7 @@ import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList } from "../crewImport";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
-import type { CallSheetCreated, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
+import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
 
 export function crewLink(apiBase: string, sheetId: string): string {
   const base = window.location.href.replace(/editor\.html.*$/, "");
@@ -58,7 +58,7 @@ function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connecti
 }
 
 export function ProductionScreen({ conn, productionId, production, tab, setNotice }: {
-  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "locations" | "members"; setNotice: (n: Notice) => void;
+  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "cast" | "locations" | "members"; setNotice: (n: Notice) => void;
 }) {
   const manage = can(production, "production:manage_members");
   return (
@@ -67,12 +67,14 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
       <div className="tabs" role="tablist">
         <a role="tab" aria-selected={tab === "days"} className={tab === "days" ? "on" : ""} href={href({ screen: "production", productionId, tab: "days" })}>Days</a>
         <a role="tab" aria-selected={tab === "crew"} className={tab === "crew" ? "on" : ""} href={href({ screen: "production", productionId, tab: "crew" })}>Crew</a>
+        <a role="tab" aria-selected={tab === "cast"} className={tab === "cast" ? "on" : ""} href={href({ screen: "production", productionId, tab: "cast" })}>Cast</a>
         <a role="tab" aria-selected={tab === "locations"} className={tab === "locations" ? "on" : ""} href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>
         {manage && <a role="tab" aria-selected={tab === "members"} className={tab === "members" ? "on" : ""} href={href({ screen: "production", productionId, tab: "members" })}>Members</a>}
         {production?.my_role && <span className="role-chip" id="myRole">{production.my_role}</span>}
       </div>
       {tab === "days" && <Days conn={conn} productionId={productionId} canPublish={can(production, "day:publish")} setNotice={setNotice} />}
       {tab === "crew" && <Crew conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
+      {tab === "cast" && <Cast conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
       {production === null && <p className="hint">Production not found in this list; go back to Productions.</p>}
@@ -395,6 +397,107 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
           </div>
         </div>
       )}
+      </>)}
+    </section>
+  );
+}
+
+type CastForm = { name: string; phone: string; character: string; pickup: string };
+const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: "" };
+
+/** FR-33: the people in front of the camera. Per-day times are set on the day (status, pickup, M/H, on set). */
+function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const [cast, setCast] = useState<CastMember[] | null>(null);
+  const [form, setForm] = useState<CastForm>(EMPTY_CAST_FORM);
+  const [editing, setEditing] = useState<CastMember | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch((err) => { if (!cancelled) setNotice(noticeFromError(err, "Could not load the cast")); });
+    return () => { cancelled = true; };
+  }, [conn, productionId, setNotice]);
+
+  function startEdit(a: CastMember) {
+    setEditing(a);
+    setForm({ name: a.contact.name, phone: a.contact.phone ?? "", character: a.character_name, pickup: a.standard_pickup_time ?? "" });
+  }
+  function cancelEdit() { setEditing(null); setForm(EMPTY_CAST_FORM); }
+
+  async function save() {
+    setBusy(true);
+    try {
+      if (editing) {
+        const contact = await api.updateContact(conn, editing.contact_id, { name: form.name.trim(), phone: form.phone.trim() || null });
+        const actor = await api.updateCastMember(conn, productionId, editing.id, { character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
+        setCast((c) => (c ?? []).map((x) => (x.id === actor.id ? { ...actor, contact } : x)));
+        setNotice({ kind: "ok", text: `${contact.name} updated.` });
+        cancelEdit();
+      } else {
+        const contact = await api.createContact(conn, { name: form.name.trim(), phone: form.phone.trim() || null, email: null });
+        const actor = await api.createCastMember(conn, productionId, { contact_id: contact.id, character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
+        setCast((c) => [...(c ?? []), actor]);
+        setForm(EMPTY_CAST_FORM);
+        setNotice({ kind: "ok", text: `${contact.name} added as ${actor.character_name}. Set their times on each day.` });
+      }
+    } catch (err) {
+      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the cast member"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(a: CastMember) {
+    setBusy(true);
+    try {
+      await api.deleteCastMember(conn, productionId, a.id);
+      setCast((c) => (c ?? []).filter((x) => x.id !== a.id));
+      setNotice({ kind: "ok", text: `${a.contact.name} removed from the cast. Their lines drop from the sheets.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not remove the cast member"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canSave = form.name.trim() && form.character.trim() && !busy;
+  return (
+    <section className="block" aria-label="Cast">
+      <h2>Cast</h2>
+      {cast === null && <p className="hint">Loading…</p>}
+      {cast && cast.length === 0 && <p className="hint">No cast yet. Add the actors once; each day then gets its own status, pickup, make-up and on-set times.</p>}
+      {cast && cast.length > 0 && (
+        <ul className="list" id="cast">
+          {cast.map((a) => (
+            <li key={a.id} className={`row static${editing?.id === a.id ? " editing" : ""}`}>
+              <span className="name crew-name">
+                <Avatar name={a.contact.name} photoUrl={a.contact.photo_url} size={28} />
+                <span>{a.contact.name}
+                  <span className="meta"> · {a.character_name}{a.contact.phone ? ` · ${a.contact.phone}` : ""}{a.standard_pickup_time ? ` · pickup ${a.standard_pickup_time}` : ""}</span>
+                </span>
+              </span>
+              {canEdit && (
+                <span className="row-actions">
+                  <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={`Edit ${a.contact.name}`}>Edit</button>
+                  <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={`Remove ${a.contact.name}`}>Remove</button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canEdit && (<>
+        <h3 className="subhead" id="castFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add an actor"}</h3>
+        <div className="grid2">
+          <label className="field" htmlFor="castName"><span className="label">Name</span><input id="castName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="field" htmlFor="castCharacter"><span className="label">Character</span><input id="castCharacter" placeholder="MARTA" value={form.character} onChange={(e) => setForm({ ...form, character: e.target.value })} /></label>
+          <label className="field" htmlFor="castPhone"><span className="label">Phone</span><input id="castPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+          <label className="field" htmlFor="castPickup"><span className="label">Usual pickup (optional)</span><input id="castPickup" className="mono" placeholder="05:30" value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} /></label>
+        </div>
+        <div className="inline">
+          <button type="button" id="addCast" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to cast"}</button>
+          {editing && <button type="button" className="quiet" onClick={cancelEdit}>Cancel</button>}
+        </div>
       </>)}
     </section>
   );

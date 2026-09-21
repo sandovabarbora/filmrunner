@@ -298,6 +298,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - offline: the last resolved day opens from cache
   - failure case: a token no longer on any crew says so plainly, never a wrong person's day
 
+## FR-33 · frontend · Cast on the call sheet
+- state: done
+- note: delivered 2026-09-21 (feat/fr-33-cast-calls): cast members API (`/productions/{id}/cast-members` CRUD, contact carried), cast calls copy forward across revisions like personal calls (None = copy, [] = clear), named `cast_calls` rows on every call-sheet read in call order, migration c9e5a3b7d2f4 (cast_call_entries follow their cast member on delete); editor: Cast tab (name, character, phone, usual pickup) and a Cast section on the day (tick who works, status W/SW/WF/SWF/H/R, pickup prefilled from the usual one, call, M/H, on set); sheet: Cast table above personal calls, in print too. 4 backend tests, 1 E2E. Backend changed: deploy needed (migration)
+- gated: no
+- why: a narrative shoot day without cast times is not a call sheet; the model had cast since the skeleton but nothing could enter or show it, so the pilot AD would have kept a second document for the actors
+- dod:
+  - cast members per production with character and usual pickup; per-day entries with status code and the four times, carried to the next revision
+  - the sheet shows a Cast table (name, character, status, pickup, call, M/H, on set) when anyone works that day
+  - failure case: removing an actor with entries on published sheets drops their line and keeps every sheet loadable and publishable
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

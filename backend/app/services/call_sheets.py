@@ -14,9 +14,9 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from app.models.production import CrewMember, Location
+from app.models.production import CastMember, CrewMember, Location
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,20 @@ def publish_revision(
             if member is None or member.production_id != call_sheet.production_id:
                 raise CrewCallNotOnProduction("personal calls must name crew members of this production")
 
+    if payload.cast_calls is None:
+        cast_calls = [
+            CastCallEntryCreate(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
+                                call_time=e.call_time, makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time)
+            for e in (previous.cast_calls if previous is not None else [])
+            if db.get(CastMember, e.cast_member_id) is not None
+        ]
+    else:
+        cast_calls = payload.cast_calls
+        for cast_call in cast_calls:
+            actor = db.get(CastMember, cast_call.cast_member_id)
+            if actor is None or actor.production_id != call_sheet.production_id:
+                raise CastCallNotOnProduction("cast calls must name cast members of this production")
+
     for existing in call_sheet.revisions:
         existing.is_current = False
 
@@ -108,7 +122,7 @@ def publish_revision(
         db.add(ScheduleItem(revision_id=revision.id, **item.model_dump()))
     for entry in crew_calls:
         db.add(CrewCallEntry(revision_id=revision.id, **entry.model_dump()))
-    for cast_call in payload.cast_calls:
+    for cast_call in cast_calls:
         db.add(CastCallEntry(revision_id=revision.id, **cast_call.model_dump()))
 
     if revision.sunrise is None and revision.sunset is None:
@@ -121,7 +135,7 @@ def publish_revision(
         revision.revision_letter,
         call_sheet.id,
         len(payload.schedule_items),
-        len(payload.cast_calls),
+        len(cast_calls),
     )
     return revision
 
@@ -149,6 +163,10 @@ class HeadOfDayNotOnProduction(ValueError):
 
 class CrewCallNotOnProduction(ValueError):
     """A personal call names a crew member of another production (or none)."""
+
+
+class CastCallNotOnProduction(ValueError):
+    """A cast call names a cast member of another production (or none)."""
 
 
 def _validate_head_of_day(db: Session, production_id, crew_member_id):
@@ -296,6 +314,22 @@ def change_summary(changes: list[RevisionChange]) -> str:
         else:
             parts.append(f"{c.label.lower()} {c.before or '—'} → {c.after or '—'}")
     return "; ".join(parts) if parts else "no changes to calls or scenes"
+
+
+def build_cast_calls(db: Session, call_sheet: CallSheet) -> list[CastCallRow]:
+    """Named cast lines for the sheet, in call-time order then by name (the sheet reads top to bottom as the day starts)."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return []
+    rows = []
+    for e in revision.cast_calls:
+        actor = db.get(CastMember, e.cast_member_id)
+        if actor is None:
+            continue
+        rows.append(CastCallRow(cast_member_id=actor.id, name=actor.contact.name, character_name=actor.character_name, status_code=e.status_code,
+                                pickup_time=e.pickup_time, call_time=e.call_time, makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time))
+    rows.sort(key=lambda r: (r.call_time or r.pickup_time or "99:99", r.name.lower()))
+    return rows
 
 
 def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCallRow]:

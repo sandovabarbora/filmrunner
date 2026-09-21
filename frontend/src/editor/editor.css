@@ -99,3 +99,8 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .warn-text { color: #8a5a00; }
 /* FR-30: tomorrow starts as today. */
 .next-day { margin-top: 12px; align-items: center; flex-wrap: wrap; }
+
+/* FR-33: cast calls on the day. */
+.pcall.off .pcall-who { color: var(--muted); }
+.cast-row { display: grid; grid-template-columns: 4.5rem repeat(4, 1fr); gap: 6px; }
+.cast-row select { font-family: var(--mono); }
