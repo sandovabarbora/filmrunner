@@ -82,7 +82,8 @@ class CallSheetRevisionCreate(BaseModel):
     created_by: str | None = None
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemCreate] = Field(default_factory=list)
-    cast_calls: list[CastCallEntryCreate] = Field(default_factory=list)
+    # None = copy the previous revision's cast calls forward (same rule as crew_calls); [] = clear them.
+    cast_calls: list[CastCallEntryCreate] | None = None
     # None = copy the previous revision's entries forward; [] = clear them.
     crew_calls: list[CrewCallEntryCreate] | None = None
 
@@ -150,6 +151,19 @@ class CallSheetCreate(BaseModel):
     initial_revision: CallSheetRevisionCreate
 
 
+class CastCallRow(BaseModel):
+    """A named cast line for the sheet: who, as whom, status and the four times."""
+
+    cast_member_id: uuid.UUID
+    name: str
+    character_name: str
+    status_code: CastStatusCode
+    pickup_time: str | None
+    call_time: str | None
+    makeup_hair_time: str | None
+    on_set_time: str | None
+
+
 class RevisionSummary(BaseModel):
     """The revision this one replaced: enough for "REV B replaces A, issued 06:12"."""
 
@@ -179,6 +193,7 @@ class CallSheetRead(BaseModel):
     current_revision: CallSheetRevisionRead | None = None
     contacts: CallSheetContacts | None = None
     personal_calls: list[PersonalCallRow] = []
+    cast_calls: list[CastCallRow] = []
     # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
     previous_revision: RevisionSummary | None = None
     changes: list[RevisionChange] = []

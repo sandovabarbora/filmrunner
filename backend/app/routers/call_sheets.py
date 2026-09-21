@@ -27,7 +27,7 @@ from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, next_day_for_token, previous_revision, publish_revision, revision_changes
+from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, create_call_sheet, next_day_for_token, previous_revision, publish_revision, revision_changes
 from app.services.notifications import NotificationSummary, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ def create_call_sheet_endpoint(
     require_on(db, principal, production_id, DAY_PUBLISH)
     try:
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
-    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction) as exc:
+    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     summary = notify_subscribers(db, call_sheet, call_sheet.current_revision)
     read = _read_with_contacts(db, call_sheet.id)
@@ -105,7 +105,7 @@ def publish_revision_endpoint(
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
     try:
         revision = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
-    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction) as exc:
+    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
         # 26 revisions/day exhausted — a real operational limit, not a bug,
@@ -138,6 +138,7 @@ def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
     read = CallSheetRead.model_validate(call_sheet)
     read.contacts = build_contacts(db, call_sheet)
     read.personal_calls = build_personal_calls(db, call_sheet)
+    read.cast_calls = build_cast_calls(db, call_sheet)
     prev = previous_revision(call_sheet)
     if prev is not None and call_sheet.current_revision is not None:
         read.previous_revision = RevisionSummary(revision_letter=prev.revision_letter, created_at=prev.created_at)

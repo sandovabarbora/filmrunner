@@ -10,14 +10,14 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { screen: "productions" }
-  | { screen: "production"; productionId: string; tab: "days" | "crew" | "locations" | "members" }
+  | { screen: "production"; productionId: string; tab: "days" | "crew" | "cast" | "locations" | "members" }
   | { screen: "day"; productionId: string; callSheetId: string | null };
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   if (parts[0] === "p" && parts[1]) {
     if (parts[2] === "day") return { screen: "day", productionId: parts[1], callSheetId: parts[3] && parts[3] !== "new" ? parts[3] : null };
-    const tab = parts[2] === "crew" ? "crew" : parts[2] === "locations" ? "locations" : parts[2] === "members" ? "members" : "days";
+    const tab = parts[2] === "crew" ? "crew" : parts[2] === "cast" ? "cast" : parts[2] === "locations" ? "locations" : parts[2] === "members" ? "members" : "days";
     return { screen: "production", productionId: parts[1], tab };
   }
   return { screen: "productions" };

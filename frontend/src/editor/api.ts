@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SunTimes } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SunTimes } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -104,6 +104,14 @@ export const api = {
     request<Location>(c, "PATCH", `/api/v1/productions/${productionId}/locations/${locationId}`, patch),
   weatherSuggestion: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
     request<LocationSuggestion>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/weather-suggestion?shoot_date=${encodeURIComponent(shootDate)}`),
+  listCast: (c: Connection, productionId: string) =>
+    request<CastMember[]>(c, "GET", `/api/v1/productions/${productionId}/cast-members`),
+  createCastMember: (c: Connection, productionId: string, payload: CastMemberCreate) =>
+    request<CastMember>(c, "POST", `/api/v1/productions/${productionId}/cast-members`, payload),
+  updateCastMember: (c: Connection, productionId: string, castMemberId: string, patch: Partial<Pick<CastMemberCreate, "character_name" | "standard_pickup_time">>) =>
+    request<CastMember>(c, "PATCH", `/api/v1/productions/${productionId}/cast-members/${castMemberId}`, patch),
+  deleteCastMember: (c: Connection, productionId: string, castMemberId: string) =>
+    request<void>(c, "DELETE", `/api/v1/productions/${productionId}/cast-members/${castMemberId}`),
   sunTimes: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
     request<SunTimes>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/sun?shoot_date=${encodeURIComponent(shootDate)}`),
   hospitalSuggestion: (c: Connection, productionId: string, locationId: string) =>

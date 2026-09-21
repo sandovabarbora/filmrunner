@@ -130,6 +130,23 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         </table>
       </section>
 
+      {(callSheet.cast_calls?.length ?? 0) > 0 && (
+        <section className="schedule cast" id="castTable" aria-label="Cast">
+          <h2>Cast</h2>
+          <table>
+            <thead><tr><th>Cast</th><th>Character</th><th>St.</th><th>Pickup</th><th>Call</th><th>M/H</th><th>On set</th></tr></thead>
+            <tbody>
+              {callSheet.cast_calls!.map((r) => (
+                <tr key={r.cast_member_id} data-cast={r.cast_member_id}>
+                  <td className="set">{r.name}</td><td>{r.character_name}</td><td className="ie">{r.status_code}</td>
+                  <td className="scene">{r.pickup_time ?? ""}</td><td className="scene">{r.call_time ?? ""}</td><td className="scene">{r.makeup_hair_time ?? ""}</td><td className="scene">{r.on_set_time ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {(callSheet.personal_calls?.length ?? 0) > 0 && (
         <section className="pcalls print-only" id="personalCallsTable" aria-label="Personal calls">
           <h2>Personal calls</h2>

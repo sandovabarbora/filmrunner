@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, type Connection } from "../api";
-import { addDays, clearDraft, draftHasContent, draftKey, emptyDraft, loadDraft, nextDayFrom, saveDraft, type Draft } from "../drafts";
+import { addDays, clearDraft, draftHasContent, draftKey, emptyDraft, loadDraft, nextDayFrom, saveDraft, type CastCallDraft, type Draft } from "../drafts";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
-import type { CallSheetCreated, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
+import type { CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -24,6 +24,9 @@ function revisionPayload(d: Draft): RevisionCreate {
     crew_calls: Object.entries(d.crewCalls ?? {})
       .filter(([, v]) => v.call.trim() || v.pickup.trim() || v.note.trim())
       .map(([id, v]) => ({ crew_member_id: id, call_time: clean(v.call), pickup_time: clean(v.pickup), note: clean(v.note) })),
+    cast_calls: Object.entries(d.castCalls ?? {}).map(([id, v]) => ({
+      cast_member_id: id, status_code: v.status, pickup_time: clean(v.pickup), call_time: clean(v.call), makeup_hair_time: clean(v.makeup), on_set_time: clean(v.onSet),
+    })),
   };
 }
 
@@ -52,6 +55,7 @@ function draftFromServer(productionId: string, productionName: string | null, sh
       .sort((a, b) => a.order_index - b.order_index)
       .map((it) => ({ order_index: it.order_index, scene_number: it.scene_number, int_ext: (it.int_ext === "INT" ? "INT" : "EXT"), day_night: (it.day_night === "NIGHT" ? "NIGHT" : "DAY"), set_description: it.set_description, location_id: it.location_id ?? null, page_count_eighths: it.page_count_eighths })),
     crewCalls: Object.fromEntries((rev?.crew_calls ?? []).map((e) => [e.crew_member_id, { call: e.call_time ?? "", pickup: e.pickup_time ?? "", note: e.note ?? "" }])),
+    castCalls: Object.fromEntries((rev?.cast_calls ?? []).map((e) => [e.cast_member_id, { status: e.status_code, pickup: e.pickup_time ?? "", call: e.call_time ?? "", makeup: e.makeup_hair_time ?? "", onSet: e.on_set_time ?? "" }])),
   };
 }
 
@@ -68,6 +72,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const setReadOnly = setOffline;
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [weatherSuggestion, setWeatherSuggestion] = useState<string | null>(null);
   const [suggestingWeather, setSuggestingWeather] = useState(false);
   // FR-27: what the sunrise/sunset hint says — depends on whether a scene has a location and whether the lookup worked.
@@ -110,6 +115,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     })();
     api.listCrew(conn, productionId).then((c) => { if (!cancelled) setCrew(c); }).catch(() => undefined);
     api.listLocations(conn, productionId).then((l) => { if (!cancelled) setLocations(l); }).catch(() => undefined);
+    api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [conn, productionId, productionName, callSheetId, key, setNotice]);
 
@@ -310,6 +316,42 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           })}
         </ul>
       </section>
+
+      {cast.length > 0 && (
+        <section className="block" aria-label="Cast calls">
+          <h2>Cast</h2>
+          <p className="hint">Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.</p>
+          <ul className="items" id="castCalls">
+            {cast.map((a) => {
+              const v = draft.castCalls?.[a.id] ?? null;
+              // First tick starts from their usual pickup; later edits patch the existing entry.
+              const fresh: CastCallDraft = { status: "W", pickup: a.standard_pickup_time ?? "", call: "", makeup: "", onSet: "" };
+              const setEntry = (patch: Partial<CastCallDraft>) =>
+                update({ castCalls: { ...(draft.castCalls ?? {}), [a.id]: { ...(v ?? fresh), ...patch } } });
+              const clear = () => { const next = { ...(draft.castCalls ?? {}) }; delete next[a.id]; update({ castCalls: next }); };
+              return (
+                <li key={a.id} className={`item pcall${v ? "" : " off"}`}>
+                  <div className="pcall-who">
+                    <label className="check"><input type="checkbox" aria-label={`${a.contact.name} works today`} checked={!!v} disabled={dis} onChange={(e) => (e.target.checked ? setEntry({}) : clear())} /> <span className="name">{a.contact.name}</span></label>
+                    <span className="meta"> · {a.character_name}</span>
+                  </div>
+                  {v && (
+                    <div className="pcall-row cast-row">
+                      <select aria-label={`Status for ${a.contact.name}`} value={v.status} disabled={dis} onChange={(e) => setEntry({ status: e.target.value as CastStatus })}>
+                        {(["W", "SW", "WF", "SWF", "H", "R"] as CastStatus[]).map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <input className="mono" aria-label={`Pickup for ${a.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => setEntry({ pickup: e.target.value })} />
+                      <input className="mono" aria-label={`Call for ${a.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => setEntry({ call: e.target.value })} />
+                      <input className="mono" aria-label={`Make-up for ${a.contact.name}`} placeholder="M/H" value={v.makeup} disabled={dis} onChange={(e) => setEntry({ makeup: e.target.value })} />
+                      <input className="mono" aria-label={`On set for ${a.contact.name}`} placeholder="on set" value={v.onSet} disabled={dis} onChange={(e) => setEntry({ onSet: e.target.value })} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className="block" aria-label="Schedule">
         <h2>Schedule</h2>

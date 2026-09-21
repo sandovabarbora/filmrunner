@@ -577,3 +577,53 @@ def test_one_link_for_the_whole_shoot_opens_the_next_day_and_lists_the_others(pa
     v.locator("#otherDays a.day", has_text="Day 1").click()
     v.wait_for_selector("#you", timeout=15_000)
     expect(v.locator("#yourCall")).to_have_text("06:00", timeout=10_000)
+
+
+def test_cast_member_with_a_days_times_appears_on_the_sheet_and_carries_to_rev_b(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-33: add an actor once, tick them on the day with status and times, the sheet shows the cast table; REV B keeps it prefilled."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E cast {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Cast']")
+    page.wait_for_selector("#castName", timeout=10_000)
+    page.fill("#castName", "Anna Geislerová"); page.fill("#castCharacter", "MARTA"); page.fill("#castPickup", "05:30"); page.click("#addCast")
+    expect(page.locator("#cast")).to_contain_text("Anna Geislerová", timeout=10_000)
+    expect(page.locator("#cast")).to_contain_text("MARTA")
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.wait_for_selector("#castCalls .pcall", timeout=10_000)
+    page.get_by_label("Anna Geislerová works today").check()
+    expect(page.get_by_label("Pickup for Anna Geislerová")).to_have_value("05:30")  # usual pickup prefilled
+    page.get_by_label("Status for Anna Geislerová").select_option("SW")
+    page.get_by_label("Call for Anna Geislerová").fill("06:00")
+    page.get_by_label("Make-up for Anna Geislerová").fill("06:15")
+    page.get_by_label("On set for Anna Geislerová").fill("08:00")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    link = page.locator("#shareLink").get_attribute("href")
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#castTable", timeout=15_000)
+    row = v.locator("#castTable tbody tr")
+    expect(row).to_have_count(1)
+    assert [c.strip() for c in row.locator("td").all_inner_texts()] == ["Anna Geislerová", "MARTA", "SW", "05:30", "06:00", "06:15", "08:00"]
+    v.close()
+
+    page.reload(); page.wait_for_selector("#castCalls .pcall", timeout=10_000)
+    expect(page.get_by_label("Status for Anna Geislerová")).to_have_value("SW", timeout=10_000)
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#castTable", timeout=15_000)
+    expect(v.locator("#castTable tbody tr")).to_have_count(1)
+    v.close()
+
+    # Failure case: removing the actor drops their line; the sheet still loads.
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+    page.wait_for_selector("#newDay", timeout=10_000)
+    page.click("role=tab[name='Cast']")
+    page.wait_for_selector("#cast", timeout=10_000)
+    page.get_by_label("Remove Anna Geislerová").click()
+    expect(page.locator("#notice")).to_contain_text("removed from the cast", timeout=10_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
+    assert v.locator("#castTable").count() == 0

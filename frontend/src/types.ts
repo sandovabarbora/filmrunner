@@ -32,6 +32,7 @@ export interface CallSheetRevision {
   head_of_day_crew_member_id?: string | null;
   schedule_items: ScheduleItem[];
   crew_calls?: CrewCallEntry[];
+  cast_calls?: CastCallEntry[];
 }
 
 export interface ContactCard {
@@ -69,6 +70,7 @@ export interface CallSheet {
   current_revision: CallSheetRevision | null;
   contacts?: CallSheetContacts | null;
   personal_calls?: PersonalCallRow[];
+  cast_calls?: CastCallRow[];
   /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
   previous_revision?: RevisionSummary | null;
   changes?: RevisionChange[];
@@ -118,6 +120,8 @@ export interface PersonalCallRow {
 
 export interface RevisionCreate {
   crew_calls?: CrewCallEntry[];
+  /** FR-33: omitted = copy the previous revision's cast calls forward; [] = clear. */
+  cast_calls?: CastCallEntry[];
   head_of_day_crew_member_id?: string | null;
   general_crew_call: string | null;
   shooting_call: string | null;
@@ -236,4 +240,33 @@ export interface CrewNextDay {
   crew_member_name: string;
   call_sheet_id: string | null;
   days: CrewDayRef[];
+}
+
+/* FR-33: cast. */
+export type CastStatus = "W" | "SW" | "WF" | "SWF" | "H" | "R";
+
+export interface CastMemberCreate {
+  contact_id: string;
+  character_name: string;
+  standard_pickup_time: string | null;
+}
+
+export interface CastMember extends CastMemberCreate {
+  id: string;
+  production_id: string;
+  contact: Contact;
+}
+
+export interface CastCallEntry {
+  cast_member_id: string;
+  status_code: CastStatus;
+  pickup_time: string | null;
+  call_time: string | null;
+  makeup_hair_time: string | null;
+  on_set_time: string | null;
+}
+
+export interface CastCallRow extends CastCallEntry {
+  name: string;
+  character_name: string;
 }

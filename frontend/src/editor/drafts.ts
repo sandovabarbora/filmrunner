@@ -4,7 +4,9 @@
  * server only ever sees a publish.
  */
 
-import type { ScheduleItemCreate } from "../types";
+import type { CastStatus, ScheduleItemCreate } from "../types";
+
+export interface CastCallDraft { status: CastStatus; pickup: string; call: string; makeup: string; onSet: string }
 
 export interface Draft {
   id: string;
@@ -27,6 +29,8 @@ export interface Draft {
   safety_notes: string;
   items: ScheduleItemCreate[];
   crewCalls: Record<string, { call: string; pickup: string; note: string }>;
+  /** FR-33: cast working today, by cast member id. Absent = not on today's sheet. */
+  castCalls: Record<string, CastCallDraft>;
   updatedAt: string;
 }
 
@@ -59,6 +63,7 @@ export function emptyDraft(productionId: string, productionName: string | null):
     safety_notes: "",
     items: [],
     crewCalls: {},
+    castCalls: {},
     updatedAt: new Date().toISOString(),
   };
 }
@@ -100,6 +105,7 @@ export function nextDayFrom(d: Draft): Draft {
     headOfDayId: d.headOfDayId,
     items: d.items.map((it) => ({ ...it })),
     crewCalls: Object.fromEntries(Object.entries(d.crewCalls).map(([k, v]) => [k, { ...v }])),
+    castCalls: Object.fromEntries(Object.entries(d.castCalls).map(([k, v]) => [k, { ...v }])),
   };
 }
 
