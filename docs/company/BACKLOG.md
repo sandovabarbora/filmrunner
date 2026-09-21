@@ -526,7 +526,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a file with no recognisable name column is refused with "which column has the names?" and the mapping row, never a silent import of garbage
 
 ## FR-56 · frontend · Import the shooting schedule (scenes per day) from Excel or a Movie Magic export
-- state: ready
+- state: in-progress
+- note: taken 2026-09-21 16:45 by the founder's interactive session (feat/fr-56-import-schedule); shifts skip it
 - gated: no
 - why: the AD's schedule already exists as a stripboard export (Movie Magic Scheduling → Excel/CSV, or a plain Excel with day, scene, INT/EXT, D/N, set, pages, location, cast); typing 40 scenes a day into the phone is the second setup killer after the crew
 - dod:
