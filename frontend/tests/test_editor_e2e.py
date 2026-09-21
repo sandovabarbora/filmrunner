@@ -714,3 +714,28 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
     expect(page.locator("#seenPanel")).to_contain_text("REV B opened by 0 of 2", timeout=10_000)
+def test_crew_tab_sends_each_person_their_own_link_on_whatsapp(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-37: from the Crew tab the AD sends each person their stable link with one tap; no phone means no WhatsApp link;
+    "Copy all links" copies one line per person."""
+    _connect(page, frontend_url, api_url)
+    name = f"E2E onboard {uuid.uuid4().hex[:6]}"
+    _create_production(page, name)
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Tomáš Novák"); page.fill("#crewPhone", "+420 777 123 456"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Tomáš Novák", timeout=10_000)
+    page.fill("#crewName", "Eva Malá"); page.fill("#crewPhone", ""); page.fill("#crewDept", "Camera"); page.fill("#crewPos", "AC"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Eva Malá", timeout=10_000)
+
+    from urllib.parse import parse_qs, urlparse
+    href = page.get_by_label("Send link to Tomáš Novák on WhatsApp").get_attribute("href")
+    assert href.startswith("https://wa.me/420777123456?text=")
+    text = parse_qs(urlparse(href).query)["text"][0]
+    assert text.startswith("Hi Tomáš, here is your call sheet link for *" + name + "*:")
+    assert "&me=" in text and "sheet=" not in text  # the stable link, not a day link
+    assert page.get_by_label("Send link to Eva Malá on WhatsApp").count() == 0
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.click("#copyAllLinks")
+    expect(page.locator("#notice")).to_contain_text("2 links copied", timeout=5_000)
+    copied = page.evaluate("() => navigator.clipboard.readText()")
+    assert copied.count("\n") == 1 and "Tomáš Novák · Electric: " in copied and "Eva Malá · Camera: " in copied

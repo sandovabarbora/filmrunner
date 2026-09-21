@@ -336,6 +336,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the day screen shows who has opened the current revision through their personal link and who has not; per-revision, never carried over
   - the people not yet in get a one-tap WhatsApp nudge with their link
   - failure case: an offline (cached) open is not counted; an unknown token is refused
+## FR-37 · frontend · Send everyone their link from the Crew tab
+- state: done
+- note: delivered 2026-09-21 (feat/fr-37-crew-onboarding-links): per person a WhatsApp action with an onboarding message (first name, production, the stable link, what it does) when they have a usable phone; "Copy all links" gives one line per person for a spreadsheet, with the hint that links are personal and go one by one, never to the group. 2 unit tests, 1 E2E. Frontend only
+- gated: no
+- why: the first evening of a shoot the AD has to get 40 personal links to 40 phones; without this it is 40 copy-pastes, and the temptation is to paste the general link into the group, which loses personal calls and read receipts (FR-32, FR-36)
+- dod:
+  - Crew tab: WhatsApp per person with the stable link and a short explanation; Copy all links as name · department: link lines
+  - failure case: no usable phone → no WhatsApp link (copy stays), never a wa.me link to a wrong number
 
 ## FR-25 · marketing · Landing page from the positioning
 - state: done

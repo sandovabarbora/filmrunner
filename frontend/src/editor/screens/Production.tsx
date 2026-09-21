@@ -4,6 +4,7 @@ import { api, ApiError, type Connection } from "../api";
 import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList } from "../crewImport";
+import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
@@ -76,7 +77,7 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
         {production?.my_role && <span className="role-chip" id="myRole">{production.my_role}</span>}
       </div>
       {tab === "days" && <Days conn={conn} productionId={productionId} canPublish={can(production, "day:publish")} setNotice={setNotice} />}
-      {tab === "crew" && <Crew conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
+      {tab === "crew" && <Crew conn={conn} productionId={productionId} productionName={production?.name ?? null} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "cast" && <Cast conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
@@ -135,7 +136,7 @@ function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
   };
 }
 
-function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
+function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn: Connection; productionId: string; productionName: string | null; canEdit: boolean; setNotice: (n: Notice) => void }) {
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
   const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
   const [editing, setEditing] = useState<CrewMember | null>(null);
@@ -332,6 +333,10 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
                     <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={`Sync ${m.contact.name}`}>Sync</button>
                   )}
                   <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: `${m.contact.name}'s link copied. One link for the whole shoot; it always opens their next day.` }); }} aria-label={`Copy link for ${m.contact.name}`}>Link</button>
+                  {whatsappNumber(m.contact.phone) && (
+                    <a className="quiet-link whatsapp" href={whatsappUrl(whatsappNumber(m.contact.phone), onboardingMessageText(productionName, m, personalLink(conn.apiBase, m.personal_token)))}
+                      target="_blank" rel="noreferrer" aria-label={`Send link to ${m.contact.name} on WhatsApp`}>WhatsApp</a>
+                  )}
                   <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={`Edit ${m.contact.name}`}>Edit</button>
                   <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.contact.name}`}>Remove</button>
                 </span>
@@ -339,6 +344,15 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
             </li>
           ))}
         </ul>
+      )}
+      {visibleCrew && visibleCrew.length > 0 && (
+        <div className="inline" id="allLinks">
+          <button type="button" className="quiet" id="copyAllLinks" onClick={() => {
+            void navigator.clipboard?.writeText(allLinksText(visibleCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
+            setNotice({ kind: "ok", text: `${visibleCrew.length} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.` });
+          }}>Copy all links</button>
+          <span className="hint">Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.</span>
+        </div>
       )}
       {canEdit && (<>
       <h3 className="subhead" id="crewFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add a person"}</h3>
