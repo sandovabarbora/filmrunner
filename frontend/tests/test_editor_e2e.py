@@ -801,7 +801,9 @@ def test_tomorrow_at_a_glance_on_a_personal_link(page: Page, frontend_url: str, 
     v.close()
 
     # Cancel day 2: from day 1 tomorrow now reads "cancelled", without 07:15.
-    page.goto(day2_url); page.wait_for_selector("#cancelDayBtn", timeout=10_000)
+    page.goto(day2_url)  # hash-only change: day 1's screen stays mounted until day 2 loads, so wait for day 2 itself
+    expect(page.locator("#day_number")).to_have_value("2", timeout=10_000)
+    page.wait_for_selector("#cancelDayBtn", timeout=10_000)
     page.click("#cancelDayBtn"); page.click("#confirmCancelDay"); expect(page.locator("#notice")).to_contain_text("Day 2 cancelled", timeout=10_000)
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#tomorrow", timeout=15_000)
     expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "cancelled")
