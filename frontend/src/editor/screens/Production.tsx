@@ -3,6 +3,7 @@ import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
 import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
+import { importableRows, parseCrewList } from "../crewImport";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
@@ -219,6 +220,35 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
     }
   }
 
+  // FR-31: paste the whole list. Rows are created one by one so a failure names the person, not the batch.
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const parsed = pasteOpen ? parseCrewList(pasteText, (crew ?? []).map((m) => m.contact.name)) : [];
+  const toImport = importableRows(parsed);
+  async function importPasted() {
+    setBusy(true);
+    const added: CrewMember[] = [];
+    const failed: string[] = [];
+    for (const row of toImport) {
+      try {
+        const contact = await api.createContact(conn, { name: row.name, phone: row.phone, email: null });
+        const member = await api.createCrewMember(conn, productionId, {
+          contact_id: contact.id, department: row.department, position: row.position, standard_call_time: null, is_head_of_department: row.hod,
+        });
+        added.push(member);
+      } catch {
+        failed.push(row.name);
+      }
+    }
+    setCrew((c) => [...(c ?? []), ...added]);
+    setBusy(false);
+    if (failed.length === 0) { setPasteText(""); setPasteOpen(false); }
+    else setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n"));
+    setNotice(failed.length === 0
+      ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} to the crew.` }
+      : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}. They stay in the box so you can try again.` });
+  }
+
   async function remove(m: CrewMember) {
     if (!window.confirm(`Remove ${m.contact.name} from the crew? Their personal link stops working.`)) return;
     try {
@@ -333,7 +363,31 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       <div className="inline">
         <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to crew"}</button>
         {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>Cancel</button>}
+        {!editing && <button type="button" className="quiet" id="pasteCrew" onClick={() => setPasteOpen((o) => !o)}>{pasteOpen ? "Close the list" : "Paste a list…"}</button>}
       </div>
+      {pasteOpen && !editing && (
+        <div className="paste-crew" id="pasteCrewPanel">
+          <p className="hint">One person per line: name, position, phone — or name, department, position, phone. A line like "Camera:" sets the department for the lines below. "HoD" marks a head of department.</p>
+          <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />
+          {parsed.length > 0 && (
+            <ul className="list preview" id="pastePreview">
+              {parsed.map((r) => (
+                <li key={r.line} className={`row static${r.warning ? " warn" : ""}`}>
+                  <span className="name">{r.name}{r.hod && <span className="tag">HoD</span>}
+                    <span className="meta"> · {r.department} · {r.position}{r.phone ? ` · ${r.phone}` : ""}</span>
+                    {r.warning && <span className="meta warn-text"> · {r.warning}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="inline">
+            <button type="button" id="importCrew" className="secondary" disabled={toImport.length === 0 || busy} onClick={() => void importPasted()}>
+              {busy ? "Adding…" : `Add ${toImport.length} ${toImport.length === 1 ? "person" : "people"}`}
+            </button>
+          </div>
+        </div>
+      )}
       </>)}
     </section>
   );
