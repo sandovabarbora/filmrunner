@@ -265,7 +265,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if a screenshot cannot be produced by the script, the page ships without that image slot rather than with a placeholder
 
 ## FR-26 · qa · Pilot readiness protocol executed against the live app
-- state: ready
+- state: in-progress
+- note: taken by the founder's session 2026-09-21 10:35; shifts skip it
 - gated: no
 - why: hackathon goal; before an AD touches it, every step of the loop must be walked on the live URLs and the results written down, not assumed
 - dod:
