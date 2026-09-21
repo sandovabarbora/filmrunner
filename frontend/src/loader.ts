@@ -120,3 +120,10 @@ export async function loadNextDay(apiBase: string, token: string): Promise<CrewN
     return null;
   }
 }
+
+/** FR-36: tell the AD this personal link opened the sheet live. Fire and forget; never blocks the sheet. */
+export function markSeen(apiBase: string, sheetId: string, token: string): void {
+  try {
+    void fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/seen/${encodeURIComponent(token)}`, { method: "POST", keepalive: true }).catch(() => undefined);
+  } catch { /* offline: nothing to report */ }
+}

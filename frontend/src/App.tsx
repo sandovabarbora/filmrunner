@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
-import { loadCallSheet, loadNextDay, loadPersonal, publicCallSheetUrl, type LoadResult } from "./loader";
+import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
 import type { CrewNextDay, PersonalSheet } from "./types";
 
@@ -44,9 +44,11 @@ export function App() {
   const [result, setResult] = useState<LoadResult | null>(null);
   const [personal, setPersonal] = useState<PersonalSheet | null | "invalid">(null);
 
-  async function load(url: string, id: string) {
+  async function load(url: string, id: string, me: string | null = null) {
     const r = await loadCallSheet(url, id);
     setResult(r);
+    // A live load through a personal link is a read receipt (FR-36); a cached copy is not — the AD must not think REV B arrived.
+    if (r.kind === "live" && me && mode.kind === "share") markSeen(mode.api, id, me);
     if (r.kind === "live") setStatus({ kind: "online", text: "Live · saved on this phone for offline use." });
     if (r.kind === "cached") setStatus({ kind: "offline", text: `Offline · showing the copy saved ${new Date(r.fetchedAt).toLocaleString()}. Times may have changed since.` });
     if (r.kind === "unknown") setStatus({ kind: "offline", text: "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening." });
@@ -57,7 +59,7 @@ export function App() {
   useEffect(() => {
     if (mode.kind === "demo") void load(DEMO_URL, DEMO_ID);
     if (mode.kind === "share") {
-      void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet);
+      void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
       if (mode.me) void loadPersonal(mode.api, mode.sheet, mode.me).then(setPersonal);
     }
     if (mode.kind === "mine") {

@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SunTimes } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -61,6 +61,8 @@ export const api = {
     request<CallSheetRevision>(c, "POST", `/api/v1/call-sheets/${callSheetId}/revisions`, payload),
   updateProduction: (c: Connection, productionId: string, patch: { name?: string; status?: string }) =>
     request<Production>(c, "PATCH", `/api/v1/productions/${productionId}`, patch),
+  seenReport: (c: Connection, callSheetId: string) =>
+    request<SeenReport>(c, "GET", `/api/v1/call-sheets/${callSheetId}/seen`),
   cancelCallSheet: (c: Connection, callSheetId: string) =>
     request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/cancel`),
   restoreCallSheet: (c: Connection, callSheetId: string) =>

@@ -327,6 +327,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the sheet lists the day's locations in schedule order with address, parking notes, nearest hospital and a maps link; the schedule shows the location name per scene
   - failure case: a location with neither coordinates nor address gets no maps link; a deleted location is skipped without breaking the sheet
 
+## FR-36 · tech-lead · Who has opened REV B
+- state: done
+- note: delivered 2026-09-21 (feat/fr-36-seen-by): `revision_views` (migration e2a7c5d9f4b6; one row per revision × crew member, cascades with both), `POST /public/call-sheets/{id}/seen/{token}` written by the viewer only when a personal link loaded the sheet live (a cached copy never counts, so the AD is not told REV B arrived when it did not), `GET /call-sheets/{id}/seen` report; the day screen shows "REV B opened by 3 of 12", the names not yet, "push on" where they subscribed, and a WhatsApp nudge per person with a phone; refreshes every minute; a new revision starts the count over. 3 backend tests, 1 E2E. Backend changed: deploy needed (migration)
+- gated: no
+- why: "crew missing an update" is the failure the product exists to prevent (BRIEF Q3); today the AD phones around asking "did you get REV B?"; the answer should be on the screen, with the chase one tap away
+- dod:
+  - the day screen shows who has opened the current revision through their personal link and who has not; per-revision, never carried over
+  - the people not yet in get a one-tap WhatsApp nudge with their link
+  - failure case: an offline (cached) open is not counted; an unknown token is refused
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

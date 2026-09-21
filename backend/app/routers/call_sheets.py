@@ -25,9 +25,9 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary
+from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary, SeenReport
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, revision_changes
+from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -208,3 +208,22 @@ def get_next_day_public(token: str, db: Session = Depends(get_db)) -> CrewNextDa
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member")
     return result
+
+
+@public_router.post("/public/call-sheets/{call_sheet_id}/seen/{token}", status_code=status.HTTP_204_NO_CONTENT)
+def mark_seen_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends(get_db)) -> None:
+    """Unauthenticated: the personal link loaded this sheet live (FR-36). Idempotent; 404 for an unknown token."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    if not record_seen(db, call_sheet, token):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
+
+
+@router.get("/call-sheets/{call_sheet_id}/seen", response_model=SeenReport)
+def get_seen_report(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> SeenReport:
+    """Who has opened the current revision (FR-36); the AD's answer to "did everyone get REV B?"."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, PRODUCTION_READ)
+    report = build_seen_report(db, call_sheet)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No revision published yet")
+    return report
