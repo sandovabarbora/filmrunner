@@ -115,3 +115,18 @@ describe("onboardingMessageText / allLinksText", () => {
     expect(allLinksText([m, member("cm-2", "Eva", null)], (x) => `L-${x.id}`)).toBe("Tomáš Novák · Lighting: L-cm-1\nEva · Lighting: L-cm-2");
   });
 });
+
+describe("daySummaryText with cast", () => {
+  const cast = [
+    { id: "cast-a", production_id: "p", contact_id: "c", character_name: "MARTA", standard_pickup_time: null, contact: { id: "c", name: "Anna G.", phone: null, email: null, photo_url: null } },
+    { id: "cast-b", production_id: "p", contact_id: "d", character_name: "OTEC", standard_pickup_time: null, contact: { id: "d", name: "Karel R.", phone: null, email: null, photo_url: null } },
+  ] as unknown as import("../../types").CastMember[];
+  it("lists who works in call order with their times, and nothing when nobody does", () => {
+    const text = daySummaryText({ ...day, castCalls: {
+      "cast-b": { status: "SW", pickup: "07:00", call: "07:30", makeup: "", onSet: "09:00" },
+      "cast-a": { status: "W", pickup: "", call: "06:00", makeup: "06:15", onSet: "" },
+    } }, [], "https://x/", cast);
+    expect(text).toContain("_Cast_\nAnna G. (MARTA) W – call 06:00, M/H 06:15\nKarel R. (OTEC) SW – pickup 07:00, call 07:30, on set 09:00");
+    expect(daySummaryText({ ...day, castCalls: {} }, [], "https://x/", cast)).not.toContain("_Cast_");
+  });
+});

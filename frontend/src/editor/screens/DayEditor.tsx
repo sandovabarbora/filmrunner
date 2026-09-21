@@ -499,11 +499,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
             <div className="inline share-text-actions">
               <button type="button" id="sendDayAsText" className="secondary" disabled={!shareable}
-                onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!)))}>
+                onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))}>
                 Send day as text
               </button>
               {shareable
-                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!)))} target="_blank" rel="noreferrer">Open in WhatsApp</a>
+                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))} target="_blank" rel="noreferrer">Open in WhatsApp</a>
                 : <span className="hint" id="shareTextHint">Publish first so the text matches the link.</span>}
             </div>
             {shareText !== null && (
