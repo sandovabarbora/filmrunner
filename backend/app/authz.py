@@ -19,12 +19,13 @@ from app.models.production import Production
 # Permissions are strings so they read the same in the API and the editor.
 PRODUCTION_READ = "production:read"
 PRODUCTION_MANAGE_MEMBERS = "production:manage_members"
+PRODUCTION_EDIT = "production:edit"  # name and lifecycle status (FR-34)
 DAY_PUBLISH = "day:publish"
 CREW_EDIT = "crew:edit"
 
 ROLE_PERMISSIONS: dict[ProductionRole, frozenset[str]] = {
-    ProductionRole.OWNER: frozenset({PRODUCTION_READ, PRODUCTION_MANAGE_MEMBERS, DAY_PUBLISH, CREW_EDIT}),
-    ProductionRole.EDITOR: frozenset({PRODUCTION_READ, DAY_PUBLISH, CREW_EDIT}),
+    ProductionRole.OWNER: frozenset({PRODUCTION_READ, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_EDIT, DAY_PUBLISH, CREW_EDIT}),
+    ProductionRole.EDITOR: frozenset({PRODUCTION_READ, PRODUCTION_EDIT, DAY_PUBLISH, CREW_EDIT}),
     ProductionRole.VIEWER: frozenset({PRODUCTION_READ}),
 }
 

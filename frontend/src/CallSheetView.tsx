@@ -57,6 +57,12 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         </div>
       </header>
 
+      {callSheet.status === "cancelled" && (
+        <div className="cancelled" id="cancelledBanner" role="alert">
+          <strong>CANCELLED</strong> — Day {callSheet.day_number} ({callSheet.shoot_date}) is off. Times below no longer apply; wait for the next day's sheet.
+        </div>
+      )}
+
       {rev && rev.revision_letter !== "A" && (
         <div className="rev-replaces" id="revReplaces">
           <p>

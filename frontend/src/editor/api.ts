@@ -59,6 +59,12 @@ export const api = {
     request<CallSheetCreated>(c, "POST", `/api/v1/productions/${productionId}/call-sheets`, payload),
   publishRevision: (c: Connection, callSheetId: string, payload: RevisionCreate) =>
     request<CallSheetRevision>(c, "POST", `/api/v1/call-sheets/${callSheetId}/revisions`, payload),
+  updateProduction: (c: Connection, productionId: string, patch: { name?: string; status?: string }) =>
+    request<Production>(c, "PATCH", `/api/v1/productions/${productionId}`, patch),
+  cancelCallSheet: (c: Connection, callSheetId: string) =>
+    request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/cancel`),
+  restoreCallSheet: (c: Connection, callSheetId: string) =>
+    request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/restore`),
   listCallSheets: (c: Connection, productionId: string) =>
     request<CallSheetCreated[]>(c, "GET", `/api/v1/productions/${productionId}/call-sheets`),
   getCallSheet: (c: Connection, callSheetId: string) =>

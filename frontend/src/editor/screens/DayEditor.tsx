@@ -80,6 +80,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [busy, setBusy] = useState(false);
   const [shareText, setShareText] = useState<string | null>(null);
   const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
+  const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
 
@@ -92,6 +94,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       if (callSheetId) {
         try {
           const sheet = await api.getCallSheet(conn, callSheetId);
+          if (!cancelled) setDayStatus(sheet.status ?? "published");
           const fromServer = draftFromServer(productionId, productionName, sheet);
           // Keep unpublished local edits if they are newer than the last publish.
           const keepLocal = local && local.dirtySincePublish && local.lastPublishedLetter === fromServer.lastPublishedLetter;
@@ -203,12 +206,42 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       } else {
         const rev = await api.publishRevision(conn, draft.callSheetId, revisionPayload(draft));
         update({ lastPublishedLetter: rev.revision_letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
+        setDayStatus("published");  // publishing puts a cancelled day back on
         setNotice({ kind: "ok", text: `Published REV ${rev.revision_letter}. Everyone with the link sees it now.` });
       }
     } catch (err) {
       setNotice(err instanceof ApiError && err.status === 0
         ? { kind: "warn", text: "No connection. Your draft is safe on this phone; publish when you are back in signal." }
         : noticeFromError(err, "Publish failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** FR-34: the day is off. Nothing is deleted; the sheet says CANCELLED and every subscriber is told. */
+  async function cancelDay() {
+    if (!draft?.callSheetId) return;
+    setBusy(true);
+    try {
+      const sheet = await api.cancelCallSheet(conn, draft.callSheetId);
+      setDayStatus("cancelled"); setConfirmCancel(false);
+      const n = sheet.current_revision?.notifications;
+      setNotice({ kind: "ok", text: `Day ${draft.day_number} cancelled.${n ? ` Told ${n.delivered} of ${n.attempted} subscribed phones.` : ""} The sheet now says so; the link still works.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not cancel the day"));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function restoreDay() {
+    if (!draft?.callSheetId) return;
+    setBusy(true);
+    try {
+      await api.restoreCallSheet(conn, draft.callSheetId);
+      setDayStatus("published");
+      setNotice({ kind: "warn", text: `Day ${draft.day_number} is back on. Publish a revision so the crew gets told.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not restore the day"));
     } finally {
       setBusy(false);
     }
@@ -389,6 +422,12 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       </section>
 
       <section className="publish" aria-label="Publish">
+        {dayStatus === "cancelled" && (
+          <div className="cancelled-banner" id="cancelledBanner" role="status">
+            <strong>CANCELLED</strong> — this day is off. The crew link says so.
+            {!readOnly && <button type="button" className="quiet" id="restoreDay" disabled={busy} onClick={() => void restoreDay()}>Restore the day</button>}
+          </div>
+        )}
         <div className="publish-state" id="publishState">
           {offline && "Read-only while offline. Reconnect to publish."}
           {!offline && !canPublish && "Read-only: your role on this production can view but not publish."}
@@ -399,6 +438,17 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
           {busy ? "Publishing…" : published ? `Publish REV ${nextLetter(draft.lastPublishedLetter!)}` : "Publish"}
         </button>
+        {published && !readOnly && dayStatus !== "cancelled" && (
+          <div className="inline cancel-day" id="cancelDay">
+            {!confirmCancel
+              ? <button type="button" className="quiet danger" id="cancelDayBtn" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel this day…</button>
+              : <>
+                  <span className="hint">Every subscribed phone gets "Day {draft.day_number}: CANCELLED". The sheet stays readable. Sure?</span>
+                  <button type="button" className="quiet danger" id="confirmCancelDay" disabled={busy} onClick={() => void cancelDay()}>Yes, cancel Day {draft.day_number}</button>
+                  <button type="button" className="quiet" onClick={() => setConfirmCancel(false)}>Keep it</button>
+                </>}
+          </div>
+        )}
         {published && !readOnly && (
           <div className="inline next-day" id="nextDay">
             {!nextDayClash

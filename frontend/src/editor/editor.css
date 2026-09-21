@@ -104,3 +104,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .pcall.off .pcall-who { color: var(--muted); }
 .cast-row { display: grid; grid-template-columns: 4.5rem repeat(4, 1fr); gap: 6px; }
 .cast-row select { font-family: var(--mono); }
+
+/* FR-34: cancel / restore a day. */
+.cancelled-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 10px; padding: 10px 12px; border: 2px solid #b3261e; border-radius: 3px; background: #fbeae8; color: #7a1a13; }
+.cancel-day { margin-top: 12px; align-items: center; flex-wrap: wrap; }

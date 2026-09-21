@@ -142,8 +142,8 @@ export function App() {
           <span className="label">Days</span>
           {mine.days.map((d) => (
             d.call_sheet_id === mode.sheet
-              ? <span key={d.call_sheet_id} className="day on" aria-current="page">Day {d.day_number} · {d.shoot_date}</span>
-              : <a key={d.call_sheet_id} className="day" href={`?api=${encodeURIComponent(mode.api)}&sheet=${d.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`}>Day {d.day_number} · {d.shoot_date}</a>
+              ? <span key={d.call_sheet_id} className="day on" aria-current="page">Day {d.day_number} · {d.shoot_date}{d.status === "cancelled" ? " · cancelled" : ""}</span>
+              : <a key={d.call_sheet_id} className={`day${d.status === "cancelled" ? " off" : ""}`} href={`?api=${encodeURIComponent(mode.api)}&sheet=${d.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`}>Day {d.day_number} · {d.shoot_date}{d.status === "cancelled" ? " · cancelled" : ""}</a>
           ))}
         </nav>
       )}

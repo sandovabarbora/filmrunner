@@ -308,6 +308,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the sheet shows a Cast table (name, character, status, pickup, call, M/H, on set) when anyone works that day
   - failure case: removing an actor with entries on published sheets drops their line and keeps every sheet loadable and publishable
 
+## FR-34 · tech-lead · Cancel a day; rename or wrap a production
+- state: done
+- note: delivered 2026-09-21 (feat/fr-34-cancel-day-edit-production): `POST /call-sheets/{id}/cancel` (status cancelled, every subscribed phone gets "Day N: CANCELLED", logged like a revision) and `/restore`; publishing a revision also puts a cancelled day back on and now sets status published (it had stayed `draft` forever); the sheet shows a CANCELLED banner, the days list a tag, the stable link skips cancelled days and marks them; `PATCH /productions/{id}` (name, status) behind the new `production:edit` permission (owner, editor) with a Settings tab. Migration d1f6b4c8e3a5 adds the enum value. 4 backend tests, 2 E2E. Backend changed: deploy needed (migration)
+- gated: no
+- why: pilot protocol: a day created by mistake or a weather cancellation had no way out but the API, and a wrongly named production was stuck; "day off" is the second most important message after "call time changed" and must reach every phone
+- dod:
+  - cancel asks once, then the sheet, the days list and every personal link say CANCELLED; subscribers are pushed; nothing is deleted
+  - restore, then a revision, brings the day back with the crew told
+  - production name and status editable by owner and editor, not by viewers
+  - failure case: cancelling a day nobody subscribed to still succeeds with 0 of 0 told
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

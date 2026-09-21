@@ -30,6 +30,15 @@ class ProductionCreate(BaseModel):
     status: ProductionStatus = ProductionStatus.PREP
 
 
+class ProductionUpdate(BaseModel):
+    """Rename or move the production along its lifecycle (FR-34)."""
+
+    name: str | None = None
+    working_title: str | None = None
+    production_company: str | None = None
+    status: ProductionStatus | None = None
+
+
 class ProductionRead(ProductionCreate):
     model_config = ConfigDict(from_attributes=True)
     my_role: str | None = None

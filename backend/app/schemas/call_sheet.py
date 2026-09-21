@@ -208,6 +208,7 @@ class CrewDayRef(BaseModel):
     day_count: int
     unit_name: str
     revision_letter: str | None
+    status: str = "published"
 
 
 class CrewNextDay(BaseModel):

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
-from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
+from app.authz import CREW_EDIT, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
@@ -34,6 +34,7 @@ from app.schemas.production import (
     CastMemberCreate,
     CastMemberRead,
     CastMemberUpdate,
+    ProductionUpdate,
     LocationUpdate,
     ProductionCreate,
     ProductionRead,
@@ -80,6 +81,19 @@ def create_production(
 @router.get("/productions/{production_id}", response_model=ProductionRead)
 def get_production(access: Access = Depends(require(PRODUCTION_READ))) -> ProductionRead:
     return _with_access(access.production, access.role)
+
+
+@router.patch("/productions/{production_id}", response_model=ProductionRead)
+def update_production(payload: ProductionUpdate, db: Session = Depends(get_db), access: Access = Depends(require(PRODUCTION_EDIT))) -> ProductionRead:
+    """Rename or move along prep → shooting → wrapped (FR-34). Members and days are untouched."""
+    production = access.production
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field == "name" and (value is None or not value.strip()):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A production needs a name")
+        setattr(production, field, value.strip() if isinstance(value, str) else value)
+    db.commit()
+    db.refresh(production)
+    return _with_access(production, access.role)
 
 
 @router.get("/productions", response_model=list[ProductionRead])

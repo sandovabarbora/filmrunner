@@ -57,10 +57,12 @@ function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connecti
   );
 }
 
-export function ProductionScreen({ conn, productionId, production, tab, setNotice }: {
-  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "cast" | "locations" | "members"; setNotice: (n: Notice) => void;
+export function ProductionScreen({ conn, productionId, production, tab, setNotice, onUpdated }: {
+  conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "cast" | "locations" | "members" | "settings";
+  setNotice: (n: Notice) => void; onUpdated: (p: Production) => void;
 }) {
   const manage = can(production, "production:manage_members");
+  const edit = can(production, "production:edit");
   return (
     <>
       <Checklist conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} refreshKey={tab === "days" ? 0 : 1} />
@@ -70,6 +72,7 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
         <a role="tab" aria-selected={tab === "cast"} className={tab === "cast" ? "on" : ""} href={href({ screen: "production", productionId, tab: "cast" })}>Cast</a>
         <a role="tab" aria-selected={tab === "locations"} className={tab === "locations" ? "on" : ""} href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>
         {manage && <a role="tab" aria-selected={tab === "members"} className={tab === "members" ? "on" : ""} href={href({ screen: "production", productionId, tab: "members" })}>Members</a>}
+        {edit && <a role="tab" aria-selected={tab === "settings"} className={tab === "settings" ? "on" : ""} href={href({ screen: "production", productionId, tab: "settings" })}>Settings</a>}
         {production?.my_role && <span className="role-chip" id="myRole">{production.my_role}</span>}
       </div>
       {tab === "days" && <Days conn={conn} productionId={productionId} canPublish={can(production, "day:publish")} setNotice={setNotice} />}
@@ -77,6 +80,7 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
       {tab === "cast" && <Cast conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
+      {tab === "settings" && edit && production && <Settings conn={conn} production={production} setNotice={setNotice} onUpdated={onUpdated} />}
       {production === null && <p className="hint">Production not found in this list; go back to Productions.</p>}
     </>
   );
@@ -98,7 +102,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
           {days.map((d) => (
             <li key={d.id}>
               <a className="row" href={href({ screen: "day", productionId, callSheetId: d.id })}>
-                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span></span>
+                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}</span>
                 <span className="rev-badge small" data-rev={d.current_revision?.revision_letter ?? "A"}>REV {d.current_revision?.revision_letter ?? "–"}</span>
               </a>
               <div className="row-actions">
@@ -398,6 +402,43 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         </div>
       )}
       </>)}
+    </section>
+  );
+}
+
+/** FR-34: rename, or move the production along prep → shooting → wrapped. Nothing else lives here on purpose. */
+function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection; production: Production; setNotice: (n: Notice) => void; onUpdated: (p: Production) => void }) {
+  const [name, setName] = useState(production.name);
+  const [status, setStatus] = useState(production.status);
+  const [busy, setBusy] = useState(false);
+  const changed = name.trim() !== production.name || status !== production.status;
+  async function save() {
+    setBusy(true);
+    try {
+      const updated = await api.updateProduction(conn, production.id, { name: name.trim(), status });
+      onUpdated(updated);
+      setNotice({ kind: "ok", text: `Saved. ${updated.name} is ${updated.status}.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not save the production"));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="block" aria-label="Settings">
+      <h2>Settings</h2>
+      <div className="grid2">
+        <label className="field" htmlFor="productionName"><span className="label">Name</span><input id="productionName" value={name} onChange={(e) => setName(e.target.value)} /></label>
+        <label className="field" htmlFor="productionStatus"><span className="label">Status</span>
+          <select id="productionStatus" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="prep">prep</option><option value="shooting">shooting</option><option value="wrapped">wrapped</option>
+          </select>
+        </label>
+      </div>
+      <p className="hint">Wrapped productions stay readable; every link keeps working. Days are never deleted — cancel a day from its own screen.</p>
+      <div className="inline">
+        <button type="button" id="saveProduction" className="secondary" disabled={!changed || !name.trim() || busy} onClick={() => void save()}>Save</button>
+      </div>
     </section>
   );
 }
