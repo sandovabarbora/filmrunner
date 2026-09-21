@@ -513,6 +513,37 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - landing.html embeds it (autoplay muted loop, poster = first screenshot, reduced-motion respected) under the screenshots, CS/EN captions
   - failure case: the recording script fails loudly if any step's selector is missing, so a UI change never silently ships an outdated recording; README line on how to re-record
 
+## FR-55 · frontend · Import the crew from a file (Excel, CSV, Numbers export)
+- state: ready
+- gated: no
+- why: founder 2026-09-21: "bylo by super mít možnost to naimportovat z něčeho" — the crew list exists as an .xlsx from the production office or a Google Sheet; FR-31's paste covers copied cells, a file drop covers the rest and the column names tell us more than a paste does
+- dod:
+  - Crew tab: "Import a file…" accepts .xlsx, .xls, .csv (SheetJS in the browser, no upload; the file never leaves the phone); header row detected by common names in CS/EN (jméno/name, telefon/phone/mobil, oddělení/department/dept, pozice/position/funkce, e-mail); a small column-mapping row lets the AD fix a wrong guess; then the same preview and "Add N people" as FR-31, reusing existing contacts per FR-45
+  - department headers as merged rows or a department column both work; phone numbers normalised the FR-29 way for display, stored as typed
+  - unit tests for the header detection (CS/EN, order, missing columns) and E2E with a committed 12-row .xlsx fixture
+  - failure case: a file with no recognisable name column is refused with "which column has the names?" and the mapping row, never a silent import of garbage
+
+## FR-56 · frontend · Import the shooting schedule (scenes per day) from Excel or a Movie Magic export
+- state: ready
+- gated: no
+- why: the AD's schedule already exists as a stripboard export (Movie Magic Scheduling → Excel/CSV, or a plain Excel with day, scene, INT/EXT, D/N, set, pages, location, cast); typing 40 scenes a day into the phone is the second setup killer after the crew
+- dod:
+  - Days tab: "Import schedule…" accepts .xlsx/.csv; rows grouped by shoot day (a day column, or "Day 1 – date" banner rows, or a date column); per row scene number, INT/EXT, D/N, set description, pages (eighths or "2 3/8"), location name, cast names; preview per day with counts; "Create N days" creates unpublished drafts on this phone (not published) with scenes in order, locations matched by name to the Locations tab (unmatched → created), cast matched by name (unmatched listed, not created)
+  - existing days with the same date are not overwritten: the preview marks them and skips
+  - unit tests for the grouping and the pages parser; E2E with a committed 3-day fixture
+  - failure case: a file with scenes but no day information imports as one unpublished draft named "Imported schedule" rather than guessing dates
+
+## FR-57 · tech-lead · Import from an existing call sheet PDF
+- state: ready
+- gated: partial
+- note: the heuristics path is ungated; the LLM path needs `FILMRUNNER_ANTHROPIC_API_KEY` as a Fly secret set by the founder (file an INBOX item when the code lands)
+- why: every AD has last production's call sheet as a PDF; its crew list and contacts are the fastest way to seed a new production; layouts differ per production company, so a fixed parser will not do
+- dod:
+  - `POST /productions/{id}/import/call-sheet-pdf` (crew:edit): text extraction (pypdf), then a structured extraction of contacts (name, department, position, phone) — first a heuristics pass (phone regex anchors a row, department headers by the FR-31 word list); when `FILMRUNNER_ANTHROPIC_API_KEY` is set, a Claude call with the page text and a JSON schema does the extraction instead, temperature 0, max 4k output; response is a preview list, nothing is created until the AD confirms in the same Crew tab preview as FR-31
+  - the PDF is processed in memory and not stored; 10 MB limit; scanned PDFs (no text layer) are refused with a clear message
+  - tests: two committed sample PDFs (a Czech and an English layout) through the heuristics path; the LLM path tested with the client mocked
+  - failure case: the extractor returning a person with no name or a phone that does not normalise is shown in the preview with a warning, never created silently
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
 - note: 13:00 shift 2026-09-21 (PR #111, branch feat/fr-25-landing-page) delivered every dod bullet: `frontend/landing.html` as a third Vite entry, FR-6's chosen position as the headline, three real screenshots of the bundled demo call sheet (header/calls/weather, Where, Who to call) taken by a committed Playwright script (`frontend/scripts/take_landing_screenshots.py`, re-run after any visual change to the sheet), a live-demo link, and a no-forms "Request a pilot" mailto to the founder. Czech/English toggle is two static `[lang]`-tagged blocks per element switched by a small vanilla script (`frontend/src/landing.ts`, no framework), defaulting to the visitor's browser language and falling back to Czech with no JS at all. The root entry page (`index.html`) gets one added link, "What is FilmRunner?", kept to that page's existing "two doors, no marketing" design. No external fonts; all three images 28-40 KB; verified at 390px in both languages. Handled the dod's failure case directly: a screenshot the script could not produce is simply not written, and `landing.ts` removes any `<figure>` whose image fails to load, so a missing shot never becomes a broken-image placeholder. `npm run typecheck`/`npm run build` clean, `npm test` 23/23; full Playwright suite 39/41 (the 2 failures are `test_locations_e2e.py`'s pre-existing Nominatim-egress-block, unrelated, flagged by every prior shift touching that suite). Touches `frontend/`, so per TEAM.md's hackathon mode this still gets `gh pr merge --auto --squash` (only TEAM.md itself is excluded); PR is the whole deliverable.
