@@ -433,3 +433,28 @@ def test_whatsapp_message_carries_the_days_personal_call_and_waits_for_publish(p
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
     page.click("#sendDayAsText")
     expect(page.locator("#shareTextPreview")).to_have_value(re.compile(r"Crew call: \*07:00\*"), timeout=5_000)
+
+
+def test_rev_b_shows_what_changed_and_rev_a_shows_no_diff(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-23: the sheet says what B changed against A; a sheet with only A has no "replaces" line at all."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E diff {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    link = page.locator("#shareLink").get_attribute("href")
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet", timeout=15_000)
+    assert v.locator("#revReplaces").count() == 0  # failure case: no empty "replaces" sentence on A
+    v.close()
+
+    page.fill("#general_crew_call", "07:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#revChanges", timeout=15_000)
+    assert re.search(r"REV B replaces A, issued \d{1,2}:\d{2}", v.locator("#revReplaces").inner_text())
+    crew = v.locator("#revChanges li[data-field='crew_call']")
+    assert crew.count() == 1 and "06:30" in crew.inner_text() and "07:30" in crew.inner_text()
+    assert v.locator("#revChanges li[data-field='shooting_call']").count() == 0

@@ -69,6 +69,21 @@ export interface CallSheet {
   current_revision: CallSheetRevision | null;
   contacts?: CallSheetContacts | null;
   personal_calls?: PersonalCallRow[];
+  /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
+  previous_revision?: RevisionSummary | null;
+  changes?: RevisionChange[];
+}
+
+export interface RevisionSummary {
+  revision_letter: string;
+  created_at: string;
+}
+
+export interface RevisionChange {
+  field: "crew_call" | "shooting_call" | "scene_order" | "safety_notes" | "personal_calls" | string;
+  label: string;
+  before: string | null;
+  after: string | null;
 }
 
 /* Create payloads (backend/app/schemas). */
