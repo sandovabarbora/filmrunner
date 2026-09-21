@@ -255,6 +255,18 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - backend tests for precedence (day entry > standing time > general call) and copy-forward on revision; E2E sets one person's time and sees it on their personal link
   - failure case: a crew member removed after entries exist does not break publishing; their entry is dropped with a note in the PR's test
 
+## FR-29 · frontend · Send the call sheet as a WhatsApp message
+- state: done
+- note: delivered 2026-09-21 (feat/fr-29-whatsapp-share): `frontend/src/editor/shareText.ts` (text builders, wa.me number normalisation), day screen "Send day as text" (Web Share API, copy fallback with preview) and "Open in WhatsApp", per-person WhatsApp link with their own call/pickup/note; buttons wait for publish when the draft is dirty. Vitest added (`npm test`, 12 unit tests, in CI); E2E covers the personal call in the message, the publish guard and the unusable-phone fallback. Fixed on the way: a hot revision never cleared `dirtySincePublish` (update() overrode the patch), so the day screen kept saying "Changes since REV B" right after publishing B
+- gated: no
+- why: Prague crews live in WhatsApp groups; today the AD copies a link and pastes it by hand, so half the crew gets the link and half gets a screenshot. One tap that opens WhatsApp with the day already written (call, location, link) is the distribution the living call sheet has been missing (BRIEF Q3, FR-2 teardown: no competitor does per-person WhatsApp)
+- dod:
+  - day screen, once published: "Send day as text" builds a plain-text summary (production, day, date, calls, first location with address, weather, schedule, crew link) and opens the phone's share sheet (Web Share API); without it, copies the text and offers a wa.me link
+  - per crew member: "WhatsApp" opens a chat with that person (wa.me with their phone) prefilled with a personal message: their own call, pickup and note for the day plus their personal link; a member without a phone gets copy/share instead
+  - the text always reflects the published revision: with unpublished edits the buttons are disabled and the hint says to publish first
+  - unit tests for the text builders and the phone normalisation (Czech 9-digit numbers get 420, spaces and 00 prefix removed); E2E checks the per-person message carries the day's personal call
+  - failure case: a phone that cannot be turned into a wa.me number (letters, too short) shows the copy/share path, never a broken WhatsApp link
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

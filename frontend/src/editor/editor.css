@@ -83,3 +83,10 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .checklist a { color: inherit; }
 .pcall-who { margin-bottom: 6px; }
 .pcall-row { display: grid; grid-template-columns: 6ch 6ch 1fr; gap: 8px; }
+
+/* FR-29: the day as a WhatsApp message. */
+.share-text-actions { margin-top: 10px; align-items: center; }
+.share-text-actions .quiet-link { display: inline; margin: 0; font-family: inherit; font-size: 0.8125rem; }
+.share-preview { margin-top: 10px; }
+.share-preview textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; }
+.row-actions .whatsapp { display: inline; margin: 0; font-family: inherit; font-size: 0.8125rem; }

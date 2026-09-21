@@ -5,6 +5,7 @@ import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink } from "./Production";
 import { QrCode } from "./QrCode";
+import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import type { CallSheetCreated, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
 
 function revisionPayload(d: Draft): RevisionCreate {
@@ -70,6 +71,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [weatherSuggestion, setWeatherSuggestion] = useState<string | null>(null);
   const [suggestingWeather, setSuggestingWeather] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [shareText, setShareText] = useState<string | null>(null);
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
 
@@ -109,7 +111,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   }, []);
 
   function update(patch: Partial<Draft>) {
-    setDraft((d) => (d ? { ...d, ...patch, dirtySincePublish: d.callSheetId ? true : d.dirtySincePublish } : d));
+    // Any edit to a published day marks it dirty, unless the patch says otherwise (a publish resets it).
+    setDraft((d) => (d ? { ...d, dirtySincePublish: d.callSheetId ? true : d.dirtySincePublish, ...patch } : d));
   }
   function updateItem(i: number, patch: Partial<ScheduleItemCreate>) {
     setDraft((d) => d ? { ...d, dirtySincePublish: !!d.callSheetId, items: d.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) } : d);
@@ -174,8 +177,21 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     }
   }
 
+  /** Phone share sheet (WhatsApp is one tap away) when the browser has one; otherwise copy and show the text with a wa.me link. */
+  async function shareAsText(title: string, text: string) {
+    if (canWebShare()) {
+      try { await navigator.share({ title, text }); return; }
+      catch (err) { if ((err as { name?: string }).name === "AbortError") return; }
+    }
+    try { await navigator.clipboard?.writeText(text); setNotice({ kind: "ok", text: "Copied. Paste it into the WhatsApp group." }); }
+    catch { setNotice({ kind: "warn", text: "Could not copy; select the text below." }); }
+    setShareText(text);
+  }
+
   if (!draft) return <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>;
   const published = draft.callSheetId && draft.lastPublishedLetter;
+  // The message must say what the link says: with unpublished edits the text would lie (FR-29 dod).
+  const shareable = !!published && !draft.dirtySincePublish;
   const dis = readOnly;
 
   return (
@@ -297,6 +313,21 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <div className="label">Crew link</div>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
+            <div className="inline share-text-actions">
+              <button type="button" id="sendDayAsText" className="secondary" disabled={!shareable}
+                onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!)))}>
+                Send day as text
+              </button>
+              {shareable
+                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!)))} target="_blank" rel="noreferrer">Open in WhatsApp</a>
+                : <span className="hint" id="shareTextHint">Publish first so the text matches the link.</span>}
+            </div>
+            {shareText !== null && (
+              <div className="share-preview">
+                <textarea id="shareTextPreview" readOnly value={shareText} rows={8} aria-label="Message text" onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" className="quiet" onClick={() => setShareText(null)}>Close</button>
+              </div>
+            )}
             <div className="qr" id="shareQr">
               <QrCode value={crewLink(conn.apiBase, draft.callSheetId!)} />
               <span className="hint">Scan to open the crew link</span>
@@ -309,12 +340,17 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <ul className="list">
               {crew.map((m) => {
                 const link = `${crewLink(conn.apiBase, draft.callSheetId!)}&me=${encodeURIComponent(m.personal_token)}`;
+                const number = whatsappNumber(m.contact.phone);
+                const message = () => personalMessageText(draft, m, locations, link);
                 return (
                   <li key={m.id} className="row static">
                     <span className="name">{m.contact.name}<span className="meta"> · {m.department}</span></span>
                     <span className="row-actions">
                       <a className="quiet-link" href={link} target="_blank" rel="noreferrer">Open</a>
                       <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={`Copy link for ${m.contact.name}`}>Copy</button>
+                      {number && shareable
+                        ? <a className="quiet-link whatsapp" href={whatsappUrl(number, message())} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${m.contact.name}`} data-number={number}>WhatsApp</a>
+                        : <button type="button" className="quiet" disabled={!shareable} onClick={() => void shareAsText(`Day ${draft.day_number} · ${m.contact.name}`, message())} aria-label={`Send message to ${m.contact.name}`}>Message</button>}
                     </span>
                   </li>
                 );

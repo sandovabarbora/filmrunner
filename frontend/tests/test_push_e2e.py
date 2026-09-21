@@ -142,7 +142,7 @@ def _publish_a_sheet_with_one_crew_member(page: Page, frontend_url: str, api_url
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
     page.wait_for_selector("#personalLinks", timeout=10_000)
-    link = page.locator("#personalLinks li", has_text="Jana Novotná").locator("a").get_attribute("href")
+    link = page.locator("#personalLinks li", has_text="Jana Novotná").get_by_role("link", name="Open").get_attribute("href")
     assert link and "&me=" in link
     return link
 
