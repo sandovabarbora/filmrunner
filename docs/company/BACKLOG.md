@@ -384,7 +384,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing in the message promises something the readiness file marks as not verified
 
 ## FR-42 · frontend · Tomorrow at a glance on the sheet
-- state: ready
+- state: in-progress
+- note: taken 2026-09-21 13:30 by the founder's interactive session (feat/fr-42-tomorrow-on-the-sheet); shifts skip it
 - gated: no
 - why: the one-link-per-person resolution (FR-32) already returns every day; a crew member reading today's sheet at wrap wants tomorrow's crew call and location without navigating; on paper this is the "advance schedule" line every Czech call sheet carries
 - dod:
