@@ -339,3 +339,41 @@ def test_first_run_checklist_guides_and_disappears(page: Page, frontend_url: str
     page.click(f"#productions >> text=E2E first")
     page.wait_for_selector("#days", timeout=10_000)
     expect(page.locator("#checklist")).to_have_count(0, timeout=10_000)  # everything done: the guide is gone
+
+
+def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-24: set one person's call for the day; their personal link shows it; REV B keeps it prefilled."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E pcall {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Tomáš Novák"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.fill("#crewCall", "06:00"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Tomáš Novák", timeout=10_000)
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.get_by_label("Call for Tomáš Novák").fill("05:15")
+    page.get_by_label("Pickup for Tomáš Novák").fill("04:45")
+    page.get_by_label("Note for Tomáš Novák").fill("generator first")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+    link = page.locator("#personalLinks li", has_text="Tomáš Novák").locator("a").get_attribute("href")
+
+    v = page.context.new_page()
+    v.goto(link); v.wait_for_selector("#you", timeout=15_000)
+    assert v.locator("#yourCall").inner_text().strip() == "05:15"
+    assert "04:45" in v.locator("#yourExtra").inner_text() and "generator first" in v.locator("#yourExtra").inner_text()
+    v.emulate_media(media="print")
+    assert v.locator("#personalCallsTable").is_visible()
+    v.close()
+
+    # Reopen the day: the entry is prefilled; publish B without touching it; still there.
+    page.reload(); page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    assert page.get_by_label("Call for Tomáš Novák").input_value() == "05:15"
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#you", timeout=15_000)
+    assert v.locator("#yourCall").inner_text().strip() == "05:15"
+    assert v.locator("#revBadgeWrap").inner_text().strip() == "REV B"

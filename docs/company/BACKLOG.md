@@ -244,8 +244,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a sheet with only REV A shows no diff line at all, not an empty "replaces" sentence
 
 ## FR-24 · frontend · Per-day personal call overrides
-- state: in-progress
-- note: taken by the founder's session 2026-09-21 11:05; shifts skip it
+- state: done
+- note: delivered 2026-09-21 (feat/fr-24-personal-calls): crew_call_entries per revision, copy-forward, precedence day > standing > general, pickup and note on the personal sheet, personal-calls table in print
 - gated: no
 - why: FR-13 reads CrewMember.standard_call_time, but on a real day the gaffer is called an hour early on Tuesday only; the AD must be able to set per-person times for a day (BRIEF Q1/Q3)
 - dod:

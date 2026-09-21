@@ -45,6 +45,30 @@ class CastCallEntryRead(CastCallEntryCreate):
     id: uuid.UUID
 
 
+class CrewCallEntryCreate(BaseModel):
+    crew_member_id: uuid.UUID
+    call_time: str | None = None
+    pickup_time: str | None = None
+    note: str | None = None
+
+
+class CrewCallEntryRead(CrewCallEntryCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+
+
+class PersonalCallRow(BaseModel):
+    """One line of the printed personal-calls table."""
+
+    crew_member_id: uuid.UUID
+    name: str
+    department: str
+    position: str
+    call_time: str | None
+    pickup_time: str | None
+    note: str | None
+
+
 class CallSheetRevisionCreate(BaseModel):
     """Payload to publish a new revision (initial 'A', or a same-day 'hot
     revision' correcting an already-published one)."""
@@ -59,6 +83,8 @@ class CallSheetRevisionCreate(BaseModel):
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemCreate] = Field(default_factory=list)
     cast_calls: list[CastCallEntryCreate] = Field(default_factory=list)
+    # None = copy the previous revision's entries forward; [] = clear them.
+    crew_calls: list[CrewCallEntryCreate] | None = None
 
 
 class CallSheetRevisionRead(BaseModel):
@@ -78,6 +104,7 @@ class CallSheetRevisionRead(BaseModel):
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemRead] = []
     cast_calls: list[CastCallEntryRead] = []
+    crew_calls: list[CrewCallEntryRead] = []
     # Not a stored field: set by the publish endpoint after sending (FR-16),
     # so the AD sees delivery status without a second request. Absent on a
     # plain GET of an existing revision.
@@ -102,6 +129,8 @@ class PersonalSheet(BaseModel):
     department: str
     position: str
     personal_call: str | None
+    pickup_time: str | None = None
+    note: str | None = None
     department_head: ContactCard | None
 
 
@@ -133,3 +162,4 @@ class CallSheetRead(BaseModel):
     created_at: datetime
     current_revision: CallSheetRevisionRead | None = None
     contacts: CallSheetContacts | None = None
+    personal_calls: list[PersonalCallRow] = []

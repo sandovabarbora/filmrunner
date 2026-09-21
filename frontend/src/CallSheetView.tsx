@@ -64,6 +64,12 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
             <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.department} · {personal.position}</span></div>
           </div>
           <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
+          {(personal.pickup_time || personal.note) && (
+            <div className="you-extra" id="yourExtra">
+              {personal.pickup_time && <span><span className="k">Pickup </span><span className="v">{personal.pickup_time}</span></span>}
+              {personal.note && <span className="note">{personal.note}</span>}
+            </div>
+          )}
         </section>
       )}
 
@@ -102,6 +108,20 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
           </tbody>
         </table>
       </section>
+
+      {(callSheet.personal_calls?.length ?? 0) > 0 && (
+        <section className="pcalls print-only" id="personalCallsTable" aria-label="Personal calls">
+          <h2>Personal calls</h2>
+          <table>
+            <thead><tr><th>Name</th><th>Department</th><th>Call</th><th>Pickup</th><th>Note</th></tr></thead>
+            <tbody>
+              {callSheet.personal_calls!.map((r) => (
+                <tr key={r.crew_member_id}><td>{r.name}</td><td>{r.department} · {r.position}</td><td className="scene">{r.call_time ?? ""}</td><td className="scene">{r.pickup_time ?? ""}</td><td>{r.note ?? ""}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {callSheet.contacts && (callSheet.contacts.head_of_day || callSheet.contacts.department_heads.length > 0 || callSheet.contacts.nearest_hospital) && (
         <section className="contacts" id="contacts" aria-label="Who to call">

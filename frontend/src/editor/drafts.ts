@@ -26,6 +26,7 @@ export interface Draft {
   weather_forecast: string;
   safety_notes: string;
   items: ScheduleItemCreate[];
+  crewCalls: Record<string, { call: string; pickup: string; note: string }>;
   updatedAt: string;
 }
 
@@ -57,6 +58,7 @@ export function emptyDraft(productionId: string, productionName: string | null):
     weather_forecast: "",
     safety_notes: "",
     items: [],
+    crewCalls: {},
     updatedAt: new Date().toISOString(),
   };
 }

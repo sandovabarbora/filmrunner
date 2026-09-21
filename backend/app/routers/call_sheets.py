@@ -25,7 +25,7 @@ from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import PersonalSheet
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import HeadOfDayNotOnProduction, build_contacts, build_personal, create_call_sheet, publish_revision
+from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, publish_revision
 from app.services.notifications import NotificationSummary, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,7 @@ def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
         .options(
             selectinload(CallSheet.revisions).selectinload(CallSheetRevision.schedule_items),
             selectinload(CallSheet.revisions).selectinload(CallSheetRevision.cast_calls),
+            selectinload(CallSheet.revisions).selectinload(CallSheetRevision.crew_calls),
         )
         .filter(CallSheet.id == call_sheet_id)
         .first()
@@ -102,7 +103,7 @@ def publish_revision_endpoint(
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
     try:
         revision = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
-    except HeadOfDayNotOnProduction as exc:
+    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
         # 26 revisions/day exhausted — a real operational limit, not a bug,
@@ -134,6 +135,7 @@ def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     read = CallSheetRead.model_validate(call_sheet)
     read.contacts = build_contacts(db, call_sheet)
+    read.personal_calls = build_personal_calls(db, call_sheet)
     return read
 
 
