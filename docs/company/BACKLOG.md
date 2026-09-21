@@ -342,7 +342,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: blocked until the founder reports; the routine must not mark these steps itself
 
 ## FR-20 · marketing · Prague market sizing: how many active productions are there
-- state: ready
+- state: done
+- note: 12:00 shift 2026-09-21 (branch docs/fr-20-prague-market-sizing) delivered docs/research/prague-market-sizing.md. `WebFetch` confirmed blocked this shift for every domain tried, including the Czech Film Commission's own statistics page and, newly, `en.wikipedia.org` (no prior shift had tried Wikipedia). No public source gives the 30-day active-production count Q5 asks for; built an explicit order-of-magnitude estimate instead from five dated proxies (88 Czech films premiered in 2025, 2025 incentive-application growth, named large productions currently shooting, a `productionlist.com` Prague count of unverified date range, and FAMU's unquantified-per-year but real annual output), each flagged for what it does and does not measure. Compared against a word-of-mouth critical-mass threshold (Rogers' diffusion research, commonly cited as 15-20% of an audience, sourced from a marketing OER since Wikipedia and Rogers' own text were unreachable) applied to the addressable audience of call-sheet-assemblers, not the general public. Handled the dod's failure case directly: proposed adding one estimation question to FR-3's interview script rather than guessing a number. Doc-only (docs/research/**), qualifies for auto-merge per TEAM.md.
 - gated: no
 - why: BRIEF.md Q5 asks whether Prague is dense enough for word-of-mouth distribution; this is answerable from public listings, unlike Q1-Q4/Q6 which need real interviews (INBOX #1, blocked on the founder). The backlog otherwise has no item against Q5.
 - dod:
