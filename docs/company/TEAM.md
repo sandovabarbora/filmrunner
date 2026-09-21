@@ -40,9 +40,18 @@ need the founder's own credentials (accounts, payments, sending from her
 address to third parties) are executed by the founder in an interactive
 session, never by the routine.
 
+**Hackathon mode, 2026-09-21 to 2026-09-25 (founder's call):** every PR
+with a green `ci` check auto-merges, code and ADRs included. Only
+`docs/company/TEAM.md` still waits for the founder. Accounts, money,
+secrets, deploys and email to anyone but the founder stay gated as
+below. A PR that changes `backend/` must say "backend changed: deploy
+needed" in its body and in the digest; the founder (or her session) runs
+`cd backend && fly deploy`. After 2026-09-25 the reversibility rule below
+applies again unless the founder extends the mode.
+
 `main` accepts only commits whose `ci` check is green (GitHub ruleset;
-direct pushes are rejected). What may auto-merge is decided by
-reversibility, not by who wrote it:
+direct pushes are rejected). Outside hackathon mode, what may auto-merge
+is decided by reversibility, not by who wrote it:
 
 - **Auto-merge (reversible, the founder can edit or revert any time):**
   state files (`docs/company/STATUS.md`, `INBOX.md`, `LOG.md`), backlog
@@ -128,7 +137,7 @@ most external domains, WebSearch works):
   `STATUS.md` (one backlog item per shift), refills the backlog with a
   proposals PR when fewer than three ready items remain, and emails the
   founder the plan plus what awaits her. Prompt: `routine-brief-prompt.md`.
-- **Shifts at 09, 11, 13, 15, 17**: each works one item per the contract
+- **Shifts hourly 09 to 17 during hackathon mode (09, 11, 13, 15, 17 otherwise)**: each works one item per the contract
   below. Shifts 09 to 15 email only when they produced a PR or an INBOX
   item; the 17 shift always emails the day summary. Prompt:
   `routine-shift-prompt.md`.

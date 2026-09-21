@@ -116,3 +116,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: PRs touching only reversible documents (state files, backlog proposals, research, marketing, gate checklists, PR template) auto-merge after CI; code and decision documents (ADRs, BRIEF, TEAM, DECISIONS) still wait for the founder. A shift with no workable item proposes one backlog item as pm. The brief lists PRs waiting more than a working day.
 - Why: 2026-09-16 and 09-17 the team idled ten shifts: the only `ready` item depended on an open docs PR and two proposal PRs waited for a merge nobody was around to give. The founder's attention is the scarce resource; it should go to code and decisions, not to research documents she can edit at will.
 - Revisit when: an auto-merged proposal sends a shift down a path the founder did not want (then tighten the proposal rules, not the auto-merge).
+
+## 2026-09-21: hackathon week, everything with green CI auto-merges
+- Decision: from 2026-09-21 to 2026-09-25 every PR with a green `ci` check auto-merges, code and ADRs included; only TEAM.md waits for the founder. Shifts run hourly 09 to 17. Accounts, money, secrets, deploys and third-party email stay gated. Backend PRs announce "deploy needed"; deploys stay on the founder's machine or her session.
+- Why: founder's call ("udělejme hackathon, mergujme automaticky"); the review gate on code was the remaining bottleneck and CI (backend, E2E on a real API, conventions, one Alembic head) is the safety net this week.
+- Revisit: 2026-09-25 evening; the reversibility rule returns automatically unless extended.
