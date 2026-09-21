@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-21 08:00 (morning brief)
+Updated: 2026-09-21 09:00 (09:00 shift)
 
 ## today
 
@@ -31,18 +31,44 @@ still-open PR), taken in `BACKLOG.md` priority order:
 `BACKLOG.md` has exactly 3 `ready`+ungated items (FR-6, FR-20, FR-22) —
 at the 3-item floor, not below it, so no backlog-refill PR this morning.
 
-Three open PRs have sat unmerged since Friday 2026-09-18, now past the
-weekend — over one working day waiting on the founder:
-- **#79** (`feat/fr-18-crew-offline-edit-queue`) — FR-18's offline-edit
-  failure case; touches `frontend/`, no auto-merge.
-- **#81** (`docs/fr-1-verified-source-brief`) — FR-1's BRIEF.md
-  correction from the real June 2026 source; touches `docs/company/`,
-  no auto-merge; also what FR-6 (today's 13:00 item) should ground in.
-- **#83** (`docs/fr-4-adr-001-backend-half`) — ADR-001's backend half;
-  touches `docs/adr/`, no auto-merge.
+**09:00 update**: the three PRs the morning brief flagged as open since
+Friday (#79 FR-18, #81 FR-1, #83 FR-4) were all merged by the founder
+between the 08:00 brief and this shift starting (confirmed: `gh pr list
+--state open` is empty; `git fetch origin main` shows all three commits
+— `a0f8138`, `70e7032`, `0656687` — on `main`'s head). Nothing is skipped
+for depending on an open PR.
 
-None of today's five planned items depend on any of these three PRs
-being merged first, so nothing is skipped for that reason.
+Took the plan's own first item, **FR-8** (verify the PWA service worker
+over the real Fly-hosted HTTPS URL on iOS Safari): still undoable —
+`curl -v` to both `filmrunner-api.fly.dev` and `api.fly.io` confirmed the
+same 403 CONNECT-tunnel rejection this session's egress proxy has hit on
+every prior attempt since 2026-09-14. FR-8 stays `in-progress`, unchanged.
+Skipped per the shift contract. Did not separately re-test **FR-16**
+(11:00's planned item, also gated on reaching the same
+`filmrunner-api.fly.dev` host) — the identical domain was just confirmed
+blocked seconds earlier in the same shift, so a second curl would only
+repeat the same result; treated as skipped for the same reason and noted
+here rather than re-run. FR-16 stays `in-progress`, unchanged.
+
+Took the next-highest-priority ready+ungated item instead: **FR-6**
+(positioning draft, marketing). `docs/marketing/positioning.md` delivered:
+four alternatives considered (AI-speed per the June brief's own H4 claim,
+delivery tracking, Prague-locality, live+offline-honest), each with a
+reason for or against, grounded in `BRIEF.md`'s working hypothesis/H1-H5
+and `competitive-teardown.md`'s per-incumbent findings. Chose
+live+offline-honest. Addressed the dod's failure case directly:
+StudioBinder already markets a "living" call sheet (FR-2), so the doc
+narrows the claim to the conjunction with offline-honesty, since FR-2
+found StudioBinder's own offline support only described as "in the
+pipeline" (unverified, not shipped) and no incumbent verifiably ships
+both; names the revisit trigger if that changes, and flags that FR-3's
+Q3 pain list doesn't name "offline-honest" verbatim, so the position
+needs re-testing against real interview data once FR-3 unblocks. Marked
+explicitly as a hypothesis for FR-3 to test, per `BRIEF.md`'s own kill
+criterion. PR #86 (`docs/fr-6-positioning-draft`) — touches
+`docs/marketing/**` and `BACKLOG.md`'s state line only, so per `TEAM.md`
+this qualifies for auto-merge; enabled. FR-6 set to `done` in
+`BACKLOG.md` — the PR is the whole deliverable.
 
 **17:00 update (2026-09-18, prior day)**: took the plan's own item, **FR-4** (tech-lead): wrote
 the remaining backend half of ADR-001, `docs/adr/ADR-001-backend-stack.md`
@@ -202,25 +228,25 @@ only five shifts run; whichever of today's five items finishes early
 should pull the next one from that trio rather than sit idle.
 
 ## pm
-- summary: 15:00 shift closed FR-1's last dod bullet — the June 2026 source brief (`docs/reference/PRODUCT_BRIEF-2026-06.md`) turned out to have been in the repo since 2026-09-14, not missing as every prior note claimed; read in full and used to rewrite BRIEF.md's "Assumptions" section (H1 corrected, H2 confirmed, H3 replaced with real figures, H4/H5 added), each claim cited and dated. FR-1 → `done`; FR-6 (positioning) unblocked to `ready`. PR #81 (`docs/fr-1-verified-source-brief`), no auto-merge (touches BRIEF.md/DECISIONS.md), awaiting founder. Earlier, 09:00 shift delivered FR-21 (switching-cost teardown, docs/research/switching-cost-teardown.md, PR #75, auto-merge enabled) — now `done` in BACKLOG.md. FR-3 discovery plan stands (PR #11); FR-2 teardown stands (PR #8).
+- summary: unchanged this shift (this shift's own item was marketing, FR-6). FR-1's brief correction, FR-3's discovery plan, FR-2's teardown, and FR-21's switching-cost teardown all stand `done`. PR #81 (FR-1) merged to `main` by the founder overnight — no longer awaiting anything.
 - tests: n/a (research/planning docs, no executable code)
-- blockers: `WebFetch` remains blocked by this session's egress proxy for most external domains, confirmed again this shift for `fly.dev`/`api.fly.io` (proxy-wide policy, not vendor-specific); `WebSearch` works; the local repo filesystem, by contrast, was reachable the whole time — the 15:00 finding was a process gap, not an environment one.
-- needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine); PR #81 needs the founder's own merge (BRIEF.md/DECISIONS.md).
+- blockers: `WebFetch` remains blocked by this session's egress proxy for most external domains; `WebSearch` works.
+- needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine).
 
 ## engineering (tech-lead + frontend)
-- summary: 17:00 shift (tech-lead) delivered FR-4's remaining backend half: `docs/adr/ADR-001-backend-stack.md` states the stack options, the decision (FastAPI + Postgres skeleton, citing `DECISIONS.md` 2026-09-14), and what the old Next.js + FastAPI + Supabase repo had that this one lacks (AI script-to-breakdown drafting, RLS-based auth, budgeting, deeper scheduling, a general change-log feed) with the specific BRIEF.md trigger to port each, cited against the June 2026 brief's actual content. PR #83 (`docs/fr-4-adr-001-backend-half`), no auto-merge (touches `docs/adr/`), awaiting founder. FR-4 set to `done` — all three dod bullets now delivered. Earlier, 13:00 shift (frontend) delivered FR-18's remaining failure-case half: an edit to an existing crew member made offline now queues in IndexedDB (`frontend/src/editor/crewEdits.ts`), the row shows it with a "not saved" tag via an optimistic overlay, and it syncs automatically next time the Crew tab loads or on demand via a "Sync" button. PR #79 (`feat/fr-18-crew-offline-edit-queue`), still awaiting founder merge (touches `frontend/`). FR-18 stays `in-progress`: the photo bullet remains gated on INBOX #4. 11:00 shift (frontend) delivered FR-11's remaining dod bullet (the crew-link not-found failure case, PR #77) — the founder merged it herself at 09:27 today, so FR-11 is `done` and fully landed on `main`, no longer awaiting anything. FR-8's own 09:00 verification task (iOS Safari SW registration over the real Fly-hosted HTTPS URL) remains skipped for lack of environment access — unchanged, still `in-progress`.
-- tests: 17:00 shift — docs-only, no executable code, n/a. 13:00 shift — 11/11 `test_editor_e2e.py` pass, one new (`test_crew_edit_offline_queues_locally_and_shows_not_saved`); wider frontend E2E suite 29/30 (one pre-existing, unrelated geocoding-test failure — Nominatim blocked by this sandbox's egress proxy). 11:00 shift — 13/13 frontend Playwright tests passed (`frontend/tests/test_smoke.py`, one new).
-- blockers: 15:00 shift's FR-16 live-verification task confirmed undoable — `filmrunner-api.fly.dev` and `api.fly.io` both 403 through this session's egress proxy, no `fly` CLI installed either, so there is no way to reach the deployed API or even check Fly secrets from here; FR-16 stays `in-progress` unchanged. Carried over: FR-18's photo upload gated on INBOX #4.
-- needs_approval: yes — PR #83 and PR #79 both need the founder's own merge (docs/adr and frontend code respectively, not state); INBOX #4 (Supabase Storage bucket/secret), carried over, needing the founder's own credentials.
+- summary: unchanged this shift (this shift's own item was marketing, FR-6). PRs #79 (FR-18) and #83 (FR-4) both merged to `main` by the founder overnight — FR-18 stays `in-progress` (its photo bullet remains gated on INBOX #4), FR-4 stands `done`, neither is awaiting a merge any longer. FR-8's iOS-Safari-over-real-URL verification task attempted again this shift (09:00) and confirmed still undoable: `filmrunner-api.fly.dev` and `api.fly.io` both reject the CONNECT tunnel with 403 through this session's egress proxy, the same block every prior attempt since 2026-09-14 has hit. FR-8 stays `in-progress`, unchanged. FR-16's live-verification task (same blocked host) was not separately re-run this shift since the block was just confirmed on the identical domain; also treated as skipped. FR-16 stays `in-progress`, unchanged.
+- tests: n/a — no code touched this shift.
+- blockers: FR-8/FR-16's live-Fly-URL verification remains blocked by this session's egress proxy (confirmed again 2026-09-21 09:00); no `fly` CLI installed either, so there is no way to reach the deployed API from here. Carried over: FR-18's photo upload gated on INBOX #4.
+- needs_approval: yes — INBOX #4 (Supabase Storage bucket/secret for FR-18's photo upload), needing the founder's own credentials.
 
 ## security (gate)
-- summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) confirmed merged (PR #59, part of the overnight 2026-09-17 clearing) and stands `done`.
+- summary: unchanged this shift; FR-7 stands `done` (re-verified 2026-09-16 17:00, 88/88 backend tests). FR-5 (the gate checklist itself) stands `done`, merged.
 - tests: n/a — no code touched this shift.
 - blockers: none.
 - needs_approval: no.
 
 ## marketing
-- summary: nothing started this shift. FR-6 (positioning) is now unblocked — FR-1 flipped to `done` at 15:00 (PR #81, pending founder merge) alongside the already-`done` FR-2 — so FR-6 is `ready` for a future shift or the founder to pick up; not worked this shift (this shift's own item was pm, FR-1).
-- tests: n/a
+- summary: 09:00 shift delivered FR-6 (positioning draft): `docs/marketing/positioning.md`, four alternatives considered and one chosen (live+offline-honest), grounded in FR-1's brief and FR-2's teardown, with the dod's competitor-ownership failure case addressed explicitly against StudioBinder's own "living call sheet" claim. PR #86 (`docs/fr-6-positioning-draft`), auto-merge enabled (docs-only). FR-6 set to `done`.
+- tests: n/a (docs-only)
 - blockers: none
 - needs_approval: no
