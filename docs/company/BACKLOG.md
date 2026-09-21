@@ -190,7 +190,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: delivered in PR #8 (branch shift/FR-2). `WebFetch` was blocked by this session's egress proxy for every vendor domain, so the teardown is built from `WebSearch` snippets, not directly-read vendor pages; several items are flagged "unverified" and a follow-up re-verification pass is requested in the doc.
 
 ## FR-6 · marketing · Positioning draft
-- state: ready
+- state: done
 - gated: no
 - why: outreach and landing need one sentence of positioning that survives contact with an AD
 - dod:
@@ -198,6 +198,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - blocked until FR-1 and FR-2 are done
   - failure case: if FR-2 shows a competitor already owns the chosen position, the draft says so and proposes another, rather than ignoring it
 - note: 15:00 shift 2026-09-18 — unblocked: FR-1 flipped to `done` this shift (PR #81), FR-2 was already `done`. Not worked this shift (this shift's own item was FR-1); next shift or a future run can take it.
+- note: 09:00 shift 2026-09-21 (PR TBD, branch `docs/fr-6-positioning-draft`) delivered `docs/marketing/positioning.md`: four alternatives considered (AI-speed per the June brief's H4, delivery tracking, Prague-locality, live+offline-honest), each with a reason for or against, grounded directly in `BRIEF.md`'s working hypothesis/H1-H5/Q5-Q6 and `competitive-teardown.md`'s per-incumbent findings. Chose live+offline-honest. Handled the dod's failure case explicitly rather than skipping it: StudioBinder already markets a "living" call sheet (sourced from FR-2), so the doc narrows the claim to the conjunction — live *and* honest about staleness when offline — since FR-2 found StudioBinder's own offline capability was only described as "in the pipeline" (unverified, not shipped) and no other incumbent verifiably ships both. Named the revisit trigger if that verification status changes, and flagged that FR-3's Q3 pain list does not name "offline-honest" verbatim, so the position should be re-tested against real interview data once it exists, not kept on desk research alone. Marked explicitly as a hypothesis for FR-3 to test, citing `BRIEF.md`'s own kill criterion. Doc-only (`docs/marketing/**`), so per `TEAM.md` this qualifies for auto-merge. FR-6 set to done — the dod's three bullets (alternatives + chosen position, blocked-until satisfied, failure case handled) are all delivered and the PR is the whole deliverable.
 
 ## FR-4 · tech-lead · ADR-001: stack of the skeleton
 - state: done
