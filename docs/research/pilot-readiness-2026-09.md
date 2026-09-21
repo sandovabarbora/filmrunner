@@ -44,6 +44,36 @@ Legend: PASS = observed working live; FAIL = observed broken; NOT VERIFIED
 - G3 (new, FR-28): iPhone protocol for the founder, steps 4, 18, 20, 21 plus install to home screen; recorded results go back into this file.
 - G4 (INBOX #3, #4): sign-in email delivery and photo storage are configuration on the founder's side; both are prerequisites for a pilot with a real AD.
 
+## Second run, 2026-09-21 13:40 — everything merged that day (founder's session)
+
+Script: `docs/research/pilot-readiness-live3.py` (token read from disk; run with
+`backend/.venv/bin/python docs/research/pilot-readiness-live3.py`). Same live
+URLs; iPhone-width headless Chromium. Production "Live check <tag>" (2 crew,
+1 cast, 1 geocoded location, 2 days), set to wrapped; owned by the service, so
+no signed-in user sees it. **27 PASS, 0 FAIL.**
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Create production on the live API | PASS |
+| 2 | FR-31 paste crew list (headers, comma, tab, HoD) → 2 people | PASS |
+| 3 | FR-37 onboarding WhatsApp link carries the stable link | PASS |
+| 4 | FR-33 cast member added | PASS |
+| 5 | Location geocoded live (Nominatim reachable from Fly) | PASS |
+| 6 | FR-27 hint before a location is picked; sunrise fills once picked | PASS |
+| 7 | Publish REV A with scene, cast call, personal call | PASS |
+| 8 | FR-29 day WhatsApp text (crew call, link); personal text with the day's own call | PASS |
+| 9 | FR-36 seen panel "REV A opened by 0 of 2" | PASS |
+| 10 | FR-32 stable link opens the day; personal call 05:15 | PASS |
+| 11 | FR-35 Where block; FR-33 cast table; no "replaces" line on REV A | PASS |
+| 12 | FR-36 read receipt recorded after a live open (1 of 2); no nudge link without a phone | PASS |
+| 13 | FR-23 "REV B replaces A" + crew call 06:30 → 07:00; FR-24 personal call carried to B | PASS |
+| 14 | FR-30 next day prefilled (date +1, calls); published | PASS |
+| 15 | FR-32 other-days nav lists both days | PASS |
+| 16 | FR-34 cancel (banner, public status cancelled), restore, production wrapped via Settings | PASS |
+| 17 | Unknown token on `/seen` and `/next` → 404 | PASS |
+
+Still for the phone only: the WhatsApp share sheet itself (`navigator.share`), `wa.me` deep links opening the app, the push on cancel, install and offline.
+
 ## For the founder's phone (step-by-step)
 
 1. Safari → https://sandovabarbora.github.io/filmrunner/editor.html → email → code from the mail (needs INBOX #3) → Productions visible.
@@ -51,4 +81,8 @@ Legend: PASS = observed working live; FAIL = observed broken; NOT VERIFIED
 3. Tap "Enable notifications"; allow. From another device publish REV C; expect a notification with the summary.
 4. Airplane mode; open the icon again; the sheet must render and the status must say cached/offline, not "Live".
 5. Print / Save PDF from the sheet: Share → Print → pinch out → Save to Files.
+6. Day screen → "Send day as text": the share sheet opens with the text; pick WhatsApp; the message arrives formatted (bold call time).
+7. Crew tab → WhatsApp next to a person with a real number: WhatsApp opens the chat with the message prefilled.
+8. Open the person's stable link on their phone (from step 7), then on the AD's screen the "opened by" count goes up.
+9. Cancel a day while the phone has notifications on: the phone shows "Day N: CANCELLED".
 Write each result as PASS/FAIL next to the step number above.
