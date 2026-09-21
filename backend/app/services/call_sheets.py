@@ -92,11 +92,22 @@ def publish_revision(
     """
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
     previous = call_sheet.current_revision
+    if call_sheet.status == CallSheetStatus.DRAFT and previous is not None:
+        # A draft day (FR-56) was never seen by anyone: its content is replaced, not revised, so the
+        # first thing the crew sees is REV A. Copy-forward below still reads `previous` first.
+        replaced = previous
+        crew_calls_seed = list(replaced.crew_calls)
+        cast_calls_seed = list(replaced.cast_calls)
+        previous = None
+    else:
+        replaced = None
+        crew_calls_seed = None
+        cast_calls_seed = None
     if payload.crew_calls is None:
         # Copy forward: the AD edits yesterday's personal calls, they never retype them.
         crew_calls = [
             CrewCallEntryCreate(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
-            for e in (previous.crew_calls if previous is not None else [])
+            for e in (previous.crew_calls if previous is not None else (crew_calls_seed or []))
             if db.get(CrewMember, e.crew_member_id) is not None
         ]
     else:
@@ -110,7 +121,7 @@ def publish_revision(
         cast_calls = [
             CastCallEntryCreate(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
                                 call_time=e.call_time, makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time)
-            for e in (previous.cast_calls if previous is not None else [])
+            for e in (previous.cast_calls if previous is not None else (cast_calls_seed or []))
             if db.get(CastMember, e.cast_member_id) is not None
         ]
     else:
@@ -120,6 +131,12 @@ def publish_revision(
             if actor is None or actor.production_id != call_sheet.production_id:
                 raise CastCallNotOnProduction("cast calls must name cast members of this production")
 
+    if replaced is not None:
+        for child in list(replaced.schedule_items) + list(replaced.cast_calls) + list(replaced.crew_calls):
+            db.delete(child)
+        db.delete(replaced)
+        db.flush()
+        call_sheet.revisions.remove(replaced)
     for existing in call_sheet.revisions:
         existing.is_current = False
     # A published revision means the day is on: this also puts a cancelled day back (FR-34), telling the crew via the revision push.
@@ -179,6 +196,9 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, crea
     db.flush()
 
     publish_revision(db, call_sheet, payload.initial_revision, created_by=created_by)
+    if payload.draft:
+        call_sheet.status = CallSheetStatus.DRAFT
+        db.commit()
     db.refresh(call_sheet)
     return call_sheet
 
@@ -434,6 +454,7 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
                    first_location_name=first_location_name(s.current_revision))
         for s in sheets
     ]
+    days = [d for d in days if d.status != "draft"]  # planned days (FR-56) do not exist for the crew yet
     live = [d for d in days if d.status != "cancelled"]
     upcoming = [d for d in live if d.shoot_date >= today]
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))

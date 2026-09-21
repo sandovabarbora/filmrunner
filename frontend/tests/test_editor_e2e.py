@@ -875,3 +875,70 @@ def test_import_the_crew_from_an_excel_file(page: Page, frontend_url: str, api_u
     expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("Režie · 1. AD · +420 777 111 222")
     expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("HoD")
     expect(page.locator("#crew li", has_text="Karel")).to_contain_text("Produkce · Crew")
+
+
+def test_import_the_shooting_schedule_creates_planned_days(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-56: a Czech schedule .xlsx becomes three planned (draft) days with scenes, locations created by name, cast matched;
+    the crew sees nothing until a day is published; publishing keeps REV A; a draft can be deleted; a second import skips existing dates."""
+    import pathlib
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E sched {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Cast']"); page.wait_for_selector("#castName", timeout=10_000)
+    page.fill("#castName", "Anna Geislerová"); page.fill("#castCharacter", "MARTA"); page.click("#addCast")
+    expect(page.locator("#cast")).to_contain_text("MARTA", timeout=10_000)
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Petr Malý"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Key grip"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Petr Malý", timeout=10_000)
+
+    page.click("role=tab[name='Days']"); page.wait_for_selector("#scheduleFile", timeout=10_000)
+    fixture = str(pathlib.Path(__file__).parent / "fixtures" / "schedule-3-days.xlsx")
+    page.set_input_files("#scheduleFile", fixture)
+    page.wait_for_selector("#schedulePreview", timeout=15_000)
+    rows = page.locator("#schedulePreview li")
+    expect(rows).to_have_count(3)
+    expect(rows.nth(0)).to_contain_text("Day 1 · 2099-01-05 · 2 scenes · 42, 43")
+    expect(rows.nth(2)).to_contain_text("Day 3 · 2099-01-08 · 1 scene · 7")
+    expect(page.locator("#createImportedDays")).to_have_text("Create 3 days")
+    page.click("#createImportedDays")
+    expect(page.locator("#notice")).to_contain_text("3 planned days created as drafts", timeout=30_000)
+    expect(page.locator("#notice")).to_contain_text("Cast not on the Cast tab yet: Jiří Mádl, Iva Janžurová")
+    expect(page.locator("#days li")).to_have_count(3, timeout=10_000)
+    expect(page.locator("#days li").first).to_contain_text("DRAFT")
+
+    # Locations were created by name.
+    page.click("role=tab[name='Locations']"); page.wait_for_selector("#locations", timeout=10_000)
+    expect(page.locator("#locations")).to_contain_text("Nábřeží Troja"); expect(page.locator("#locations")).to_contain_text("Karlštejn")
+
+    # The crew's stable link sees no planned day.
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crew", timeout=10_000)
+    page.get_by_label("Copy link for Petr Malý").click()
+    page.click("role=tab[name='Days']"); page.wait_for_selector("#days", timeout=10_000)
+    page.locator("#days a.row").first.click(); page.wait_for_selector("#publishState", timeout=10_000)
+    expect(page.locator("#publishState")).to_contain_text("Planned day, not published")
+    assert page.locator("#personalLinks").count() == 0
+    assert page.locator("#items .item").count() == 2
+    assert page.locator("#items .item").nth(0).get_by_label("Scene").input_value() == "42"
+    assert page.locator("#items .item").nth(0).get_by_label("Location").evaluate("el => el.selectedOptions[0].text") == "Nábřeží Troja"
+    expect(page.get_by_label("Anna Geislerová works today")).to_be_checked()
+    day1_url = page.url
+
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+    link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#you", timeout=15_000)
+    assert v.locator("#revBadgeWrap").inner_text().strip() == "REV A"
+    assert v.locator("#revReplaces").count() == 0
+    assert v.locator("#otherDays").count() == 0  # days 2 and 3 are still drafts: invisible
+    v.close()
+
+    # Delete planned day 3; re-importing the file skips every date that exists.
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']"); page.wait_for_selector("#days", timeout=10_000)
+    page.locator("#days a.row").nth(2).click(); page.wait_for_selector("#deleteDraftDay", timeout=10_000)
+    page.click("#deleteDraftDay"); expect(page.locator("#notice")).to_contain_text("Planned Day 3 deleted", timeout=10_000)
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#days li")).to_have_count(2, timeout=10_000)
+    page.set_input_files("#scheduleFile", fixture); page.wait_for_selector("#schedulePreview", timeout=15_000)
+    expect(page.locator("#schedulePreview li").nth(0)).to_contain_text("a day with this date exists, skipped")
+    expect(page.locator("#createImportedDays")).to_have_text("Create 1 day")
+    assert day1_url

@@ -63,6 +63,8 @@ export const api = {
     request<Production>(c, "PATCH", `/api/v1/productions/${productionId}`, patch),
   seenReport: (c: Connection, callSheetId: string) =>
     request<SeenReport>(c, "GET", `/api/v1/call-sheets/${callSheetId}/seen`),
+  deleteDraftCallSheet: (c: Connection, callSheetId: string) =>
+    request<void>(c, "DELETE", `/api/v1/call-sheets/${callSheetId}`),
   cancelCallSheet: (c: Connection, callSheetId: string) =>
     request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/cancel`),
   restoreCallSheet: (c: Connection, callSheetId: string) =>

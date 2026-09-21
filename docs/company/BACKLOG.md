@@ -526,7 +526,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a file with no recognisable name column is refused with "which column has the names?" and the mapping row, never a silent import of garbage
 
 ## FR-56 · frontend · Import the shooting schedule (scenes per day) from Excel or a Movie Magic export
-- state: ready
+- state: done
+- note: delivered 2026-09-21 (feat/fr-56-import-schedule): `scheduleImport.ts` reads a plain AD sheet (day/date columns, CS/EN headers) or a Movie Magic export ("Day N — date" / "End of Day N" banner rows), pages in every notation, dates in CZ/US/ISO/"Sep 23, 2026" forms, cast names; Days tab "Import schedule…" previews per day and creates **planned days** — a new server-side state: `CallSheetCreate.draft` keeps the day at status `draft` (invisible on the public read and the stable link, no push), publishing replaces its content and stays REV A, `DELETE /call-sheets/{id}` works only for drafts; locations created by name, cast matched by name (unmatched listed), existing dates skipped; no day information → one draft named "Imported schedule". 14 unit tests, 3 backend tests, 1 E2E with a committed Czech 3-day fixture. Backend changed: deploy needed (no migration)
 - gated: no
 - why: the AD's schedule already exists as a stripboard export (Movie Magic Scheduling → Excel/CSV, or a plain Excel with day, scene, INT/EXT, D/N, set, pages, location, cast); typing 40 scenes a day into the phone is the second setup killer after the crew
 - dod:
