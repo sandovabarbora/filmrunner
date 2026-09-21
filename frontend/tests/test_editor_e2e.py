@@ -942,3 +942,25 @@ def test_import_the_shooting_schedule_creates_planned_days(page: Page, frontend_
     expect(page.locator("#schedulePreview li").nth(0)).to_contain_text("a day with this date exists, skipped")
     expect(page.locator("#createImportedDays")).to_have_text("Create 1 day")
     assert day1_url
+
+
+def test_import_contacts_from_an_old_call_sheet_pdf(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-57: a Czech call sheet PDF is read (plain-text pass in the test API: no key), previewed with departments and phones,
+    and added; the hospital line is not a person; nothing is created before "Add"."""
+    import pathlib
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E pdf {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.click("#pasteCrew")
+    page.set_input_files("#callSheetPdf", str(pathlib.Path(__file__).parent / "fixtures" / "call-sheet-cz.pdf"))
+    page.wait_for_selector("#pdfHint", timeout=30_000)
+    expect(page.locator("#pdfHint")).to_contain_text("6 people found")
+    preview = page.locator("#pastePreview li")
+    expect(preview).to_have_count(6)
+    expect(preview.filter(has_text="Tomáš Novák")).to_contain_text("OSVĚTLOVAČI · Hlavní osvětlovač · 601 234 567")
+    assert page.locator("#pastePreview", has_text="Nemocnice").count() == 0
+    assert page.locator("#crew li").count() == 0
+    page.click("#importCrew")
+    expect(page.locator("#notice")).to_contain_text("Added 6 people", timeout=30_000)
+    expect(page.locator("#crew li")).to_have_count(6, timeout=10_000)
+    expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("REŽIE · 1. asistent režie · +420 777 111 222")

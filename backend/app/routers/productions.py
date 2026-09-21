@@ -36,11 +36,13 @@ from app.schemas.production import (
     CastMemberUpdate,
     ProductionUpdate,
     ContactMatch,
+    CallSheetPdfExtraction,
+    ExtractedContactRead,
     LocationUpdate,
     ProductionCreate,
     ProductionRead,
 )
-from app.services import geocoding, hospitals, weather
+from app.services import call_sheet_pdf, geocoding, hospitals, weather
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -268,6 +270,25 @@ def get_weather_suggestion(
     if location.geo_lat is None or location.geo_lng is None:
         return LocationSuggestion(suggestion=None)
     return LocationSuggestion(suggestion=weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date))
+
+
+@router.post("/productions/{production_id}/import/call-sheet-pdf", response_model=CallSheetPdfExtraction)
+async def import_call_sheet_pdf(
+    production_id: uuid.UUID, file: UploadFile = File(...), _: Access = Depends(require(CREW_EDIT))
+) -> CallSheetPdfExtraction:
+    """FR-57: contacts out of an old call sheet PDF, as a preview. Nothing is created here; the PDF is not stored."""
+    data = await file.read()
+    if not data.startswith(b"%PDF"):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="That file is not a PDF")
+    try:
+        result = call_sheet_pdf.extract_contacts(data)
+    except call_sheet_pdf.NotACallSheetPdf as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    logger.info("Call sheet PDF import for production %s: %d contacts via %s (%d pages)", production_id, len(result.contacts), result.method, result.pages)
+    return CallSheetPdfExtraction(
+        contacts=[ExtractedContactRead(name=c.name, department=c.department, position=c.position, phone=c.phone, email=c.email, warnings=c.warnings) for c in result.contacts],
+        method=result.method, pages=result.pages, warnings=result.warnings,
+    )
 
 
 # --- Cast (FR-33): the people in front of the camera; per-day times live on the revision as cast calls.

@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes, CallSheetPdfExtraction } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -85,6 +85,20 @@ export const api = {
     request<void>(c, "DELETE", `/api/v1/productions/${productionId}/crew-members/${memberId}`),
   updateContact: (c: Connection, contactId: string, patch: Partial<ContactCreate>) =>
     request<Contact>(c, "PATCH", `/api/v1/contacts/${contactId}`, patch),
+  importCallSheetPdf: async (c: Connection, productionId: string, file: File): Promise<CallSheetPdfExtraction> => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    let resp: Response;
+    try {
+      resp = await fetch(`${c.apiBase.replace(/\/$/, "")}/api/v1/productions/${productionId}/import/call-sheet-pdf`, {
+        method: "POST", headers: { authorization: `Bearer ${c.token}` }, body: form, signal: AbortSignal.timeout(90_000),
+      });
+    } catch (err) {
+      throw new ApiError(0, err instanceof Error ? err.message : "network error");
+    }
+    if (!resp.ok) throw new ApiError(resp.status, await detailFromResponse(resp, `HTTP ${resp.status}`));
+    return (await resp.json()) as CallSheetPdfExtraction;
+  },
   uploadContactPhoto: async (c: Connection, contactId: string, photo: Blob): Promise<Contact> => {
     const form = new FormData();
     form.append("file", photo, "avatar.jpg");

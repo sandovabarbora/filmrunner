@@ -3,7 +3,7 @@ import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
 import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
-import { importableRows, parseCrewList } from "../crewImport";
+import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
 import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
 import { detectScheduleColumns, locationNames, rowsToSchedule, type ImportedDay } from "../scheduleImport";
 import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
@@ -365,8 +365,31 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       setNotice(noticeFromError(err, "Could not read that file"));
     }
   }
+  // FR-57: an old call sheet PDF goes to the API (text extraction, Claude when configured) and comes back as candidates.
+  const [pdfRows, setPdfRows] = useState<{ fileName: string; method: string; rows: ParsedCrewRow[]; warnings: string[] } | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  async function readCallSheetPdf(file: File) {
+    setPdfBusy(true);
+    try {
+      const result = await api.importCallSheetPdf(conn, productionId, file);
+      const known = new Set((crew ?? []).map((m) => m.contact.name.trim().toLowerCase()));
+      const rows: ParsedCrewRow[] = result.contacts.map((c, i) => {
+        const warnings = [...c.warnings];
+        if (known.has(c.name.trim().toLowerCase())) warnings.push("already on the crew");
+        return { line: i + 1, name: c.name, department: c.department ?? "General", position: c.position ?? "Crew", phone: c.phone, hod: false, warning: warnings.length ? warnings.join("; ") : null };
+      });
+      setPdfRows({ fileName: file.name, method: result.method, rows, warnings: result.warnings });
+      clearFile(); setPasteText("");
+      if (rows.length === 0) setNotice({ kind: "warn", text: result.warnings[0] ?? "No contacts found in that PDF." });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not read that call sheet"));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
   const knownNames = (crew ?? []).map((m) => m.contact.name);
   const parsed = !pasteOpen ? []
+    : pdfRows ? pdfRows.rows
     : fileRows && fileMap ? (fileMap.map.name === undefined ? [] : rowsToCrew(fileRows, fileMap.headerIndex, fileMap.map, knownNames))
     : parseCrewList(pasteText, knownNames);
   const toImport = importableRows(parsed);
@@ -392,8 +415,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     }
     setCrew((c) => [...(c ?? []), ...added]);
     setBusy(false);
-    if (failed.length === 0) { setPasteText(""); clearFile(); setPasteOpen(false); }
-    else { clearFile(); setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n")); }
+    if (failed.length === 0) { setPasteText(""); clearFile(); setPdfRows(null); setPasteOpen(false); }
+    else { clearFile(); setPdfRows(null); setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n")); }
     setNotice(failed.length === 0
       ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} to the crew.` }
       : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}. They stay in the box so you can try again.` });
@@ -537,13 +560,23 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       {pasteOpen && !editing && (
         <div className="paste-crew" id="pasteCrewPanel">
           <p className="hint">One person per line: name, position, phone — or name, department, position, phone. A line like "Camera:" sets the department for the lines below. "HoD" marks a head of department.</p>
-          {!fileRows && <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />}
+          {!fileRows && !pdfRows && <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />}
           <div className="inline file-import">
             <label className="quiet-link" htmlFor="crewFile">{fileRows ? `File: ${fileName}` : "…or import a file (.xlsx, .csv)"}</label>
             <input id="crewFile" type="file" accept=".xlsx,.xls,.csv,.numbers,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCrewFile(f); }} disabled={busy} />
             {fileRows && <button type="button" className="quiet" onClick={clearFile}>Use paste instead</button>}
+            <label className="quiet-link" htmlFor="callSheetPdf">{pdfBusy ? "Reading the PDF…" : pdfRows ? `PDF: ${pdfRows.fileName}` : "…or an old call sheet PDF"}</label>
+            <input id="callSheetPdf" type="file" accept=".pdf,application/pdf" className="visually-hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCallSheetPdf(f); }} disabled={busy || pdfBusy} />
+            {pdfRows && <button type="button" className="quiet" onClick={() => setPdfRows(null)}>Discard</button>}
           </div>
+          {pdfRows && (
+            <p className="hint" id="pdfHint">
+              {pdfRows.method === "claude" ? "Read by Claude from the PDF's text" : "Read by the plain-text pass"} · {pdfRows.rows.length} {pdfRows.rows.length === 1 ? "person" : "people"} found. Check names and numbers before adding; nothing is created until you do. The PDF is not stored.
+              {pdfRows.warnings.map((w) => <span key={w} className="warn-text"> · {w}</span>)}
+            </p>
+          )}
           {fileRows && fileMap && (
             <div className="column-map" id="columnMap">
               {(["name", "phone", "department", "position"] as Role[]).map((role) => (

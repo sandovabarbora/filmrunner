@@ -538,9 +538,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a file with scenes but no day information imports as one unpublished draft named "Imported schedule" rather than guessing dates
 
 ## FR-57 · tech-lead · Import from an existing call sheet PDF
-- state: ready
-- gated: partial
-- note: the heuristics path is ungated; the LLM path needs `FILMRUNNER_ANTHROPIC_API_KEY` as a Fly secret set by the founder (file an INBOX item when the code lands)
+- state: done
+- gated: no
+- note: delivered 2026-09-21 (feat/fr-57-import-call-sheet-pdf): `POST /productions/{id}/import/call-sheet-pdf` (crew:edit) — pypdf text layer (10 MB cap, scans refused with a clear message), then Claude (`FILMRUNNER_ANTHROPIC_API_KEY`, model `FILMRUNNER_ANTHROPIC_MODEL`, default claude-sonnet-5, temperature 0, JSON out) with a fall-back to a heuristics pass on any failure; the heuristics un-glue pypdf's concatenated cells case-aware for Czech, anchor a person on a phone number, take the first two capitalised non-job words as the name, keep department headers, and skip hospital/location lines — both committed sample PDFs (Czech and English layouts) extract fully on heuristics alone. Preview only; the PDF is never stored. Crew tab: "…or an old call sheet PDF" into the same preview as paste/file, with the method shown. The founder set the key on Fly on 2026-09-21 (it passed through chat: rotate it). 3 backend tests (Claude path with a mocked transport, fallback, refusals), 1 E2E. Backend changed: deploy needed (no migration)
 - why: every AD has last production's call sheet as a PDF; its crew list and contacts are the fastest way to seed a new production; layouts differ per production company, so a fixed parser will not do
 - dod:
   - `POST /productions/{id}/import/call-sheet-pdf` (crew:edit): text extraction (pypdf), then a structured extraction of contacts (name, department, position, phone) — first a heuristics pass (phone regex anchors a row, department headers by the FR-31 word list); when `FILMRUNNER_ANTHROPIC_API_KEY` is set, a Claude call with the page text and a JSON schema does the extraction instead, temperature 0, max 4k output; response is a preview list, nothing is created until the AD confirms in the same Crew tab preview as FR-31

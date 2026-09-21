@@ -150,3 +150,21 @@ class CrewMemberUpdate(BaseModel):
     position: str | None = None
     standard_call_time: str | None = None
     is_head_of_department: bool | None = None
+
+
+class ExtractedContactRead(BaseModel):
+    """One candidate from an old call sheet PDF (FR-57); the AD confirms in the same preview as a paste."""
+
+    name: str
+    department: str | None
+    position: str | None
+    phone: str | None
+    email: str | None
+    warnings: list[str]
+
+
+class CallSheetPdfExtraction(BaseModel):
+    contacts: list[ExtractedContactRead]
+    method: str  # "claude" | "heuristics"
+    pages: int
+    warnings: list[str]
