@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daySummaryText, humanDate, personalCallFor, personalMessageText, whatsappNumber, whatsappUrl, type DayFacts } from "../shareText";
+import { allLinksText, daySummaryText, humanDate, onboardingMessageText, personalCallFor, personalMessageText, whatsappNumber, whatsappUrl, type DayFacts } from "../shareText";
 import type { CrewMember, Location } from "../../types";
 
 const day: DayFacts = {
@@ -101,5 +101,17 @@ describe("whatsappUrl", () => {
   it("targets the chat when there is a number and WhatsApp's chooser when there is not", () => {
     expect(whatsappUrl("420777123456", "Hi *there*")).toBe("https://wa.me/420777123456?text=Hi%20*there*");
     expect(whatsappUrl(null, "x")).toBe("https://wa.me/?text=x");
+  });
+});
+
+describe("onboardingMessageText / allLinksText", () => {
+  const m = member("cm-1", "Tomáš Novák", "+420 777 123 456");
+  it("greets by first name, names the production and ends with the link", () => {
+    const text = onboardingMessageText("Noc na Karlštejně", m, "https://x/?me=t");
+    expect(text.startsWith("Hi Tomáš, here is your call sheet link for *Noc na Karlštejně*:\nhttps://x/?me=t")).toBe(true);
+    expect(onboardingMessageText(null, m, "https://x/?me=t")).toContain("your call sheet link:\n");
+  });
+  it("lists one person per line with their department", () => {
+    expect(allLinksText([m, member("cm-2", "Eva", null)], (x) => `L-${x.id}`)).toBe("Tomáš Novák · Lighting: L-cm-1\nEva · Lighting: L-cm-2");
   });
 });

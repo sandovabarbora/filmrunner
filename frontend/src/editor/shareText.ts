@@ -119,3 +119,20 @@ export function whatsappUrl(number: string | null, text: string): string {
 export function canWebShare(): boolean {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }
+
+/** FR-37: the message that hands a crew member their one link at the start of the shoot. */
+export function onboardingMessageText(productionName: string | null, member: CrewMember, personalLink: string): string {
+  const firstName = member.contact.name.trim().split(/\s+/)[0] || member.contact.name;
+  const prod = productionName ? ` for *${productionName}*` : "";
+  return [
+    `Hi ${firstName}, here is your call sheet link${prod}:`,
+    personalLink,
+    "",
+    "Keep it: it always opens your next shoot day with your own call time, and it works with no signal once opened. Every revision shows up in it.",
+  ].join("\n");
+}
+
+/** One line per person, for pasting into a group or a spreadsheet. */
+export function allLinksText(members: CrewMember[], linkFor: (m: CrewMember) => string): string {
+  return members.map((m) => `${m.contact.name} · ${m.department}: ${linkFor(m)}`).join("\n");
+}
