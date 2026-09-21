@@ -415,7 +415,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing is lost on reload — entries come back from the draft or the server as before
 
 ## FR-45 · tech-lead · Reuse people across productions: pick an existing contact when adding crew or cast
-- state: ready
+- state: in-progress
+- note: taken 2026-09-21 16:00 by the founder's interactive session (feat/fr-45-shared-contacts); shifts skip it
 - gated: no
 - why: the same gaffer works three productions a year; today every production creates a new Contact, so a phone correction on one sheet never reaches the others and the founder's pilot AD will type the same 40 people twice (FR-31 helps the first time only)
 - dod:
