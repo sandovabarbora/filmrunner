@@ -1,25 +1,26 @@
 # Status
 
-Updated: 2026-09-21 09:00 (09:00 shift)
+Updated: 2026-09-21 11:00 (11:00 shift)
 
 ## today
 
 Hackathon week goal (founder, 2026-09-21): pilot-ready by Friday. A Prague AD can run a real shoot day end to end: sign in with a code, crew with photos, day with locations, publish, crew gets a push, personal links, PDF; and a landing page from the FR-6 positioning. Shifts hourly 09 to 17, everything auto-merges (TEAM.md).
 
-- 11:00 — FR-22 (if ready) or the highest ready item; then FR-20.
-- Later shifts: items proposed by the 11:00 shift and the brief toward the goal above: "REV B replaces A" note on the sheet (FR-11 leftover), per-day personal call overrides, locations tab polish (FR-19 follow-ups), iOS manual test protocol executed as far as possible headless, landing page (docs/marketing/positioning.md → frontend/landing.html), photo flow behind INBOX #4.
+- 11:00 — done: FR-22 (call sheet role/tooling desk research). FR-24 (per-day personal calls) has an open PR (#93, from an interactive session, `mergeable_state: blocked`, no CI status yet) so per the shift contract it was not picked up, even though it's still `state: ready` in the backlog.
+- 13:00 — FR-20 (Prague market sizing) is next: highest `ready`+`gated:no` item left once FR-24's PR is excluded. Re-check `gh pr list` first in case #93 merged or closed.
+- Later shifts: items proposed by the 11:00 shift and the brief toward the goal above: "REV B replaces A" note on the sheet (FR-11 leftover), per-day personal call overrides (in progress via PR #93), locations tab polish (FR-19 follow-ups), iOS manual test protocol executed as far as possible headless, landing page (docs/marketing/positioning.md → frontend/landing.html), photo flow behind INBOX #4.
 
 
 ## pm
-- summary: unchanged this shift (this shift's own item was marketing, FR-6). FR-1's brief correction, FR-3's discovery plan, FR-2's teardown, and FR-21's switching-cost teardown all stand `done`. PR #81 (FR-1) merged to `main` by the founder overnight — no longer awaiting anything.
+- summary: 11:00 shift delivered FR-22 (desk-research proxy for BRIEF Q1/Q2): `docs/research/call-sheet-role-and-tooling-signals.md`. `WebFetch` confirmed egress-blocked this shift for every domain tried, Czech and international alike (csfc.cz, biofilms.cz, nsp.cz), not just vendor domains as FR-2/FR-21 found — built from `WebSearch` snippets instead, all cited. Strongest finding: a real, named Prague production coordinator's LinkedIn profile (credited on Stillking Films-scale productions) lists call sheets as an explicit skill — one genuine Czech-market confirmation of Q1. No Czech-specific tool name surfaced for Q2 despite four targeted searches; marked unverified per the dod's failure case. PR #94 (`docs/fr-22-call-sheet-role-tooling-signals`), auto-merge enabled (docs-only). FR-22 set to `done`. FR-1/FR-3/FR-2/FR-21 unchanged, all still `done`.
 - tests: n/a (research/planning docs, no executable code)
-- blockers: `WebFetch` remains blocked by this session's egress proxy for most external domains; `WebSearch` works.
+- blockers: `WebFetch` remains blocked by this session's egress proxy — now confirmed for ordinary industry/job-classification sites too, not just vendor domains; `WebSearch` works.
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates; needs the founder's own network and identity, not doable by the routine).
 
 ## engineering (tech-lead + frontend)
-- summary: unchanged this shift (this shift's own item was marketing, FR-6). PRs #79 (FR-18) and #83 (FR-4) both merged to `main` by the founder overnight — FR-18 stays `in-progress` (its photo bullet remains gated on INBOX #4), FR-4 stands `done`, neither is awaiting a merge any longer. FR-8's iOS-Safari-over-real-URL verification task attempted again this shift (09:00) and confirmed still undoable: `filmrunner-api.fly.dev` and `api.fly.io` both reject the CONNECT tunnel with 403 through this session's egress proxy, the same block every prior attempt since 2026-09-14 has hit. FR-8 stays `in-progress`, unchanged. FR-16's live-verification task (same blocked host) was not separately re-run this shift since the block was just confirmed on the identical domain; also treated as skipped. FR-16 stays `in-progress`, unchanged.
+- summary: unchanged this shift (this shift's own item was pm, FR-22). PRs #79 (FR-18) and #83 (FR-4) both merged to `main` by the founder overnight — FR-18 stays `in-progress` (its photo bullet remains gated on INBOX #4), FR-4 stands `done`. New this shift: PR #93 (`feat/fr-24-personal-calls`, FR-24, from an interactive session, not the routine) is open against `main`, `mergeable_state: blocked`, no CI status yet — noted so no shift picks up FR-24 while it's open (shift contract: never start an item whose dod depends on a still-open PR). FR-8/FR-16's live-Fly-URL verification was not re-attempted this shift (09:00 already confirmed the block this morning); unchanged, still `in-progress`.
 - tests: n/a — no code touched this shift.
-- blockers: FR-8/FR-16's live-Fly-URL verification remains blocked by this session's egress proxy (confirmed again 2026-09-21 09:00); no `fly` CLI installed either, so there is no way to reach the deployed API from here. Carried over: FR-18's photo upload gated on INBOX #4.
+- blockers: FR-8/FR-16's live-Fly-URL verification remains blocked by this session's egress proxy (confirmed 2026-09-21 09:00); no `fly` CLI installed either. Carried over: FR-18's photo upload gated on INBOX #4. New: FR-24 blocked from pickup by open PR #93 until it merges or closes.
 - needs_approval: yes — INBOX #4 (Supabase Storage bucket/secret for FR-18's photo upload), needing the founder's own credentials.
 
 ## security (gate)
