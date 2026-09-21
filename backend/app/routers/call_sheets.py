@@ -27,7 +27,7 @@ from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary, SeenReport
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,12 @@ def list_call_sheets(
         .order_by(CallSheet.shoot_date, CallSheet.day_number)
         .all()
     )
-    return [CallSheetRead.model_validate(sheet) for sheet in sheets]
+    reads = []
+    for sheet in sheets:
+        read = CallSheetRead.model_validate(sheet)
+        read.opened = build_opened_summary(db, sheet)
+        reads.append(read)
+    return reads
 
 
 def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:

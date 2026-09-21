@@ -193,6 +193,12 @@ class RevisionChange(BaseModel):
     after: str | None
 
 
+class OpenedSummary(BaseModel):
+    seen: int
+    total: int
+    first_location_name: str | None = None
+
+
 class CallSheetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -208,6 +214,8 @@ class CallSheetRead(BaseModel):
     personal_calls: list[PersonalCallRow] = []
     cast_calls: list[CastCallRow] = []
     locations: list[SheetLocation] = []
+    # FR-43: on the AD's days list only — how many of the crew have opened the current revision.
+    opened: OpenedSummary | None = None
     # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
     previous_revision: RevisionSummary | None = None
     changes: list[RevisionChange] = []

@@ -50,3 +50,12 @@ def test_removing_a_crew_member_removes_their_receipt(client: TestClient) -> Non
     assert client.delete(f"/api/v1/productions/{pid}/crew-members/{tomas['id']}", headers=AUTH).status_code == 204
     report = client.get(f"/api/v1/call-sheets/{sheet['id']}/seen", headers=AUTH).json()
     assert report["seen"] == [] and [e["name"] for e in report["not_seen"]] == ["Eva Malá"]
+
+
+def test_days_list_carries_opened_count_and_first_location(client: TestClient) -> None:
+    """FR-43: the AD's days list says "opened 1 of 2" and where the day starts, per day."""
+    pid, (tomas, _), sheet = _setup(client)
+    client.post(f"/api/v1/public/call-sheets/{sheet['id']}/seen/{tomas['personal_token']}")
+    days = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()
+    assert days[0]["opened"] == {"seen": 1, "total": 2, "first_location_name": None}
+    assert client.get(f"/api/v1/public/call-sheets/{sheet['id']}").json()["opened"] is None  # not on the crew's read
