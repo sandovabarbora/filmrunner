@@ -846,3 +846,30 @@ def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: st
     expect(page.locator("#crew li")).to_have_count(2, timeout=10_000)
     page.locator("#crewName").press_sequentially("Tomáš N")
     expect(page.locator(".picker-item", has_text=f"Tomáš Novák {tag}")).to_have_count(2, timeout=10_000)
+
+
+def test_import_the_crew_from_an_excel_file(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-55: a Czech production-office .xlsx (title row, Czech headers, HoD column, an odd phone, a name-only row)
+    is detected, previewed with warnings, and imported; the file never leaves the browser."""
+    import pathlib
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E xlsx {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.click("#pasteCrew")
+    page.set_input_files("#crewFile", str(pathlib.Path(__file__).parent / "fixtures" / "crew-12.xlsx"))
+    page.wait_for_selector("#columnMap", timeout=15_000)
+    assert page.locator("#col-name option:checked").inner_text() == "Jméno a příjmení"
+    assert page.locator("#col-phone option:checked").inner_text() == "Telefon"
+    assert page.locator("#col-department option:checked").inner_text() == "Oddělení"
+    preview = page.locator("#pastePreview li")
+    expect(preview).to_have_count(12)
+    expect(preview.filter(has_text="Filip Rychlý")).to_contain_text("does not look like a number")
+    expect(preview.filter(has_text="Karel")).to_contain_text("no position, using Crew")
+    expect(preview.filter(has_text="Tomáš Novák")).to_contain_text("HoD")
+    expect(page.locator("#importCrew")).to_have_text("Add 12 people")
+    page.click("#importCrew")
+    expect(page.locator("#notice")).to_contain_text("Added 12 people", timeout=30_000)
+    expect(page.locator("#crew li")).to_have_count(12, timeout=10_000)
+    expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("Režie · 1. AD · +420 777 111 222")
+    expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("HoD")
+    expect(page.locator("#crew li", has_text="Karel")).to_contain_text("Produkce · Crew")

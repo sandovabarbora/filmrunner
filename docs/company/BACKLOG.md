@@ -515,7 +515,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the recording script fails loudly if any step's selector is missing, so a UI change never silently ships an outdated recording; README line on how to re-record
 
 ## FR-55 · frontend · Import the crew from a file (Excel, CSV, Numbers export)
-- state: ready
+- state: done
+- note: delivered 2026-09-21 (feat/fr-55-import-crew-file): the paste panel takes an .xlsx/.xls/.csv (SheetJS loaded lazily as its own chunk, parsed in the browser); `crewFileImport.ts` finds the header row within the first ten rows by CS/EN synonyms (name, phone, department, position, e-mail), a mapping row with four selects fixes a wrong guess, a name-only row is a department header, an "HoD/vedoucí" column or "(HoD)" in the position marks a head, an odd phone is left out with a warning; same preview and "Add N people" as FR-31 (so FR-45's contact reuse applies). 8 unit tests, 1 E2E with a committed Czech 12-row fixture (`frontend/scripts/make_crew_fixture.mjs`). Known: `xlsx@0.18.5` carries npm advisories for parsing hostile files; here the AD parses their own file on their own phone. Frontend only
 - gated: no
 - why: founder 2026-09-21: "bylo by super mít možnost to naimportovat z něčeho" — the crew list exists as an .xlsx from the production office or a Google Sheet; FR-31's paste covers copied cells, a file drop covers the rest and the column names tell us more than a paste does
 - dod:

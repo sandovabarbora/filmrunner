@@ -4,6 +4,7 @@ import { api, ApiError, type Connection } from "../api";
 import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList } from "../crewImport";
+import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
 import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
@@ -250,8 +251,31 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
   // FR-31: paste the whole list. Rows are created one by one so a failure names the person, not the batch.
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
-  const parsed = pasteOpen ? parseCrewList(pasteText, (crew ?? []).map((m) => m.contact.name)) : [];
+  // FR-55: a spreadsheet file (parsed in the browser, never uploaded) feeds the same preview as a paste.
+  const [fileRows, setFileRows] = useState<unknown[][] | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [fileMap, setFileMap] = useState<{ headerIndex: number; map: ColumnMap } | null>(null);
+  async function readCrewFile(file: File) {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" });
+      const detected = detectColumns(rows);
+      setFileRows(rows); setFileName(file.name); setPasteText("");
+      setFileMap(detected ?? { headerIndex: 0, map: {} });
+      if (!detected) setNotice({ kind: "warn", text: "Which column has the names? Pick it below; the first row is treated as the header." });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not read that file"));
+    }
+  }
+  const knownNames = (crew ?? []).map((m) => m.contact.name);
+  const parsed = !pasteOpen ? []
+    : fileRows && fileMap ? (fileMap.map.name === undefined ? [] : rowsToCrew(fileRows, fileMap.headerIndex, fileMap.map, knownNames))
+    : parseCrewList(pasteText, knownNames);
   const toImport = importableRows(parsed);
+  const fileHeaders = fileRows && fileMap ? (fileRows[fileMap.headerIndex] ?? []).map((h, i) => (String(h ?? "").trim() || `Column ${columnLetter(i)}`)) : [];
+  const clearFile = () => { setFileRows(null); setFileMap(null); setFileName(""); };
   async function importPasted() {
     setBusy(true);
     const added: CrewMember[] = [];
@@ -272,8 +296,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     }
     setCrew((c) => [...(c ?? []), ...added]);
     setBusy(false);
-    if (failed.length === 0) { setPasteText(""); setPasteOpen(false); }
-    else setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n"));
+    if (failed.length === 0) { setPasteText(""); clearFile(); setPasteOpen(false); }
+    else { clearFile(); setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n")); }
     setNotice(failed.length === 0
       ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} to the crew.` }
       : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}. They stay in the box so you can try again.` });
@@ -417,7 +441,27 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       {pasteOpen && !editing && (
         <div className="paste-crew" id="pasteCrewPanel">
           <p className="hint">One person per line: name, position, phone — or name, department, position, phone. A line like "Camera:" sets the department for the lines below. "HoD" marks a head of department.</p>
-          <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />
+          {!fileRows && <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />}
+          <div className="inline file-import">
+            <label className="quiet-link" htmlFor="crewFile">{fileRows ? `File: ${fileName}` : "…or import a file (.xlsx, .csv)"}</label>
+            <input id="crewFile" type="file" accept=".xlsx,.xls,.csv,.numbers,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCrewFile(f); }} disabled={busy} />
+            {fileRows && <button type="button" className="quiet" onClick={clearFile}>Use paste instead</button>}
+          </div>
+          {fileRows && fileMap && (
+            <div className="column-map" id="columnMap">
+              {(["name", "phone", "department", "position"] as Role[]).map((role) => (
+                <label key={role} className="field" htmlFor={`col-${role}`}>
+                  <span className="label">{role === "name" ? "Name column" : role === "phone" ? "Phone" : role === "department" ? "Department" : "Position"}{role === "name" ? " *" : ""}</span>
+                  <select id={`col-${role}`} value={fileMap.map[role] ?? ""} onChange={(e) => setFileMap({ ...fileMap, map: { ...fileMap.map, [role]: e.target.value === "" ? undefined : Number(e.target.value) } })}>
+                    <option value="">—</option>
+                    {fileHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </label>
+              ))}
+              <p className="hint">{fileMap.map.name === undefined ? "Which column has the names? Pick it to see the preview." : `Header row ${fileMap.headerIndex + 1}; ${fileRows.length - fileMap.headerIndex - 1} rows below it. The file stays on this phone.`}</p>
+            </div>
+          )}
           {parsed.length > 0 && (
             <ul className="list preview" id="pastePreview">
               {parsed.map((r) => (

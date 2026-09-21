@@ -133,3 +133,10 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .picker-item:hover, .picker-item:focus { background: var(--paper-2); }
 .picker-item .name { display: block; font-weight: 600; }
 .picker-item .meta { display: block; font-size: 0.8125rem; color: var(--muted); }
+
+/* FR-55: import a spreadsheet. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.file-import { align-items: center; }
+.file-import label.quiet-link { cursor: pointer; text-decoration: underline; }
+.column-map { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.column-map .hint { grid-column: 1 / -1; }
