@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: str | None = None
     avatar_bucket: str = "avatars"
 
+    # Where browsers can reach this API (used to build absolute URLs such as photo links).
+    public_base_url: str = "http://localhost:8000"
+
     # Comma-separated list of allowed browser origins, or "*" for local dev.
     # Production sets it to the deployed frontend origin.
     cors_origins: str = "*"

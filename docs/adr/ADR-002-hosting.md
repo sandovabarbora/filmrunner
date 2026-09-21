@@ -57,3 +57,13 @@ app-scoped, expiring Fly deploy token is the next step), cold starts annoy
 a real AD (set `min_machines_running = 1`, a few
 dollars a month), or the Supabase pause bites, or FR-12 picks something
 other than Supabase Auth.
+
+## Addendum 2026-09-21: crew photos in Postgres
+
+Avatars (≤ 300 KB, resized to 256 px in the browser) are stored in a
+`contact_photos` table and served by `GET /api/v1/public/contacts/{id}/photo`
+with a day of cache and a version in the URL. Reason: it removes an account,
+a bucket and a service-role key (which bypasses every project permission)
+for a few kilobytes per person. Supabase Storage stays as an optional path
+when its credentials are configured. Revisit when photos grow beyond
+avatars (documents, images per scene).

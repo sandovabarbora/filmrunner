@@ -9,7 +9,7 @@ import secrets
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Enum, ForeignKey, LargeBinary, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -121,3 +121,19 @@ class CastMember(Base):
 
     production: Mapped["Production"] = relationship(back_populates="cast_members")
     contact: Mapped["Contact"] = relationship()
+
+
+class ContactPhoto(Base):
+    """A contact's avatar bytes, stored in Postgres (FR-18): no bucket, no extra key.
+
+    Images are resized to 256 px in the browser before upload, so a row is a
+    few tens of kilobytes; the public endpoint serves it with cache headers.
+    """
+
+    __tablename__ = "contact_photos"
+
+    contact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("contacts.id", ondelete="CASCADE"), primary_key=True)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    version: Mapped[str] = mapped_column(String(16), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

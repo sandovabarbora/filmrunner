@@ -7,8 +7,10 @@ Reference: https://supabase.com/docs/guides/storage/uploads/standard-uploads
 import uuid
 
 import httpx
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.models.production import ContactPhoto
 
 # 256px, resized client-side before upload; this cap just guards the request itself.
 MAX_PHOTO_BYTES = 300_000
@@ -57,3 +59,29 @@ def upload_contact_photo(contact_id: str, data: bytes, content_type: str) -> str
     # needs a new URL or the browser/CDN would keep showing the old image.
     version = uuid.uuid4().hex[:8]
     return f"{base}/storage/v1/object/public/{settings.avatar_bucket}/{path}?v={version}"
+
+
+def store_contact_photo(db: Session, contact_id: str, data: bytes, content_type: str) -> str:
+    """Store the avatar and return its public URL.
+
+    Postgres is the default (nothing to configure); Supabase Storage is used
+    only when its credentials are set. Either way the URL carries a version so
+    a re-upload is never served from a stale cache.
+    """
+    settings = get_settings()
+    if settings.supabase_url and settings.supabase_service_role_key:
+        return upload_contact_photo(contact_id, data, content_type)
+    version = uuid.uuid4().hex[:8]
+    row = db.get(ContactPhoto, uuid.UUID(contact_id))
+    if row is None:
+        db.add(ContactPhoto(contact_id=uuid.UUID(contact_id), content_type=content_type, data=data, version=version))
+    else:
+        row.content_type, row.data, row.version = content_type, data, version
+    db.flush()
+    return f"{settings.public_base_url.rstrip('/')}/api/v1/public/contacts/{contact_id}/photo?v={version}"
+
+
+def delete_contact_photo(db: Session, contact_id: uuid.UUID) -> None:
+    row = db.get(ContactPhoto, contact_id)
+    if row is not None:
+        db.delete(row)

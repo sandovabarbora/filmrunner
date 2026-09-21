@@ -15,6 +15,7 @@ primary_region = "fra"
 
 [env]
   FILMRUNNER_LOG_LEVEL = "INFO"
+  FILMRUNNER_PUBLIC_BASE_URL = "https://filmrunner-api.fly.dev"
 
 [http_service]
   internal_port = 8000
