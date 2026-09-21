@@ -6,6 +6,7 @@ connect, create a production, fill a day, publish A, change the crew
 call, publish B, open the crew link and see REV B.
 """
 
+import re
 import uuid
 
 from playwright.sync_api import Page, expect
@@ -196,7 +197,7 @@ def test_personal_link_shows_your_call_and_department_first(page: Page, frontend
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
     page.wait_for_selector("#personalLinks", timeout=10_000)
-    petr_link = page.locator("#personalLinks li", has_text="Petr Malý").locator("a").get_attribute("href")
+    petr_link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
     assert petr_link and "&me=" in petr_link
 
     page.goto(petr_link)
@@ -245,7 +246,7 @@ def test_crew_edit_personal_call_and_remove(page: Page, frontend_url: str, api_u
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
     page.wait_for_selector("#personalLinks", timeout=10_000)
-    link = page.locator("#personalLinks li", has_text="Petr Malý").locator("a").get_attribute("href")
+    link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
     page.goto(link)
     page.wait_for_selector("#you", timeout=15_000)
     assert page.locator("#yourCall").inner_text().strip() == "05:45"
@@ -359,7 +360,7 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
     page.wait_for_selector("#personalLinks", timeout=10_000)
-    link = page.locator("#personalLinks li", has_text="Tomáš Novák").locator("a").get_attribute("href")
+    link = page.locator("#personalLinks li", has_text="Tomáš Novák").get_by_role("link", name="Open").get_attribute("href")
 
     v = page.context.new_page()
     v.goto(link); v.wait_for_selector("#you", timeout=15_000)
@@ -378,3 +379,57 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#you", timeout=15_000)
     assert v.locator("#yourCall").inner_text().strip() == "05:15"
     assert v.locator("#revBadgeWrap").inner_text().strip() == "REV B"
+
+
+def test_whatsapp_message_carries_the_days_personal_call_and_waits_for_publish(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-29: one tap opens WhatsApp with the person's own call; with unpublished edits the buttons wait for publish;
+    a phone that is not a number gets the copy/share path, never a broken wa.me link."""
+    from urllib.parse import parse_qs, urlparse
+
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E wa {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Tomáš Novák"); page.fill("#crewPhone", "777 123 456"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Tomáš Novák", timeout=10_000)
+    page.fill("#crewName", "Eva Malá"); page.fill("#crewPhone", "ask Petra"); page.fill("#crewDept", "Camera"); page.fill("#crewPos", "1st AC"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Eva Malá", timeout=10_000)
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.get_by_label("Call for Tomáš Novák").fill("05:15")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+
+    wa = page.get_by_label("WhatsApp Tomáš Novák")
+    href = wa.get_attribute("href")
+    assert href.startswith("https://wa.me/420777123456?text=")
+    text = parse_qs(urlparse(href).query)["text"][0]
+    assert "Hi Tomáš," in text and "Your call: *05:15*" in text and "REV A" in text
+    personal_link = page.locator("#personalLinks li", has_text="Tomáš Novák").get_by_role("link", name="Open").get_attribute("href")
+    assert personal_link in text
+
+    # Failure case: an unusable phone falls back to the share/copy button, no wa.me link.
+    assert page.get_by_label("Send message to Eva Malá").is_visible()
+    assert page.locator("#personalLinks li", has_text="Eva Malá").locator("a.whatsapp").count() == 0
+
+    day_text = parse_qs(urlparse(page.locator("#dayWhatsapp").get_attribute("href")).query)["text"][0]
+    assert "Crew call: *06:30*" in day_text and page.locator("#shareLink").get_attribute("href") in day_text
+    assert page.locator("#sendDayAsText").is_enabled()
+
+    # Unpublished edit: the text would no longer match the link, so sharing waits for the next publish.
+    page.fill("#general_crew_call", "07:00")
+    expect(page.locator("#shareTextHint")).to_contain_text("Publish first", timeout=5_000)
+    assert page.locator("#sendDayAsText").is_disabled()
+    assert page.get_by_label("WhatsApp Tomáš Novák").count() == 0
+    assert page.get_by_label("Send message to Tomáš Novák").is_disabled()
+
+    # Without a share sheet (headless Chromium), "Send day as text" copies and shows the text.
+    page.evaluate("() => { delete navigator.share; }")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    page.click("#sendDayAsText")
+    expect(page.locator("#shareTextPreview")).to_have_value(re.compile(r"Crew call: \*07:00\*"), timeout=5_000)
