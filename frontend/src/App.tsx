@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
-import type { CrewNextDay, PersonalSheet } from "./types";
+import type { CrewDayRef, CrewNextDay, PersonalSheet } from "./types";
 
 /**
  * The URL decides what the page is:
@@ -35,6 +35,26 @@ function modeFromLocation(): Mode {
 
 type Status = { kind: "" | "online" | "offline" | "error"; text: string };
 
+function plusOneDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * FR-42: what the sheet says about tomorrow, from the stable-link answer alone.
+ * The next day by date after the one shown: on the following date it is "tomorrow"; later means a day off first.
+ */
+function tomorrowLine(days: CrewDayRef[], currentId: string): { kind: "day" | "cancelled" | "off"; day: CrewDayRef } | null {
+  const current = days.find((d) => d.call_sheet_id === currentId);
+  if (!current) return null;
+  const next = [...days].filter((d) => d.shoot_date > current.shoot_date).sort((a, b) => a.shoot_date.localeCompare(b.shoot_date))[0];
+  if (!next) return null;
+  if (next.shoot_date !== plusOneDay(current.shoot_date)) return { kind: "off", day: next };
+  return { kind: next.status === "cancelled" ? "cancelled" : "day", day: next };
+}
+
 export function App() {
   const [mode, setMode] = useState<Mode>(modeFromLocation);
   const [mine, setMine] = useState<CrewNextDay | null>(null);
@@ -60,7 +80,11 @@ export function App() {
     if (mode.kind === "demo") void load(DEMO_URL, DEMO_ID);
     if (mode.kind === "share") {
       void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
-      if (mode.me) void loadPersonal(mode.api, mode.sheet, mode.me).then(setPersonal);
+      if (mode.me) {
+        void loadPersonal(mode.api, mode.sheet, mode.me).then(setPersonal);
+        // A day link opened through a personal token still gets "tomorrow" and the other days (FR-42, FR-32).
+        if (!mine) void loadNextDay(mode.api, mode.me).then((next) => { if (next && next !== "invalid") setMine(next); });
+      }
     }
     if (mode.kind === "mine") {
       // The stable link: resolve to a day, then behave exactly like the day's own share link.
@@ -140,6 +164,25 @@ export function App() {
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
         />
       )}
+      {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {
+        const t = tomorrowLine(mine.days, mode.sheet);
+        if (!t) return null;
+        const dayHref = `?api=${encodeURIComponent(mode.api)}&sheet=${t.day.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`;
+        return (
+          <aside className="tomorrow" id="tomorrow" data-kind={t.kind} aria-label="Tomorrow">
+            <span className="k">Tomorrow</span>{" "}
+            {t.kind === "off" && <>day off · next is <a href={dayHref}>Day {t.day.day_number} · {t.day.shoot_date}</a></>}
+            {t.kind === "cancelled" && <>Day {t.day.day_number} · {t.day.shoot_date} · <strong>cancelled</strong></>}
+            {t.kind === "day" && (
+              <>
+                <a href={dayHref}>Day {t.day.day_number} · {t.day.shoot_date}</a>
+                {t.day.general_crew_call && <> · crew call <b>{t.day.general_crew_call}</b></>}
+                {t.day.first_location_name && <> · {t.day.first_location_name}</>}
+              </>
+            )}
+          </aside>
+        );
+      })()}
       {mine && mine.days.length > 1 && mode.kind === "share" && (
         <nav className="other-days" id="otherDays" aria-label="Other days">
           <span className="label">Days</span>

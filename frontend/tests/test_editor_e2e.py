@@ -739,3 +739,54 @@ def test_crew_tab_sends_each_person_their_own_link_on_whatsapp(page: Page, front
     expect(page.locator("#notice")).to_contain_text("2 links copied", timeout=5_000)
     copied = page.evaluate("() => navigator.clipboard.readText()")
     assert copied.count("\n") == 1 and "Tomáš Novák · Electric: " in copied and "Eva Malá · Camera: " in copied
+
+
+def test_tomorrow_at_a_glance_on_a_personal_link(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-42: through a personal link, day 1 says what tomorrow is (crew call, location); a gap says "day off";
+    a cancelled tomorrow says cancelled, never its old call time."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E tmrw {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Locations']"); page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Studio B"); page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Studio B", timeout=15_000)
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Petr Malý"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Key grip"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Petr Malý", timeout=10_000)
+
+    def publish_day(date: str, number: str, call: str, with_location: bool) -> str:
+        page.click("role=tab[name='Days']"); page.click("#newDay")
+        page.wait_for_selector("#general_crew_call", timeout=10_000)
+        page.fill("#shoot_date", date); page.fill("#day_number", number); page.fill("#general_crew_call", call)
+        if with_location:
+            page.click("#addScene")
+            page.locator("#items .item").nth(0).get_by_label("Scene").fill("1")
+            page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Studio B")
+        page.click("#publish"); expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+        page.wait_for_url(re.compile(r"day/(?!new)"), timeout=10_000)
+        url = page.url
+        page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']"); page.wait_for_selector("#newDay", timeout=10_000)
+        return url
+
+    publish_day("2099-01-05", "1", "06:00", False)
+    day2_url = publish_day("2099-01-06", "2", "07:15", True)
+    publish_day("2099-01-08", "3", "08:00", False)  # 7 Jan is a day off
+
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crew", timeout=10_000)
+    page.click("role=tab[name='Days']"); page.locator("#days a.row").first.click(); page.wait_for_selector("#personalLinks", timeout=10_000)
+    link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#tomorrow", timeout=15_000)
+    expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "day")
+    expect(v.locator("#tomorrow")).to_contain_text("Day 2 · 2099-01-06 · crew call 07:15 · Studio B")
+    v.locator("#tomorrow a").click(); v.wait_for_selector("#tomorrow", timeout=15_000)
+    expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "off")
+    expect(v.locator("#tomorrow")).to_contain_text("day off · next is Day 3")
+    v.close()
+
+    # Cancel day 2: from day 1 tomorrow now reads "cancelled", without 07:15.
+    page.goto(day2_url); page.wait_for_selector("#cancelDayBtn", timeout=10_000)
+    page.click("#cancelDayBtn"); page.click("#confirmCancelDay"); expect(page.locator("#notice")).to_contain_text("Day 2 cancelled", timeout=10_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#tomorrow", timeout=15_000)
+    expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "cancelled")
+    assert "07:15" not in v.locator("#tomorrow").inner_text()
+    v.close()

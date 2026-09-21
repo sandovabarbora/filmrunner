@@ -52,3 +52,19 @@ def test_production_without_days_yet_gives_no_sheet_not_an_error(client: TestCli
     r = client.get(f"/api/v1/public/crew/{token}/next")
     assert r.status_code == 200
     assert r.json()["call_sheet_id"] is None and r.json()["days"] == []
+
+
+def test_each_day_carries_its_crew_call_and_first_location(client: TestClient, monkeypatch) -> None:
+    """FR-42: the sheet can say "Tomorrow: crew call 06:30 · Karlštejn" from the stable-link answer alone."""
+    from app.routers import productions as productions_router
+    monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: None)
+    pid, token = _setup(client, ["2026-09-21"])
+    loc = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Karlštejn"}, headers=AUTH).json()
+    client.post(f"/api/v1/productions/{pid}/call-sheets", json={
+        "shoot_date": "2026-09-22", "day_number": 2, "day_count": 2,
+        "initial_revision": {"general_crew_call": "07:15", "schedule_items": [
+            {"order_index": 1, "scene_number": "3", "int_ext": "EXT", "day_night": "DAY", "set_description": "Gate", "page_count_eighths": 8, "location_id": loc["id"]},
+        ]},
+    }, headers=AUTH)
+    days = client.get(f"/api/v1/public/crew/{token}/next").json()["days"]
+    assert [(d["day_number"], d["general_crew_call"], d["first_location_name"]) for d in days] == [(1, "06:30", None), (2, "07:15", "Karlštejn")]

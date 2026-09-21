@@ -300,3 +300,11 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .location .line .k { color: var(--muted); }
 .schedule .set .loc { color: var(--muted); font-size: 0.8125rem; }
 @media print { .location { break-inside: avoid; } .location .address a { text-decoration: none; } }
+
+/* FR-42: tomorrow at a glance, under the sheet; prints too. */
+.tomorrow { margin: 14px 0 0; padding: 10px 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; font-size: 0.9375rem; }
+.tomorrow .k { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+.tomorrow a { color: var(--ink); }
+.tomorrow b { font-family: var(--mono); }
+.tomorrow[data-kind="cancelled"] strong { color: #b3261e; letter-spacing: 0.06em; }
+@media print { .tomorrow { border-color: #000; } }

@@ -240,6 +240,8 @@ export interface CrewDayRef {
   unit_name: string;
   revision_letter: string | null;
   status?: string;
+  general_crew_call?: string | null;
+  first_location_name?: string | null;
 }
 
 export interface CrewNextDay {
