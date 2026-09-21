@@ -22,6 +22,7 @@ class CallSheetStatus(str, enum.Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
     SUPERSEDED = "superseded"
+    CANCELLED = "cancelled"  # the day is off; the sheet stays readable and says so (FR-34)
 
 
 class CastStatusCode(str, enum.Enum):

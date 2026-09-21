@@ -100,7 +100,8 @@ export function EditorApp() {
         <ProductionsScreen conn={conn} productions={productions} onCreated={(p) => setProductions((ps) => [...(ps ?? []), p])} setNotice={setNotice} />
       )}
       {route.screen === "production" && (
-        <ProductionScreen conn={conn} productionId={route.productionId} production={production} tab={route.tab} setNotice={setNotice} />
+        <ProductionScreen conn={conn} productionId={route.productionId} production={production} tab={route.tab} setNotice={setNotice}
+          onUpdated={(p) => setProductions((ps) => (ps ?? []).map((x) => (x.id === p.id ? p : x)))} />
       )}
       {route.screen === "day" && (
         <DayEditor conn={conn} productionId={route.productionId} productionName={production?.name ?? null} callSheetId={route.callSheetId}

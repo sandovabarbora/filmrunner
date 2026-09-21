@@ -627,3 +627,59 @@ def test_cast_member_with_a_days_times_appears_on_the_sheet_and_carries_to_rev_b
     expect(page.locator("#notice")).to_contain_text("removed from the cast", timeout=10_000)
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
     assert v.locator("#castTable").count() == 0
+
+
+def test_cancel_a_day_shows_the_banner_everywhere_and_restore_brings_it_back(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-34: cancelling asks first, then the sheet, the days list and the stable link all say CANCELLED; restore + publish puts it back."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E cancel {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    link = page.locator("#shareLink").get_attribute("href")
+
+    page.click("#cancelDayBtn")
+    expect(page.locator("#confirmCancelDay")).to_be_visible()
+    page.click("#confirmCancelDay")
+    expect(page.locator("#notice")).to_contain_text("Day 1 cancelled", timeout=10_000)
+    expect(page.locator("#cancelledBanner")).to_be_visible()
+    assert page.locator("#cancelDayBtn").count() == 0
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
+    expect(v.locator("#cancelledBanner")).to_contain_text("CANCELLED")
+    v.close()
+
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#days li").first).to_contain_text("CANCELLED")
+
+    page.locator("#days a.row").first.click()
+    page.wait_for_selector("#restoreDay", timeout=10_000)
+    page.click("#restoreDay")
+    expect(page.locator("#notice")).to_contain_text("back on", timeout=10_000)
+    assert page.locator("#cancelledBanner").count() == 0
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
+    assert v.locator("#cancelledBanner").count() == 0
+    assert v.locator("#crewCall").inner_text().strip() == "07:00"
+
+
+def test_production_can_be_renamed_and_wrapped_from_settings(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-34: an owner renames the production and marks it wrapped; the list shows both."""
+    _connect(page, frontend_url, api_url)
+    name = f"E2E rename {uuid.uuid4().hex[:6]}"
+    _create_production(page, name)
+    page.click("role=tab[name='Settings']")
+    page.wait_for_selector("#productionName", timeout=10_000)
+    page.fill("#productionName", f"{name} (final)")
+    page.select_option("#productionStatus", "wrapped")
+    page.click("#saveProduction")
+    expect(page.locator("#notice")).to_contain_text("is wrapped", timeout=10_000)
+    expect(page.locator(".crumbs")).to_contain_text(f"{name} (final)")
+    page.click("role=link[name='Productions']")
+    page.wait_for_selector("#productions", timeout=10_000)
+    row = page.locator("#productions li", has_text=f"{name} (final)")
+    expect(row).to_contain_text("wrapped")

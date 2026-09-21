@@ -15,7 +15,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.models.production import CastMember, CrewMember, Location
-from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, CrewCallEntry, ScheduleItem
+from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
 from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
@@ -100,6 +100,8 @@ def publish_revision(
 
     for existing in call_sheet.revisions:
         existing.is_current = False
+    # A published revision means the day is on: this also puts a cancelled day back (FR-34), telling the crew via the revision push.
+    call_sheet.status = CallSheetStatus.PUBLISHED
 
     revision = CallSheetRevision(
         call_sheet_id=call_sheet.id,
@@ -366,10 +368,11 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
     )
     days = [
         CrewDayRef(call_sheet_id=s.id, shoot_date=s.shoot_date, day_number=s.day_number, day_count=s.day_count, unit_name=s.unit_name,
-                   revision_letter=s.current_revision.revision_letter if s.current_revision else None)
+                   revision_letter=s.current_revision.revision_letter if s.current_revision else None, status=s.status.value)
         for s in sheets
     ]
-    upcoming = [d for d in days if d.shoot_date >= today]
-    chosen = upcoming[0] if upcoming else (days[-1] if days else None)
+    live = [d for d in days if d.status != "cancelled"]
+    upcoming = [d for d in live if d.shoot_date >= today]
+    chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))
     return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
                        call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)

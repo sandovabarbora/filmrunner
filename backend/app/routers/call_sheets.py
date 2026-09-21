@@ -22,13 +22,13 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import Principal, require_api_token, require_principal
 from app.authz import DAY_PUBLISH, PRODUCTION_READ, require_on
 from app.database import get_db
-from app.models.call_sheet import CallSheet, CallSheetRevision
+from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
 from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, create_call_sheet, next_day_for_token, previous_revision, publish_revision, revision_changes
-from app.services.notifications import NotificationSummary, notify_subscribers
+from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,34 @@ def publish_revision_endpoint(
     read = CallSheetRevisionRead.model_validate(revision)
     read.notifications = _summary_read(summary)
     return read
+
+
+@router.post("/call-sheets/{call_sheet_id}/cancel", response_model=CallSheetRead)
+def cancel_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
+    """FR-34: the day is off. The sheet stays readable with a CANCELLED banner and every subscriber is told; nothing is deleted."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
+    if call_sheet.status != CallSheetStatus.CANCELLED:
+        call_sheet.status = CallSheetStatus.CANCELLED
+        db.commit()
+        logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.label)
+    summary = notify_day_cancelled(db, call_sheet)
+    read = _read_with_contacts(db, call_sheet_id)
+    if read.current_revision is not None:
+        read.current_revision.notifications = _summary_read(summary)
+    return read
+
+
+@router.post("/call-sheets/{call_sheet_id}/restore", response_model=CallSheetRead)
+def restore_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
+    """Undo a cancellation; the AD then publishes a revision so the crew gets told the day is back on."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
+    if call_sheet.status == CallSheetStatus.CANCELLED:
+        call_sheet.status = CallSheetStatus.PUBLISHED
+        db.commit()
+        logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.label)
+    return _read_with_contacts(db, call_sheet_id)
 
 
 @router.get("/productions/{production_id}/call-sheets", response_model=list[CallSheetRead])

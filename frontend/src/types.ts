@@ -33,6 +33,8 @@ export interface CallSheetRevision {
   schedule_items: ScheduleItem[];
   crew_calls?: CrewCallEntry[];
   cast_calls?: CastCallEntry[];
+  /** Present on publish and cancel responses: how many subscribed phones were told (FR-16). */
+  notifications?: { attempted: number; delivered: number; failed: { crew_member_name: string; reason: string }[] } | null;
 }
 
 export interface ContactCard {
@@ -63,6 +65,8 @@ export interface PersonalSheet {
 export interface CallSheet {
   id?: string;
   production_title?: string;
+  /** "published" normally; "cancelled" when the day is off (FR-34). */
+  status?: "draft" | "published" | "superseded" | "cancelled" | string;
   shoot_date: string;
   day_number: number;
   day_count: number;
@@ -141,7 +145,7 @@ export interface CallSheetCreate {
   initial_revision: RevisionCreate;
 }
 
-export type Permission = "production:read" | "production:manage_members" | "day:publish" | "crew:edit";
+export type Permission = "production:read" | "production:manage_members" | "production:edit" | "day:publish" | "crew:edit";
 export type ProductionRole = "owner" | "editor" | "viewer";
 
 export interface Production {
@@ -233,6 +237,7 @@ export interface CrewDayRef {
   day_count: number;
   unit_name: string;
   revision_letter: string | null;
+  status?: string;
 }
 
 export interface CrewNextDay {

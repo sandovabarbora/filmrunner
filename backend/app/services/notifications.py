@@ -49,8 +49,24 @@ def _revision_message(call_sheet: CallSheet, revision: CallSheetRevision) -> tup
     return title, body
 
 
+def notify_day_cancelled(db: Session, call_sheet: CallSheet) -> NotificationSummary:
+    """FR-34: a cancelled day is the one message nobody may miss; same delivery and logging as a revision."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return NotificationSummary()
+    title = f"Day {call_sheet.day_number}: CANCELLED"
+    body = f"Day {call_sheet.day_number} ({call_sheet.shoot_date.isoformat()}) is off. Open the sheet for details."
+    return _notify(db, call_sheet, revision, title, body)
+
+
 def notify_subscribers(db: Session, call_sheet: CallSheet, revision: CallSheetRevision) -> NotificationSummary:
-    """Push the new revision to every subscribed crew member of this production.
+    """Push the new revision to every subscribed crew member of this production."""
+    title, body = _revision_message(call_sheet, revision)
+    return _notify(db, call_sheet, revision, title, body)
+
+
+def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, title: str, body: str) -> NotificationSummary:
+    """Push one message to every subscribed crew member of this production, logged against `revision`.
 
     Every attempt — success or failure — is logged to DistributionLog so an
     AD can see who did not get the update (the dod's failure case), rather
@@ -71,8 +87,6 @@ def notify_subscribers(db: Session, call_sheet: CallSheet, revision: CallSheetRe
     )
     if not subscriptions:
         return summary
-
-    title, body = _revision_message(call_sheet, revision)
 
     for subscription in subscriptions:
         summary.attempted += 1
