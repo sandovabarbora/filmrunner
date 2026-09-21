@@ -414,6 +414,104 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - people with an entry listed; a select adds one; × removes one (the person then gets the general call again)
   - failure case: nothing is lost on reload — entries come back from the draft or the server as before
 
+## FR-45 · tech-lead · Reuse people across productions: pick an existing contact when adding crew or cast
+- state: ready
+- gated: no
+- why: the same gaffer works three productions a year; today every production creates a new Contact, so a phone correction on one sheet never reaches the others and the founder's pilot AD will type the same 40 people twice (FR-31 helps the first time only)
+- dod:
+  - `GET /contacts?q=` (authenticated): contacts the caller can see — those on productions they are a member of — matched on name prefix and phone digits, max 10; service token sees all
+  - Crew and Cast forms: typing a name shows matches (name · phone · last production); picking one reuses the contact id instead of creating a new one; the paste import (FR-31) reuses a contact whose name and phone both match
+  - backend test: a viewer on production A cannot see contacts that exist only on production B; E2E: add "Tomáš Novák" on a second production by picking him, edit his phone there, the first production's sheet shows the new number
+  - failure case: two contacts with the same name and different phones stay two people; the picker shows both with their numbers, never merges them
+
+## FR-46 · frontend · Copy the crew from another production
+- state: ready
+- gated: no
+- why: an AD's next production is mostly the last production's crew; one action beats FR-31's paste when the people are already in FilmRunner (FR-45 makes the contacts shared)
+- dod:
+  - Crew tab, empty state and a quiet button: "Copy crew from…" lists the caller's other productions; picking one previews the people (name, department, position, HoD) with checkboxes, all on; "Add N people" creates crew members reusing the contact ids; standing call times are not copied (they belong to a production)
+  - people already on this crew are shown as such and skipped
+  - E2E: production A with 3 crew, production B copies them, B's sheet lists the HoDs
+  - failure case: copying from a production the caller only views (viewer role) works for reading the list, but the add still requires crew:edit on the target — a viewer on B gets no button
+
+## FR-47 · frontend · PDF of the day from the editor, complete
+- state: ready
+- gated: no
+- why: the production office and the insurer still want a PDF in the mail; the crew link's "Print / Save PDF" exists but the AD reaches it through a crew link, and the print layout has grown (cast, where, personal calls, tomorrow) without a check that it paginates
+- dod:
+  - day screen, once published: "PDF" opens the sheet in print mode (`?print=1` on the day link opens the print dialog on load) with every block: header with REV and issued time, calls, sun and weather, where, schedule, cast, personal calls, who to call, safety, tomorrow line
+  - print CSS: no block cut in half, table headers repeat on a new page, the crew link and a QR code in the footer so the paper leads back to the live sheet, page numbers "1 / 3"
+  - a Playwright test emulates print media and checks the page count for a 40-scene, 30-person day stays under 4 and no row is split (via `page.pdf()` on Chromium, page count from the PDF)
+  - failure case: a sheet with no cast and no personal calls prints without empty headings
+
+## FR-48 · frontend · The crew's sheet in Czech
+- state: ready
+- gated: no
+- why: the landing is CS/EN but the sheet the crew actually reads is English only; the pilot crews are Czech; labels like "Crew call", "Who to call", "Tomorrow", "cancelled" must read naturally in Czech for the pilot to be judged on the product, not the language
+- dod:
+  - the viewer (index.html) has a label dictionary (cs, en) and picks the browser language, with a small CS/EN toggle remembered in localStorage; dates as "st 23. 9. 2026" in Czech; the editor stays English for now (separate item if the pilot asks)
+  - every visible label on the sheet, the personal block, the tomorrow line, the other-days nav, the status line and the cancelled banner is covered; user-entered text (sets, notes, names) is never translated
+  - E2E: with `locale="cs-CZ"` the sheet shows "Sraz štábu" and the badge "REV B nahrazuje A"; the toggle switches to English and back
+  - failure case: a label missing from the dictionary falls back to English text, never to a key like `crew_call`
+
+## FR-49 · frontend · Who to call: tap-to-call, WhatsApp and copy on every contact
+- state: ready
+- gated: no
+- why: the sheet's contacts are `tel:` links only; on set people write on WhatsApp first and call second, and a phone number should be copyable without selecting text with a wet thumb
+- dod:
+  - each contact card: call (`tel:`), WhatsApp (`wa.me` via the FR-29 number normalisation, only when the number normalises), copy number; icons with labels, 44px targets
+  - the personal block's "your department" rows get the same
+  - E2E: a contact with "777 123 456" has a wa.me link to 420777123456; one with "ask Petra" has none
+  - failure case: a contact without a number shows "no number on file" and no dead controls
+
+## FR-50 · frontend · Publish history on the day screen
+- state: ready
+- gated: no
+- why: revisions carry `created_by` and `created_at` already; the AD asks "who sent REV C at 22:40?" when a coordinator also edits; today the only trace is the API
+- dod:
+  - day screen: a collapsed "History" list — REV A · Mon 21 Sep 20:40 · Eva · 12 opened; REV B · … — one line per revision, from the sheet's `revisions` on the authenticated read (letter, created_at, created_by, what changed vs the previous one using FR-23's `revision_changes`), plus cancel/restore events if the model records them (it does not yet: add `call_sheet_events` only if needed for cancel; otherwise leave cancel out and say so)
+  - backend: `GET /call-sheets/{id}/history` (production:read) returning the list; `created_by` for a signed-in user is their e-mail, for the service token the label the client sent
+  - failure case: a revision with `created_by` null shows "unknown", never an empty cell
+
+## FR-51 · tech-lead · Public endpoints: abuse guard without hurting the 05:00 rush
+- state: ready
+- gated: no
+- why: `/public/call-sheets/{id}`, `/public/crew/{token}/next`, `/public/.../seen/{token}` and the push subscribe endpoints are unauthenticated by design (FR-13 tokens are the credential); before a pilot with a public URL there must be a limit on how fast an unknown client can probe tokens or fill `revision_views`
+- dod:
+  - per-client (IP) sliding-window limit on the public router: 120 requests/minute, 429 with `Retry-After`; token-bearing endpoints additionally 30/minute per token; in-process store is fine for one Fly machine, documented as such (ADR)
+  - the limit never affects authenticated routes; `/healthz` exempt
+  - backend test: 121st request in a minute gets 429, the 122nd after the window passes gets 200; the seen endpoint with 31 different bogus tokens from one IP gets 429 before the 31st
+  - failure case: 40 crew members opening the sheet at 05:00 from one production office Wi-Fi (one IP) must not be throttled — the per-IP number is chosen for that (40 people × 3 requests each in a minute) and the test covers it
+
+## FR-52 · qa · Pilot scale: 40 crew, 30 days, 60 scenes on a phone
+- state: ready
+- gated: no
+- why: everything was tested with 2–3 people and 1–2 days; a real Prague feature has 40–80 crew and 25–40 days; the editor's day screen and the days list must stay usable on an iPhone at that size before the pilot, not after
+- dod:
+  - a seed script `backend/app/seed_scale.py` (idempotent, service token, against a local API by default) creating one production with 60 crew across 12 departments, 8 cast, 6 locations, 30 days of 40–60 scenes, personal calls on 5 people per day
+  - measurements against the local build with Playwright at iPhone width: time to interactive for the days list, the day screen, the crew tab, the public sheet; Lighthouse mobile performance score for the public sheet; sizes of the API responses
+  - report in `docs/research/pilot-scale-2026-09.md` with numbers and the three slowest spots; each spot over 1.5 s on a throttled 4G profile filed as a `ready` item with the reproduction
+  - failure case: the public sheet for a 60-scene day must render under 2 s on the throttled profile or it is filed as a bug, not noted
+
+## FR-53 · tech-lead · Backups and the restore path
+- state: ready
+- gated: no
+- why: the pilot's call sheets live in one Supabase Postgres; a wrong migration or a deleted production is recoverable only if someone knows how; nobody has written it down or tried it
+- dod:
+  - `docs/ops/backup-restore.md`: what Supabase keeps on the current plan (daily backups, retention), how to download one, how to restore into a fresh project, and the env changes on Fly that follow; the DB password rotation procedure (the founder still has one to do)
+  - `backend/scripts/export_production.py`: JSON export of one production (contacts, crew, cast, locations, days with revisions) through the API with the service token; `import_production.py` the reverse into an empty production — a restore that does not need database access
+  - test: export a production created in the test suite, import it into a new one, the public sheet of day 1 is identical field for field
+  - failure case: importing into a production that already has days is refused with a clear message, never merged silently
+
+## FR-54 · marketing · Thirty-second recording of the flow for the landing
+- state: ready
+- gated: no
+- why: the landing has three screenshots; a Prague AD deciding whether to reply wants to see the phone flow — publish, the crew's sheet, REV B replacing A — in half a minute, without an account
+- dod:
+  - `frontend/scripts/record_landing_flow.py`: Playwright against the local build, iPhone viewport, drives the real editor (service token) through create day → publish → crew link → REV B with a changed call, captures a video (Playwright `record_video_dir`) and turns it into a ≤ 3 MB WebM/GIF committed under `frontend/public/landing/`
+  - landing.html embeds it (autoplay muted loop, poster = first screenshot, reduced-motion respected) under the screenshots, CS/EN captions
+  - failure case: the recording script fails loudly if any step's selector is missing, so a UI change never silently ships an outdated recording; README line on how to re-record
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
 - note: 13:00 shift 2026-09-21 (PR #111, branch feat/fr-25-landing-page) delivered every dod bullet: `frontend/landing.html` as a third Vite entry, FR-6's chosen position as the headline, three real screenshots of the bundled demo call sheet (header/calls/weather, Where, Who to call) taken by a committed Playwright script (`frontend/scripts/take_landing_screenshots.py`, re-run after any visual change to the sheet), a live-demo link, and a no-forms "Request a pilot" mailto to the founder. Czech/English toggle is two static `[lang]`-tagged blocks per element switched by a small vanilla script (`frontend/src/landing.ts`, no framework), defaulting to the visitor's browser language and falling back to Czech with no JS at all. The root entry page (`index.html`) gets one added link, "What is FilmRunner?", kept to that page's existing "two doors, no marketing" design. No external fonts; all three images 28-40 KB; verified at 390px in both languages. Handled the dod's failure case directly: a screenshot the script could not produce is simply not written, and `landing.ts` removes any `<figure>` whose image fails to load, so a missing shot never becomes a broken-image placeholder. `npm run typecheck`/`npm run build` clean, `npm test` 23/23; full Playwright suite 39/41 (the 2 failures are `test_locations_e2e.py`'s pre-existing Nominatim-egress-block, unrelated, flagged by every prior shift touching that suite). Touches `frontend/`, so per TEAM.md's hackathon mode this still gets `gh pr merge --auto --squash` (only TEAM.md itself is excluded); PR is the whole deliverable.
