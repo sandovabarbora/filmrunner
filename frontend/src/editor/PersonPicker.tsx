@@ -15,15 +15,17 @@ export function PersonPicker({ conn, id, value, onChange, onPick, disabled }: {
   const [open, setOpen] = useState(false);
   const timer = useRef<number | null>(null);
 
+  // Fetch on the value alone; `open` only decides whether the list is shown, so a
+  // programmatic fill (or a fast typist) never races the focus/blur bookkeeping.
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
     const q = value.trim();
-    if (q.length < 2 || !open) { setMatches([]); return; }
+    if (q.length < 2) { setMatches([]); return; }
     timer.current = window.setTimeout(() => {
       api.searchContacts(conn, q).then(setMatches).catch(() => setMatches([]));
     }, 200);
     return () => { if (timer.current) window.clearTimeout(timer.current); };
-  }, [conn, value, open]);
+  }, [conn, value]);
 
   return (
     <div className="picker">

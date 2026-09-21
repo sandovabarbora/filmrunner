@@ -801,7 +801,9 @@ def test_tomorrow_at_a_glance_on_a_personal_link(page: Page, frontend_url: str, 
     v.close()
 
     # Cancel day 2: from day 1 tomorrow now reads "cancelled", without 07:15.
-    page.goto(day2_url); page.wait_for_selector("#cancelDayBtn", timeout=10_000)
+    page.goto(day2_url)  # hash-only change: day 1's screen stays mounted until day 2 loads, so wait for day 2 itself
+    expect(page.locator("#day_number")).to_have_value("2", timeout=10_000)
+    page.wait_for_selector("#cancelDayBtn", timeout=10_000)
     page.click("#cancelDayBtn"); page.click("#confirmCancelDay"); expect(page.locator("#notice")).to_contain_text("Day 2 cancelled", timeout=10_000)
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#tomorrow", timeout=15_000)
     expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "cancelled")
@@ -816,7 +818,7 @@ def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: st
     tag = uuid.uuid4().hex[:6]
     _create_production(page, f"E2E share A {tag}")
     page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
-    page.fill("#crewName", f"Tomáš Novák {tag}"); page.fill("#crewPhone", "777 111 111"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.check("#crewHod"); page.click("#addCrew")
+    page.fill("#crewName", f"Tom{tag} Novák"); page.fill("#crewPhone", "777 111 111"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.check("#crewHod"); page.click("#addCrew")
     expect(page.locator("#crew")).to_contain_text("777 111 111", timeout=10_000)
     page.click("role=tab[name='Days']"); page.click("#newDay"); page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#general_crew_call", "06:30"); page.click("#publish")
@@ -827,8 +829,8 @@ def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: st
     page.click("role=link[name='Productions']"); page.wait_for_selector("#newProduction", timeout=10_000)
     _create_production(page, f"E2E share B {tag}")
     page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
-    page.fill("#crewName", f"Tomáš N")
-    item = page.locator(".picker-item", has_text=f"Tomáš Novák {tag}")
+    page.locator("#crewName").press_sequentially(f"Tom{tag}")
+    item = page.locator(".picker-item", has_text=f"Tom{tag} Novák")
     expect(item).to_be_visible(timeout=10_000)
     expect(item).to_contain_text("777 111 111"); expect(item).to_contain_text(f"E2E share A {tag}")
     item.click()
@@ -842,10 +844,10 @@ def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: st
     v.close()
 
     # Same name, different phone, typed without picking: a second person, and the picker shows both.
-    page.fill("#crewName", f"Tomáš Novák {tag}"); page.fill("#crewPhone", "777 333 333"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Grip"); page.click("#addCrew")
+    page.fill("#crewName", f"Tom{tag} Novák"); page.fill("#crewPhone", "777 333 333"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Grip"); page.click("#addCrew")
     expect(page.locator("#crew li")).to_have_count(2, timeout=10_000)
-    page.locator("#crewName").press_sequentially("Tomáš N")
-    expect(page.locator(".picker-item", has_text=f"Tomáš Novák {tag}")).to_have_count(2, timeout=10_000)
+    page.locator("#crewName").press_sequentially(f"Tom{tag}")
+    expect(page.locator(".picker-item", has_text=f"Tom{tag} Novák")).to_have_count(2, timeout=10_000)
 
 
 def test_import_the_crew_from_an_excel_file(page: Page, frontend_url: str, api_url: str) -> None:
