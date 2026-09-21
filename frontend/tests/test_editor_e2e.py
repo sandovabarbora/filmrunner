@@ -460,6 +460,30 @@ def test_rev_b_shows_what_changed_and_rev_a_shows_no_diff(page: Page, frontend_u
     assert v.locator("#revChanges li[data-field='shooting_call']").count() == 0
 
 
+def test_paste_a_crew_list_previews_and_adds_everyone_skipping_duplicates(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-31: a pasted list (headers, commas, tabs, HoD) is previewed and added in one go; someone already on the crew is skipped, not duplicated."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E paste {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Jan Novák"); page.fill("#crewDept", "Camera"); page.fill("#crewPos", "DoP"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Jan Novák", timeout=10_000)
+
+    page.click("#pasteCrew")
+    page.fill("#pasteCrewText", "Camera:\nJan Novák, DoP, 777 123 456\nPetra K.\t1st AC\t+420 602 111 222\nElectric:\nTomáš Novák, Gaffer, HoD\nKarel")
+    preview = page.locator("#pastePreview li")
+    expect(preview).to_have_count(4)
+    expect(preview.nth(0)).to_contain_text("already on the crew")
+    expect(preview.nth(3)).to_contain_text("no position, using Crew")
+    expect(page.locator("#importCrew")).to_have_text("Add 3 people")
+    page.click("#importCrew")
+    expect(page.locator("#notice")).to_contain_text("Added 3 people", timeout=15_000)
+    expect(page.locator("#crew li")).to_have_count(4, timeout=10_000)
+    tomas = page.locator("#crew li", has_text="Tomáš Novák")
+    expect(tomas).to_contain_text("HoD")
+    expect(tomas).to_contain_text("Electric · Gaffer")
+    expect(page.locator("#crew li", has_text="Petra K.")).to_contain_text("+420 602 111 222")
+    assert page.locator("#pasteCrewPanel").count() == 0  # closed after a clean import
 def test_next_day_starts_from_this_one_and_a_plain_new_day_continues_the_numbering(page: Page, frontend_url: str, api_url: str) -> None:
     """FR-30: "Start Day 2 from this one" copies calls, scenes and personal calls to an unpublished Day 2 one date on;
     an unpublished new day is never replaced silently; a plain "+ New day" after Day 2 offers Day 3."""

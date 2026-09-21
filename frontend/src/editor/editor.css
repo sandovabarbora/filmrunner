@@ -91,5 +91,11 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .share-preview textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; }
 .row-actions .whatsapp { display: inline; margin: 0; font-family: inherit; font-size: 0.8125rem; }
 
+/* FR-31: paste the crew list. */
+.paste-crew { margin-top: 12px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.paste-crew textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; }
+.paste-crew .preview { margin-top: 8px; }
+.paste-crew .row.warn { background: var(--warn-bg); }
+.warn-text { color: #8a5a00; }
 /* FR-30: tomorrow starts as today. */
 .next-day { margin-top: 12px; align-items: center; flex-wrap: wrap; }

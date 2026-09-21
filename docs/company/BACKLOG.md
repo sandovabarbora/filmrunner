@@ -268,6 +268,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - unit tests for the text builders and the phone normalisation (Czech 9-digit numbers get 420, spaces and 00 prefix removed); E2E checks the per-person message carries the day's personal call
   - failure case: a phone that cannot be turned into a wa.me number (letters, too short) shows the copy/share path, never a broken WhatsApp link
 
+## FR-31 · frontend · Paste the crew list
+- state: done
+- note: delivered 2026-09-21 (feat/fr-31-paste-crew-list): `crewImport.ts` parses what people actually paste (department headers "Camera:", comma/semicolon/tab rows, a phone anywhere in the row, "HoD" marker, name-only lines get General/Crew with a visible warning), the Crew tab previews every row before "Add N people", people already on the crew are skipped, failures stay in the box by name. 5 unit tests, 1 E2E
+- gated: no
+- why: the crew already exists in a spreadsheet or last production's PDF; typing 40 people through a form is the moment an AD gives up on the tool (FR-1 brief: setup cost is the adoption barrier)
+- dod:
+  - Crew tab: "Paste a list…" opens a box; each non-empty line becomes a preview row (name, department, position, phone, HoD); "Camera:" lines set the department for the lines below
+  - one button adds everyone; people already on the crew are shown as such and not duplicated
+  - failure case: a row the API rejects is named in the notice and stays in the box; the others are still added
 ## FR-30 · frontend · Tomorrow starts as today: "Start Day N+1 from this one"
 - state: done
 - note: delivered 2026-09-21 (feat/fr-30-next-day-from-this): `nextDayFrom` in drafts.ts copies unit, calls, head of day, safety notes, scenes and personal calls into an unpublished new day one date on (weather and sun left blank: they belong to the date); the button appears on a published day; an existing unpublished new day is never replaced silently (Replace/Keep). A plain "+ New day" now continues the numbering and the date from the last day. 6 unit tests, 1 E2E
