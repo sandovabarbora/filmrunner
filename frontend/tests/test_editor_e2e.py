@@ -683,3 +683,34 @@ def test_production_can_be_renamed_and_wrapped_from_settings(page: Page, fronten
     page.wait_for_selector("#productions", timeout=10_000)
     row = page.locator("#productions li", has_text=f"{name} (final)")
     expect(row).to_contain_text("wrapped")
+
+
+def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-36: after publish the day screen says "REV A opened by 0 of 2"; a crew member opening their personal link live moves
+    them across; the one who has not gets a WhatsApp nudge; REV B starts the count over. A cached (offline) open does not count."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E seen {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    for name, phone in (("Tomáš Novák", "777 123 456"), ("Eva Malá", "")):
+        page.fill("#crewName", name); page.fill("#crewPhone", phone); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "x"); page.click("#addCrew")
+        expect(page.locator("#crew")).to_contain_text(name, timeout=10_000)
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 0 of 2", timeout=10_000)
+    expect(page.locator("#notSeen .chip")).to_have_count(2)
+    assert page.get_by_label("Nudge Tomáš Novák on WhatsApp").get_attribute("href").startswith("https://wa.me/420777123456?text=")
+    assert page.get_by_label("Nudge Eva Malá on WhatsApp").count() == 0  # no phone, no broken link
+
+    eva_link = page.locator("#personalLinks li", has_text="Eva Malá").get_by_role("link", name="Open").get_attribute("href")
+    v = page.context.new_page(); v.goto(eva_link); v.wait_for_selector("#you", timeout=15_000); v.close()
+    page.reload(); page.wait_for_selector("#seenPanel", timeout=10_000)
+    expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 1 of 2", timeout=10_000)
+    expect(page.locator("#notSeen")).to_contain_text("Tomáš Novák")
+    expect(page.locator("#notSeen")).not_to_contain_text("Eva Malá")
+
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    expect(page.locator("#seenPanel")).to_contain_text("REV B opened by 0 of 2", timeout=10_000)

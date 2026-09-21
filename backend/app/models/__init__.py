@@ -16,6 +16,7 @@ from app.models.call_sheet import (  # noqa: F401
 from app.models.membership import ProductionMember, ProductionRole  # noqa: F401
 from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production  # noqa: F401
 from app.models.push import PushSubscription  # noqa: F401
+from app.models.seen import RevisionView  # noqa: F401
 
 __all__ = [
     "Production",

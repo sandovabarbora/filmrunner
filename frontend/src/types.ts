@@ -288,3 +288,21 @@ export interface SheetLocation {
   geo_lng: number | null;
   scene_numbers: string[];
 }
+
+/* FR-36: who has seen the current revision. */
+export interface SeenEntry {
+  crew_member_id: string;
+  name: string;
+  department: string;
+  position: string;
+  phone: string | null;
+  personal_token: string;
+  seen_at: string | null;
+  subscribed: boolean;
+}
+
+export interface SeenReport {
+  revision_letter: string;
+  seen: SeenEntry[];
+  not_seen: SeenEntry[];
+}

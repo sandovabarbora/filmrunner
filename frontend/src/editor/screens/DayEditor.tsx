@@ -6,7 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
-import type { CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
+import type { CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -80,6 +80,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [busy, setBusy] = useState(false);
   const [shareText, setShareText] = useState<string | null>(null);
   const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
+  const [seen, setSeen] = useState<SeenReport | null>(null);  // FR-36: who opened the current revision
   const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
   const [confirmCancel, setConfirmCancel] = useState(false);
   const latest = useRef<Draft | null>(null);
@@ -123,6 +124,16 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   }, [conn, productionId, productionName, callSheetId, key, setNotice]);
 
   useEffect(() => { latest.current = draft; if (draft) void saveDraft(draft); }, [draft]);
+
+  const publishedLetter = draft?.callSheetId ? draft.lastPublishedLetter : null;
+  useEffect(() => {
+    if (!callSheetId || !publishedLetter) { setSeen(null); return; }
+    let cancelled = false;
+    const refresh = () => api.seenReport(conn, callSheetId).then((r) => { if (!cancelled) setSeen(r); }).catch(() => undefined);
+    void refresh();
+    const timer = window.setInterval(refresh, 60_000);  // people open the link over the evening; the AD keeps the screen open
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [conn, callSheetId, publishedLetter]);
   useEffect(() => {
     const flush = () => { if (latest.current) void saveDraft(latest.current); };
     window.addEventListener("pagehide", flush);
@@ -438,6 +449,27 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
           {busy ? "Publishing…" : published ? `Publish REV ${nextLetter(draft.lastPublishedLetter!)}` : "Publish"}
         </button>
+        {published && seen && (
+          <div className="seen" id="seenPanel">
+            <div className="label">REV {seen.revision_letter} opened by {seen.seen.length} of {seen.seen.length + seen.not_seen.length}</div>
+            {seen.not_seen.length === 0
+              ? <p className="hint">Everyone on the crew has opened it through their personal link.</p>
+              : <ul className="chips" id="notSeen" aria-label="Not opened yet">
+                  {seen.not_seen.map((e) => {
+                    const number = whatsappNumber(e.phone);
+                    const link = personalLink(conn.apiBase, e.personal_token);
+                    const nudge = `Did you see REV ${seen.revision_letter} for Day ${draft.day_number}? Crew call ${draft.general_crew_call || "—"}. Your call sheet: ${link}`;
+                    return (
+                      <li key={e.crew_member_id} className="chip">
+                        <span>{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? " · push on" : ""}</span>
+                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={`Nudge ${e.name} on WhatsApp`}>nudge</a>}
+                      </li>
+                    );
+                  })}
+                </ul>}
+            <p className="hint">Counts a personal link opened live; a copy shown offline does not count. Refreshes every minute.</p>
+          </div>
+        )}
         {published && !readOnly && dayStatus !== "cancelled" && (
           <div className="inline cancel-day" id="cancelDay">
             {!confirmCancel

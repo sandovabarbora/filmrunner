@@ -233,3 +233,22 @@ class CrewNextDay(BaseModel):
     crew_member_name: str
     call_sheet_id: uuid.UUID | None
     days: list[CrewDayRef]
+
+
+class SeenEntry(BaseModel):
+    """One crew member in the "who has seen REV B" report (FR-36)."""
+
+    crew_member_id: uuid.UUID
+    name: str
+    department: str
+    position: str
+    phone: str | None
+    personal_token: str
+    seen_at: datetime | None
+    subscribed: bool  # has a push subscription on this production
+
+
+class SeenReport(BaseModel):
+    revision_letter: str
+    seen: list[SeenEntry]
+    not_seen: list[SeenEntry]

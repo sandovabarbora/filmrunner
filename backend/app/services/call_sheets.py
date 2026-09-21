@@ -10,13 +10,15 @@ Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html
 import logging
 import string
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.models.production import CastMember, CrewMember, Location
+from app.models.push import PushSubscription
+from app.models.seen import RevisionView
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -403,3 +405,41 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))
     return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
                        call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)
+
+
+def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
+    """FR-36: a crew member's personal link loaded the current revision live. False for an unknown token."""
+    revision = call_sheet.current_revision
+    member = (
+        db.query(CrewMember)
+        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
+        .first()
+    )
+    if revision is None or member is None:
+        return False
+    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first()
+    if view is None:
+        db.add(RevisionView(revision_id=revision.id, crew_member_id=member.id))
+    else:
+        view.last_seen_at = datetime.now(timezone.utc)
+    db.commit()
+    return True
+
+
+def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
+    """Who has opened the current revision and who has not, so the AD chases the right people (FR-36)."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return None
+    views = {v.crew_member_id: v.first_seen_at for v in db.query(RevisionView).filter(RevisionView.revision_id == revision.id).all()}
+    subscribed = {s.crew_member_id for s in db.query(PushSubscription).join(CrewMember, CrewMember.id == PushSubscription.crew_member_id)
+                  .filter(CrewMember.production_id == call_sheet.production_id).all()}
+    crew = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).all()
+    crew.sort(key=lambda m: (m.department.lower(), m.contact.name.lower()))
+    entries = [
+        SeenEntry(crew_member_id=m.id, name=m.contact.name, department=m.department, position=m.position, phone=m.contact.phone,
+                  personal_token=m.personal_token, seen_at=views.get(m.id), subscribed=m.id in subscribed)
+        for m in crew
+    ]
+    return SeenReport(revision_letter=revision.revision_letter,
+                      seen=[e for e in entries if e.seen_at is not None], not_seen=[e for e in entries if e.seen_at is None])
