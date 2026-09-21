@@ -13,6 +13,8 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 import logging
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
@@ -23,9 +25,9 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import PersonalSheet, RevisionSummary
+from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, previous_revision, publish_revision, revision_changes
+from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, next_day_for_token, previous_revision, publish_revision, revision_changes
 from app.services.notifications import NotificationSummary, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -166,3 +168,13 @@ def get_personal_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depe
     if personal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
     return personal
+
+
+@public_router.get("/public/crew/{token}/next", response_model=CrewNextDay)
+def get_next_day_public(token: str, db: Session = Depends(get_db)) -> CrewNextDay:
+    """Unauthenticated: where a crew member's stable link opens (FR-32). "Today" is Prague's today, where the pilot crews are."""
+    today = datetime.now(ZoneInfo("Europe/Prague")).date()
+    result = next_day_for_token(db, token, today)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member")
+    return result

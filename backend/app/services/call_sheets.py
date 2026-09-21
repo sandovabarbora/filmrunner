@@ -10,12 +10,13 @@ Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html
 import logging
 import string
 import uuid
+from datetime import date
 
 from sqlalchemy.orm import Session
 
 from app.models.production import CrewMember, Location
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -311,3 +312,30 @@ def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCal
                                     call_time=e.call_time, pickup_time=e.pickup_time, note=e.note))
     rows.sort(key=lambda r: (r.department.lower(), r.name.lower()))
     return rows
+
+
+def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | None:
+    """FR-32: one link per person for the whole shoot. Resolves the personal
+    token to its crew member and picks the day that link should open: the
+    earliest shoot day on or after `today`, else the most recent one (the
+    shoot is over, the last sheet is still the useful one). None for an
+    unknown token; a production with no days yet gives call_sheet_id None
+    so the viewer can say "no day published yet" instead of 404-ing."""
+    member = db.query(CrewMember).filter(CrewMember.personal_token == token).first()
+    if member is None:
+        return None
+    sheets = (
+        db.query(CallSheet)
+        .filter(CallSheet.production_id == member.production_id)
+        .order_by(CallSheet.shoot_date, CallSheet.day_number)
+        .all()
+    )
+    days = [
+        CrewDayRef(call_sheet_id=s.id, shoot_date=s.shoot_date, day_number=s.day_number, day_count=s.day_count, unit_name=s.unit_name,
+                   revision_letter=s.current_revision.revision_letter if s.current_revision else None)
+        for s in sheets
+    ]
+    upcoming = [d for d in days if d.shoot_date >= today]
+    chosen = upcoming[0] if upcoming else (days[-1] if days else None)
+    return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
+                       call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)

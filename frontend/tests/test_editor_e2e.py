@@ -199,6 +199,7 @@ def test_personal_link_shows_your_call_and_department_first(page: Page, frontend
     page.wait_for_selector("#personalLinks", timeout=10_000)
     petr_link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
     assert petr_link and "&me=" in petr_link
+    day_link = page.locator("#shareLink").get_attribute("href")
 
     page.goto(petr_link)
     page.wait_for_selector("#you", timeout=15_000)
@@ -208,10 +209,19 @@ def test_personal_link_shows_your_call_and_department_first(page: Page, frontend
     assert "Eva Dvořáková" not in page.locator("#yourDepartment").inner_text()
     assert page.locator("#otherDepartments").count() == 1
 
-    page.goto(petr_link.replace("&me=", "&me=bogus"))
+    # FR-32: the link is the stable one (no sheet id); it resolved to this day. Other-days nav only appears with 2+ days.
+    assert "sheet=" not in petr_link
+    assert page.locator("#otherDays").count() == 0
+
+    # A day link with an unknown token still shows the general sheet (FR-13 failure case)...
+    page.goto(f"{day_link}&me=bogus")
     page.wait_for_selector("#sheet.visible", timeout=15_000)
     page.wait_for_selector("#personalInvalid", timeout=10_000)
     assert page.locator("#you").count() == 0
+    # ...while the stable link with an unknown token says so plainly instead of guessing a day (FR-32 failure case).
+    page.goto(petr_link.replace("&me=", "&me=bogus"))
+    expect(page.locator("#status")).to_contain_text("not on any crew list", timeout=15_000)
+    assert page.locator("#sheet.visible").count() == 0
 
 
 def test_crew_edit_personal_call_and_remove(page: Page, frontend_url: str, api_url: str) -> None:
@@ -531,3 +541,39 @@ def test_next_day_starts_from_this_one_and_a_plain_new_day_continues_the_numberi
     expect(page.locator("#day_number")).to_have_value("3", timeout=10_000)
     assert page.locator("#shoot_date").input_value() == "2026-10-02"
     assert page.locator("#general_crew_call").input_value() == ""
+
+
+def test_one_link_for_the_whole_shoot_opens_the_next_day_and_lists_the_others(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-32: a person's stable link opens their next shoot day (not a past one) and lets them reach the other days."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E mine {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Petr Malý"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Key grip"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Petr Malý", timeout=10_000)
+
+    for shoot_date, day_number, call in (("2026-01-05", "1", "06:00"), ("2099-01-06", "2", "07:15")):
+        page.click("role=tab[name='Days']"); page.click("#newDay")
+        page.wait_for_selector("#general_crew_call", timeout=10_000)
+        page.fill("#shoot_date", shoot_date); page.fill("#day_number", day_number); page.fill("#general_crew_call", call)
+        page.click("#publish")
+        expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+        page.wait_for_url(re.compile(r"day/(?!new)"), timeout=10_000)
+        page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+        page.wait_for_selector("#newDay", timeout=10_000)
+
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crew", timeout=10_000)
+    page.click("role=tab[name='Days']")
+    page.locator("#days a.row").first.click()
+    page.wait_for_selector("#personalLinks", timeout=10_000)
+    link = page.locator("#personalLinks li", has_text="Petr Malý").get_by_role("link", name="Open").get_attribute("href")
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#you", timeout=15_000)
+    assert v.locator("#yourCall").inner_text().strip() == "07:15"  # day 2 in 2099, not the January day
+    days = v.locator("#otherDays .day")
+    expect(days).to_have_count(2)
+    assert "Day 2" in v.locator("#otherDays .day.on").inner_text()
+    v.locator("#otherDays a.day", has_text="Day 1").click()
+    v.wait_for_selector("#you", timeout=15_000)
+    expect(v.locator("#yourCall")).to_have_text("06:00", timeout=10_000)

@@ -3,7 +3,7 @@ import { api, ApiError, type Connection } from "../api";
 import { addDays, clearDraft, draftHasContent, draftKey, emptyDraft, loadDraft, nextDayFrom, saveDraft, type Draft } from "../drafts";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
-import { crewLink } from "./Production";
+import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import type { CallSheetCreated, CrewMember, Location, RevisionCreate, ScheduleItemCreate } from "../../types";
@@ -396,10 +396,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         )}
         {published && crew.length > 0 && (
           <div className="share" id="personalLinks">
-            <div className="label">Personal links · one per crew member</div>
+            <div className="label">Personal links · one per person, for the whole shoot</div>
+            <p className="hint">Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.</p>
             <ul className="list">
               {crew.map((m) => {
-                const link = `${crewLink(conn.apiBase, draft.callSheetId!)}&me=${encodeURIComponent(m.personal_token)}`;
+                const link = personalLink(conn.apiBase, m.personal_token);  // stable for the whole shoot (FR-32)
                 const number = whatsappNumber(m.contact.phone);
                 const message = () => personalMessageText(draft, m, locations, link);
                 return (
