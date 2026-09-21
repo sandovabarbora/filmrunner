@@ -378,7 +378,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: anything that fails live is filed as a `ready` bug item with the reproduction, not left as a note
 
 ## FR-41 · marketing · Pilot outreach message for five Prague ADs
-- state: ready
+- state: done
+- note: 17:00 shift 2026-09-21 (PR #134, branch `docs/fr-41-pilot-outreach-message`) delivered `docs/marketing/pilot-outreach.md`: a Czech WhatsApp-length message and a Czech/English e-mail version, both linking the landing page and the live demo, tone and the single "live and offline-honest" claim taken directly from `docs/marketing/positioning.md` (FR-6), no feature list. Added the dod's Q&A block (offline, data, price, install/account, notifications) with every answer checked against `docs/research/pilot-readiness-2026-09.md`'s PASS/NOT VERIFIED rows, so nothing promises a real-phone push check or an on-set airplane-mode check that hasn't actually run yet, and the price answer says "free for the pilot" rather than repeating BRIEF.md's unverified €99–499 hypothesis. Handled the dod's failure case directly with a standing instruction: re-check both drafts against the readiness file's current state before every send, not just at writing time. Sending itself stays gated the same way FR-3's own invitation text is (INBOX #1) — this is text for the founder to send from her own name, not an automated send. Doc-only (`docs/marketing/**`), auto-merge enabled. PR is the whole deliverable.
 - gated: no
 - why: the landing page (FR-25) and the demo are up; INBOX #1 (interviews) is waiting on the founder's network, and the founder needs a message to paste, not a brief to write
 - dod:
