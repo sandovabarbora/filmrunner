@@ -290,7 +290,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a step that cannot be executed headless is marked "not verified", never "pass"
 
 ## FR-27 · frontend · Day without a location: say what is missing, link to Locations
-- state: ready
+- state: done
+- note: delivered 2026-09-21 (feat/fr-27-location-hint): `GET /productions/{id}/locations/{id}/sun?shoot_date=` reuses the publish-time computation; the day screen fetches it as soon as the first scene has a location and fills blank sunrise/sunset without a reload (never over typed values); the hint under the fields has four states (no location → text + link to Locations / picked but unmapped → type them or add an address / filled / lookup failed → "Could not fetch suggestions; type sunrise and sunset yourself"). 1 backend test, 2 E2E (real Nominatim for the fill, aborted route for the failure case). Backend changed: deploy needed (no migration)
 - gated: no
 - why: pilot protocol G2: a day with no location silently shows empty sunrise, sunset, weather and hospital; the AD cannot tell that adding a location would fill them (FR-19 works only with one)
 - dod:

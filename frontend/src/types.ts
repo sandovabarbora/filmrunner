@@ -197,6 +197,11 @@ export interface Location extends LocationCreate {
   geocoded_display_name: string | null;
 }
 
+export interface SunTimes {
+  sunrise: string | null;
+  sunset: string | null;
+}
+
 export interface LocationSuggestion {
   suggestion: string | null;
 }

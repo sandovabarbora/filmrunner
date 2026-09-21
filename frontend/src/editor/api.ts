@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SunTimes } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -104,6 +104,8 @@ export const api = {
     request<Location>(c, "PATCH", `/api/v1/productions/${productionId}/locations/${locationId}`, patch),
   weatherSuggestion: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
     request<LocationSuggestion>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/weather-suggestion?shoot_date=${encodeURIComponent(shootDate)}`),
+  sunTimes: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
+    request<SunTimes>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/sun?shoot_date=${encodeURIComponent(shootDate)}`),
   hospitalSuggestion: (c: Connection, productionId: string, locationId: string) =>
     request<LocationSuggestion>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/hospital-suggestion`),
 };

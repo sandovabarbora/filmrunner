@@ -70,6 +70,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [locations, setLocations] = useState<Location[]>([]);
   const [weatherSuggestion, setWeatherSuggestion] = useState<string | null>(null);
   const [suggestingWeather, setSuggestingWeather] = useState(false);
+  // FR-27: what the sunrise/sunset hint says — depends on whether a scene has a location and whether the lookup worked.
+  const [sunState, setSunState] = useState<"none" | "filled" | "no-coords" | "failed">("none");
   const [busy, setBusy] = useState(false);
   const [shareText, setShareText] = useState<string | null>(null);
   const latest = useRef<Draft | null>(null);
@@ -132,6 +134,27 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     const ordered = [...(draft?.items ?? [])].sort((a, b) => a.order_index - b.order_index);
     return ordered.find((it) => it.location_id)?.location_id ?? null;
   }
+
+  // FR-27: as soon as the first scene has a location, sunrise and sunset appear without a reload —
+  // the same computation publish would do, just earlier, and never over a value the AD typed.
+  const firstLoc = firstLocationId();
+  const shootDate = draft?.shoot_date ?? "";
+  useEffect(() => {
+    if (!firstLoc || !shootDate) { setSunState("none"); return; }
+    let cancelled = false;
+    api.sunTimes(conn, productionId, firstLoc, shootDate)
+      .then((sun) => {
+        if (cancelled) return;
+        if (!sun.sunrise || !sun.sunset) { setSunState("no-coords"); return; }
+        setSunState("filled");
+        setDraft((d) => {
+          if (!d || (d.sunrise && d.sunset)) return d;
+          return { ...d, sunrise: d.sunrise || sun.sunrise!, sunset: d.sunset || sun.sunset!, dirtySincePublish: !!d.callSheetId };
+        });
+      })
+      .catch(() => { if (!cancelled) setSunState("failed"); });
+    return () => { cancelled = true; };
+  }, [conn, productionId, firstLoc, shootDate]);
 
   async function suggestWeather() {
     if (!draft) return;
@@ -228,7 +251,14 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             )}
           </div>
         )}
-        <p className="hint">Sunrise and sunset fill in automatically from the first scene's location when left blank on publish.</p>
+        <p className="hint" id="sunHint" data-state={sunState}>
+          {sunState === "none" && (locations.length === 0
+            ? <>Add a location to this day to get sunrise, sunset, weather and the nearest hospital. <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a></>
+            : <>Pick a location on a scene below to get sunrise, sunset, weather and the nearest hospital. No location yet? <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a></>)}
+          {sunState === "filled" && <>Sunrise and sunset come from the first scene's location; edit them if you know better.</>}
+          {sunState === "no-coords" && <>That location has no map position, so sunrise and sunset cannot be computed; type them, or add an address under <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>.</>}
+          {sunState === "failed" && <>Could not fetch suggestions; type sunrise and sunset yourself.</>}
+        </p>
         <Field label="Safety notes" id="safety_notes" textarea value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
         <label className="field" htmlFor="headOfDay">
           <span className="label">Head of day</span>

@@ -176,3 +176,23 @@ def test_publish_without_located_scenes_leaves_sunrise_sunset_null(client: TestC
     )
     rev = resp.json()["current_revision"]
     assert rev["sunrise"] is None and rev["sunset"] is None
+
+
+def test_sun_times_for_a_geocoded_location_and_none_without_coordinates(client: TestClient, monkeypatch) -> None:
+    """FR-27: the editor asks for sunrise/sunset as soon as a location is picked; no coordinates means no guess, not an error."""
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0870, lng=14.4208, display_name="Praha") if address else None,
+    )
+    pid = _production(client)
+    mapped = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Square", "address": "Staroměstské náměstí"}, headers=AUTH).json()
+    unmapped = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "TBD"}, headers=AUTH).json()
+
+    resp = client.get(f"/api/v1/productions/{pid}/locations/{mapped['id']}/sun?shoot_date=2026-09-23", headers=AUTH)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["sunrise"].startswith("06:") and body["sunset"].startswith("18:")  # Prague, late September
+
+    resp = client.get(f"/api/v1/productions/{pid}/locations/{unmapped['id']}/sun?shoot_date=2026-09-23", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == {"sunrise": None, "sunset": None}
