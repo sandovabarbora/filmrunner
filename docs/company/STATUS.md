@@ -4,13 +4,17 @@ Updated: 2026-09-21 12:00 (12:00 shift)
 
 ## today
 
+Updated: 2026-09-21 12:45 (founder's interactive session, after the 12:00 shift)
+
 Hackathon week goal (founder, 2026-09-21): pilot-ready by Friday. A Prague AD can run a real shoot day end to end: sign in with a code, crew with photos, day with locations, publish, crew gets a push, personal links, PDF; and a landing page from the FR-6 positioning. Shifts hourly 09 to 17, everything auto-merges (TEAM.md).
 
 - 11:00 — done: FR-22 (call sheet role/tooling desk research).
 - 12:00 — done: FR-20 (Prague market sizing, BRIEF Q5). Between 11:00 and 12:00, other sessions (not this routine) merged FR-23, FR-24, FR-27, FR-29, FR-30, FR-31 to `main` — all now `done` in the backlog; `gh pr list --state open` was empty at the start of this shift, so nothing was skipped.
 - 13:00 — next up: FR-25 (landing page from the FR-6 positioning), the highest remaining `ready`+`gated:no` item. Re-check `gh pr list --state open` first in case this shift's own PR #102 (FR-20) is still pending its CI/auto-merge.
 - Later shifts: FR-8/FR-16's live-Fly-URL verification (repeat attempts, blocked by this session's egress proxy every time so far), the iOS manual test protocol executed as far as possible headless, photo flow behind INBOX #4, FR-17's connected-app remaining work (no note yet names an ungated remaining slice — check before picking up).
-
+- Founder's session, morning: **seven items merged and live** — FR-24 (per-day personal calls, migration b8d4f2a6c1e3 on Fly), FR-29 (send the day / each person's call as a WhatsApp message), FR-23 ("REV B replaces A, issued 06:12" + what changed, on the sheet and in the push), FR-27 (day without a location says what is missing; sunrise fills as soon as a location is picked), FR-30 ("Start Day N+1 from this one"), FR-31 (paste the crew list), FR-32 (one link per person for the whole shoot). Backend deployed at 09:22, 10:0x and 12:2x (Fly v13). Backend 101 tests, frontend 18 unit + 38 E2E, all green.
+- Founder's session, 12:45: FR-33 (cast) has PR #105 open with auto-merge; deploy follows (migration c9e5a3b7d2f4).
+- **Founder-only blocker for a functional app: INBOX #3 (SMTP for the sign-in e-mail).** Without it nobody new can sign in. Gmail App Password into Supabase Auth → SMTP settings, or a Resend account. Everything else on the pilot-readiness list is code-complete.
 
 ## pm
 - summary: unchanged this shift (this shift's own item was marketing, FR-20 — see below). FR-1/FR-2/FR-3/FR-21/FR-22 all still `done`.
