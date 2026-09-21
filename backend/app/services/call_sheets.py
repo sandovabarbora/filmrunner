@@ -18,7 +18,7 @@ from app.models.production import CastMember, CrewMember, Location
 from app.models.push import PushSubscription
 from app.models.seen import RevisionView
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, OpenedSummary, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -455,3 +455,15 @@ def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
     ]
     return SeenReport(revision_letter=revision.revision_letter,
                       seen=[e for e in entries if e.seen_at is not None], not_seen=[e for e in entries if e.seen_at is None])
+
+
+def build_opened_summary(db: Session, call_sheet: CallSheet) -> OpenedSummary | None:
+    """FR-43: the days list at a glance — opened by 3 of 12, and where the day starts."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return None
+    seen = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).count()
+    total = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).count()
+    first = next((i for i in sorted(revision.schedule_items, key=lambda i: i.order_index) if i.location_id is not None), None)
+    loc = db.get(Location, first.location_id) if first is not None else None
+    return OpenedSummary(seen=seen, total=total, first_location_name=loc.name if loc is not None else None)

@@ -654,6 +654,7 @@ def test_cancel_a_day_shows_the_banner_everywhere_and_restore_brings_it_back(pag
     page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
     page.wait_for_selector("#days", timeout=10_000)
     expect(page.locator("#days li").first).to_contain_text("CANCELLED")
+    expect(page.locator("#days li").first).to_contain_text("call 06:30")  # FR-43: the list says the call at a glance
 
     page.locator("#days a.row").first.click()
     page.wait_for_selector("#restoreDay", timeout=10_000)
@@ -710,6 +711,11 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 1 of 2", timeout=10_000)
     expect(page.locator("#notSeen")).to_contain_text("Tomáš Novák")
     expect(page.locator("#notSeen")).not_to_contain_text("Eva Malá")
+    # FR-43: the days list carries the same count without opening the day.
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+    page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#days li").first).to_contain_text("opened 1/2")
+    page.locator("#days a.row").first.click(); page.wait_for_selector("#general_crew_call", timeout=10_000)
 
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)

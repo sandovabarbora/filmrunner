@@ -103,7 +103,13 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
           {days.map((d) => (
             <li key={d.id}>
               <a className="row" href={href({ screen: "day", productionId, callSheetId: d.id })}>
-                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}</span>
+                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}
+                  <span className="meta day-glance">
+                    {d.current_revision?.general_crew_call && <>call <b>{d.current_revision.general_crew_call}</b></>}
+                    {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
+                    {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>opened {d.opened.seen}/{d.opened.total}</span></>}
+                  </span>
+                </span>
                 <span className="rev-badge small" data-rev={d.current_revision?.revision_letter ?? "A"}>REV {d.current_revision?.revision_letter ?? "–"}</span>
               </a>
               <div className="row-actions">

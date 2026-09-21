@@ -77,6 +77,8 @@ export interface CallSheet {
   cast_calls?: CastCallRow[];
   /** FR-35: where the day happens, in schedule order. */
   locations?: SheetLocation[];
+  /** FR-43: on the AD's days list only. */
+  opened?: { seen: number; total: number; first_location_name: string | null } | null;
   /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
   previous_revision?: RevisionSummary | null;
   changes?: RevisionChange[];
