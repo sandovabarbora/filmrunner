@@ -4,6 +4,8 @@ first scheduled location. Geocoding/weather/hospital calls are monkeypatched
 at the service module used by the router — see test_location_services.py
 for the services' own request/response handling."""
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
@@ -196,3 +198,56 @@ def test_sun_times_for_a_geocoded_location_and_none_without_coordinates(client: 
     resp = client.get(f"/api/v1/productions/{pid}/locations/{unmapped['id']}/sun?shoot_date=2026-09-23", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {"sunrise": None, "sunset": None}
+
+
+def test_delete_location_drops_the_link_on_a_scene_that_used_it_and_the_day_still_publishes(client: TestClient) -> None:
+    """FR-38 dod: scenes on any revision that pointed to the deleted location
+    keep their text and lose the link (location_id null); the sheet's Where
+    block simply drops it, and the day still loads and can publish again."""
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "general_crew_call": "06:30",
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    sheet_id = resp.json()["id"]
+
+    resp = client.delete(f"/api/v1/productions/{pid}/locations/{loc_id}", headers=AUTH)
+    assert resp.status_code == 204, resp.text
+
+    resp = client.get(f"/api/v1/productions/{pid}/locations", headers=AUTH)
+    assert resp.json() == []
+
+    resp = client.get(f"/api/v1/call-sheets/{sheet_id}", headers=AUTH)
+    assert resp.status_code == 200, resp.text
+    item = resp.json()["current_revision"]["schedule_items"][0]
+    assert item["set_description"] == "Riverbank"
+    assert item["location_id"] is None
+    assert resp.json()["locations"] == []
+
+    # The day still loads and can publish another revision after the location is gone.
+    resp = client.post(
+        f"/api/v1/call-sheets/{sheet_id}/revisions",
+        json={"general_crew_call": "06:45", "schedule_items": [
+            {"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+             "set_description": "Riverbank", "page_count_eighths": 8, "location_id": None},
+        ]},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["revision_letter"] == "B"
+
+
+def test_delete_location_that_does_not_exist_returns_404(client: TestClient) -> None:
+    pid = _production(client)
+    resp = client.delete(f"/api/v1/productions/{pid}/locations/{uuid.uuid4()}", headers=AUTH)
+    assert resp.status_code == 404

@@ -110,6 +110,8 @@ export const api = {
     request<Location>(c, "POST", `/api/v1/productions/${productionId}/locations`, payload),
   updateLocation: (c: Connection, productionId: string, locationId: string, patch: LocationUpdate) =>
     request<Location>(c, "PATCH", `/api/v1/productions/${productionId}/locations/${locationId}`, patch),
+  deleteLocation: (c: Connection, productionId: string, locationId: string) =>
+    request<void>(c, "DELETE", `/api/v1/productions/${productionId}/locations/${locationId}`),
   weatherSuggestion: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
     request<LocationSuggestion>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/weather-suggestion?shoot_date=${encodeURIComponent(shootDate)}`),
   listCast: (c: Connection, productionId: string) =>

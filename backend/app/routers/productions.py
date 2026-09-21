@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
 from app.authz import CREW_EDIT, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
-from app.models.call_sheet import CallSheet, CallSheetRevision
+from app.models.call_sheet import CallSheet, CallSheetRevision, ScheduleItem
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
 from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production
@@ -212,6 +212,18 @@ def update_location(
     db.commit()
     db.refresh(location)
     return location
+
+
+@router.delete("/productions/{production_id}/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_location(
+    production_id: uuid.UUID, location_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+) -> None:
+    """Scenes that pointed to this location (on any revision, past or current) keep their
+    text and just lose the link, so a published revision never breaks (FR-38)."""
+    location = _location_of_production_or_404(db, production_id, location_id)
+    db.query(ScheduleItem).filter(ScheduleItem.location_id == location_id).update({"location_id": None})
+    db.delete(location)
+    db.commit()
 
 
 @router.get("/productions/{production_id}/locations/{location_id}/weather-suggestion", response_model=LocationSuggestion)
