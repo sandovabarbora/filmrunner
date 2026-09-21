@@ -268,6 +268,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - unit tests for the text builders and the phone normalisation (Czech 9-digit numbers get 420, spaces and 00 prefix removed); E2E checks the per-person message carries the day's personal call
   - failure case: a phone that cannot be turned into a wa.me number (letters, too short) shows the copy/share path, never a broken WhatsApp link
 
+## FR-30 · frontend · Tomorrow starts as today: "Start Day N+1 from this one"
+- state: done
+- note: delivered 2026-09-21 (feat/fr-30-next-day-from-this): `nextDayFrom` in drafts.ts copies unit, calls, head of day, safety notes, scenes and personal calls into an unpublished new day one date on (weather and sun left blank: they belong to the date); the button appears on a published day; an existing unpublished new day is never replaced silently (Replace/Keep). A plain "+ New day" now continues the numbering and the date from the last day. 6 unit tests, 1 E2E
+- gated: no
+- why: an AD's Day 2 is Day 1 with a new date and new scenes; retyping the unit, the calls, the head of day and every personal call each evening is the kind of chore that sends people back to the PDF
+- dod:
+  - on a published day: "Start Day N+1 from this one" opens the new-day screen prefilled (date +1, day N+1, unit, calls, head of day, safety notes, scenes, personal calls); weather, sunrise and sunset blank
+  - a brand-new day (no copy) proposes day number and date continuing the last day
+  - failure case: an unpublished new day already on the phone is not overwritten without asking
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

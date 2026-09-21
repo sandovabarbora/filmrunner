@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, type Connection } from "../api";
-import { clearDraft, draftKey, emptyDraft, loadDraft, saveDraft, type Draft } from "../drafts";
+import { addDays, clearDraft, draftHasContent, draftKey, emptyDraft, loadDraft, nextDayFrom, saveDraft, type Draft } from "../drafts";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink } from "./Production";
@@ -74,6 +74,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [sunState, setSunState] = useState<"none" | "filled" | "no-coords" | "failed">("none");
   const [busy, setBusy] = useState(false);
   const [shareText, setShareText] = useState<string | null>(null);
+  const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
 
@@ -96,8 +97,15 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           else { setDraft(null); setReadOnly(true); setNotice(noticeFromError(err, "Cannot load this day")); }
         }
       } else if (!cancelled) {
-        setDraft(local ?? emptyDraft(productionId, productionName));
-        setReadOnly(false);
+        if (local) { setDraft(local); setReadOnly(false); return; }
+        // A brand-new day continues the production's numbering: the day after the last one, one date on.
+        const fresh = emptyDraft(productionId, productionName);
+        try {
+          const days = await api.listCallSheets(conn, productionId);
+          const last = [...days].sort((a, b) => a.day_number - b.day_number).at(-1);
+          if (last) { fresh.day_number = last.day_number + 1; fresh.day_count = Math.max(last.day_count, fresh.day_number); fresh.shoot_date = addDays(last.shoot_date, 1); fresh.unit_name = last.unit_name; }
+        } catch { /* offline or not allowed: the defaults are fine */ }
+        if (!cancelled) { setDraft(fresh); setReadOnly(false); }
       }
     })();
     api.listCrew(conn, productionId).then((c) => { if (!cancelled) setCrew(c); }).catch(() => undefined);
@@ -198,6 +206,17 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     } finally {
       setBusy(false);
     }
+  }
+
+  /** FR-30: tomorrow starts as today. Goes to the new-day screen with the copy as its draft; asks before replacing an unpublished new day. */
+  async function startNextDay(replace: boolean) {
+    if (!draft) return;
+    const newKey = draftKey(productionId, null);
+    if (!replace && draftHasContent(await loadDraft(newKey).catch(() => null))) { setNextDayClash(true); return; }
+    await saveDraft(nextDayFrom(draft));
+    setNextDayClash(false);
+    setNotice({ kind: "ok", text: `Day ${draft.day_number + 1} started from Day ${draft.day_number}. Change the date and scenes, then publish.` });
+    window.location.hash = href({ screen: "day", productionId, callSheetId: null });
   }
 
   /** Phone share sheet (WhatsApp is one tap away) when the browser has one; otherwise copy and show the text with a wa.me link. */
@@ -338,6 +357,17 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
           {busy ? "Publishing…" : published ? `Publish REV ${nextLetter(draft.lastPublishedLetter!)}` : "Publish"}
         </button>
+        {published && !readOnly && (
+          <div className="inline next-day" id="nextDay">
+            {!nextDayClash
+              ? <button type="button" className="secondary" id="startNextDay" onClick={() => void startNextDay(false)}>Start Day {draft.day_number + 1} from this one</button>
+              : <>
+                  <span className="hint" id="nextDayClash">An unpublished new day already exists on this phone.</span>
+                  <button type="button" className="quiet danger" id="replaceNextDay" onClick={() => void startNextDay(true)}>Replace it</button>
+                  <button type="button" className="quiet" onClick={() => setNextDayClash(false)}>Keep it</button>
+                </>}
+          </div>
+        )}
         {published && (
           <div className="share">
             <div className="label">Crew link</div>

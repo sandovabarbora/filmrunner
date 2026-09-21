@@ -458,3 +458,52 @@ def test_rev_b_shows_what_changed_and_rev_a_shows_no_diff(page: Page, frontend_u
     crew = v.locator("#revChanges li[data-field='crew_call']")
     assert crew.count() == 1 and "06:30" in crew.inner_text() and "07:30" in crew.inner_text()
     assert v.locator("#revChanges li[data-field='shooting_call']").count() == 0
+
+
+def test_next_day_starts_from_this_one_and_a_plain_new_day_continues_the_numbering(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-30: "Start Day 2 from this one" copies calls, scenes and personal calls to an unpublished Day 2 one date on;
+    an unpublished new day is never replaced silently; a plain "+ New day" after Day 2 offers Day 3."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E next {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Tomáš Novák"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Tomáš Novák", timeout=10_000)
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#shoot_date", "2026-09-30"); page.fill("#general_crew_call", "06:30")
+    page.click("#addScene")
+    page.locator("#items .item").nth(0).get_by_label("Scene").fill("7")
+    page.locator("#items .item").nth(0).get_by_label("Set").fill("COURTYARD")
+    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.get_by_label("Call for Tomáš Novák").fill("05:15")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+
+    page.click("#startNextDay")
+    expect(page.locator("#notice")).to_contain_text("Day 2 started from Day 1", timeout=10_000)
+    page.wait_for_url(re.compile(r"day/new$"), timeout=10_000)
+    expect(page.locator("#day_number")).to_have_value("2", timeout=10_000)
+    assert page.locator("#shoot_date").input_value() == "2026-10-01"
+    assert page.locator("#general_crew_call").input_value() == "06:30"
+    assert page.locator("#items .item").nth(0).get_by_label("Scene").input_value() == "7"
+    expect(page.get_by_label("Call for Tomáš Novák")).to_have_value("05:15", timeout=10_000)
+    assert page.locator("#publishState").inner_text().startswith("Not published yet")
+
+    # Back on Day 1, starting Day 2 again must not silently discard the Day 2 draft.
+    page.go_back(); page.wait_for_selector("#startNextDay", timeout=10_000)
+    page.click("#startNextDay")
+    expect(page.locator("#nextDayClash")).to_be_visible(timeout=5_000)
+    page.click("#replaceNextDay")
+    page.wait_for_url(re.compile(r"day/new$"), timeout=10_000)
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_url(re.compile(r"day/(?!new)"), timeout=10_000)
+
+    # A plain new day now continues: Day 3 on 2 October.
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+    page.wait_for_selector("#newDay", timeout=10_000); page.click("#newDay")
+    expect(page.locator("#day_number")).to_have_value("3", timeout=10_000)
+    assert page.locator("#shoot_date").input_value() == "2026-10-02"
+    assert page.locator("#general_crew_call").input_value() == ""
