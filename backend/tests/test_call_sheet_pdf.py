@@ -34,7 +34,7 @@ def _claude_client(answer: str, status: int = 200) -> httpx.Client:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["x-api-key"] == "test-key" and request.headers["anthropic-version"]
         body = json.loads(request.content)
-        assert body["temperature"] == 0 and "CALL SHEET TEXT" in body["messages"][0]["content"]
+        assert "temperature" not in body and "CALL SHEET TEXT" in body["messages"][0]["content"]
         return httpx.Response(status, json={"content": [{"type": "text", "text": answer}]})
     return httpx.Client(transport=httpx.MockTransport(handler))
 

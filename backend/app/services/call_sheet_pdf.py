@@ -176,7 +176,8 @@ def claude(text: str, *, api_key: str, model: str, client: httpx.Client | None =
     resp = http.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": model, "max_tokens": 4096, "temperature": 0,
+        # No `temperature`: the Claude 5 models reject it as deprecated (400), and extraction is deterministic enough by prompt.
+        json={"model": model, "max_tokens": 4096,
               "messages": [{"role": "user", "content": PROMPT + text}]},
     )
     resp.raise_for_status()
