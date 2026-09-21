@@ -11,6 +11,7 @@ placeholder. Re-run after any visual change to the sheet to refresh them.
 """
 
 import http.server
+import os
 import socketserver
 import sys
 import threading
@@ -55,9 +56,12 @@ def main() -> int:
             # headless=True would add this Chromium build's removed "--headless=old"
             # flag; pass the new headless mode explicitly instead (same workaround
             # prior shifts used against this sandbox's pinned Chromium revision).
-            browser = pw.chromium.launch(
-                executable_path=CHROMIUM_PATH, headless=False, args=["--headless=new"]
-            )
+            # The cloud sandbox has only a pinned Chromium at CHROMIUM_PATH (and no system fonts, so its
+            # shots look rough); on a Mac use Playwright's own browser and the real system fonts.
+            if os.path.exists(CHROMIUM_PATH):
+                browser = pw.chromium.launch(executable_path=CHROMIUM_PATH, headless=False, args=["--headless=new"])
+            else:
+                browser = pw.chromium.launch(headless=True)
             page = browser.new_page(viewport={"width": 390, "height": 844})
             page.goto(f"http://127.0.0.1:{port}/index.html?demo=1", wait_until="networkidle")
             page.wait_for_selector("#sheet.visible", timeout=10_000)
