@@ -107,6 +107,7 @@ export function App() {
             <p>Create shoot days, publish revisions, keep the crew and their numbers in one place.</p>
             <a className="button primary" id="openEditor" href="editor.html">Open the editor</a>
           </div>
+          <p className="home-about"><a id="openLanding" href="landing.html">What is FilmRunner?</a></p>
         </section>
       )}
 

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FilmRunner — filmovací plán, který je opravdu živý</title>
+  <meta name="description" content="Filmovací plán (call sheet), který je živý pro celý štáb a upřímný, když signál zmizí. Živé demo a žádost o pilotní provoz." />
+  <meta name="theme-color" content="#f7f4ee" />
+  <link rel="stylesheet" href="/src/landing.css" />
+</head>
+<body data-lang="cs">
+  <div class="wrap">
+    <header class="top">
+      <span class="word">FilmRunner</span>
+      <div class="langToggle" role="group" aria-label="Language / Jazyk">
+        <button type="button" data-lang="cs" aria-pressed="true">CS</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1 lang="cs">Filmovací plán, který je opravdu živý — a upřímný ve chvíli, kdy není.</h1>
+      <h1 lang="en">The call sheet that's actually live — and honest the moment it isn't.</h1>
+      <p lang="cs">Každý člen štábu vidí aktuální revizi ve chvíli, kdy ji AD publikuje. Když na place zmizí signál, FilmRunner to řekne narovinu — nikdy tiše nezobrazí včerejší časy, jako by platily dnes.</p>
+      <p lang="en">Every crew member sees the current revision the instant it publishes. When the signal drops on set, FilmRunner says so plainly — it never quietly shows yesterday's call time as if it were today's.</p>
+      <div class="cta-row">
+        <a class="button primary" href="index.html?demo=1">
+          <span lang="cs">Vyzkoušet živé demo</span>
+          <span lang="en">Try the live demo</span>
+        </a>
+        <a class="button" href="editor.html">
+          <span lang="cs">Otevřít editor</span>
+          <span lang="en">Open the editor</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="shots" aria-label="Screenshots">
+      <figure>
+        <img data-screenshot src="landing/call-sheet-top.jpg" width="390" height="220"
+          alt="Hlavička plánu: produkce, den, odznak REV" />
+        <figcaption>
+          <span lang="cs">Aktuální revize, na první pohled</span>
+          <span lang="en">The current revision, at a glance</span>
+        </figcaption>
+      </figure>
+      <figure>
+        <img data-screenshot src="landing/locations.jpg" width="390" height="220"
+          alt="Blok Kam: adresa, parkování, nejbližší nemocnice, odkaz na mapu" />
+        <figcaption>
+          <span lang="cs">Kam: adresa, parkování, nemocnice, mapa</span>
+          <span lang="en">Where: address, parking, hospital, a map link</span>
+        </figcaption>
+      </figure>
+      <figure>
+        <img data-screenshot src="landing/contacts.jpg" width="390" height="220"
+          alt="Kdo volat: vedoucí dne a vedoucí oddělení, klepnutím zavolat" />
+        <figcaption>
+          <span lang="cs">Kdo volat, na klepnutí</span>
+          <span lang="en">Who to call, tap-to-call</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <ul class="proof">
+      <li><span class="n">1</span>
+        <span lang="cs">Upřímný offline stav — aplikace jasně řekne, když se díváte na uloženou kopii, a odkdy.</span>
+        <span lang="en">Offline-honest status — the app states plainly when it's showing a cached copy, and from when.</span>
+      </li>
+      <li><span class="n">2</span>
+        <span lang="cs">Push notifikace a poznámka přímo na plánu při každé revizi, s přehledem kdo ji dostal.</span>
+        <span lang="en">Push notification and a note on the sheet itself for every revision, with delivery logged per person.</span>
+      </li>
+      <li><span class="n">3</span>
+        <span lang="cs">Odkaz a QR kód pro štáb na jedno klepnutí — bez instalace aplikace, bez opisování ID.</span>
+        <span lang="en">One-tap crew link and QR code — no app install, no typed IDs.</span>
+      </li>
+      <li><span class="n">4</span>
+        <span lang="cs">Osobní volání — vlastní čas a oddělení každého člověka nahoře, ne sdílené PDF k prohledávání.</span>
+        <span lang="en">Personal call — each person's own call time and department surface first, not a shared PDF to search.</span>
+      </li>
+    </ul>
+
+    <section class="who">
+      <p lang="cs">Postaveno pro 1. AD nebo produkčního koordinátora, kdo plán skutečně sestavuje — ne další dashboard pro produkční kancelář.</p>
+      <p lang="en">Built for the 1st AD or production coordinator who actually assembles the call sheet — not another dashboard for the production office.</p>
+    </section>
+
+    <section class="cta">
+      <h2 lang="cs">Zkusíme to na jednom natáčení?</h2>
+      <h2 lang="en">Want to try it on one shoot?</h2>
+      <p lang="cs">Napište pár řádků o vaší produkci — odpovím sama.</p>
+      <p lang="en">Send a few lines about your production — I'll reply myself.</p>
+      <a class="button primary" href="mailto:sandovabarb@gmail.com?subject=FilmRunner%20pilot&body=Production%20name%3A%0ACrew%20size%3A%0AFirst%20shoot%20date%3A%0A">
+        <span lang="cs">Vyžádat pilotní provoz</span>
+        <span lang="en">Request a pilot</span>
+      </a>
+    </section>
+
+    <footer class="foot">
+      <p lang="cs">FilmRunner je ve vývoji; toto je pracovní verze pro pilotní produkce v Praze.</p>
+      <p lang="en">FilmRunner is in development; this is a working build for pilot productions in Prague.</p>
+      <p><a href="index.html?demo=1">
+        <span lang="cs">Živé demo</span><span lang="en">Live demo</span>
+      </a></p>
+    </footer>
+  </div>
+  <script type="module" src="/src/landing.ts"></script>
+</body>
+</html>
