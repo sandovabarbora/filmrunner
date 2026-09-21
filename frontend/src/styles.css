@@ -284,3 +284,17 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .cancelled { margin: 10px 0 0; padding: 10px 12px; border: 2px solid #b3261e; border-radius: 3px; background: #fbeae8; color: #7a1a13; font-size: 0.9375rem; }
 .cancelled strong { letter-spacing: 0.08em; }
 .other-days .day.off { text-decoration: line-through; color: var(--muted); }
+/* FR-35: where the day happens. */
+.locations { margin: 16px 0 0; }
+.locations h2 { margin: 0 0 6px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.location { padding: 10px 14px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.location + .location { margin-top: 8px; }
+.location-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.location-head .name { font-weight: 700; font-size: 1rem; }
+.location-head .scenes { font-family: var(--mono); font-size: 0.8125rem; color: var(--muted); }
+.location .address { margin-top: 2px; font-size: 0.9375rem; }
+.location .address a { color: var(--ink); }
+.location .line { margin-top: 4px; font-size: 0.875rem; color: var(--ink-2); }
+.location .line .k { color: var(--muted); }
+.schedule .set .loc { color: var(--muted); font-size: 0.8125rem; }
+@media print { .location { break-inside: avoid; } .location .address a { text-decoration: none; } }

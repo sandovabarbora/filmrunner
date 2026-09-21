@@ -1,5 +1,5 @@
 import { Avatar } from "./Avatar";
-import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem } from "./types";
+import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
 
 /** "06:12" in the phone's own time zone; the raw value if it does not parse. */
 function issuedAt(iso: string): string {
@@ -14,7 +14,14 @@ function pages(eighths: number): string {
   return whole ? `${whole} ${rest}/8` : `${rest}/8`;
 }
 
-function ScheduleRow({ item }: { item: ScheduleItem }) {
+/** Apple Maps on iPhone opens this too; coordinates beat the address when the geocoder resolved them. */
+function mapsUrl(loc: SheetLocation): string | null {
+  if (loc.geo_lat !== null && loc.geo_lng !== null) return `https://maps.google.com/?q=${loc.geo_lat},${loc.geo_lng}`;
+  if (loc.address) return `https://maps.google.com/?q=${encodeURIComponent(loc.address)}`;
+  return null;
+}
+
+function ScheduleRow({ item, locationName }: { item: ScheduleItem; locationName?: string }) {
   // React escapes text by construction; never dangerouslySetInnerHTML here.
   return (
     <tr>
@@ -22,7 +29,7 @@ function ScheduleRow({ item }: { item: ScheduleItem }) {
       <td className="scene">{item.scene_number}</td>
       <td className="ie">{item.int_ext}</td>
       <td className="dn">{item.day_night}</td>
-      <td className="set">{item.set_description}</td>
+      <td className="set">{item.set_description}{locationName && <span className="loc"> · {locationName}</span>}</td>
       <td className="pages">{pages(item.page_count_eighths)}</td>
     </tr>
   );
@@ -38,6 +45,8 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
   const rev = callSheet.current_revision;
   const myDept = personal?.department ?? null;
   const heads = callSheet.contacts?.department_heads ?? [];
+  const sheetLocations = callSheet.locations ?? [];
+  const locationNames = new Map(sheetLocations.map((l) => [l.id, l.name]));
   const mine = myDept ? heads.filter((c) => c.department === myDept) : [];
   const others = myDept ? heads.filter((c) => c.department !== myDept) : heads;
   const items = [...(rev?.schedule_items ?? [])].sort((a, b) => a.order_index - b.order_index);
@@ -124,6 +133,27 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         </section>
       )}
 
+      {sheetLocations.length > 0 && (
+        <section className="locations" id="locations" aria-label="Where">
+          <h2>Where</h2>
+          {sheetLocations.map((loc) => {
+            const url = mapsUrl(loc);
+            return (
+              <div className="location" key={loc.id} data-location={loc.id}>
+                <div className="location-head">
+                  <span className="name">{loc.name}</span>
+                  {loc.scene_numbers.length > 0 && <span className="scenes">Sc {loc.scene_numbers.join(", ")}</span>}
+                </div>
+                {loc.address && <div className="address">{url ? <a href={url} target="_blank" rel="noreferrer">{loc.address}</a> : loc.address}</div>}
+                {!loc.address && url && <div className="address"><a href={url} target="_blank" rel="noreferrer">Open in maps</a></div>}
+                {loc.parking_notes && <div className="line"><span className="k">Parking </span>{loc.parking_notes}</div>}
+                {loc.nearest_hospital && <div className="line"><span className="k">Hospital </span>{loc.nearest_hospital}</div>}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       <section className="schedule" aria-label="Shooting schedule">
         <h2>Schedule</h2>
         <table>
@@ -131,7 +161,7 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
             <tr><th>#</th><th>Scene</th><th>I/E</th><th>D/N</th><th>Set</th><th>Pages</th></tr>
           </thead>
           <tbody id="scheduleBody">
-            {items.map((item) => <ScheduleRow key={item.id ?? item.order_index} item={item} />)}
+            {items.map((item) => <ScheduleRow key={item.id ?? item.order_index} item={item} locationName={locationNames.get(item.location_id ?? "")} />)}
           </tbody>
         </table>
       </section>

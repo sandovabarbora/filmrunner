@@ -75,6 +75,8 @@ export interface CallSheet {
   contacts?: CallSheetContacts | null;
   personal_calls?: PersonalCallRow[];
   cast_calls?: CastCallRow[];
+  /** FR-35: where the day happens, in schedule order. */
+  locations?: SheetLocation[];
   /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
   previous_revision?: RevisionSummary | null;
   changes?: RevisionChange[];
@@ -274,4 +276,15 @@ export interface CastCallEntry {
 export interface CastCallRow extends CastCallEntry {
   name: string;
   character_name: string;
+}
+
+export interface SheetLocation {
+  id: string;
+  name: string;
+  address: string | null;
+  parking_notes: string | null;
+  nearest_hospital: string | null;
+  geo_lat: number | null;
+  geo_lng: number | null;
+  scene_numbers: string[];
 }

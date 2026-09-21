@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.models.production import CastMember, CrewMember, Location
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -316,6 +316,33 @@ def change_summary(changes: list[RevisionChange]) -> str:
         else:
             parts.append(f"{c.label.lower()} {c.before or '—'} → {c.after or '—'}")
     return "; ".join(parts) if parts else "no changes to calls or scenes"
+
+
+def build_sheet_locations(db: Session, call_sheet: CallSheet) -> list[SheetLocation]:
+    """The day's locations in the order the schedule reaches them, each with the scenes shot there (FR-35).
+
+    Read live from the Locations tab, never stored on the revision: a corrected address or parking note
+    reaches every sheet at once, the same rule as contacts. A scene whose location was deleted is skipped."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return []
+    out: list[SheetLocation] = []
+    by_id: dict[uuid.UUID, SheetLocation] = {}
+    for item in sorted(revision.schedule_items, key=lambda i: i.order_index):
+        if item.location_id is None:
+            continue
+        entry = by_id.get(item.location_id)
+        if entry is None:
+            loc = db.get(Location, item.location_id)
+            if loc is None:
+                continue
+            entry = SheetLocation(id=loc.id, name=loc.name, address=loc.address, parking_notes=loc.parking_notes, nearest_hospital=loc.nearest_hospital,
+                                  geo_lat=loc.geo_lat, geo_lng=loc.geo_lng, scene_numbers=[])
+            by_id[loc.id] = entry
+            out.append(entry)
+        if item.scene_number and item.scene_number not in entry.scene_numbers:
+            entry.scene_numbers.append(item.scene_number)
+    return out
 
 
 def build_cast_calls(db: Session, call_sheet: CallSheet) -> list[CastCallRow]:

@@ -32,6 +32,23 @@ def test_add_location_with_real_address_shows_resolved_place_name(page: Page, fr
     expect(page.locator("#locations")).to_contain_text("Riverbank, Troja", timeout=15_000)
     expect(page.locator("#locations")).to_contain_text("resolved:")
 
+    # FR-35: on the sheet, a resolved location gets a maps link on its address and parking under it.
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#addScene")
+    page.locator("#items .item").nth(0).get_by_label("Scene").fill("4")
+    page.locator("#items .item").nth(0).get_by_label("Set").fill("EXT. RIVERBANK")
+    page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Riverbank, Troja")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    v = page.context.new_page(); v.goto(page.locator("#shareLink").get_attribute("href")); v.wait_for_selector("#locations", timeout=15_000)
+    link = v.locator("#locations .address a")
+    expect(link).to_have_text("Trojská 1, Praha 7")
+    assert link.get_attribute("href").startswith("https://maps.google.com/?q=50.")
+    v.close()
+
 
 def test_add_location_with_unresolvable_address_stays_editable_and_visible(page: Page, frontend_url: str, api_url: str) -> None:
     """Failure case (dod): a geocoder miss never blocks saving the location,
@@ -72,6 +89,17 @@ def test_scene_can_pick_a_location_and_publish_still_succeeds(page: Page, fronte
 
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+
+    # FR-35: the crew's sheet says where — the location by name on the scene and in a "Where" block with parking.
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    v = page.context.new_page(); v.goto(page.locator("#shareLink").get_attribute("href")); v.wait_for_selector("#locations", timeout=15_000)
+    block = v.locator("#locations .location")
+    expect(block).to_have_count(1)
+    expect(block).to_contain_text("Studio A")
+    expect(block).to_contain_text("Sc 1")
+    expect(v.locator("#scheduleBody .set").first).to_contain_text("Studio A")
+    assert v.locator("#locations a").count() == 0  # no address, no coordinates: no maps link to a wrong place
+    v.close()
 
 
 def test_suggest_weather_without_resolved_location_warns_instead_of_hanging(page: Page, frontend_url: str, api_url: str) -> None:
