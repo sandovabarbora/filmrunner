@@ -1,10 +1,50 @@
 # Status
 
-Updated: 2026-09-18 17:00 (17:00 shift, last of the day)
+Updated: 2026-09-21 08:00 (morning brief)
 
 ## today
 
-**17:00 update**: took the plan's own item, **FR-4** (tech-lead): wrote
+Five items qualify (`ready`, or `in-progress` with a note naming
+remaining ungated work, `gated: no`/`partial`, dod not dependent on a
+still-open PR), taken in `BACKLOG.md` priority order:
+
+- 09:00 · FR-8 — verify the PWA's service worker actually registers over
+  the real deployed Fly-hosted HTTPS URL on iOS Safari (not just the
+  GitHub Pages demo bundle), closing ADR-002's one unverified failure
+  case. Note: the last two attempts (09:00 and 15:00, 2026-09-18) hit
+  this session's egress proxy 403'ing `fly.dev`/`api.fly.io` outright; if
+  that repeats, the shift should skip per contract and take the next
+  ready+ungated item.
+- 11:00 · FR-16 — with INBOX #5's VAPID keys now set, verify the push
+  flow end to end against the live Fly-hosted configuration and flip
+  FR-16 to `done` if it holds (same egress caveat as FR-8 above).
+- 13:00 · FR-6 — write `docs/marketing/positioning.md`, grounded in FR-1's
+  corrected brief and FR-2's teardown (both `state: done`; FR-1's own PR
+  #81 is still open, so this shift should pull its content from that
+  branch rather than assume it is on `main`).
+- 15:00 · FR-20 — Prague market sizing (`docs/research/prague-market-sizing.md`),
+  answering BRIEF.md Q5 from public listings.
+- 17:00 · FR-22 — desk-research proxy for BRIEF.md Q1/Q2
+  (`docs/research/call-sheet-role-and-tooling-signals.md`), the same
+  public-source-proxy convention FR-21 used for Q6.
+
+`BACKLOG.md` has exactly 3 `ready`+ungated items (FR-6, FR-20, FR-22) —
+at the 3-item floor, not below it, so no backlog-refill PR this morning.
+
+Three open PRs have sat unmerged since Friday 2026-09-18, now past the
+weekend — over one working day waiting on the founder:
+- **#79** (`feat/fr-18-crew-offline-edit-queue`) — FR-18's offline-edit
+  failure case; touches `frontend/`, no auto-merge.
+- **#81** (`docs/fr-1-verified-source-brief`) — FR-1's BRIEF.md
+  correction from the real June 2026 source; touches `docs/company/`,
+  no auto-merge; also what FR-6 (today's 13:00 item) should ground in.
+- **#83** (`docs/fr-4-adr-001-backend-half`) — ADR-001's backend half;
+  touches `docs/adr/`, no auto-merge.
+
+None of today's five planned items depend on any of these three PRs
+being merged first, so nothing is skipped for that reason.
+
+**17:00 update (2026-09-18, prior day)**: took the plan's own item, **FR-4** (tech-lead): wrote
 the remaining backend half of ADR-001, `docs/adr/ADR-001-backend-stack.md`
 (the frontend half was already written 2026-09-14). States the three
 options considered (keep the old Next.js + FastAPI + Supabase repo, this
