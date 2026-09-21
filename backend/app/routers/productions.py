@@ -7,6 +7,7 @@ import logging
 import uuid
 from datetime import date
 
+from fastapi.responses import Response
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -15,8 +16,8 @@ from app.authz import CREW_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Acc
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
-from app.models.production import Contact, CrewMember, Location, Production
-from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, upload_contact_photo
+from app.models.production import Contact, ContactPhoto, CrewMember, Location, Production
+from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, delete_contact_photo, store_contact_photo
 from app.schemas.production import (
     ContactUpdate,
     CrewMemberUpdate,
@@ -325,7 +326,7 @@ async def upload_contact_photo_endpoint(
     if len(data) > MAX_PHOTO_BYTES:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
     try:
-        contact.photo_url = upload_contact_photo(str(contact_id), data, file.content_type)
+        contact.photo_url = store_contact_photo(db, str(contact_id), data, file.content_type)
     except PhotoUploadNotConfigured as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except PhotoUploadFailed as exc:
@@ -344,6 +345,19 @@ def remove_contact_photo(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
     _require_contact_edit(db, principal, contact_id)
     contact.photo_url = None
+    delete_contact_photo(db, contact_id)
     db.commit()
     db.refresh(contact)
     return contact
+
+
+public_router = APIRouter()  # unauthenticated: the crew's phones load avatars from the sheet
+
+
+@public_router.get("/public/contacts/{contact_id}/photo")
+def get_contact_photo_public(contact_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
+    """Serve a stored avatar. Cacheable for a day; the URL's ?v= changes on re-upload."""
+    row = db.get(ContactPhoto, contact_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No photo")
+    return Response(content=row.data, media_type=row.content_type, headers={"Cache-Control": "public, max-age=86400"})

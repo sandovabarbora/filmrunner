@@ -40,6 +40,7 @@ app.add_middleware(
 )
 
 app.include_router(productions.router, prefix="/api/v1", tags=["productions"])
+app.include_router(productions.public_router, prefix="/api/v1", tags=["contacts-public"])
 app.include_router(call_sheets.router, prefix="/api/v1", tags=["call-sheets"])
 app.include_router(call_sheets.public_router, prefix="/api/v1", tags=["call-sheets-public"])
 app.include_router(push.router, prefix="/api/v1", tags=["push"])

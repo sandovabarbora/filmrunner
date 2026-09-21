@@ -24,7 +24,8 @@ Approval queue. Only the founder changes `state`. Grammar in TEAM.md.
 - proposal: founder creates the Resend account and pastes the SMTP credentials into Supabase directly (never into the repo or chat); the team then re-runs the code sign-in check and raises the Supabase auth rate limit to 30/h
 
 ## #4 · tech-lead · Create the Supabase Storage `avatars` bucket and set the service-role key (FR-18)
-- state: pending
+- state: done
+- resolution: not needed; photos are stored in Postgres (2026-09-21, feat/photos-in-postgres). Supabase Storage remains an optional path if the key is ever set.
 - what: in the Supabase dashboard, create a Storage bucket named `avatars` (public read) in the same project used for Postgres and auth; copy the project's service-role key and set it as the Fly secret `FILMRUNNER_SUPABASE_SERVICE_ROLE_KEY` (`fly secrets set -a filmrunner-api FILMRUNNER_SUPABASE_SERVICE_ROLE_KEY=...`); `FILMRUNNER_SUPABASE_URL` is already set from INBOX #2
 - why: PR #48 (FR-18 photo upload) is code-complete — `POST /contacts/{id}/photo` uploads a 256px-resized avatar and stores its public URL — but the bucket and service-role key don't exist yet, so the endpoint correctly 503s with "Photo upload is not configured yet" on every attempt; the routine cannot create Supabase resources or hold the service-role key (TEAM.md)
 - risk: the service-role key bypasses Storage row-level security entirely — it must go into Fly secrets only, never the repo or chat; a public-read bucket means anyone with a guessed/leaked URL can view an avatar (acceptable for a crew photo, not for anything sensitive)

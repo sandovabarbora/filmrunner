@@ -86,7 +86,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - blocked-until: FR-10 (editor) and FR-12 (auth model decided), because the personal token design must match the auth ADR
 
 ## FR-18 · frontend · Crew management: edit, remove, personal call time, photo
-- state: in-progress
+- state: done
+- note: photo storage moved to Postgres 2026-09-21 (no bucket, no service-role key); INBOX #4 closed as not needed
 - gated: partial
 - why: the Crew tab can only add; a typo in a phone number or a wrong department cannot be fixed, a person who left cannot be removed, and the personal call time (FR-13 reads CrewMember.standard_call_time) has no field. Founder request 2026-09-14.
 - dod:
