@@ -214,6 +214,8 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .home-card .button { display: inline-block; padding: 10px 14px; border: 1px solid var(--rule-strong); border-radius: 4px; color: var(--ink); background: #fff; font-weight: 600; text-decoration: none; }
 .home-card .button.primary { background: var(--ink); color: var(--paper); }
 @media (min-width: 560px) { .home { grid-template-columns: 1fr 1fr; } }
+.home-about { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; font-size: 0.875rem; }
+.home-about a { color: var(--ink-2); }
 
 /* Error state with a way out. */
 .empty { margin-top: 24px; padding: 16px; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-2); font-size: 0.9375rem; }

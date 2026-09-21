@@ -76,7 +76,11 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
-      input: { viewer: resolve(__dirname, "index.html"), editor: resolve(__dirname, "editor.html") },
+      input: {
+        viewer: resolve(__dirname, "index.html"),
+        editor: resolve(__dirname, "editor.html"),
+        landing: resolve(__dirname, "landing.html"),
+      },
     },
   },
 });
