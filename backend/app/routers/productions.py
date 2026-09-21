@@ -30,11 +30,13 @@ from app.schemas.production import (
     LocationCreate,
     LocationRead,
     LocationSuggestion,
+    SunTimes,
     LocationUpdate,
     ProductionCreate,
     ProductionRead,
 )
 from app.services import geocoding, hospitals, weather
+from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +206,19 @@ def get_weather_suggestion(
     if location.geo_lat is None or location.geo_lng is None:
         return LocationSuggestion(suggestion=None)
     return LocationSuggestion(suggestion=weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date))
+
+
+@router.get("/productions/{production_id}/locations/{location_id}/sun", response_model=SunTimes)
+def get_sun_times(
+    production_id: uuid.UUID, location_id: uuid.UUID, shoot_date: date,
+    db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ)),
+) -> SunTimes:
+    """The same computation publish uses to auto-fill sunrise/sunset (FR-19), so the editor can show it as soon as a location is picked (FR-27)."""
+    location = _location_of_production_or_404(db, production_id, location_id)
+    if location.geo_lat is None or location.geo_lng is None:
+        return SunTimes(sunrise=None, sunset=None)
+    rise, sset = sunrise_sunset(location.geo_lat, location.geo_lng, shoot_date)
+    return SunTimes(sunrise=rise, sunset=sset)
 
 
 @router.get("/productions/{production_id}/locations/{location_id}/hospital-suggestion", response_model=LocationSuggestion)

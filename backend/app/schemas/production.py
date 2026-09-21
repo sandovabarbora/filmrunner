@@ -67,6 +67,13 @@ class LocationSuggestion(BaseModel):
     suggestion: str | None
 
 
+class SunTimes(BaseModel):
+    """Computed sunrise and sunset for a location and date (FR-27); both None when the location has no coordinates."""
+
+    sunrise: str | None
+    sunset: str | None
+
+
 class CrewMemberCreate(BaseModel):
     contact_id: uuid.UUID
     department: str
