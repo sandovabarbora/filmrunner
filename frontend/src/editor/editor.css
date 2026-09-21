@@ -124,3 +124,12 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 /* FR-44: personal calls — only the people with one today; the rest one pick away. */
 .pcall-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .pcall-who .quiet.danger { margin-left: auto; }
+
+/* FR-45: pick a person already in FilmRunner. */
+.picker { position: relative; }
+.picker input { width: 100%; }
+.picker-list { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 0; list-style: none; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 220px; overflow: auto; }
+.picker-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: none; font: inherit; cursor: pointer; }
+.picker-item:hover, .picker-item:focus { background: var(--paper-2); }
+.picker-item .name { display: block; font-weight: 600; }
+.picker-item .meta { display: block; font-size: 0.8125rem; color: var(--muted); }

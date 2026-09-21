@@ -415,8 +415,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing is lost on reload — entries come back from the draft or the server as before
 
 ## FR-45 · tech-lead · Reuse people across productions: pick an existing contact when adding crew or cast
-- state: in-progress
-- note: taken 2026-09-21 16:00 by the founder's interactive session (feat/fr-45-shared-contacts); shifts skip it
+- state: done
+- note: delivered 2026-09-21 (feat/fr-45-shared-contacts): `GET /contacts?q=` returns people on productions the caller is a member of (crew or cast), matched on a name prefix (any word) or phone digits, with last production and position, max 10, sorted; `PersonPicker` on the Crew and Cast forms fills name and phone from a pick and remembers the contact id (typing on clears it, so an edited name is a new person); a picked person's phone edited in the form is corrected for every production (PATCH); the paste import reuses a contact whose name and phone digits both match. 3 backend tests (incl. viewer visibility), 1 E2E. Backend changed: deploy needed (no migration)
 - gated: no
 - why: the same gaffer works three productions a year; today every production creates a new Contact, so a phone correction on one sheet never reaches the others and the founder's pilot AD will type the same 40 people twice (FR-31 helps the first time only)
 - dod:

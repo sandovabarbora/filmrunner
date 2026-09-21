@@ -23,6 +23,13 @@ class ContactRead(ContactCreate):
     photo_url: str | None = None
 
 
+class ContactMatch(ContactRead):
+    """A contact the caller may reuse (FR-45), with where they last worked so two same names are told apart."""
+
+    last_production_name: str | None = None
+    last_position: str | None = None
+
+
 class ProductionCreate(BaseModel):
     name: str
     working_title: str | None = None
