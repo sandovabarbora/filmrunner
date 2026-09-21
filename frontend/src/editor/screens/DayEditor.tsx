@@ -217,13 +217,29 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       } else {
         const rev = await api.publishRevision(conn, draft.callSheetId, revisionPayload(draft));
         update({ lastPublishedLetter: rev.revision_letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
-        setDayStatus("published");  // publishing puts a cancelled day back on
+        setDayStatus("published");  // publishing puts a cancelled day back on, and makes a planned day real
         setNotice({ kind: "ok", text: `Published REV ${rev.revision_letter}. Everyone with the link sees it now.` });
       }
     } catch (err) {
       setNotice(err instanceof ApiError && err.status === 0
         ? { kind: "warn", text: "No connection. Your draft is safe on this phone; publish when you are back in signal." }
         : noticeFromError(err, "Publish failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** FR-56: a planned day nobody has seen can simply go. */
+  async function deleteDraft() {
+    if (!draft?.callSheetId) return;
+    setBusy(true);
+    try {
+      await api.deleteDraftCallSheet(conn, draft.callSheetId);
+      await clearDraft(key);
+      setNotice({ kind: "ok", text: `Planned Day ${draft.day_number} deleted.` });
+      window.location.hash = href({ screen: "production", productionId, tab: "days" });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not delete the planned day"));
     } finally {
       setBusy(false);
     }
@@ -281,7 +297,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   }
 
   if (!draft) return <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>;
-  const published = draft.callSheetId && draft.lastPublishedLetter;
+  // A planned (draft) day exists on the server but nobody has seen it: no sharing, no receipts, publish sends REV A.
+  const planned = dayStatus === "draft";
+  const published = draft.callSheetId && draft.lastPublishedLetter && !planned;
   // The message must say what the link says: with unpublished edits the text would lie (FR-29 dod).
   const shareable = !!published && !draft.dirtySincePublish;
   const dis = readOnly;
@@ -465,13 +483,19 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <div className="publish-state" id="publishState">
           {offline && "Read-only while offline. Reconnect to publish."}
           {!offline && !canPublish && "Read-only: your role on this production can view but not publish."}
-          {!readOnly && !published && "Not published yet. Your draft is saved on this phone."}
+          {!readOnly && !published && !planned && "Not published yet. Your draft is saved on this phone."}
+          {!readOnly && planned && "Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A."}
           {!readOnly && published && !draft.dirtySincePublish && `REV ${draft.lastPublishedLetter} is live.`}
           {!readOnly && published && draft.dirtySincePublish && `Changes since REV ${draft.lastPublishedLetter}. Publish to send REV ${nextLetter(draft.lastPublishedLetter!)}.`}
         </div>
         <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
           {busy ? "Publishing…" : published ? `Publish REV ${nextLetter(draft.lastPublishedLetter!)}` : "Publish"}
         </button>
+        {planned && !readOnly && (
+          <div className="inline">
+            <button type="button" className="quiet danger" id="deleteDraftDay" disabled={busy} onClick={() => void deleteDraft()}>Delete this planned day</button>
+          </div>
+        )}
         {published && seen && (
           <div className="seen" id="seenPanel">
             <div className="label">REV {seen.revision_letter} opened by {seen.seen.length} of {seen.seen.length + seen.not_seen.length}</div>

@@ -83,11 +83,26 @@ def create_call_sheet_endpoint(
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    summary = notify_subscribers(db, call_sheet, call_sheet.current_revision)
+    summary = notify_subscribers(db, call_sheet, call_sheet.current_revision) if not payload.draft else NotificationSummary()
     read = _read_with_contacts(db, call_sheet.id)
     if read.current_revision is not None:
         read.current_revision.notifications = _summary_read(summary)
     return read
+
+
+@router.delete("/call-sheets/{call_sheet_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_draft_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> None:
+    """FR-56: only a day nobody has seen (status draft) can be deleted; a published day is cancelled instead."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
+    if call_sheet.status != CallSheetStatus.DRAFT:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an unpublished draft can be deleted; cancel a published day instead")
+    for rev in list(call_sheet.revisions):
+        for child in list(rev.schedule_items) + list(rev.cast_calls) + list(rev.crew_calls):
+            db.delete(child)
+        db.delete(rev)
+    db.delete(call_sheet)
+    db.commit()
 
 
 @router.post(
@@ -191,7 +206,10 @@ def get_call_sheet(
 
 @public_router.get("/public/call-sheets/{call_sheet_id}", response_model=CallSheetRead)
 def get_call_sheet_public(call_sheet_id: uuid.UUID, db: Session = Depends(get_db)) -> CallSheetRead:
-    """Unauthenticated read, fetched by the offline-first PWA for caching."""
+    """Unauthenticated read, fetched by the offline-first PWA for caching. A draft day (FR-56) does not exist for the crew."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    if call_sheet.status == CallSheetStatus.DRAFT:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
     return _read_with_contacts(db, call_sheet_id)
 
 

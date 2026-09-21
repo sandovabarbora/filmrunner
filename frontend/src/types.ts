@@ -147,6 +147,8 @@ export interface CallSheetCreate {
   day_count: number;
   unit_name: string;
   initial_revision: RevisionCreate;
+  /** FR-56: a planned day — kept as status "draft" on the server, invisible to the crew until published. */
+  draft?: boolean;
 }
 
 export type Permission = "production:read" | "production:manage_members" | "production:edit" | "day:publish" | "crew:edit";

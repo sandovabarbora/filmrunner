@@ -162,6 +162,9 @@ class CallSheetCreate(BaseModel):
     day_count: int = Field(ge=1)
     unit_name: str = "Main Unit"
     initial_revision: CallSheetRevisionCreate
+    # FR-56: a planned day. Kept on the server as status "draft": invisible to the crew, no push,
+    # not the target of anyone's stable link, deletable. Publishing later keeps the letter A.
+    draft: bool = False
 
 
 class CastCallRow(BaseModel):

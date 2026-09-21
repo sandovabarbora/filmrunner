@@ -5,6 +5,7 @@ import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, typ
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList } from "../crewImport";
 import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
+import { detectScheduleColumns, locationNames, rowsToSchedule, type ImportedDay } from "../scheduleImport";
 import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
@@ -97,9 +98,73 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
 
 function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection; productionId: string; canPublish: boolean; setNotice: (n: Notice) => void }) {
   const [days, setDays] = useState<CallSheetCreated[] | null>(null);
+  const [reload, setReload] = useState(0);
   useEffect(() => {
     api.listCallSheets(conn, productionId).then(setDays).catch((err: unknown) => { setDays([]); setNotice(noticeFromError(err, "Cannot load days")); });
-  }, [conn, productionId, setNotice]);
+  }, [conn, productionId, setNotice, reload]);
+
+  // FR-56: the shooting schedule from a spreadsheet becomes planned (draft) days on the server.
+  const [imported, setImported] = useState<{ fileName: string; days: ImportedDay[] } | null>(null);
+  const [importing, setImporting] = useState(false);
+  async function readScheduleFile(file: File) {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+      const detected = detectScheduleColumns(rows);
+      if (!detected) { setNotice({ kind: "error", text: "No scene column found. The sheet needs a header row with a Scene (Obraz) column." }); return; }
+      const parsed = rowsToSchedule(rows, detected.headerIndex, detected.map);
+      if (parsed.length === 0) { setNotice({ kind: "warn", text: "No scene rows under the header." }); return; }
+      setImported({ fileName: file.name, days: parsed });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not read that file"));
+    }
+  }
+  const existingDates = new Set((days ?? []).map((d) => d.shoot_date));
+  const importable = (imported?.days ?? []).filter((d) => !d.shoot_date || !existingDates.has(d.shoot_date));
+  async function createImportedDays() {
+    if (!imported) return;
+    setImporting(true);
+    try {
+      const [locations, cast] = await Promise.all([api.listLocations(conn, productionId), api.listCast(conn, productionId)]);
+      const locByName = new Map(locations.map((l) => [l.name.toLowerCase(), l.id]));
+      for (const name of locationNames(importable)) {
+        if (!locByName.has(name.toLowerCase())) {
+          const created = await api.createLocation(conn, productionId, { name, address: null, parking_notes: null, nearest_hospital: null });
+          locByName.set(name.toLowerCase(), created.id);
+        }
+      }
+      const castByName = new Map(cast.map((a) => [a.contact.name.toLowerCase(), a.id]));
+      const maxDay = Math.max(0, ...(days ?? []).map((d) => d.day_number), ...importable.map((d) => d.day_number ?? 0));
+      const today = new Date().toISOString().slice(0, 10);
+      let nextNumber = maxDay;
+      let created = 0;
+      const unmatchedCast = new Set<string>();
+      for (const d of importable) {
+        const castIds = new Set<string>();
+        for (const sc of d.scenes) for (const n of sc.cast) { const id = castByName.get(n.toLowerCase()); if (id) castIds.add(id); else unmatchedCast.add(n); }
+        const dayNumber = d.day_number ?? ++nextNumber;
+        await api.createCallSheet(conn, productionId, {
+          shoot_date: d.shoot_date ?? today, day_number: dayNumber, day_count: Math.max(maxDay, dayNumber, importable.length),
+          unit_name: d.shoot_date ? "Main Unit" : "Imported schedule", draft: true,
+          initial_revision: {
+            created_by: "schedule-import", general_crew_call: null, shooting_call: null, sunrise: null, sunset: null, weather_forecast: null, safety_notes: null, head_of_day_crew_member_id: null,
+            schedule_items: d.scenes.map((sc, i) => ({ order_index: i + 1, scene_number: sc.scene_number, int_ext: sc.int_ext, day_night: sc.day_night, set_description: sc.set_description, page_count_eighths: sc.page_count_eighths, location_id: sc.location ? locByName.get(sc.location.toLowerCase()) ?? null : null })),
+            cast_calls: [...castIds].map((id) => ({ cast_member_id: id, status_code: "W" as const, pickup_time: null, call_time: null, makeup_hair_time: null, on_set_time: null })),
+            crew_calls: [],
+          },
+        });
+        created += 1;
+      }
+      setImported(null); setReload((n) => n + 1);
+      const skipped = (imported.days.length - importable.length);
+      setNotice({ kind: "ok", text: `${created} planned ${created === 1 ? "day" : "days"} created as drafts — the crew sees nothing until you publish each one.${skipped ? ` ${skipped} skipped (a day with that date already exists).` : ""}${unmatchedCast.size ? ` Cast not on the Cast tab yet: ${[...unmatchedCast].join(", ")}.` : ""}` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not create the days")); setReload((n) => n + 1);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   return (
     <section className="block" aria-label="Days">
@@ -111,7 +176,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
           {days.map((d) => (
             <li key={d.id}>
               <a className="row" href={href({ screen: "day", productionId, callSheetId: d.id })}>
-                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}
+                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}{d.status === "draft" && <span className="tag">DRAFT</span>}
                   <span className="meta day-glance">
                     {d.current_revision?.general_crew_call && <>call <b>{d.current_revision.general_crew_call}</b></>}
                     {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
@@ -129,8 +194,39 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
         </ul>
       )}
       {canPublish
-        ? <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>+ New day</a>
+        ? <div className="inline day-actions">
+            <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>+ New day</a>
+            <label className="quiet-link" htmlFor="scheduleFile">Import schedule… (.xlsx, .csv)</label>
+            <input id="scheduleFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readScheduleFile(f); }} disabled={importing} />
+          </div>
         : <p className="hint" id="readOnlyHint">You can view this production; publishing needs the editor or owner role.</p>}
+      {imported && (
+        <div className="paste-crew" id="schedulePreview">
+          <div className="label">{imported.fileName} · {imported.days.length} {imported.days.length === 1 ? "day" : "days"}</div>
+          <ul className="list preview">
+            {imported.days.map((d, i) => {
+              const dup = !!d.shoot_date && existingDates.has(d.shoot_date);
+              return (
+                <li key={i} className={`row static${dup || d.warnings.length ? " warn" : ""}`}>
+                  <span className="name">{d.day_number ? `Day ${d.day_number}` : "Imported schedule"}{d.shoot_date && <span className="meta"> · {d.shoot_date}</span>}
+                    <span className="meta"> · {d.scenes.length} {d.scenes.length === 1 ? "scene" : "scenes"} · {d.scenes.map((s) => s.scene_number).join(", ")}</span>
+                    {dup && <span className="meta warn-text"> · a day with this date exists, skipped</span>}
+                    {d.warnings.map((w) => <span key={w} className="meta warn-text"> · {w}</span>)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="hint">Days are created as drafts: the crew sees nothing until you open each day, check it and publish. Locations named in the file that are not on the Locations tab yet are created there (address to fill in). The file stays on this phone.</p>
+          <div className="inline">
+            <button type="button" id="createImportedDays" className="secondary" disabled={importable.length === 0 || importing} onClick={() => void createImportedDays()}>
+              {importing ? "Creating…" : `Create ${importable.length} ${importable.length === 1 ? "day" : "days"}`}
+            </button>
+            <button type="button" className="quiet" onClick={() => setImported(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
