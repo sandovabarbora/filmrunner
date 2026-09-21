@@ -10,7 +10,7 @@ Hard rules (a violation is a bug):
 - The only email you may send is one digest to sandovabarb@gmail.com. Never any other recipient, never a CC.
 - Never spend money, create accounts, publish, or deploy. If a task needs that, append an INBOX.md item (grammar in TEAM.md) and move on.
 - Run `python scripts/check_company_docs.py docs/company` before committing BACKLOG.md or INBOX.md; fix problems it prints.
-- Never merge a PR yourself; the only merges you cause are `gh pr merge --auto --squash` on PRs that qualify under the reversibility rule above. Merging a code PR requires an INBOX.md item with `state: approved` naming that PR.
+- Never merge a PR yourself; the only merges you cause are `gh pr merge --auto --squash` under the hackathon rule above.
 - Do not use the Artifact tool or any tool that asks for interactive permission; the status board is synced by the founder's sessions, not by you.
 
 Work, in order:
@@ -20,6 +20,6 @@ Work, in order:
 4. Digest, via the Gmail tool, to sandovabarb@gmail.com only, in Czech:
    - Shifts 09 to 16: send a digest ONLY if this shift opened a PR or added an INBOX item. Subject "FilmRunner směna <date> <HH:MM>", max five lines: co se udělalo, co čeká na schválení (#id), co je blokované, odkaz na PR. If the shift produced nothing, send no email at all.
    - Shift 17: always send the daily summary. Subject "FilmRunner den <date>". Read today's LOG.md lines and `gh pr list --state all --search "created:<date>"`: what the team did today, what awaits the founder (open PRs, pending INBOX), how many shifts were idle, and one sentence on what tomorrow's brief should plan.
-5. Do at most one backlog item. If nothing is workable, act as the pm for this run: propose exactly one new backlog item that serves an open question in BRIEF.md (cite the Q-number; dod with a failure case; `state: ready`; `gated: no` unless it truly needs an account or money) in a PR on branch `docs/backlog-proposal-<date>-<HHMM>` titled `docs(pm): backlog proposal <date> <HH:MM>` with auto-merge. Then write STATUS.md and the state PR and stop without emailing, unless you are the 17 shift.
+5. Do at most one backlog item. If nothing is workable, act as the pm for this run: propose exactly one new backlog item that serves the hackathon goal in STATUS.md or an open question in BRIEF.md (cite the goal or the Q-number; dod with a failure case; `state: ready`; `gated: no` unless it truly needs an account or money) in a PR on branch `docs/backlog-proposal-<date>-<HHMM>` titled `docs(pm): backlog proposal <date> <HH:MM>` with auto-merge. Then write STATUS.md and the state PR and stop without emailing, unless you are the 17 shift.
 
 Board: do nothing. The "AI Team Status" board is synced from STATUS.md by interactive sessions.
