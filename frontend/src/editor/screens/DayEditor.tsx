@@ -19,6 +19,10 @@ function revisionPayload(d: Draft): RevisionCreate {
     safety_notes: clean(d.safety_notes),
     created_by: "editor",
     schedule_items: d.items.map((it, i) => ({ ...it, order_index: i + 1 })),
+    // Always sent from the form (prefilled from the last revision), so the AD edits rather than retypes.
+    crew_calls: Object.entries(d.crewCalls ?? {})
+      .filter(([, v]) => v.call.trim() || v.pickup.trim() || v.note.trim())
+      .map(([id, v]) => ({ crew_member_id: id, call_time: clean(v.call), pickup_time: clean(v.pickup), note: clean(v.note) })),
   };
 }
 
@@ -46,6 +50,7 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     items: [...(rev?.schedule_items ?? [])]
       .sort((a, b) => a.order_index - b.order_index)
       .map((it) => ({ order_index: it.order_index, scene_number: it.scene_number, int_ext: (it.int_ext === "INT" ? "INT" : "EXT"), day_night: (it.day_night === "NIGHT" ? "NIGHT" : "DAY"), set_description: it.set_description, location_id: it.location_id ?? null, page_count_eighths: it.page_count_eighths })),
+    crewCalls: Object.fromEntries((rev?.crew_calls ?? []).map((e) => [e.crew_member_id, { call: e.call_time ?? "", pickup: e.pickup_time ?? "", note: e.note ?? "" }])),
   };
 }
 
@@ -217,6 +222,28 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           </select>
           {crew.length === 0 && <span className="hint">Add crew under the Crew tab to pick who runs the day.</span>}
         </label>
+      </section>
+
+      <section className="block" aria-label="Personal calls">
+        <h2>Personal calls</h2>
+        <p className="hint">Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.</p>
+        {crew.length === 0 && <p className="hint">Add crew under the Crew tab first.</p>}
+        <ul className="items" id="personalCalls">
+          {crew.map((m) => {
+            const v = draft.crewCalls?.[m.id] ?? { call: "", pickup: "", note: "" };
+            const set = (patch: Partial<typeof v>) => update({ crewCalls: { ...(draft.crewCalls ?? {}), [m.id]: { ...v, ...patch } } });
+            return (
+              <li key={m.id} className="item pcall">
+                <div className="pcall-who"><span className="name">{m.contact.name}</span><span className="meta"> · {m.department} · {m.position}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</span></div>
+                <div className="pcall-row">
+                  <input className="mono" aria-label={`Call for ${m.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
+                  <input className="mono" aria-label={`Pickup for ${m.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
+                  <input aria-label={`Note for ${m.contact.name}`} placeholder="note" value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section className="block" aria-label="Schedule">

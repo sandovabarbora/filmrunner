@@ -31,6 +31,7 @@ export interface CallSheetRevision {
   created_at?: string;
   head_of_day_crew_member_id?: string | null;
   schedule_items: ScheduleItem[];
+  crew_calls?: CrewCallEntry[];
 }
 
 export interface ContactCard {
@@ -53,6 +54,8 @@ export interface PersonalSheet {
   department: string;
   position: string;
   personal_call: string | null;
+  pickup_time?: string | null;
+  note?: string | null;
   department_head: ContactCard | null;
 }
 
@@ -65,6 +68,7 @@ export interface CallSheet {
   unit_name: string;
   current_revision: CallSheetRevision | null;
   contacts?: CallSheetContacts | null;
+  personal_calls?: PersonalCallRow[];
 }
 
 /* Create payloads (backend/app/schemas). */
@@ -79,7 +83,26 @@ export interface ScheduleItemCreate {
   page_count_eighths: number;
 }
 
+export interface CrewCallEntry {
+  id?: string;
+  crew_member_id: string;
+  call_time: string | null;
+  pickup_time: string | null;
+  note: string | null;
+}
+
+export interface PersonalCallRow {
+  crew_member_id: string;
+  name: string;
+  department: string;
+  position: string;
+  call_time: string | null;
+  pickup_time: string | null;
+  note: string | null;
+}
+
 export interface RevisionCreate {
+  crew_calls?: CrewCallEntry[];
   head_of_day_crew_member_id?: string | null;
   general_crew_call: string | null;
   shooting_call: string | null;

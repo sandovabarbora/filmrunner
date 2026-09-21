@@ -81,3 +81,5 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .checklist li.next { color: var(--ink); font-weight: 600; }
 .checklist .mark { font-family: var(--mono); width: 1.2em; }
 .checklist a { color: inherit; }
+.pcall-who { margin-bottom: 6px; }
+.pcall-row { display: grid; grid-template-columns: 6ch 6ch 1fr; gap: 8px; }

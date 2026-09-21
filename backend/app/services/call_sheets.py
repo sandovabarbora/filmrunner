@@ -13,8 +13,8 @@ import string
 from sqlalchemy.orm import Session
 
 from app.models.production import CrewMember, Location
-from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, ContactCard, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate
+from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, CrewCallEntry, ScheduleItem
+from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,20 @@ def publish_revision(
     DESIGN.md for why.
     """
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
+    previous = call_sheet.current_revision
+    if payload.crew_calls is None:
+        # Copy forward: the AD edits yesterday's personal calls, they never retype them.
+        crew_calls = [
+            CrewCallEntryCreate(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
+            for e in (previous.crew_calls if previous is not None else [])
+            if db.get(CrewMember, e.crew_member_id) is not None
+        ]
+    else:
+        crew_calls = payload.crew_calls
+        for entry in crew_calls:
+            member = db.get(CrewMember, entry.crew_member_id)
+            if member is None or member.production_id != call_sheet.production_id:
+                raise CrewCallNotOnProduction("personal calls must name crew members of this production")
 
     for existing in call_sheet.revisions:
         existing.is_current = False
@@ -90,6 +104,8 @@ def publish_revision(
 
     for item in payload.schedule_items:
         db.add(ScheduleItem(revision_id=revision.id, **item.model_dump()))
+    for entry in crew_calls:
+        db.add(CrewCallEntry(revision_id=revision.id, **entry.model_dump()))
     for cast_call in payload.cast_calls:
         db.add(CastCallEntry(revision_id=revision.id, **cast_call.model_dump()))
 
@@ -127,6 +143,10 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, crea
 
 class HeadOfDayNotOnProduction(ValueError):
     """The head of day must be a crew member of this production."""
+
+
+class CrewCallNotOnProduction(ValueError):
+    """A personal call names a crew member of another production (or none)."""
 
 
 def _validate_head_of_day(db: Session, production_id, crew_member_id):
@@ -207,10 +227,31 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     head_card = None
     if head is not None:
         head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email, photo_url=head.contact.photo_url)
+    entry = None
+    if revision is not None:
+        entry = next((e for e in revision.crew_calls if e.crew_member_id == member.id), None)
     return PersonalSheet(
         name=member.contact.name,
         department=member.department,
         position=member.position,
-        personal_call=member.standard_call_time or general,
+        personal_call=(entry.call_time if entry and entry.call_time else None) or member.standard_call_time or general,
+        pickup_time=entry.pickup_time if entry else None,
+        note=entry.note if entry else None,
         department_head=head_card,
     )
+
+
+def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCallRow]:
+    """Named rows for the printed personal-calls table, in crew-list order (department, name)."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return []
+    rows = []
+    for e in revision.crew_calls:
+        m = db.get(CrewMember, e.crew_member_id)
+        if m is None:
+            continue
+        rows.append(PersonalCallRow(crew_member_id=m.id, name=m.contact.name, department=m.department, position=m.position,
+                                    call_time=e.call_time, pickup_time=e.pickup_time, note=e.note))
+    rows.sort(key=lambda r: (r.department.lower(), r.name.lower()))
+    return rows

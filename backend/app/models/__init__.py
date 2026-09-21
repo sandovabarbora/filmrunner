@@ -9,6 +9,7 @@ from app.models.call_sheet import (  # noqa: F401
     CallSheet,
     CallSheetRevision,
     CastCallEntry,
+    CrewCallEntry,
     DistributionLog,
     ScheduleItem,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "CallSheetRevision",
     "ScheduleItem",
     "CastCallEntry",
+    "CrewCallEntry",
     "DistributionLog",
     "ProductionMember",
     "ContactPhoto",

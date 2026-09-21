@@ -11,7 +11,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -116,6 +116,7 @@ class CallSheetRevision(Base):
         back_populates="revision", order_by="ScheduleItem.order_index"
     )
     cast_calls: Mapped[list["CastCallEntry"]] = relationship(back_populates="revision")
+    crew_calls: Mapped[list["CrewCallEntry"]] = relationship(back_populates="revision", cascade="all, delete-orphan")
     distribution_log: Mapped[list["DistributionLog"]] = relationship(back_populates="revision")
 
 
@@ -152,6 +153,23 @@ class CastCallEntry(Base):
 
     revision: Mapped["CallSheetRevision"] = relationship(back_populates="cast_calls")
     cast_member: Mapped["CastMember"] = relationship()  # noqa: F821
+
+
+class CrewCallEntry(Base):
+    """A crew member's own call for one revision (FR-24). Beats the standing time and the general call."""
+
+    __tablename__ = "crew_call_entries"
+    __table_args__ = (UniqueConstraint("revision_id", "crew_member_id", name="uq_crew_call_per_revision"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    revision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("call_sheet_revisions.id", ondelete="CASCADE"), nullable=False)
+    crew_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    call_time: Mapped[str | None] = mapped_column(String(10))
+    pickup_time: Mapped[str | None] = mapped_column(String(10))
+    note: Mapped[str | None] = mapped_column(String(300))
+
+    revision: Mapped["CallSheetRevision"] = relationship(back_populates="crew_calls")
+    crew_member: Mapped["CrewMember"] = relationship(passive_deletes=True)  # noqa: F821
 
 
 class DistributionLog(Base):

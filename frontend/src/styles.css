@@ -115,6 +115,12 @@ button { font: inherit; }
 .you .role { font-size: 0.8125rem; color: var(--muted); }
 .you .value { font-family: var(--mono); font-weight: 700; font-size: 3.25rem; letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
 .contacts .hod.mine { border-width: 1px; }
+.you-extra { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 0.875rem; color: var(--ink-2); }
+.you-extra .k { color: var(--muted); }
+.you-extra .v { font-family: var(--mono); }
+.you-extra .note { font-style: italic; }
+.print-only { display: none; }
+.pcalls h2 { margin: 12pt 0 4pt; font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; }
 .others summary { cursor: pointer; padding: 10px 0; font-size: 0.875rem; color: var(--ink-2); }
 
 /* Calls: the two numbers a crew member wakes up for. */
@@ -255,6 +261,7 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
   .others .contact-list { display: block; }
   .hospital { font-size: 9.5pt; }
 
+  .print-only { display: block; page-break-inside: avoid; }
   .print-foot { display: block !important; margin-top: 12pt; padding-top: 4pt; border-top: 0.5pt solid #999; font-size: 8pt; color: #444; }
 }
 
