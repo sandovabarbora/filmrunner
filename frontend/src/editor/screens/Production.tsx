@@ -586,6 +586,18 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
   }
   function cancelEdit() { setEditing(null); setHospitalSuggestion(null); setForm(EMPTY_LOCATION_FORM); }
 
+  async function remove(l: Location) {
+    if (!window.confirm(`Remove ${l.name}? Scenes that used it keep their text but lose the link.`)) return;
+    try {
+      await api.deleteLocation(conn, productionId, l.id);
+      setLocations((ls) => (ls ?? []).filter((x) => x.id !== l.id));
+      if (editing?.id === l.id) cancelEdit();
+      setNotice({ kind: "ok", text: `${l.name} removed.` });
+    } catch (err) {
+      setNotice(noticeFromError(err, "Could not remove"));
+    }
+  }
+
   async function save() {
     setBusy(true);
     try {
@@ -649,6 +661,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
               {canEdit && (
                 <span className="row-actions">
                   <button type="button" className="quiet" onClick={() => startEdit(l)} aria-label={`Edit ${l.name}`}>Edit</button>
+                  <button type="button" className="quiet danger" onClick={() => void remove(l)} aria-label={`Remove ${l.name}`}>Remove</button>
                 </span>
               )}
             </li>

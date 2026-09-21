@@ -157,3 +157,48 @@ def test_sun_lookup_failure_tells_the_ad_to_type_the_times(page: Page, frontend_
     page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Studio B")
     expect(page.locator("#sunHint")).to_have_attribute("data-state", "failed", timeout=10_000)
     expect(page.locator("#sunHint")).to_contain_text("Could not fetch suggestions")
+
+
+def test_deleting_a_location_drops_it_from_a_published_scene_without_breaking_the_day(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-38: removing a location a scene already used keeps the scene's text
+    and just loses the link; the day's FR-27 hint reappears rather than
+    showing a blank sunrise with no explanation (the dod's failure case)."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E loc-del {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Studio C")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Studio C", timeout=15_000)
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#addScene")
+    page.locator("#items .item").nth(0).get_by_label("Scene").fill("1")
+    page.locator("#items .item").nth(0).get_by_label("Set").fill("INT. STUDIO C")
+    page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Studio C")
+    expect(page.locator("#sunHint")).to_have_attribute("data-state", "no-coords", timeout=15_000)
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+
+    # Get to Locations via the sunrise hint's own link (a published day has no top-level tabs of its own).
+    page.locator("#sunHint").get_by_role("link", name="Locations").click()
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.once("dialog", lambda d: d.accept())
+    page.click("#locations >> role=button[name='Remove Studio C']")
+    expect(page.locator("#notice")).to_contain_text("Studio C removed", timeout=15_000)
+    expect(page.get_by_text("No locations yet.")).to_be_visible()
+
+    # Reopening the published day: the scene still loads and can publish again,
+    # its location select is back to "no location", and the sunrise hint returns.
+    page.click("role=tab[name='Days']")
+    page.locator("#days a.row").first.click()
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    expect(page.locator("#items .item").nth(0).get_by_label("Set")).to_have_value("INT. STUDIO C")
+    expect(page.locator("#items .item").nth(0).get_by_label("Location")).to_have_value("")
+    expect(page.locator("#sunHint")).to_have_attribute("data-state", "none")
+    expect(page.locator("#sunHint")).to_contain_text("Add a location to this day to get sunrise, sunset, weather and the nearest hospital")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
