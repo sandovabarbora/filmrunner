@@ -19,6 +19,7 @@ from app.models.push import PushSubscription
 from app.models.seen import RevisionView
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
 from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, OpenedSummary, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.services import weather
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,25 @@ def _fill_computed_sunrise_sunset(db: Session, revision: CallSheetRevision, shoo
     rise, sset = sunrise_sunset(location.geo_lat, location.geo_lng, shoot_date)
     revision.sunrise = rise
     revision.sunset = sset
+
+
+def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date, schedule_items) -> None:
+    """FR-39: same idea as the sunrise/sunset auto-fill — a blank weather
+    line reads as "not checked", so publish fills it from the day's first
+    located scene with the same suggestion text the "Suggest weather"
+    button would give. Never overwrites a value the AD typed (checked by
+    the caller). `weather_suggestion` already has its own timeout and
+    returns None on any failure, so a down provider never fails or delays
+    the publish — the field is simply left blank."""
+    ordered = sorted((i for i in schedule_items if i.location_id is not None), key=lambda i: i.order_index)
+    if not ordered:
+        return
+    location = db.get(Location, ordered[0].location_id)
+    if location is None or location.geo_lat is None or location.geo_lng is None:
+        return
+    suggestion = weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date)
+    if suggestion is not None:
+        revision.weather_forecast = suggestion
 
 
 def publish_revision(
@@ -131,6 +151,8 @@ def publish_revision(
 
     if revision.sunrise is None and revision.sunset is None:
         _fill_computed_sunrise_sunset(db, revision, call_sheet.shoot_date, payload.schedule_items)
+    if not revision.weather_forecast:
+        _fill_weather_forecast(db, revision, call_sheet.shoot_date, payload.schedule_items)
 
     db.commit()
     db.refresh(revision)

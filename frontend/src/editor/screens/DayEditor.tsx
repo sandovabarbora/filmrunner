@@ -320,6 +320,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             )}
           </div>
         )}
+        <p className="hint" id="weatherHint">Left blank, weather fills in from the first location's forecast when you publish — like sunrise and sunset.</p>
         <p className="hint" id="sunHint" data-state={sunState}>
           {sunState === "none" && (locations.length === 0
             ? <>Add a location to this day to get sunrise, sunset, weather and the nearest hospital. <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a></>
