@@ -12,7 +12,7 @@
  */
 
 import { cacheCallSheet, getCachedCallSheet } from "./cache";
-import type { CallSheet, PersonalSheet } from "./types";
+import type { CallSheet, CrewNextDay, PersonalSheet } from "./types";
 
 const SOURCE_HEADER = "x-filmrunner-source";
 const FETCHED_AT_HEADER = "x-filmrunner-fetched-at";
@@ -92,5 +92,31 @@ export async function loadPersonal(apiBase: string, sheetId: string, token: stri
       if (raw) return JSON.parse(raw) as PersonalSheet;
     } catch { /* fall through */ }
     return "invalid";
+  }
+}
+
+const NEXT_DB = "filmrunner-next";
+
+/**
+ * FR-32: which day a person's stable link opens. Network first; the last
+ * answer is kept per token so the link still opens the right cached sheet
+ * with no signal. "invalid" only when the server itself says the token is
+ * unknown — never on a network failure.
+ */
+export async function loadNextDay(apiBase: string, token: string): Promise<CrewNextDay | "invalid" | null> {
+  const key = `${NEXT_DB}:${token}`;
+  try {
+    const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/crew/${encodeURIComponent(token)}/next`, { signal: AbortSignal.timeout(5000) });
+    if (resp.status === 404) return "invalid";
+    if (!resp.ok) throw new Error(`API returned ${resp.status}`);
+    const data = (await resp.json()) as CrewNextDay;
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* storage unavailable: fine */ }
+    return data;
+  } catch {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw) as CrewNextDay;
+    } catch { /* fall through */ }
+    return null;
   }
 }

@@ -287,6 +287,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a brand-new day (no copy) proposes day number and date continuing the last day
   - failure case: an unpublished new day already on the phone is not overwritten without asking
 
+## FR-32 · tech-lead · One link per person for the whole shoot
+- state: done
+- note: delivered 2026-09-21 (feat/fr-32-one-link-per-person): `GET /public/crew/{token}/next` picks the earliest shoot day on or after Prague's today (else the last one), listing all days; the viewer's `?api=&me=` mode resolves it (answer cached per token so the link opens the right saved sheet with no signal), then behaves as the day link with the personal block, plus an "other days" nav when there is more than one; editor and Crew tab hand out the stable link ("Link" per person, WhatsApp messages carry it). Unknown token on the stable link says so instead of guessing a day. 3 backend tests, E2E ×2. Backend changed: deploy needed (no migration)
+- gated: no
+- why: until now a crew member got a new link every day (sheet id + token), so "the link the AD sent" went stale every evening; one link they can pin is what makes the living call sheet a habit rather than a daily paste (BRIEF Q3)
+- dod:
+  - a personal link without a sheet id opens that person's next shoot day with their personal block; other days reachable from it
+  - editor hands out only stable links; day links keep working
+  - offline: the last resolved day opens from cache
+  - failure case: a token no longer on any crew says so plainly, never a wrong person's day
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
 - gated: no

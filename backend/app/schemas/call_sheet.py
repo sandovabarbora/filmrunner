@@ -182,3 +182,24 @@ class CallSheetRead(BaseModel):
     # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
     previous_revision: RevisionSummary | None = None
     changes: list[RevisionChange] = []
+
+
+class CrewDayRef(BaseModel):
+    """One shoot day as a crew member's stable link lists it (FR-32)."""
+
+    call_sheet_id: uuid.UUID
+    shoot_date: date
+    day_number: int
+    day_count: int
+    unit_name: str
+    revision_letter: str | None
+
+
+class CrewNextDay(BaseModel):
+    """Where a crew member's one link for the whole shoot should open: the next
+    shoot day (today counts), or the last one once the shoot is over."""
+
+    production_name: str
+    crew_member_name: str
+    call_sheet_id: uuid.UUID | None
+    days: list[CrewDayRef]

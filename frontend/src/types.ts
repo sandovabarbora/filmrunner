@@ -220,3 +220,20 @@ export interface SunTimes {
 export interface LocationSuggestion {
   suggestion: string | null;
 }
+
+/** FR-32: one link per person for the whole shoot — where it opens and the other days. */
+export interface CrewDayRef {
+  call_sheet_id: string;
+  shoot_date: string;
+  day_number: number;
+  day_count: number;
+  unit_name: string;
+  revision_letter: string | null;
+}
+
+export interface CrewNextDay {
+  production_name: string;
+  crew_member_name: string;
+  call_sheet_id: string | null;
+  days: CrewDayRef[];
+}

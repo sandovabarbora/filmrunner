@@ -13,6 +13,12 @@ export function crewLink(apiBase: string, sheetId: string): string {
   return `${base}?sheet=${sheetId}&api=${encodeURIComponent(apiBase.replace(/\/$/, ""))}`;
 }
 
+/** FR-32: one link per person for the whole shoot; it opens their next day and carries their personal block. */
+export function personalLink(apiBase: string, token: string): string {
+  const base = window.location.href.replace(/editor\.html.*$/, "");
+  return `${base}?api=${encodeURIComponent(apiBase.replace(/\/$/, ""))}&me=${encodeURIComponent(token)}`;
+}
+
 export function can(production: Production | null, permission: string): boolean {
   return (production?.permissions ?? []).includes(permission as never);
 }
@@ -319,6 +325,7 @@ function Crew({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
                   {pending.has(m.id) && (
                     <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={`Sync ${m.contact.name}`}>Sync</button>
                   )}
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: `${m.contact.name}'s link copied. One link for the whole shoot; it always opens their next day.` }); }} aria-label={`Copy link for ${m.contact.name}`}>Link</button>
                   <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={`Edit ${m.contact.name}`}>Edit</button>
                   <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.contact.name}`}>Remove</button>
                 </span>
