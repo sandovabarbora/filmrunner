@@ -23,9 +23,9 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import PersonalSheet
+from app.schemas.call_sheet import PersonalSheet, RevisionSummary
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, publish_revision
+from app.services.call_sheets import CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_contacts, build_personal, build_personal_calls, create_call_sheet, previous_revision, publish_revision, revision_changes
 from app.services.notifications import NotificationSummary, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -136,6 +136,10 @@ def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
     read = CallSheetRead.model_validate(call_sheet)
     read.contacts = build_contacts(db, call_sheet)
     read.personal_calls = build_personal_calls(db, call_sheet)
+    prev = previous_revision(call_sheet)
+    if prev is not None and call_sheet.current_revision is not None:
+        read.previous_revision = RevisionSummary(revision_letter=prev.revision_letter, created_at=prev.created_at)
+        read.changes = revision_changes(prev, call_sheet.current_revision)
     return read
 
 

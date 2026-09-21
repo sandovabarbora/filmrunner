@@ -1,6 +1,12 @@
 import { Avatar } from "./Avatar";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem } from "./types";
 
+/** "06:12" in the phone's own time zone; the raw value if it does not parse. */
+function issuedAt(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function pages(eighths: number): string {
   const whole = Math.floor(eighths / 8);
   const rest = eighths % 8;
@@ -52,9 +58,24 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
       </header>
 
       {rev && rev.revision_letter !== "A" && (
-        <p className="rev-replaces" id="revReplaces">
-          REV {rev.revision_letter} replaces {String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1)}
-        </p>
+        <div className="rev-replaces" id="revReplaces">
+          <p>
+            REV {rev.revision_letter} replaces {callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1)}
+            {rev.created_at && <>, issued {issuedAt(rev.created_at)}</>}
+          </p>
+          {(callSheet.changes ?? []).length > 0 && (
+            <ul className="rev-changes" id="revChanges" aria-label="What changed">
+              {callSheet.changes!.map((c) => (
+                <li key={c.field} data-field={c.field}>
+                  <span className="k">{c.label}</span>{" "}
+                  {c.before !== null
+                    ? <><s>{c.before}</s> → <b>{c.after ?? "—"}</b></>
+                    : <b>{c.after ?? "—"}</b>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {personal && (

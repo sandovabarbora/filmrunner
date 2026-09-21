@@ -9,12 +9,13 @@ Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html
 
 import logging
 import string
+import uuid
 
 from sqlalchemy.orm import Session
 
 from app.models.production import CrewMember, Location
 from app.models.call_sheet import CallSheet, CallSheetRevision, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate
+from app.schemas.call_sheet import CallSheetContacts, ContactCard, CrewCallEntryCreate, PersonalCallRow, PersonalSheet, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services.astronomy import sunrise_sunset
 
 logger = logging.getLogger(__name__)
@@ -239,6 +240,61 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
         note=entry.note if entry else None,
         department_head=head_card,
     )
+
+
+def previous_revision(call_sheet: CallSheet) -> CallSheetRevision | None:
+    """The revision the current one replaced (letters are sequential), or None for a sheet with only REV A."""
+    current = call_sheet.current_revision
+    if current is None:
+        return None
+    wanted = chr(ord(current.revision_letter) - 1)
+    return next((r for r in call_sheet.revisions if r.revision_letter == wanted), None)
+
+
+def _scene_order(revision: CallSheetRevision) -> str:
+    return ", ".join(item.scene_number for item in sorted(revision.schedule_items, key=lambda i: i.order_index))
+
+
+def _personal_calls_key(revision: CallSheetRevision) -> dict[uuid.UUID, tuple[str | None, str | None, str | None]]:
+    return {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in revision.crew_calls}
+
+
+def revision_changes(before: CallSheetRevision | None, after: CallSheetRevision) -> list[RevisionChange]:
+    """What a crew member who read `before` last night needs to know about `after` (FR-23).
+
+    Compares the things that change a person's morning: the two call times,
+    the scene order, safety notes, and how many personal calls moved. Fields
+    that did not change are left out, so an unchanged sheet yields [] and the
+    viewer shows no diff line at all — never an empty "replaces" sentence.
+    """
+    if before is None:
+        return []
+    changes: list[RevisionChange] = []
+    for field, label, attr in (("crew_call", "Crew call", "general_crew_call"), ("shooting_call", "Shooting call", "shooting_call")):
+        old, new = getattr(before, attr), getattr(after, attr)
+        if (old or None) != (new or None):
+            changes.append(RevisionChange(field=field, label=label, before=old, after=new))
+    old_order, new_order = _scene_order(before), _scene_order(after)
+    if old_order != new_order:
+        changes.append(RevisionChange(field="scene_order", label="Scenes", before=old_order or None, after=new_order or None))
+    if (before.safety_notes or None) != (after.safety_notes or None):
+        changes.append(RevisionChange(field="safety_notes", label="Safety", before=before.safety_notes, after=after.safety_notes))
+    old_pc, new_pc = _personal_calls_key(before), _personal_calls_key(after)
+    moved = sum(1 for k in set(old_pc) | set(new_pc) if old_pc.get(k) != new_pc.get(k))
+    if moved:
+        changes.append(RevisionChange(field="personal_calls", label="Personal calls", before=None, after=f"{moved} changed"))
+    return changes
+
+
+def change_summary(changes: list[RevisionChange]) -> str:
+    """One line for a push notification: the first two changes, "before → after"."""
+    parts = []
+    for c in changes[:2]:
+        if c.field == "personal_calls":
+            parts.append(f"{c.label.lower()} {c.after}")
+        else:
+            parts.append(f"{c.label.lower()} {c.before or '—'} → {c.after or '—'}")
+    return "; ".join(parts) if parts else "no changes to calls or scenes"
 
 
 def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCallRow]:

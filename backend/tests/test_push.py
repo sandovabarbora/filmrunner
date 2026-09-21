@@ -5,6 +5,7 @@ tests), but the VAPID signing path (app/services/push.py calling into
 py_vapid) runs for real — see test_send_signs_and_calls_webpush_for_real.
 """
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -148,7 +149,7 @@ class TestNotifySubscribers:
                     json={"general_crew_call": "07:00", "schedule_items": []},
                     headers=AUTH,
                 )
-        assert "REV B replaces A: crew call 07:00" in mock_webpush.call_args.kwargs["data"]
+        assert json.loads(mock_webpush.call_args.kwargs["data"])["body"] == "REV B replaces A: crew call 06:30 → 07:00"
 
     def test_failed_delivery_is_logged_per_crew_member_and_publish_still_succeeds(self, client: TestClient, db_session, vapid_configured) -> None:
         """The dod's own failure case: a push that cannot be delivered must not

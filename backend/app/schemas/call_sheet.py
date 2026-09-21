@@ -150,6 +150,22 @@ class CallSheetCreate(BaseModel):
     initial_revision: CallSheetRevisionCreate
 
 
+class RevisionSummary(BaseModel):
+    """The revision this one replaced: enough for "REV B replaces A, issued 06:12"."""
+
+    revision_letter: str
+    created_at: datetime
+
+
+class RevisionChange(BaseModel):
+    """One line of "what changed" between the last two revisions (FR-23)."""
+
+    field: str  # crew_call | shooting_call | scene_order | safety_notes | personal_calls
+    label: str  # "Crew call"
+    before: str | None
+    after: str | None
+
+
 class CallSheetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -163,3 +179,6 @@ class CallSheetRead(BaseModel):
     current_revision: CallSheetRevisionRead | None = None
     contacts: CallSheetContacts | None = None
     personal_calls: list[PersonalCallRow] = []
+    # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
+    previous_revision: RevisionSummary | None = None
+    changes: list[RevisionChange] = []

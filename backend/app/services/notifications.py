@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models.call_sheet import CallSheet, CallSheetRevision, DistributionChannel, DistributionLog
 from app.models.production import CrewMember
 from app.models.push import PushSubscription
+from app.services.call_sheets import change_summary, revision_changes
 from app.services.push import PushDeliveryError, is_configured, send
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,9 @@ def _revision_message(call_sheet: CallSheet, revision: CallSheetRevision) -> tup
         body = f"New call sheet: crew call {call}"
     else:
         prev_letter = chr(ord(revision.revision_letter) - 1)
-        body = f"REV {revision.revision_letter} replaces {prev_letter}: crew call {call}"
+        prev = next((r for r in call_sheet.revisions if r.revision_letter == prev_letter), None)
+        # The same diff the sheet shows (FR-23), so the push never says something the link does not.
+        body = f"REV {revision.revision_letter} replaces {prev_letter}: {change_summary(revision_changes(prev, revision))}"
     return title, body
 
 
