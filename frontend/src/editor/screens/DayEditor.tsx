@@ -343,22 +343,44 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <h2>Personal calls</h2>
         <p className="hint">Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.</p>
         {crew.length === 0 && <p className="hint">Add crew under the Crew tab first.</p>}
-        <ul className="items" id="personalCalls">
-          {crew.map((m) => {
-            const v = draft.crewCalls?.[m.id] ?? { call: "", pickup: "", note: "" };
-            const set = (patch: Partial<typeof v>) => update({ crewCalls: { ...(draft.crewCalls ?? {}), [m.id]: { ...v, ...patch } } });
-            return (
-              <li key={m.id} className="item pcall">
-                <div className="pcall-who"><span className="name">{m.contact.name}</span><span className="meta"> · {m.department} · {m.position}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</span></div>
-                <div className="pcall-row">
-                  <input className="mono" aria-label={`Call for ${m.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
-                  <input className="mono" aria-label={`Pickup for ${m.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
-                  <input aria-label={`Note for ${m.contact.name}`} placeholder="note" value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {(() => {
+          // FR-44: with 40 people on the crew, list only those with an entry today; the rest are one pick away.
+          const withEntry = crew.filter((m) => draft.crewCalls?.[m.id] !== undefined);
+          const without = crew.filter((m) => draft.crewCalls?.[m.id] === undefined);
+          const remove = (id: string) => { const next = { ...(draft.crewCalls ?? {}) }; delete next[id]; update({ crewCalls: next }); };
+          return (
+            <>
+              <ul className="items" id="personalCalls">
+                {withEntry.map((m) => {
+                  const v = draft.crewCalls![m.id];
+                  const set = (patch: Partial<typeof v>) => update({ crewCalls: { ...(draft.crewCalls ?? {}), [m.id]: { ...v, ...patch } } });
+                  return (
+                    <li key={m.id} className="item pcall">
+                      <div className="pcall-who">
+                        <span className="name">{m.contact.name}</span><span className="meta"> · {m.department} · {m.position}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</span>
+                        {!dis && <button type="button" className="quiet danger" onClick={() => remove(m.id)} aria-label={`Drop ${m.contact.name} from personal calls`}>×</button>}
+                      </div>
+                      <div className="pcall-row">
+                        <input className="mono" aria-label={`Call for ${m.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
+                        <input className="mono" aria-label={`Pickup for ${m.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
+                        <input aria-label={`Note for ${m.contact.name}`} placeholder="note" value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {!dis && without.length > 0 && (
+                <label className="field" htmlFor="addPersonalCall">
+                  <span className="label">Personal call for…</span>
+                  <select id="addPersonalCall" value="" onChange={(e) => { const id = e.target.value; if (id) update({ crewCalls: { ...(draft.crewCalls ?? {}), [id]: { call: "", pickup: "", note: "" } } }); }}>
+                    <option value="">— pick a person ({without.length} without one) —</option>
+                    {without.map((m) => <option key={m.id} value={m.id}>{m.contact.name} · {m.department}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</option>)}
+                  </select>
+                </label>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {cast.length > 0 && (

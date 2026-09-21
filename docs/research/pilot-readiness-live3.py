@@ -61,7 +61,9 @@ with sync_playwright() as pw:
     item.get_by_label("Scene").fill("42"); item.get_by_label("Set").fill("EXT. RIVERBANK"); item.get_by_label("Location").select_option(label="Riverbank, Troja")
     if geocoded:
         expect(page.locator("#sunrise")).to_have_value(re.compile(r"^\d{2}:\d{2}$"), timeout=15000); rec("FR-27 sunrise filled from location live", True)
-    page.wait_for_selector("#personalCalls .pcall", timeout=15000); page.get_by_label("Call for Tomáš Novák").fill("05:15")
+    page.wait_for_selector("#addPersonalCall", timeout=15000)
+    page.select_option("#addPersonalCall", page.locator("#addPersonalCall option", has_text="Tomáš Novák").get_attribute("value"))
+    page.get_by_label("Call for Tomáš Novák").fill("05:15")
     page.get_by_label("Anna Geislerová works today").check(); page.get_by_label("Status for Anna Geislerová").select_option("SW"); page.get_by_label("Call for Anna Geislerová").fill("06:00")
     page.click("#publish"); expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=25000)
     page.wait_for_selector("#shareLink", timeout=15000)
