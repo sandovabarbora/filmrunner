@@ -251,6 +251,43 @@ def test_crew_edit_personal_call_and_remove(page: Page, frontend_url: str, api_u
     assert page.locator("#yourCall").inner_text().strip() == "05:45"
 
 
+def test_crew_edit_offline_queues_locally_and_shows_not_saved(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-18 failure case: editing an existing crew member offline must not fall into the
+    generic "No connection, try again" notice (nothing would be queued for that). The
+    change is kept on the phone, the row shows "not saved", and it syncs once back online."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E crew offline {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Petr Malý")
+    page.fill("#crewDept", "Electric")
+    page.fill("#crewPos", "Best boy")
+    page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("Petr Malý", timeout=10_000)
+
+    page.click("#crew >> role=button[name='Edit Petr Malý']")
+    expect(page.locator("#crewFormTitle")).to_contain_text("Editing Petr Malý")
+    page.fill("#crewPhone", "+420 777 000 111")
+    page.fill("#crewCall", "05:45")
+
+    page.route(f"{api_url}/**", lambda route: route.abort())
+    page.click("#addCrew")
+    expect(page.locator("#notice")).to_contain_text("kept on this phone", timeout=10_000)
+    expect(page.locator("#crew")).to_contain_text("not saved", timeout=10_000)
+    # The optimistic overlay shows the edit immediately, not the stale server copy.
+    expect(page.locator("#crew")).to_contain_text("+420 777 000 111")
+    expect(page.locator("#crew")).to_contain_text("call 05:45")
+    # The form closed: there is nothing further to submit, the edit is already queued.
+    expect(page.locator("#crewFormTitle")).to_contain_text("Add a person")
+
+    # Back online: reopening the tab retries the queued edit on its own.
+    page.unroute(f"{api_url}/**")
+    page.reload()
+    page.wait_for_selector("#crewName", timeout=10_000)
+    expect(page.locator("#crew")).to_contain_text("+420 777 000 111", timeout=10_000)
+    expect(page.locator("#crew")).not_to_contain_text("not saved", timeout=10_000)
+
+
 def test_photo_upload_failure_does_not_block_other_edits(page: Page, frontend_url: str, api_url: str, tmp_path) -> None:
     """FR-18 failure case: this test API has no Supabase Storage credentials, the same
     state production is in until the founder does INBOX's bucket item, so the upload
