@@ -135,6 +135,19 @@ class PersonalSheet(BaseModel):
     department_head: ContactCard | None
 
 
+class SheetLocation(BaseModel):
+    """Where the day happens (FR-35): one entry per distinct location in schedule order."""
+
+    id: uuid.UUID
+    name: str
+    address: str | None
+    parking_notes: str | None
+    nearest_hospital: str | None
+    geo_lat: float | None
+    geo_lng: float | None
+    scene_numbers: list[str]
+
+
 class CallSheetContacts(BaseModel):
     """Contacts section of the public sheet: computed, never stored."""
 
@@ -194,6 +207,7 @@ class CallSheetRead(BaseModel):
     contacts: CallSheetContacts | None = None
     personal_calls: list[PersonalCallRow] = []
     cast_calls: list[CastCallRow] = []
+    locations: list[SheetLocation] = []
     # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
     previous_revision: RevisionSummary | None = None
     changes: list[RevisionChange] = []

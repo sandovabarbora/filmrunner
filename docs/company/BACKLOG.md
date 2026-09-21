@@ -318,6 +318,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - restore, then a revision, brings the day back with the crew told
   - production name and status editable by owner and editor, not by viewers
   - failure case: cancelling a day nobody subscribed to still succeeds with 0 of 0 told
+## FR-35 · frontend · Where the day happens, on the sheet
+- state: done
+- note: delivered 2026-09-21 (feat/fr-35-locations-on-the-sheet): every call-sheet read carries `locations` (the day's distinct locations in schedule order with their scene numbers, address, parking, nearest hospital, coordinates; read live from the Locations tab so a corrected address reaches every sheet); the viewer shows a "Where" block above the schedule with a maps link (coordinates when resolved, else the address; none when neither exists, so never a link to a wrong place) and the location name on each scene row; print keeps each location together. 2 backend tests; the two location E2E tests extended. Backend changed: deploy needed (no migration)
+- gated: no
+- why: the crew sheet showed the day's times but not where to go: scenes carried only a location id, so the address, parking and nearest hospital lived in the AD's editor and the WhatsApp text only. "Where" is the first thing a driver reads
+- dod:
+  - the sheet lists the day's locations in schedule order with address, parking notes, nearest hospital and a maps link; the schedule shows the location name per scene
+  - failure case: a location with neither coordinates nor address gets no maps link; a deleted location is skipped without breaking the sheet
 
 ## FR-25 · marketing · Landing page from the positioning
 - state: ready
