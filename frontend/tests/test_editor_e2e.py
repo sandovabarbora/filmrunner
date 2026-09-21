@@ -371,7 +371,8 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
 
     # Reopen the day: the entry is prefilled; publish B without touching it; still there.
     page.reload(); page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
-    assert page.get_by_label("Call for Tomáš Novák").input_value() == "05:15"
+    expect(page.get_by_label("Call for Tomáš Novák")).to_have_value("05:15", timeout=10_000)
+
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#you", timeout=15_000)

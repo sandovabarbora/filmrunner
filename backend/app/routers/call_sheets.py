@@ -79,7 +79,7 @@ def create_call_sheet_endpoint(
     require_on(db, principal, production_id, DAY_PUBLISH)
     try:
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
-    except HeadOfDayNotOnProduction as exc:
+    except (HeadOfDayNotOnProduction, CrewCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     summary = notify_subscribers(db, call_sheet, call_sheet.current_revision)
     read = _read_with_contacts(db, call_sheet.id)

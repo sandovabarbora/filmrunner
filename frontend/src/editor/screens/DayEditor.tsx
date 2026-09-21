@@ -50,6 +50,7 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     items: [...(rev?.schedule_items ?? [])]
       .sort((a, b) => a.order_index - b.order_index)
       .map((it) => ({ order_index: it.order_index, scene_number: it.scene_number, int_ext: (it.int_ext === "INT" ? "INT" : "EXT"), day_night: (it.day_night === "NIGHT" ? "NIGHT" : "DAY"), set_description: it.set_description, location_id: it.location_id ?? null, page_count_eighths: it.page_count_eighths })),
+    crewCalls: Object.fromEntries((rev?.crew_calls ?? []).map((e) => [e.crew_member_id, { call: e.call_time ?? "", pickup: e.pickup_time ?? "", note: e.note ?? "" }])),
   };
 }
 
