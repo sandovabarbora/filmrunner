@@ -265,8 +265,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if a screenshot cannot be produced by the script, the page ships without that image slot rather than with a placeholder
 
 ## FR-26 · qa · Pilot readiness protocol executed against the live app
-- state: in-progress
-- note: taken by the founder's session 2026-09-21 10:35; shifts skip it
+- state: done
+- note: executed 2026-09-21 by the founder's session: docs/research/pilot-readiness-2026-09.md, 17 pass, 0 fail, 6 not verified headless (sign-in email, offline honesty, push) listed for the founder's phone; gaps filed as FR-27, FR-28
 - gated: no
 - why: hackathon goal; before an AD touches it, every step of the loop must be walked on the live URLs and the results written down, not assumed
 - dod:
@@ -274,6 +274,26 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - every fail becomes a backlog item with the exact reproduction, filed in the same PR
   - steps that need a real iPhone are listed separately with what to observe, for the founder
   - failure case: a step that cannot be executed headless is marked "not verified", never "pass"
+
+## FR-27 · frontend · Day without a location: say what is missing, link to Locations
+- state: ready
+- gated: no
+- why: pilot protocol G2: a day with no location silently shows empty sunrise, sunset, weather and hospital; the AD cannot tell that adding a location would fill them (FR-19 works only with one)
+- dod:
+  - the day screen shows, next to the sunrise/sunset fields, "Add a location to this day to get sunrise, sunset, weather and the nearest hospital" with a link to the Locations tab, only while no scene has a location
+  - after a location is picked, the suggestions appear without a reload
+  - Playwright: new day without location shows the hint; picking a location on a scene fills sunrise
+  - failure case: if the suggestion provider fails, the hint changes to "could not fetch suggestions, type them" rather than staying on the "add a location" text
+
+## FR-28 · qa · Phone protocol results (founder) folded back into the readiness file
+- state: blocked
+- gated: partial
+- why: steps 4, 18, 20, 21 of docs/research/pilot-readiness-2026-09.md cannot be verified headless; they need a real iPhone and the founder's sign-in email (INBOX #3)
+- dod:
+  - the founder runs the "For the founder's phone" section and reports PASS/FAIL per step
+  - a shift folds the results into the file and files one backlog item per FAIL with the observed behaviour
+  - failure case: a step the founder skipped stays NOT VERIFIED, never becomes PASS by omission
+- note: blocked until the founder reports; the routine must not mark these steps itself
 
 ## FR-20 · marketing · Prague market sizing: how many active productions are there
 - state: ready
