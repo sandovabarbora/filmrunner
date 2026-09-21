@@ -35,6 +35,7 @@ from app.schemas.production import (
     CastMemberRead,
     CastMemberUpdate,
     ProductionUpdate,
+    ContactMatch,
     LocationUpdate,
     ProductionCreate,
     ProductionRead,
@@ -141,6 +142,38 @@ def remove_member(member_id: uuid.UUID, access: Access = Depends(require(PRODUCT
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A production needs at least one owner")
     db.delete(member)
     db.commit()
+
+
+@router.get("/contacts", response_model=list[ContactMatch])
+def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> list[ContactMatch]:
+    """FR-45: people the caller can reuse — contacts on productions they are a member of (crew or cast),
+    matched on a name prefix (any word) or phone digits. Max 10. The service token sees everyone."""
+    needle = q.strip().lower()
+    if len(needle) < 2:
+        return []
+    visible = visible_productions(db, principal)
+    if not visible:
+        return []
+    ids = [p.id for p in visible]
+    rows: dict[uuid.UUID, ContactMatch] = {}
+    memberships = (
+        db.query(CrewMember).filter(CrewMember.production_id.in_(ids)).all()
+        + db.query(CastMember).filter(CastMember.production_id.in_(ids)).all()
+    )
+    digits = "".join(ch for ch in needle if ch.isdigit())
+    for m in memberships:
+        c = m.contact
+        name_hit = any(word.startswith(needle) for word in c.name.lower().split()) or c.name.lower().startswith(needle)
+        phone_hit = bool(digits) and len(digits) >= 3 and digits in "".join(ch for ch in (c.phone or "") if ch.isdigit())
+        if not (name_hit or phone_hit):
+            continue
+        existing = rows.get(c.id)
+        if existing is None:
+            position = m.position if isinstance(m, CrewMember) else f"cast · {m.character_name}"
+            rows[c.id] = ContactMatch(id=c.id, name=c.name, phone=c.phone, email=c.email, photo_url=c.photo_url,
+                                      last_production_name=m.production.name, last_position=position)
+    out = sorted(rows.values(), key=lambda r: (r.name.lower(), r.phone or ""))
+    return out[:10]
 
 
 @router.post("/contacts", response_model=ContactRead, status_code=status.HTTP_201_CREATED)

@@ -807,3 +807,42 @@ def test_tomorrow_at_a_glance_on_a_personal_link(page: Page, frontend_url: str, 
     expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "cancelled")
     assert "07:15" not in v.locator("#tomorrow").inner_text()
     v.close()
+
+
+def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-45: on a second production the name field offers people already in FilmRunner; picking one reuses the contact,
+    so a phone corrected on production B shows on production A's sheet. Two same names with different phones stay two people."""
+    _connect(page, frontend_url, api_url)
+    tag = uuid.uuid4().hex[:6]
+    _create_production(page, f"E2E share A {tag}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", f"Tomáš Novák {tag}"); page.fill("#crewPhone", "777 111 111"); page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.check("#crewHod"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("777 111 111", timeout=10_000)
+    page.click("role=tab[name='Days']"); page.click("#newDay"); page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    sheet_a = page.locator("#shareLink").get_attribute("href")
+
+    page.click("role=link[name='Productions']"); page.wait_for_selector("#newProduction", timeout=10_000)
+    _create_production(page, f"E2E share B {tag}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", f"Tomáš N")
+    item = page.locator(".picker-item", has_text=f"Tomáš Novák {tag}")
+    expect(item).to_be_visible(timeout=10_000)
+    expect(item).to_contain_text("777 111 111"); expect(item).to_contain_text(f"E2E share A {tag}")
+    item.click()
+    assert page.locator("#crewPhone").input_value() == "777 111 111"
+    page.fill("#crewPhone", "777 222 222")  # corrected here
+    page.fill("#crewDept", "Electric"); page.fill("#crewPos", "Gaffer"); page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("777 222 222", timeout=10_000)
+
+    v = page.context.new_page(); v.goto(sheet_a); v.wait_for_selector("#contacts", timeout=15_000)
+    expect(v.locator("#contacts")).to_contain_text("777 222 222")  # one person, one number, every production
+    v.close()
+
+    # Same name, different phone, typed without picking: a second person, and the picker shows both.
+    page.fill("#crewName", f"Tomáš Novák {tag}"); page.fill("#crewPhone", "777 333 333"); page.fill("#crewDept", "Grip"); page.fill("#crewPos", "Grip"); page.click("#addCrew")
+    expect(page.locator("#crew li")).to_have_count(2, timeout=10_000)
+    page.locator("#crewName").press_sequentially("Tomáš N")
+    expect(page.locator(".picker-item", has_text=f"Tomáš Novák {tag}")).to_have_count(2, timeout=10_000)

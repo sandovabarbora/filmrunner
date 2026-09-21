@@ -5,9 +5,16 @@ import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, typ
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList } from "../crewImport";
 import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
+import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
+
+/** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
+async function reuseOrCreateContact(conn: Connection, contactId: string | null, name: string, phone: string | null) {
+  if (!contactId) return api.createContact(conn, { name, phone, email: null });
+  return api.updateContact(conn, contactId, { name, phone });
+}
 
 export function crewLink(apiBase: string, sheetId: string): string {
   const base = window.location.href.replace(/editor\.html.*$/, "");
@@ -127,8 +134,8 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
   );
 }
 
-type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean };
-const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false };
+type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean; contactId: string | null };
+const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false, contactId: null };
 
 /** A pending edit overlaid onto the server's copy of a crew member, for display and for re-editing. */
 function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
@@ -188,7 +195,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
 
   function startEdit(m: CrewMember) {
     setEditing(m);
-    setForm({ name: m.contact.name, phone: m.contact.phone ?? "", department: m.department, position: m.position, call: m.standard_call_time ?? "", hod: m.is_head_of_department });
+    setForm({ name: m.contact.name, phone: m.contact.phone ?? "", department: m.department, position: m.position, call: m.standard_call_time ?? "", hod: m.is_head_of_department, contactId: m.contact_id });
   }
   function cancelEdit() { setEditing(null); setForm({ ...EMPTY_FORM, department: form.department }); }
 
@@ -208,7 +215,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         setNotice({ kind: "ok", text: `${contact.name} updated. The sheet shows it immediately.` });
         cancelEdit();
       } else {
-        const contact = await api.createContact(conn, { name: form.name.trim(), phone: form.phone.trim() || null, email: null });
+        // FR-45: a picked person is reused (their phone corrected if edited here); otherwise a new contact.
+        const contact = await reuseOrCreateContact(conn, form.contactId, form.name.trim(), form.phone.trim() || null);
         const member = await api.createCrewMember(conn, productionId, {
           contact_id: contact.id, department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
         });
@@ -250,7 +258,10 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     const failed: string[] = [];
     for (const row of toImport) {
       try {
-        const contact = await api.createContact(conn, { name: row.name, phone: row.phone, email: null });
+        // FR-45: the same person on another production (same name and phone digits) is reused, not duplicated.
+        const match = (await api.searchContacts(conn, row.name).catch(() => []))
+          .find((c) => c.name.trim().toLowerCase() === row.name.toLowerCase() && !!row.phone && whatsappNumber(c.phone) === whatsappNumber(row.phone));
+        const contact = match ?? await api.createContact(conn, { name: row.name, phone: row.phone, email: null });
         const member = await api.createCrewMember(conn, productionId, {
           contact_id: contact.id, department: row.department, position: row.position, standard_call_time: null, is_head_of_department: row.hod,
         });
@@ -386,7 +397,12 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         </div>
       )}
       <div className="grid2">
-        <label className="field" htmlFor="crewName"><span className="label">Name</span><input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="field" htmlFor="crewName"><span className="label">Name</span>
+          {editing
+            ? <input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            : <PersonPicker conn={conn} id="crewName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
+                onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
+        </label>
         <label className="field" htmlFor="crewPhone"><span className="label">Phone</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
         <label className="field" htmlFor="crewDept"><span className="label">Department</span><input id="crewDept" placeholder="Camera" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></label>
         <label className="field" htmlFor="crewPos"><span className="label">Position</span><input id="crewPos" placeholder="DoP" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></label>
@@ -463,8 +479,8 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
   );
 }
 
-type CastForm = { name: string; phone: string; character: string; pickup: string };
-const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: "" };
+type CastForm = { name: string; phone: string; character: string; pickup: string; contactId: string | null };
+const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: "", contactId: null };
 
 /** FR-33: the people in front of the camera. Per-day times are set on the day (status, pickup, M/H, on set). */
 function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
@@ -481,7 +497,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
 
   function startEdit(a: CastMember) {
     setEditing(a);
-    setForm({ name: a.contact.name, phone: a.contact.phone ?? "", character: a.character_name, pickup: a.standard_pickup_time ?? "" });
+    setForm({ name: a.contact.name, phone: a.contact.phone ?? "", character: a.character_name, pickup: a.standard_pickup_time ?? "", contactId: a.contact_id });
   }
   function cancelEdit() { setEditing(null); setForm(EMPTY_CAST_FORM); }
 
@@ -495,7 +511,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         setNotice({ kind: "ok", text: `${contact.name} updated.` });
         cancelEdit();
       } else {
-        const contact = await api.createContact(conn, { name: form.name.trim(), phone: form.phone.trim() || null, email: null });
+        const contact = await reuseOrCreateContact(conn, form.contactId, form.name.trim(), form.phone.trim() || null);
         const actor = await api.createCastMember(conn, productionId, { contact_id: contact.id, character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
         setCast((c) => [...(c ?? []), actor]);
         setForm(EMPTY_CAST_FORM);
@@ -550,7 +566,12 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       {canEdit && (<>
         <h3 className="subhead" id="castFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add an actor"}</h3>
         <div className="grid2">
-          <label className="field" htmlFor="castName"><span className="label">Name</span><input id="castName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="field" htmlFor="castName"><span className="label">Name</span>
+            {editing
+              ? <input id="castName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              : <PersonPicker conn={conn} id="castName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
+                  onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
+          </label>
           <label className="field" htmlFor="castCharacter"><span className="label">Character</span><input id="castCharacter" placeholder="MARTA" value={form.character} onChange={(e) => setForm({ ...form, character: e.target.value })} /></label>
           <label className="field" htmlFor="castPhone"><span className="label">Phone</span><input id="castPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
           <label className="field" htmlFor="castPickup"><span className="label">Usual pickup (optional)</span><input id="castPickup" className="mono" placeholder="05:30" value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} /></label>

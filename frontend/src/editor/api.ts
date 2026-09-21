@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes } from "../types";
+import type { CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes } from "../types";
 
 export interface Connection {
   apiBase: string;
@@ -73,6 +73,7 @@ export const api = {
     request<CallSheetCreated>(c, "GET", `/api/v1/call-sheets/${callSheetId}`),
   listCrew: (c: Connection, productionId: string) =>
     request<CrewMember[]>(c, "GET", `/api/v1/productions/${productionId}/crew-members`),
+  searchContacts: (c: Connection, q: string) => request<ContactMatch[]>(c, "GET", `/api/v1/contacts?q=${encodeURIComponent(q)}`),
   createContact: (c: Connection, payload: ContactCreate) => request<Contact>(c, "POST", "/api/v1/contacts", payload),
   createCrewMember: (c: Connection, productionId: string, payload: CrewMemberCreate) =>
     request<CrewMember>(c, "POST", `/api/v1/productions/${productionId}/crew-members`, payload),

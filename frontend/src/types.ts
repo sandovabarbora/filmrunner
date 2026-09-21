@@ -187,6 +187,12 @@ export interface Contact extends ContactCreate {
   photo_url: string | null;
 }
 
+/** FR-45: a contact the caller may reuse, with where they last worked so two same names are told apart. */
+export interface ContactMatch extends Contact {
+  last_production_name: string | null;
+  last_position: string | null;
+}
+
 export interface CrewMemberCreate {
   contact_id: string;
   department: string;

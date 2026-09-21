@@ -416,7 +416,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing is lost on reload — entries come back from the draft or the server as before
 
 ## FR-45 · tech-lead · Reuse people across productions: pick an existing contact when adding crew or cast
-- state: ready
+- state: done
+- note: delivered 2026-09-21 (feat/fr-45-shared-contacts): `GET /contacts?q=` returns people on productions the caller is a member of (crew or cast), matched on a name prefix (any word) or phone digits, with last production and position, max 10, sorted; `PersonPicker` on the Crew and Cast forms fills name and phone from a pick and remembers the contact id (typing on clears it, so an edited name is a new person); a picked person's phone edited in the form is corrected for every production (PATCH); the paste import reuses a contact whose name and phone digits both match. 3 backend tests (incl. viewer visibility), 1 E2E. Backend changed: deploy needed (no migration)
 - gated: no
 - why: the same gaffer works three productions a year; today every production creates a new Contact, so a phone correction on one sheet never reaches the others and the founder's pilot AD will type the same 40 people twice (FR-31 helps the first time only)
 - dod:
@@ -512,6 +513,37 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - `frontend/scripts/record_landing_flow.py`: Playwright against the local build, iPhone viewport, drives the real editor (service token) through create day → publish → crew link → REV B with a changed call, captures a video (Playwright `record_video_dir`) and turns it into a ≤ 3 MB WebM/GIF committed under `frontend/public/landing/`
   - landing.html embeds it (autoplay muted loop, poster = first screenshot, reduced-motion respected) under the screenshots, CS/EN captions
   - failure case: the recording script fails loudly if any step's selector is missing, so a UI change never silently ships an outdated recording; README line on how to re-record
+
+## FR-55 · frontend · Import the crew from a file (Excel, CSV, Numbers export)
+- state: ready
+- gated: no
+- why: founder 2026-09-21: "bylo by super mít možnost to naimportovat z něčeho" — the crew list exists as an .xlsx from the production office or a Google Sheet; FR-31's paste covers copied cells, a file drop covers the rest and the column names tell us more than a paste does
+- dod:
+  - Crew tab: "Import a file…" accepts .xlsx, .xls, .csv (SheetJS in the browser, no upload; the file never leaves the phone); header row detected by common names in CS/EN (jméno/name, telefon/phone/mobil, oddělení/department/dept, pozice/position/funkce, e-mail); a small column-mapping row lets the AD fix a wrong guess; then the same preview and "Add N people" as FR-31, reusing existing contacts per FR-45
+  - department headers as merged rows or a department column both work; phone numbers normalised the FR-29 way for display, stored as typed
+  - unit tests for the header detection (CS/EN, order, missing columns) and E2E with a committed 12-row .xlsx fixture
+  - failure case: a file with no recognisable name column is refused with "which column has the names?" and the mapping row, never a silent import of garbage
+
+## FR-56 · frontend · Import the shooting schedule (scenes per day) from Excel or a Movie Magic export
+- state: ready
+- gated: no
+- why: the AD's schedule already exists as a stripboard export (Movie Magic Scheduling → Excel/CSV, or a plain Excel with day, scene, INT/EXT, D/N, set, pages, location, cast); typing 40 scenes a day into the phone is the second setup killer after the crew
+- dod:
+  - Days tab: "Import schedule…" accepts .xlsx/.csv; rows grouped by shoot day (a day column, or "Day 1 – date" banner rows, or a date column); per row scene number, INT/EXT, D/N, set description, pages (eighths or "2 3/8"), location name, cast names; preview per day with counts; "Create N days" creates unpublished drafts on this phone (not published) with scenes in order, locations matched by name to the Locations tab (unmatched → created), cast matched by name (unmatched listed, not created)
+  - existing days with the same date are not overwritten: the preview marks them and skips
+  - unit tests for the grouping and the pages parser; E2E with a committed 3-day fixture
+  - failure case: a file with scenes but no day information imports as one unpublished draft named "Imported schedule" rather than guessing dates
+
+## FR-57 · tech-lead · Import from an existing call sheet PDF
+- state: ready
+- gated: partial
+- note: the heuristics path is ungated; the LLM path needs `FILMRUNNER_ANTHROPIC_API_KEY` as a Fly secret set by the founder (file an INBOX item when the code lands)
+- why: every AD has last production's call sheet as a PDF; its crew list and contacts are the fastest way to seed a new production; layouts differ per production company, so a fixed parser will not do
+- dod:
+  - `POST /productions/{id}/import/call-sheet-pdf` (crew:edit): text extraction (pypdf), then a structured extraction of contacts (name, department, position, phone) — first a heuristics pass (phone regex anchors a row, department headers by the FR-31 word list); when `FILMRUNNER_ANTHROPIC_API_KEY` is set, a Claude call with the page text and a JSON schema does the extraction instead, temperature 0, max 4k output; response is a preview list, nothing is created until the AD confirms in the same Crew tab preview as FR-31
+  - the PDF is processed in memory and not stored; 10 MB limit; scanned PDFs (no text layer) are refused with a clear message
+  - tests: two committed sample PDFs (a Czech and an English layout) through the heuristics path; the LLM path tested with the client mocked
+  - failure case: the extractor returning a person with no name or a phone that does not normalise is shown in the preview with a warning, never created silently
 
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
