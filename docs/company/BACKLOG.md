@@ -515,7 +515,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the recording script fails loudly if any step's selector is missing, so a UI change never silently ships an outdated recording; README line on how to re-record
 
 ## FR-55 · frontend · Import the crew from a file (Excel, CSV, Numbers export)
-- state: ready
+- state: in-progress
+- note: taken 2026-09-21 16:45 by the founder's interactive session (feat/fr-55-import-crew-file); shifts skip it
 - gated: no
 - why: founder 2026-09-21: "bylo by super mít možnost to naimportovat z něčeho" — the crew list exists as an .xlsx from the production office or a Google Sheet; FR-31's paste covers copied cells, a file drop covers the rest and the column names tell us more than a paste does
 - dod:
