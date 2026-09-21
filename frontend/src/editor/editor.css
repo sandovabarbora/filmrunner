@@ -120,3 +120,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .day-glance { display: block; margin-top: 2px; }
 .day-glance b { font-family: var(--mono); font-weight: 600; color: var(--ink); }
 .day-glance .seen-all { color: var(--ink); }
+
+/* FR-44: personal calls — only the people with one today; the rest one pick away. */
+.pcall-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.pcall-who .quiet.danger { margin-left: auto; }

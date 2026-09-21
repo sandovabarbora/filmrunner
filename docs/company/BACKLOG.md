@@ -403,6 +403,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - days list: call time, first location, opened x/y per day; cancelled tag stays
   - failure case: a production with no crew shows no "opened" fragment rather than 0/0
 
+## FR-44 · frontend · Personal calls: only the people with one, the rest one pick away
+- state: done
+- note: delivered 2026-09-21 (feat/fr-44-personal-calls-picker): the day screen lists only crew with an entry today (with a × to drop it) and a "Personal call for…" picker for everyone else, showing their standing time; entries still carry over to the next revision and to the next day. E2E tests adapted (helper `_pick_personal_call`). Frontend only
+- gated: no
+- why: FR-24 rendered three inputs for every crew member; with a real crew of 40 that is 120 inputs on a phone before the schedule, while a typical day has two or three personal calls
+- dod:
+  - people with an entry listed; a select adds one; × removes one (the person then gets the general call again)
+  - failure case: nothing is lost on reload — entries come back from the draft or the server as before
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
 - note: 13:00 shift 2026-09-21 (PR #111, branch feat/fr-25-landing-page) delivered every dod bullet: `frontend/landing.html` as a third Vite entry, FR-6's chosen position as the headline, three real screenshots of the bundled demo call sheet (header/calls/weather, Where, Who to call) taken by a committed Playwright script (`frontend/scripts/take_landing_screenshots.py`, re-run after any visual change to the sheet), a live-demo link, and a no-forms "Request a pilot" mailto to the founder. Czech/English toggle is two static `[lang]`-tagged blocks per element switched by a small vanilla script (`frontend/src/landing.ts`, no framework), defaulting to the visitor's browser language and falling back to Czech with no JS at all. The root entry page (`index.html`) gets one added link, "What is FilmRunner?", kept to that page's existing "two doors, no marketing" design. No external fonts; all three images 28-40 KB; verified at 390px in both languages. Handled the dod's failure case directly: a screenshot the script could not produce is simply not written, and `landing.ts` removes any `<figure>` whose image fails to load, so a missing shot never becomes a broken-image placeholder. `npm run typecheck`/`npm run build` clean, `npm test` 23/23; full Playwright suite 39/41 (the 2 failures are `test_locations_e2e.py`'s pre-existing Nominatim-egress-block, unrelated, flagged by every prior shift touching that suite). Touches `frontend/`, so per TEAM.md's hackathon mode this still gets `gh pr merge --auto --squash` (only TEAM.md itself is excluded); PR is the whole deliverable.

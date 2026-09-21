@@ -25,6 +25,13 @@ def _connect(page: Page, frontend_url: str, api_url: str) -> None:
     page.wait_for_selector("#newProduction", timeout=10_000)
 
 
+def _pick_personal_call(page: Page, name: str) -> None:
+    """FR-44: personal calls list only the people with one; pick the person first."""
+    value = page.locator("#addPersonalCall option", has_text=name).get_attribute("value")
+    page.select_option("#addPersonalCall", value)
+    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+
+
 def _create_production(page: Page, name: str) -> None:
     page.fill("#newProduction", name)
     page.click("#createProduction")
@@ -363,7 +370,8 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
     page.click("role=tab[name='Days']"); page.click("#newDay")
     page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#general_crew_call", "06:30")
-    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.wait_for_selector("#addPersonalCall", timeout=10_000)
+    _pick_personal_call(page, "Tomáš Novák")
     page.get_by_label("Call for Tomáš Novák").fill("05:15")
     page.get_by_label("Pickup for Tomáš Novák").fill("04:45")
     page.get_by_label("Note for Tomáš Novák").fill("generator first")
@@ -383,6 +391,7 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
     # Reopen the day: the entry is prefilled; publish B without touching it; still there.
     page.reload(); page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
     expect(page.get_by_label("Call for Tomáš Novák")).to_have_value("05:15", timeout=10_000)
+    assert page.locator("#addPersonalCall").count() == 0  # FR-44: everyone with an entry is listed, nobody left to pick
 
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
@@ -408,7 +417,8 @@ def test_whatsapp_message_carries_the_days_personal_call_and_waits_for_publish(p
     page.click("role=tab[name='Days']"); page.click("#newDay")
     page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#general_crew_call", "06:30")
-    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.wait_for_selector("#addPersonalCall", timeout=10_000)
+    _pick_personal_call(page, "Tomáš Novák")
     page.get_by_label("Call for Tomáš Novák").fill("05:15")
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
@@ -510,7 +520,8 @@ def test_next_day_starts_from_this_one_and_a_plain_new_day_continues_the_numberi
     page.click("#addScene")
     page.locator("#items .item").nth(0).get_by_label("Scene").fill("7")
     page.locator("#items .item").nth(0).get_by_label("Set").fill("COURTYARD")
-    page.wait_for_selector("#personalCalls .pcall", timeout=10_000)
+    page.wait_for_selector("#addPersonalCall", timeout=10_000)
+    _pick_personal_call(page, "Tomáš Novák")
     page.get_by_label("Call for Tomáš Novák").fill("05:15")
     page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
