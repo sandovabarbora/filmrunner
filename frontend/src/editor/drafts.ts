@@ -72,6 +72,42 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
+/** ISO date + n days, done in UTC so a DST switch never shifts the calendar day. */
+export function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * FR-30: tomorrow starts as today. Date +1, day number +1, the same unit,
+ * calls, head of day, safety notes, scenes (locations repeat for days) and
+ * personal calls. Weather and sun are left blank: they belong to the date
+ * and fill in from the location (FR-27). Nothing here is published.
+ */
+export function nextDayFrom(d: Draft): Draft {
+  const dayNumber = d.day_number + 1;
+  return {
+    ...emptyDraft(d.productionId ?? "", d.productionName),
+    shoot_date: addDays(d.shoot_date, 1),
+    day_number: dayNumber,
+    day_count: Math.max(d.day_count, dayNumber),
+    unit_name: d.unit_name,
+    general_crew_call: d.general_crew_call,
+    shooting_call: d.shooting_call,
+    safety_notes: d.safety_notes,
+    headOfDayId: d.headOfDayId,
+    items: d.items.map((it) => ({ ...it })),
+    crewCalls: Object.fromEntries(Object.entries(d.crewCalls).map(([k, v]) => [k, { ...v }])),
+  };
+}
+
+/** True when a draft has anything the AD typed that a replacement would lose. */
+export function draftHasContent(d: Draft | null): boolean {
+  return !!d && (d.general_crew_call.trim() !== "" || d.items.length > 0 || d.shooting_call.trim() !== "" || d.safety_notes.trim() !== "");
+}
+
 export async function loadDraft(key: string): Promise<Draft | null> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
