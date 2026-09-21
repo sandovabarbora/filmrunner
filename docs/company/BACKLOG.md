@@ -345,6 +345,54 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - Crew tab: WhatsApp per person with the stable link and a short explanation; Copy all links as name · department: link lines
   - failure case: no usable phone → no WhatsApp link (copy stays), never a wa.me link to a wrong number
 
+## FR-38 · frontend · Delete a location
+- state: ready
+- gated: no
+- why: FR-19 added locations but not a way to remove one typed by mistake; a wrong address on the Where block (FR-35) reaches every sheet, so the AD must be able to take it out, not just rename it
+- dod:
+  - `DELETE /productions/{id}/locations/{id}` (crew:edit): scenes on any revision that pointed to it keep their text and lose the link (location_id null); the sheet's Where block simply drops it
+  - Locations tab: Remove with a one-step inline confirm, same pattern as crew
+  - backend test: a day whose scene used the deleted location still loads and publishes; E2E: remove, scene's location select shows "no location"
+  - failure case: deleting a location that is the day's only one makes the FR-27 hint reappear on the day screen, not a blank sunrise with no explanation
+
+## FR-39 · tech-lead · Weather fills in on publish when left blank
+- state: ready
+- gated: no
+- why: sunrise and sunset already auto-fill from the first scene's location on publish (FR-19); weather still needs the AD to press "Suggest weather" and accept it, which the pilot protocol showed nobody does the first time; a blank weather line on a call sheet reads as "not checked"
+- dod:
+  - `publish_revision`: when `weather_forecast` is blank and the first located scene has coordinates, fill it with the same suggestion text the button would give; never overwrite a typed value
+  - the editor hint under Weather says it fills in from the location on publish (like the sunrise hint); the "Suggest weather" button stays for the AD who wants to see it first
+  - backend test with the weather provider monkeypatched: blank → filled, typed → kept, provider down → stays blank and publish still succeeds
+  - failure case: the provider being unreachable never fails or delays a publish beyond its timeout
+
+## FR-40 · qa · Pilot readiness re-run against everything added on 2026-09-21
+- state: ready
+- gated: no
+- why: FR-26 ran the protocol before today's thirteen merges (WhatsApp share, one link per person, cast, cancel, Where, who opened REV B); the readiness file must say what is verified for the new surface before the founder takes a phone to a set
+- dod:
+  - extend `docs/research/pilot-readiness-2026-09.md` with a section per new item: what was checked headless against the live API (`https://filmrunner-api.fly.dev`, public endpoints only: `/public/call-sheets/{id}`, `/public/crew/{token}/next`, `/public/.../seen/{token}` with a throwaway token gives 404) and what needs the founder's phone (WhatsApp share sheet, wa.me deep links, push on cancel)
+  - each line pass / fail / not verified, with the command or click path
+  - failure case: anything that fails live is filed as a `ready` bug item with the reproduction, not left as a note
+
+## FR-41 · marketing · Pilot outreach message for five Prague ADs
+- state: ready
+- gated: no
+- why: the landing page (FR-25) and the demo are up; INBOX #1 (interviews) is waiting on the founder's network, and the founder needs a message to paste, not a brief to write
+- dod:
+  - `docs/marketing/pilot-outreach.md`: one Czech WhatsApp-length message and one e-mail version (Czech, English below), both linking the landing page and the live demo, asking for one shoot day on a real production; tone from `docs/marketing/positioning.md`, no feature list longer than three lines
+  - a short "what to say when they ask about offline / data / price" block with honest answers grounded in the readiness file (what is verified, what is not)
+  - failure case: nothing in the message promises something the readiness file marks as not verified
+
+## FR-42 · frontend · Tomorrow at a glance on the sheet
+- state: ready
+- gated: no
+- why: the one-link-per-person resolution (FR-32) already returns every day; a crew member reading today's sheet at wrap wants tomorrow's crew call and location without navigating; on paper this is the "advance schedule" line every Czech call sheet carries
+- dod:
+  - `CrewNextDay.days` gains general_crew_call and the first location name per day (from each day's current revision); the sheet, when opened through a personal link, shows a one-line "Tomorrow: Day N · date · crew call · location" block above the other-days nav for the next day after the one shown, or "Tomorrow: day off" when the next day is not the following date
+  - print shows the same line at the bottom
+  - E2E: two consecutive days, open day 1 via the stable link, see day 2's crew call
+  - failure case: a cancelled next day shows "Tomorrow: Day N cancelled", never its old call time
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
 - note: 13:00 shift 2026-09-21 (PR #111, branch feat/fr-25-landing-page) delivered every dod bullet: `frontend/landing.html` as a third Vite entry, FR-6's chosen position as the headline, three real screenshots of the bundled demo call sheet (header/calls/weather, Where, Who to call) taken by a committed Playwright script (`frontend/scripts/take_landing_screenshots.py`, re-run after any visual change to the sheet), a live-demo link, and a no-forms "Request a pilot" mailto to the founder. Czech/English toggle is two static `[lang]`-tagged blocks per element switched by a small vanilla script (`frontend/src/landing.ts`, no framework), defaulting to the visitor's browser language and falling back to Czech with no JS at all. The root entry page (`index.html`) gets one added link, "What is FilmRunner?", kept to that page's existing "two doors, no marketing" design. No external fonts; all three images 28-40 KB; verified at 390px in both languages. Handled the dod's failure case directly: a screenshot the script could not produce is simply not written, and `landing.ts` removes any `<figure>` whose image fails to load, so a missing shot never becomes a broken-image placeholder. `npm run typecheck`/`npm run build` clean, `npm test` 23/23; full Playwright suite 39/41 (the 2 failures are `test_locations_e2e.py`'s pre-existing Nominatim-egress-block, unrelated, flagged by every prior shift touching that suite). Touches `frontend/`, so per TEAM.md's hackathon mode this still gets `gh pr merge --auto --squash` (only TEAM.md itself is excluded); PR is the whole deliverable.
