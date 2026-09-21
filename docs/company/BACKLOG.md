@@ -537,9 +537,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a file with scenes but no day information imports as one unpublished draft named "Imported schedule" rather than guessing dates
 
 ## FR-57 · tech-lead · Import from an existing call sheet PDF
-- state: ready
-- gated: partial
-- note: the heuristics path is ungated; the LLM path needs `FILMRUNNER_ANTHROPIC_API_KEY` as a Fly secret set by the founder (file an INBOX item when the code lands)
+- state: in-progress
+- gated: no
+- note: taken 2026-09-21 17:00 by the founder's interactive session (feat/fr-57-import-call-sheet-pdf); the founder set `FILMRUNNER_ANTHROPIC_API_KEY` on Fly the same day, so both paths are ungated
 - why: every AD has last production's call sheet as a PDF; its crew list and contacts are the fastest way to seed a new production; layouts differ per production company, so a fixed parser will not do
 - dod:
   - `POST /productions/{id}/import/call-sheet-pdf` (crew:edit): text extraction (pypdf), then a structured extraction of contacts (name, department, position, phone) — first a heuristics pass (phone regex anchors a row, department headers by the FR-31 word list); when `FILMRUNNER_ANTHROPIC_API_KEY` is set, a Claude call with the page text and a JSON schema does the extraction instead, temperature 0, max 4k output; response is a preview list, nothing is created until the AD confirms in the same Crew tab preview as FR-31
