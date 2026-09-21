@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.routers import productions as productions_router
+from app.services import call_sheets as call_sheets_service
 from app.services.geocoding import GeocodeResult
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
@@ -123,6 +124,9 @@ def test_publish_computes_sunrise_sunset_from_first_located_scene(client: TestCl
         productions_router.geocoding, "geocode",
         lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
     )
+    # Not this test's concern (FR-39 covers weather separately); stub it out
+    # so publish doesn't make a real network call here.
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
     pid = _production(client)
     loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja, Praha"}, headers=AUTH).json()["id"]
     resp = client.post(
@@ -150,6 +154,7 @@ def test_publish_does_not_overwrite_sunrise_typed_by_the_ad(client: TestClient, 
         productions_router.geocoding, "geocode",
         lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
     )
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
     pid = _production(client)
     loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja"}, headers=AUTH).json()["id"]
     resp = client.post(
@@ -178,6 +183,87 @@ def test_publish_without_located_scenes_leaves_sunrise_sunset_null(client: TestC
     )
     rev = resp.json()["current_revision"]
     assert rev["sunrise"] is None and rev["sunset"] is None
+
+
+def test_publish_fills_weather_forecast_from_first_located_scene_when_blank(client: TestClient, monkeypatch) -> None:
+    """FR-39: like sunrise/sunset, a blank weather line fills in on publish
+    from the day's first located scene, with the same text the "Suggest
+    weather" button would give."""
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
+    )
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: "9-18°C, slight rain")
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja, Praha"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "general_crew_call": "05:00",
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["current_revision"]["weather_forecast"] == "9-18°C, slight rain"
+
+
+def test_publish_does_not_overwrite_weather_typed_by_the_ad(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
+    )
+
+    def fail(*a, **k):
+        raise AssertionError("should not fetch a weather suggestion when the AD already typed one")
+
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", fail)
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "weather_forecast": "Jasno, 20°C",
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["current_revision"]["weather_forecast"] == "Jasno, 20°C"
+
+
+def test_publish_succeeds_and_leaves_weather_blank_when_the_provider_is_down(client: TestClient, monkeypatch) -> None:
+    """Failure case: the provider being unreachable never fails or delays a
+    publish — weather_suggestion already returns None on any failure within
+    its own timeout, so publish just leaves the field blank."""
+    monkeypatch.setattr(
+        productions_router.geocoding, "geocode",
+        lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
+    )
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
+    pid = _production(client)
+    loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja"}, headers=AUTH).json()["id"]
+    resp = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={
+            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "initial_revision": {
+                "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
+                                     "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
+            },
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["current_revision"]["weather_forecast"] is None
 
 
 def test_sun_times_for_a_geocoded_location_and_none_without_coordinates(client: TestClient, monkeypatch) -> None:

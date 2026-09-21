@@ -101,6 +101,19 @@ def test_weather_suggestion_malformed_response_returns_none(monkeypatch):
     assert weather.weather_suggestion(50.0755, 14.4378, date(2026, 6, 21)) is None
 
 
+def test_weather_suggestion_date_past_the_forecast_range_returns_none(monkeypatch):
+    """FR-39 CI regression: Open-Meteo answers 200 for a date beyond its
+    forecast horizon, but with null temperatures instead of an error — this
+    must fall back to None like any other unusable response, not crash on
+    round(None)."""
+    monkeypatch.setattr(
+        weather.httpx,
+        "get",
+        lambda *a, **k: _FakeResponse({"daily": {"temperature_2m_max": [None], "temperature_2m_min": [None], "weather_code": [None]}}),
+    )
+    assert weather.weather_suggestion(50.0755, 14.4378, date(2026, 12, 1)) is None
+
+
 # --- nearest hospital --------------------------------------------------------
 
 

@@ -70,9 +70,13 @@ def weather_suggestion(lat: float, lng: float, on_date: date) -> str | None:
         lo = daily["temperature_2m_min"][0]
         hi = daily["temperature_2m_max"][0]
         code = daily["weather_code"][0]
+        if lo is None or hi is None:
+            # Open-Meteo still answers 200 for a date past its forecast range,
+            # just with null values instead of an error — treat that the same
+            # as any other "not shaped as expected" response.
+            raise ValueError("no temperature in the forecast for this date")
+        description = _WEATHER_CODES.get(code, "forecast unavailable in detail")
+        return f"{round(lo)}-{round(hi)}°C, {description}"
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         logger.warning("Weather suggestion failed for (%s, %s) on %s: %s", lat, lng, on_date, exc)
         return None
-
-    description = _WEATHER_CODES.get(code, "forecast unavailable in detail")
-    return f"{round(lo)}-{round(hi)}°C, {description}"
