@@ -20,7 +20,8 @@
         "int_ext": "EXT",
         "day_night": "DAY",
         "set_description": "RIVERBANK, TROJA. Marta finds the boat. Water safety on set.",
-        "page_count_eighths": 14
+        "page_count_eighths": 14,
+        "location_id": "loc-troja"
       },
       {
         "order_index": 2,
@@ -28,7 +29,8 @@
         "int_ext": "EXT",
         "day_night": "DAY",
         "set_description": "RIVERBANK, TROJA. Jonas rows across; drone for wide.",
-        "page_count_eighths": 6
+        "page_count_eighths": 6,
+        "location_id": "loc-troja"
       },
       {
         "order_index": 3,
@@ -36,7 +38,8 @@
         "int_ext": "INT",
         "day_night": "DAY",
         "set_description": "COTTAGE KITCHEN. Breakfast, the letter. Continuity: wet hair from sc. 42.",
-        "page_count_eighths": 21
+        "page_count_eighths": 21,
+        "location_id": "loc-cottage"
       },
       {
         "order_index": 4,
@@ -44,9 +47,11 @@
         "int_ext": "INT",
         "day_night": "NIGHT",
         "set_description": "COTTAGE KITCHEN. Same setup, dusk for night; blackout windows from 16:00.",
-        "page_count_eighths": 9
+        "page_count_eighths": 9,
+        "location_id": "loc-cottage"
       }
-    ]
+    ],
+    "created_at": "2026-09-21T18:12:00Z"
   },
   "contacts": {
     "head_of_day": {
@@ -101,5 +106,110 @@
       }
     ],
     "nearest_hospital": "FN Bulovka, Budínova 67/2, Praha 8 (12 min by car from Troja)"
-  }
+  },
+  "status": "published",
+  "locations": [
+    {
+      "id": "loc-troja",
+      "name": "Riverbank, Troja",
+      "address": "Trojská 1, Praha 7",
+      "parking_notes": "Unit base on the gravel lot by the boathouse; crew cars stay on Trojská, not on the riverside path.",
+      "nearest_hospital": "Nemocnice Na Bulovce, Budínova 67/2, Praha 8 (+420 266 081 111)",
+      "geo_lat": 50.1168,
+      "geo_lng": 14.4111,
+      "scene_numbers": [
+        "42",
+        "43"
+      ]
+    },
+    {
+      "id": "loc-cottage",
+      "name": "Cottage, Sedlec",
+      "address": "K Přívozu 12, Praha 6 – Sedlec",
+      "parking_notes": "Ten cars max in the yard; rest at the ferry car park, 4 min walk.",
+      "nearest_hospital": "Nemocnice Na Bulovce, Budínova 67/2, Praha 8 (+420 266 081 111)",
+      "geo_lat": 50.1367,
+      "geo_lng": 14.3915,
+      "scene_numbers": [
+        "17",
+        "18"
+      ]
+    }
+  ],
+  "cast_calls": [
+    {
+      "cast_member_id": "cast-marta",
+      "name": "Anna Geislerová",
+      "character_name": "MARTA",
+      "status_code": "W",
+      "pickup_time": "05:30",
+      "call_time": "06:00",
+      "makeup_hair_time": "06:15",
+      "on_set_time": "07:30"
+    },
+    {
+      "cast_member_id": "cast-jonas",
+      "name": "Jiří Mádl",
+      "character_name": "JONAS",
+      "status_code": "SW",
+      "pickup_time": "06:00",
+      "call_time": "06:30",
+      "makeup_hair_time": "06:45",
+      "on_set_time": "08:30"
+    },
+    {
+      "cast_member_id": "cast-babi",
+      "name": "Iva Janžurová",
+      "character_name": "BABIČKA",
+      "status_code": "W",
+      "pickup_time": "10:30",
+      "call_time": "11:00",
+      "makeup_hair_time": "11:15",
+      "on_set_time": "13:00"
+    }
+  ],
+  "personal_calls": [
+    {
+      "crew_member_id": "crew-gaffer",
+      "name": "Tomáš Novák",
+      "department": "Electric",
+      "position": "Gaffer",
+      "call_time": "05:15",
+      "pickup_time": null,
+      "note": "Generator truck first, then the 12K to the riverbank."
+    },
+    {
+      "crew_member_id": "crew-water",
+      "name": "Petra Horká",
+      "department": "Water safety",
+      "position": "Water safety supervisor",
+      "call_time": "06:00",
+      "pickup_time": null,
+      "note": "Boat in the water before crew call."
+    }
+  ],
+  "previous_revision": {
+    "revision_letter": "A",
+    "created_at": "2026-09-20T20:40:00Z"
+  },
+  "changes": [
+    {
+      "field": "crew_call",
+      "label": "Crew call",
+      "before": "07:00",
+      "after": "06:30"
+    },
+    {
+      "field": "scene_order",
+      "label": "Scenes",
+      "before": "17, 18, 42, 43",
+      "after": "42, 43, 17, 18"
+    },
+    {
+      "field": "personal_calls",
+      "label": "Personal calls",
+      "before": null,
+      "after": "1 changed"
+    }
+  ]
 }

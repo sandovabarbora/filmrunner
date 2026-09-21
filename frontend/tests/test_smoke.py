@@ -74,6 +74,12 @@ def test_demo_mode_renders_bundled_call_sheet(page: Page, frontend_url: str) -> 
     assert page.locator("#scheduleBody tr").count() == 4
     assert page.locator("#revBadgeWrap").inner_text().strip() == "REV B"
     assert page.locator("#lookup").count() == 0
+    # The demo is the first thing a prospect sees: it shows every block the sheet has.
+    assert page.locator("#locations .location").count() == 2
+    assert page.locator("#castTable tbody tr").count() == 3
+    assert page.locator("#revChanges li").count() == 3
+    assert "replaces A" in page.locator("#revReplaces").inner_text()
+    assert page.locator("#cancelledBanner").count() == 0
 
 
 def test_demo_mode_missing_json_shows_error_not_blank(page: Page, frontend_url: str) -> None:
