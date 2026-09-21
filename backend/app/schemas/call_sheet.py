@@ -223,6 +223,9 @@ class CrewDayRef(BaseModel):
     unit_name: str
     revision_letter: str | None
     status: str = "published"
+    # FR-42: enough for "Tomorrow: Day 4 · Thu 24 Sep · crew call 06:30 · Karlštejn" without another request.
+    general_crew_call: str | None = None
+    first_location_name: str | None = None
 
 
 class CrewNextDay(BaseModel):

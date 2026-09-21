@@ -395,9 +395,21 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
         .order_by(CallSheet.shoot_date, CallSheet.day_number)
         .all()
     )
+    def first_location_name(revision: CallSheetRevision | None) -> str | None:
+        if revision is None:
+            return None
+        for item in sorted(revision.schedule_items, key=lambda i: i.order_index):
+            if item.location_id is not None:
+                loc = db.get(Location, item.location_id)
+                if loc is not None:
+                    return loc.name
+        return None
+
     days = [
         CrewDayRef(call_sheet_id=s.id, shoot_date=s.shoot_date, day_number=s.day_number, day_count=s.day_count, unit_name=s.unit_name,
-                   revision_letter=s.current_revision.revision_letter if s.current_revision else None, status=s.status.value)
+                   revision_letter=s.current_revision.revision_letter if s.current_revision else None, status=s.status.value,
+                   general_crew_call=s.current_revision.general_crew_call if s.current_revision else None,
+                   first_location_name=first_location_name(s.current_revision))
         for s in sheets
     ]
     live = [d for d in days if d.status != "cancelled"]
