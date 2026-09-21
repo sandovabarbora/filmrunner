@@ -231,6 +231,49 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the doc explicitly separates these desk-research findings from FR-3's own interview question ("what would have to be true for you to switch") so a future shift never treats desk research as a substitute for a real interview answer
   - failure case: a lock-in or export claim that cannot be verified from a public source is marked "unverified", not guessed, same convention as FR-2
 - note: 09:00 shift 2026-09-18 (branch docs/fr-21-switching-cost-teardown) delivered docs/research/switching-cost-teardown.md covering all five FR-2 incumbents: documented export functions (StudioBinder PDF/CSV, SetHero's full export collection, Croogloo's contact export, Movie Magic's version-gated native/third-party exports), and two sourced lock-in signals (Yamdu's tiered contact-retention complaint from Capterra reviews, Movie Magic's "locked in" framing from a competitor page, flagged as needing neutral re-verification). No Reddit/forum discussion of switching surfaced despite four targeted searches; marked unverified rather than assumed absent. The doc explicitly separates these desk findings from FR-3's own interview question, which stays blocked on INBOX #1. This shift's originally-assigned item (FR-8: verify the PWA service worker on the real Fly-hosted URL over iOS Safari) was skipped — this session's egress proxy rejects `filmrunner-api.fly.dev` outright (confirmed with a direct curl) and no iOS device exists here either, so the check is undoable this shift; noted in STATUS.md.
+## FR-23 · frontend · "REV B replaces A" on the sheet and in the push
+- state: ready
+- gated: no
+- why: hackathon goal (pilot-ready); a crew member who opened REV A at night must see at a glance that B replaced it and what changed (BRIEF Q3: late revisions are the top failure)
+- dod:
+  - the viewer shows a line under the badge: "REV B replaces A, issued 06:12" using the revision history from the public read (previous letter and created_at)
+  - a compact diff of what changed between the last two revisions: crew call, shooting call, scene order, safety notes; computed client-side from both revisions, no new endpoint if the public read can include the previous revision summary
+  - the push payload (FR-16) carries the same one-line summary
+  - Playwright: publish A then B with a different crew call, the viewer shows "replaces A" and "crew call 06:30 → 07:30"
+  - failure case: a sheet with only REV A shows no diff line at all, not an empty "replaces" sentence
+
+## FR-24 · frontend · Per-day personal call overrides
+- state: ready
+- gated: no
+- why: FR-13 reads CrewMember.standard_call_time, but on a real day the gaffer is called an hour early on Tuesday only; the AD must be able to set per-person times for a day (BRIEF Q1/Q3)
+- dod:
+  - data: per-revision crew call entries (crew_member_id, call_time, pickup_time, note) alongside the existing cast calls; a new revision copies the previous entries so the AD edits, not retypes
+  - editor day screen: a "Personal calls" section listing the crew with an optional time per person; empty means the general crew call
+  - personal sheet (FR-13) prefers the day's entry over the standing time; the print layout lists personal calls in a small table
+  - backend tests for precedence (day entry > standing time > general call) and copy-forward on revision; E2E sets one person's time and sees it on their personal link
+  - failure case: a crew member removed after entries exist does not break publishing; their entry is dropped with a note in the PR's test
+
+## FR-25 · marketing · Landing page from the positioning
+- state: ready
+- gated: no
+- why: hackathon goal; docs/marketing/positioning.md (FR-6) exists and the product is demoable; a Prague AD who hears about FilmRunner needs one page that says what it is, shows the real call sheet, and offers the demo and a way to ask for a pilot
+- dod:
+  - frontend/landing.html as a third Vite entry in the same paper world: one sentence of positioning, the live demo call sheet embedded or linked, three screenshots taken from the real app by a Playwright script committed to the repo, and a "Request a pilot" mailto to the founder's address (no forms, no accounts)
+  - text follows positioning.md; Czech and English toggle without a framework (two static blocks)
+  - Lighthouse-style basics by hand: no external fonts, images under 200 KB each, works at 390 px
+  - the root entry page links to it; Pages deploys it
+  - failure case: if a screenshot cannot be produced by the script, the page ships without that image slot rather than with a placeholder
+
+## FR-26 · qa · Pilot readiness protocol executed against the live app
+- state: ready
+- gated: no
+- why: hackathon goal; before an AD touches it, every step of the loop must be walked on the live URLs and the results written down, not assumed
+- dod:
+  - docs/research/pilot-readiness-2026-09.md: the checklist (sign in with a code, create production, crew with HoD, day with location and weather suggestion, publish, crew link offline, personal link, push received, REV B, PDF) with pass/fail per step, executed headless where possible against https://sandovabarbora.github.io/filmrunner/ and https://filmrunner-api.fly.dev using the service token from the E2E pattern
+  - every fail becomes a backlog item with the exact reproduction, filed in the same PR
+  - steps that need a real iPhone are listed separately with what to observe, for the founder
+  - failure case: a step that cannot be executed headless is marked "not verified", never "pass"
+
 ## FR-20 · marketing · Prague market sizing: how many active productions are there
 - state: ready
 - gated: no
