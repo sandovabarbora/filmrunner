@@ -318,3 +318,20 @@ export interface SeenReport {
   seen: SeenEntry[];
   not_seen: SeenEntry[];
 }
+
+/** FR-57: candidates out of an old call sheet PDF; the AD confirms in the crew preview. */
+export interface ExtractedContact {
+  name: string;
+  department: string | null;
+  position: string | null;
+  phone: string | null;
+  email: string | null;
+  warnings: string[];
+}
+
+export interface CallSheetPdfExtraction {
+  contacts: ExtractedContact[];
+  method: "claude" | "heuristics" | string;
+  pages: number;
+  warnings: string[];
+}

@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # site operator; a generic mailto keeps a real person's address out of
     # this config, but the founder may set her own.
     vapid_subject: str = "mailto:admin@filmrunner.app"
+    # FR-57: extracting contacts from an old call sheet PDF. Without the key the
+    # heuristics pass runs alone; with it, Claude does the structured extraction.
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-sonnet-5"
 
     @model_validator(mode="after")
     def _refuse_dev_token_outside_development(self) -> "Settings":
