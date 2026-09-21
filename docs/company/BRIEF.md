@@ -28,30 +28,75 @@ the problem: the person who assembles and distributes call sheets.
 | Q6 | Which existing tool would we have to displace, and what would make an AD switch mid-season? | pm | FR-2 teardown names the incumbent per production size. FR-3 interviews then ask directly: "what would have to be true for you to switch tools mid-production?" — listen for data lock-in, muscle memory, or the tool being provided free by the production company. |
 | Q7 | What is the smallest thing that proves the wedge: a call sheet viewer, a distributor, or a script-to-call-sheet flow? | pm + tech-lead | After Q1–Q3 answers exist, score three candidate MVP shapes (viewer only, distribution only, generation from an existing schedule) against: data the crew must already have, and rough build time. Decide only once real interview data exists — not before. |
 
-## Assumptions carried over from the June 2026 product brief (unverified)
+## Assumptions carried over from the June 2026 product brief (verified 2026-09-18)
 
-This shift could not open `PRODUCT_BRIEF.md` or the old repository.
-`DECISIONS.md` (written at founding) records that both live outside this
-repository, at `~/Documents/Coding/sandbox/film_production` on the
-founder's machine — a path this routine has no access to, and none was
-found anywhere in this checkout either. What follows is reconstructed only
-from `docs/company/DECISIONS.md`, not from the original document, and is
-listed as unverified hypotheses, never as fact:
+Correction: every prior version of this section said the June 2026 brief
+could not be read. That was wrong from the start — the founder copied it
+into this repo, verbatim, the same day as founding: commit `b918215`
+(2026-09-14 15:54 CEST) added `docs/reference/PRODUCT_BRIEF-2026-06.md`
+in the same commit that wrote this file's previous "unverified" wording,
+and it has been sitting there, readable, through every shift since. No
+prior shift's search for it (a `WebFetch`/`open` against the old repo
+path, or against the file by a different name) happened to check
+`docs/reference/` in this checkout directly. Flagged here so the process
+gap — checking the local tree before declaring a source unreachable — is
+visible, not just fixed silently; also recorded in `DECISIONS.md`.
 
-- H1: the earlier thesis assumed a broader "studio-readiness" platform
-  (auth/SSO, budget tracking, scheduling), not a single-wedge call-sheet
-  product. (source: `DECISIONS.md`, 2026-09-14 founding note)
-- H2: the earlier build used Next.js + Supabase; it was abandoned for a
-  conscious restart, not because those specific choices were shown to be
-  wrong. (source: `DECISIONS.md`)
-- H3: whatever specific customer quotes, pricing figures, or market-size
-  numbers the June 2026 brief may contain are unknown to this shift. They
-  are not reproduced here, and nothing above should be read as a summary
-  of the document's actual content.
+What follows replaces H1–H3 with what the document (166 lines, read in
+full 2026-09-18) actually says. It is still a June 2026 hypothesis, not
+a BRIEF.md conclusion — nothing here is validated by a real interview
+(FR-3) yet, and the June brief itself is explicitly reference material,
+never a source of truth (see `TEAM.md`).
 
-Action needed from the founder: to let a future shift verify or retire H1
-and H2 against the source, add the brief (or its key sections) to this
-repo, e.g. `docs/reference/product-brief-2026-06.md`.
+- H1 (revised): the June brief's scope is broader than today's
+  call-sheet wedge, but not in the shape previously guessed. It targets
+  the full chain "script → breakdown → schedule → call sheet → shoot
+  day" with AI drafting the breakdown and schedule from a pasted script
+  ("invisible glue", never branded as AI) — not a "studio-readiness"
+  platform of auth/SSO plus budget/scheduling modules. **Budgeting and
+  cost tracking are explicitly cut from v1** in the source ("producers
+  keep their spreadsheets... trust in numbers takes years to earn"), the
+  opposite of what the previous H1 guessed. SSO is not mentioned; the
+  architecture section says only "salvage the hardened backend organs:
+  auth deps, RLS, security work" — ordinary auth, not an SSO scaffold.
+  Relevant to Q7 (smallest thing that proves the wedge): the June brief's
+  own answer was "generation from an existing (AI-drafted) schedule", one
+  of the three candidates Q7 already asks FR-3 to score against real
+  interview data, not assumed here.
+- H2 (confirmed): the earlier build's chosen stack was Next.js + FastAPI
+  + Supabase, and the brief explicitly argues for *keeping* it ("salvage
+  the hardened backend organs... no new infrastructure services until a
+  pilot forces them") — the restart to this repo's FastAPI + Postgres +
+  React skeleton was the founder's scope decision (2026-09-14,
+  `DECISIONS.md`), not a finding that Next.js or Supabase were technically
+  wrong. `docs/adr/ADR-001-frontend-stack.md` and FR-4's still-open
+  backend half should cite this directly rather than guessing at it.
+- H3 (revised): concrete figures the June brief does state, as hypotheses
+  for Q4 and Q5 to test, not facts: a **per-production flat fee, tiered
+  by size, "e.g. €99–499", unlimited crew** (contrasts with a per-seat
+  model); **free for film-school productions** (FAMU, Zlín) as a
+  deliberate farm-system channel; distribution leads with **Prague/CZ
+  first**, matching Q5's own premise that Prague density is worth
+  testing. No customer quotes are in the document — it is a founder/
+  mentor strategy session brief, not interview output, so it carries no
+  more weight than any other hypothesis until FR-3 tests it.
+- H4 (new): the brief's differentiation claim is speed and AI-assisted
+  generation ("script to a call sheet in everyone's pocket in 30
+  minutes... nobody can demo this today — not Movie Magic, not
+  StudioBinder, not Yamdu"). FR-2's teardown already checked what these
+  incumbents do; a future pass could check that teardown against this
+  specific claim (does any incumbent offer script-to-schedule AI
+  drafting?) but that recheck is not done in this shift and is not
+  asserted here.
+- H5 (new): the brief names explicit anti-scope-creep guardrails ("the
+  chain stays thin", "depth at the end", "one operator: the 1st AD wins
+  every conflict") that read as consistent with this repo's own
+  `TEAM.md` product rule ("connect first, then add") and the working
+  hypothesis at the top of this file, for whatever that consistency is
+  worth as a sanity check, not as independent validation.
+
+Nothing above is treated as decided; it is cited, dated, and left for
+FR-3 interviews and the open questions above to confirm or kill.
 
 ## Kill criteria
 
