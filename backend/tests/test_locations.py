@@ -124,6 +124,9 @@ def test_publish_computes_sunrise_sunset_from_first_located_scene(client: TestCl
         productions_router.geocoding, "geocode",
         lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
     )
+    # Not this test's concern (FR-39 covers weather separately); stub it out
+    # so publish doesn't make a real network call here.
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
     pid = _production(client)
     loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja, Praha"}, headers=AUTH).json()["id"]
     resp = client.post(
@@ -151,6 +154,7 @@ def test_publish_does_not_overwrite_sunrise_typed_by_the_ad(client: TestClient, 
         productions_router.geocoding, "geocode",
         lambda address: GeocodeResult(lat=50.0755, lng=14.4378, display_name="Prague"),
     )
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
     pid = _production(client)
     loc_id = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Riverbank", "address": "Troja"}, headers=AUTH).json()["id"]
     resp = client.post(

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.routers import productions as productions_router
+from app.services import call_sheets as call_sheets_service
 from app.services.geocoding import GeocodeResult
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
@@ -15,6 +16,9 @@ def _scene(n: str, order: int, location_id: str | None) -> dict:
 
 def test_locations_listed_in_schedule_order_with_their_scenes(client: TestClient, monkeypatch) -> None:
     monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: GeocodeResult(lat=50.08, lng=14.42, display_name="Praha") if address else None)
+    # Not this test's concern (FR-39 covers weather separately); stub it out
+    # so publish doesn't make a real network call here.
+    monkeypatch.setattr(call_sheets_service.weather, "weather_suggestion", lambda lat, lng, on_date: None)
     pid = client.post("/api/v1/productions", json={"name": "Loc"}, headers=AUTH).json()["id"]
     castle = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Karlštejn", "address": "Karlštejn 172", "parking_notes": "Lower car park"}, headers=AUTH).json()
     studio = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Studio B"}, headers=AUTH).json()
