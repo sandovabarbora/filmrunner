@@ -448,7 +448,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a sheet with no cast and no personal calls prints without empty headings
 
 ## FR-48 · frontend · The crew's sheet in Czech
-- state: ready
+- state: in-progress
+- note: taken 2026-09-21 17:20 by the founder's interactive session (feat/fr-48-czech-sheet); shifts skip it
 - gated: no
 - why: the landing is CS/EN but the sheet the crew actually reads is English only; the pilot crews are Czech; labels like "Crew call", "Who to call", "Tomorrow", "cancelled" must read naturally in Czech for the pilot to be judged on the product, not the language
 - dod:
