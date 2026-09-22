@@ -502,7 +502,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the public sheet for a 60-scene day must render under 2 s on the throttled profile or it is filed as a bug, not noted
 
 ## FR-53 · tech-lead · Backups and the restore path
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 11:20 by the founder's interactive session (feat/fr-53-backups-restore); shifts skip it
 - gated: no
 - why: the pilot's call sheets live in one Supabase Postgres; a wrong migration or a deleted production is recoverable only if someone knows how; nobody has written it down or tried it
 - dod:
