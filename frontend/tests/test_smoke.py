@@ -327,3 +327,38 @@ def test_privacy_page_reachable_from_sheet_landing_and_editor(page: Page, fronte
     assert page.locator("h1[lang='cs']").is_visible() and not page.locator("h1[lang='en']").is_visible()
     page.goto(f"{frontend_url}/landing.html"); page.wait_for_selector("#privacyLink", timeout=10_000)
     assert page.locator("#privacyLink").get_attribute("href") == "privacy.html"
+
+
+def test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missing(page: Page, frontend_url: str) -> None:
+    """FR-54: the recorded flow video plays muted/looped by default, only offers manual
+    controls (no autoplay) when the visitor asked for reduced motion, and disappears
+    entirely rather than showing a broken player if the file is missing."""
+    page.goto(f"{frontend_url}/landing.html")
+    video = page.locator("video[data-flow-video]")
+    video.wait_for(timeout=10_000)
+    assert video.get_attribute("poster") == "landing/call-sheet-top.jpg"
+    assert video.get_attribute("src") == "landing/landing-flow.webm"
+    page.wait_for_timeout(500)
+    assert video.evaluate("el => el.autoplay") is True
+    assert video.evaluate("el => el.muted") is True
+    assert video.evaluate("el => el.loop") is True
+    assert video.evaluate("el => el.paused") is False
+
+    ctx = page.context.browser.new_context(viewport=page.viewport_size, reduced_motion="reduce")
+    reduced = ctx.new_page()
+    reduced.goto(f"{frontend_url}/landing.html")
+    rv = reduced.locator("video[data-flow-video]")
+    rv.wait_for(timeout=10_000)
+    reduced.wait_for_timeout(500)
+    assert rv.evaluate("el => el.autoplay") is False
+    assert rv.evaluate("el => el.controls") is True
+    assert rv.evaluate("el => el.paused") is True
+    ctx.close()
+
+    ctx2 = page.context.browser.new_context(viewport=page.viewport_size)
+    missing = ctx2.new_page()
+    missing.route("**/landing/landing-flow.webm", lambda route: route.fulfill(status=404, body="not found"))
+    missing.goto(f"{frontend_url}/landing.html")
+    missing.wait_for_timeout(2_000)
+    assert missing.locator("section.flow").count() == 0
+    ctx2.close()

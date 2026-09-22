@@ -41,6 +41,16 @@ under "Who to call". Members tab (owners) invites people by email as
 owner, editor or viewer; the API enforces the role (`docs/adr/ADR-005-roles.md`).
 Design: `docs/adr/ADR-003-editor.md`.
 
+## Landing page
+
+`frontend/landing.html` — screenshots and a short recorded flow video of
+the demo call sheet, no account needed. Re-take the screenshots after any
+visual change to the sheet with `python3 scripts/take_landing_screenshots.py`
+(after `npm run build`); re-record the flow video (create day → publish →
+crew link → REV B) with `python3 scripts/record_landing_flow.py`, run from
+`frontend/` with a local Postgres reachable — it fails loudly rather than
+writing a stale recording if a selector it depends on is gone.
+
 ## Production (API)
 
 API on Fly.io (`backend/fly.toml`, region fra), Postgres on Supabase used
