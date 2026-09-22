@@ -67,6 +67,13 @@ header.top .word { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.06e
 .shots img { width: 100%; height: auto; display: block; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-2); }
 .shots figcaption { margin-top: 6px; font-size: 0.8125rem; color: var(--muted); }
 
+.flow { margin: 32px 0; text-align: center; }
+.flow video {
+  width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto;
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--paper-2);
+}
+.flow-caption { margin-top: 8px; font-size: 0.8125rem; color: var(--muted); }
+
 .proof { margin: 32px 0; padding: 0; list-style: none; }
 .proof li {
   padding: 12px 0; border-top: 1px solid var(--rule); display: flex; gap: 12px; align-items: baseline;

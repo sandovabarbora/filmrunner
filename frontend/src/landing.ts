@@ -43,3 +43,25 @@ for (const img of document.querySelectorAll<HTMLImageElement>("[data-screenshot]
     img.closest("figure")?.remove();
   });
 }
+
+// FR-54: the recorded flow video autoplays only when the visitor hasn't
+// asked for reduced motion (it stays muted/looping either way so a manual
+// play never surprises with sound); a video that fails to load (missing
+// file) disappears rather than showing a broken player, same failure-case
+// convention as the screenshots above.
+const flowVideo = document.querySelector<HTMLVideoElement>("[data-flow-video]");
+if (flowVideo) {
+  flowVideo.addEventListener("error", () => {
+    flowVideo.closest("section.flow")?.remove();
+  });
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion) {
+    flowVideo.controls = true;
+  } else {
+    flowVideo.autoplay = true;
+    flowVideo.play?.().catch(() => {
+      // Autoplay can be blocked (e.g. low-power mode); offer manual controls instead.
+      flowVideo.controls = true;
+    });
+  }
+}
