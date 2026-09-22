@@ -25,9 +25,9 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import Actuals, CrewNextDay, PersonalSheet, RevisionSummary, SeenReport
+from app.schemas.call_sheet import Actuals, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
-from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
 
 logger = logging.getLogger(__name__)
@@ -273,6 +273,16 @@ def mark_seen_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     if not record_seen(db, call_sheet, token):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
+
+
+@router.get("/call-sheets/{call_sheet_id}/history", response_model=list[HistoryEntry])
+def get_call_sheet_history(
+    call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
+) -> list[HistoryEntry]:
+    """FR-50: who published each revision, when, and what changed — the AD's answer to "who sent REV C at 22:40?"."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, PRODUCTION_READ)
+    return build_history(db, call_sheet)
 
 
 @router.get("/call-sheets/{call_sheet_id}/seen", response_model=SeenReport)

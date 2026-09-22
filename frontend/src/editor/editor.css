@@ -119,6 +119,15 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 3px; font-size: 0.8125rem; }
 .chip .whatsapp { margin: 0; }
 
+/* FR-50: collapsed publish history — who, when, what changed. */
+.history { margin-top: 14px; padding: 10px 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.history summary { cursor: pointer; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.history-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.history-list > li { font-size: 0.8125rem; }
+.history-list .rev { font-weight: 700; }
+.history-changes { list-style: none; margin: 4px 0 0; padding: 0 0 0 4px; }
+.history-changes .k { color: var(--ink-2); }
+
 /* FR-43: the days list at a glance. */
 .day-glance { display: block; margin-top: 2px; }
 .day-glance b { font-family: var(--mono); font-weight: 600; color: var(--ink); }

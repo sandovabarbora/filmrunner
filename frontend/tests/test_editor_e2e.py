@@ -731,6 +731,35 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
     expect(page.locator("#seenPanel")).to_contain_text("REV B opened by 0 of 2", timeout=10_000)
+
+
+def test_day_screen_shows_a_collapsed_publish_history(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-50: a collapsed "History" list on the day screen shows one line per revision — who published it,
+    when, what changed versus the one before, and how many crew opened it. REV A alone shows no diff."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E history {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.click("#historyPanel summary")
+    history = page.locator("#historyList")
+    entries = history.locator("> li")
+    expect(entries.first).to_contain_text("REV A")
+    expect(entries.first).to_contain_text("0 opened")
+    expect(entries.first.locator(".history-changes")).to_have_count(0)  # REV A has nothing to diff against
+
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    expect(entries).to_have_count(2)
+    expect(entries.first).to_contain_text("REV B")  # most recent first
+    b_changes = entries.first.locator(".history-changes")
+    expect(b_changes).to_contain_text("Crew call")
+    expect(b_changes).to_contain_text("06:30")
+    expect(b_changes).to_contain_text("07:00")
+    expect(entries.nth(1)).to_contain_text("REV A")
+
+
 def test_crew_tab_sends_each_person_their_own_link_on_whatsapp(page: Page, frontend_url: str, api_url: str) -> None:
     """FR-37: from the Crew tab the AD sends each person their stable link with one tap; no phone means no WhatsApp link;
     "Copy all links" copies one line per person."""
