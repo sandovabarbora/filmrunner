@@ -1,0 +1,207 @@
+/**
+ * FR-48: the crew's sheet in Czech. A flat dictionary for the viewer (index.html)
+ * only; the editor stays English for now. Browser language decides, a CS/EN
+ * toggle overrides and is remembered per device. A key missing from Czech
+ * falls back to the English text — never to the key itself.
+ */
+
+export type Lang = "cs" | "en";
+
+const EN = {
+  "sub.your": "Your call sheet",
+  "sub.demo": "Demo shoot day",
+  "sub.dev": "Development",
+  "sub.home": "The living call sheet",
+  "status.live": "Live · saved on this phone for offline use.",
+  "status.cached": "Offline · showing the copy saved {when}. Times may have changed since.",
+  "status.unknown": "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening.",
+  "status.notfound": "This call sheet does not exist or is not available any more.",
+  "status.error": "Could not load this call sheet ({reason}).",
+  "status.invalidToken": "This personal link is not on any crew list. Ask your AD for a new one.",
+  "status.unreachable": "Could not reach the server and no day is saved on this phone yet. Open this link once in signal.",
+  "status.noDay": "{production}: no shoot day published yet. Keep this link; it will open your next day.",
+  "personal.invalid": "This personal link is not on the crew list any more. Showing the general call sheet.",
+  "empty.notCached": "This call sheet is not on this phone yet and the server could not be reached. Get back in signal and reload; it will be saved for offline use after the first load.",
+  "empty.notFound": "This call sheet does not exist or is not available any more. Check the link with whoever sent it — reloading will not help.",
+  "home.crew": "Crew",
+  "home.crewText": "Open the link your AD sent you. It works with no signal once opened, and updates itself when a revision goes out.",
+  "home.demo": "See a demo call sheet",
+  "home.running": "Running a production",
+  "home.runningText": "Create shoot days, publish revisions, keep the crew and their numbers in one place.",
+  "home.editor": "Open the editor",
+  "print.meta": "Printed {when} · check the live link before call; revisions replace this page.",
+  "tomorrow": "Tomorrow",
+  "tomorrow.off": "day off · next is",
+  "tomorrow.cancelled": "cancelled",
+  "tomorrow.crewCall": "crew call",
+  "days": "Days",
+  "day.n": "Day {n}",
+  "day.of": "Day {n} of {count}",
+  "cancelled": "CANCELLED",
+  "cancelled.text": "Day {n} ({date}) is off. Times below no longer apply; wait for the next day's sheet.",
+  "rev.replaces": "REV {rev} replaces {prev}",
+  "rev.issued": ", issued {time}",
+  "rev.changes": "What changed",
+  "you.call": "Your call",
+  "you.pickup": "Pickup",
+  "crewCall": "Crew call",
+  "shootingCall": "Shooting call",
+  "sunrise": "Sunrise",
+  "sunset": "Sunset",
+  "weather": "Weather",
+  "safety": "Safety",
+  "where": "Where",
+  "where.sc": "Sc",
+  "where.maps": "Open in maps",
+  "where.parking": "Parking",
+  "where.hospital": "Hospital",
+  "schedule": "Schedule",
+  "th.scene": "Scene",
+  "th.ie": "I/E",
+  "th.dn": "D/N",
+  "th.set": "Set",
+  "th.pages": "Pages",
+  "cast": "Cast",
+  "th.character": "Character",
+  "th.status": "St.",
+  "th.pickup": "Pickup",
+  "th.call": "Call",
+  "th.mh": "M/H",
+  "th.onSet": "On set",
+  "personalCalls": "Personal calls",
+  "th.name": "Name",
+  "th.department": "Department",
+  "th.note": "Note",
+  "contacts": "Who to call",
+  "contacts.headOfDay": "Head of day",
+  "contacts.yourDept": "Your department",
+  "contacts.others": "Other departments ({n})",
+  "contacts.hospital": "Nearest hospital",
+  "contacts.noNumber": "no number on file",
+  "footer.issued": "issued",
+  "print": "Print / Save PDF",
+  "print.hint": "Add to home screen to open it with no signal. On iPhone: Share → Print → pinch out for PDF.",
+  "notify.on": "🔔 Notifications on for this device",
+  "notify.off": "Turn off",
+  "notify.enable": "Notify me when this call sheet changes",
+  "notify.busy": "Working…",
+  "lang.toggle": "Čeština",
+} as const;
+
+export type Key = keyof typeof EN;
+
+const CS: Partial<Record<Key, string>> = {
+  "sub.your": "Tvoje dispozice",
+  "sub.demo": "Ukázkový natáčecí den",
+  "sub.dev": "Vývoj",
+  "sub.home": "Živé denní dispozice",
+  "status.live": "Živě · uloženo v telefonu pro čtení bez signálu.",
+  "status.cached": "Offline · zobrazena kopie uložená {when}. Časy se od té doby mohly změnit.",
+  "status.unknown": "Neznámá čerstvost · uložená aplikace nedokázala ověřit, jestli je tohle živá verze. Pokud se to opakuje, zavři ji a otevři znovu.",
+  "status.notfound": "Tyhle dispozice neexistují nebo už nejsou dostupné.",
+  "status.error": "Dispozice se nepodařilo načíst ({reason}).",
+  "status.invalidToken": "Tenhle osobní odkaz není na žádném seznamu štábu. Požádej AD o nový.",
+  "status.unreachable": "Server je nedostupný a v telefonu ještě není uložený žádný den. Otevři odkaz jednou se signálem.",
+  "status.noDay": "{production}: zatím není zveřejněný žádný natáčecí den. Odkaz si nech, otevře tvůj další den.",
+  "personal.invalid": "Tenhle osobní odkaz už není na seznamu štábu. Zobrazuji obecné dispozice.",
+  "empty.notCached": "Tyhle dispozice ještě nejsou v telefonu a server je nedostupný. Vrať se do signálu a načti znovu; po prvním načtení zůstanou uložené i offline.",
+  "empty.notFound": "Tyhle dispozice neexistují nebo už nejsou dostupné. Ověř odkaz u toho, kdo ti ho poslal — obnovení stránky nepomůže.",
+  "home.crew": "Štáb",
+  "home.crewText": "Otevři odkaz od svého AD. Jednou otevřený funguje i bez signálu a sám se aktualizuje, když vyjde revize.",
+  "home.demo": "Ukázkové dispozice",
+  "home.running": "Vedeš produkci",
+  "home.runningText": "Zakládej natáčecí dny, vydávej revize, měj štáb a jeho čísla na jednom místě.",
+  "home.editor": "Otevřít editor",
+  "print.meta": "Vytištěno {when} · před srazem zkontroluj živý odkaz; revize tuhle stránku nahrazují.",
+  "tomorrow": "Zítra",
+  "tomorrow.off": "volno · další je",
+  "tomorrow.cancelled": "zrušeno",
+  "tomorrow.crewCall": "sraz štábu",
+  "days": "Dny",
+  "day.n": "{n}. den",
+  "day.of": "{n}. den z {count}",
+  "cancelled": "ZRUŠENO",
+  "cancelled.text": "{n}. den ({date}) se nenatáčí. Časy níže neplatí; počkej na dispozice dalšího dne.",
+  "rev.replaces": "REV {rev} nahrazuje {prev}",
+  "rev.issued": ", vydáno {time}",
+  "rev.changes": "Co se změnilo",
+  "you.call": "Tvůj sraz",
+  "you.pickup": "Vyzvednutí",
+  "crewCall": "Sraz štábu",
+  "shootingCall": "Začátek natáčení",
+  "sunrise": "Východ",
+  "sunset": "Západ",
+  "weather": "Počasí",
+  "safety": "Bezpečnost",
+  "where": "Kde",
+  "where.sc": "Obr.",
+  "where.maps": "Otevřít v mapách",
+  "where.parking": "Parkování",
+  "where.hospital": "Nemocnice",
+  "schedule": "Harmonogram",
+  "th.scene": "Obraz",
+  "th.ie": "I/E",
+  "th.dn": "D/N",
+  "th.set": "Motiv",
+  "th.pages": "Str.",
+  "cast": "Herci",
+  "th.character": "Postava",
+  "th.status": "St.",
+  "th.pickup": "Vyzv.",
+  "th.call": "Sraz",
+  "th.mh": "Maska",
+  "th.onSet": "Na place",
+  "personalCalls": "Osobní srazy",
+  "th.name": "Jméno",
+  "th.department": "Oddělení",
+  "th.note": "Poznámka",
+  "contacts": "Komu volat",
+  "contacts.headOfDay": "Vedoucí dne",
+  "contacts.yourDept": "Tvoje oddělení",
+  "contacts.others": "Ostatní oddělení ({n})",
+  "contacts.hospital": "Nejbližší nemocnice",
+  "contacts.noNumber": "číslo chybí",
+  "footer.issued": "vydáno",
+  "print": "Tisk / Uložit PDF",
+  "print.hint": "Přidej na plochu, ať to otevřeš i bez signálu. Na iPhonu: Sdílet → Tisk → roztáhni prsty pro PDF.",
+  "notify.on": "🔔 Upozornění zapnutá na tomto zařízení",
+  "notify.off": "Vypnout",
+  "notify.enable": "Dej mi vědět, když se dispozice změní",
+  "notify.busy": "Pracuji…",
+  "lang.toggle": "English",
+};
+
+const STORAGE_KEY = "filmrunner.lang";
+
+export function detectLang(): Lang {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "cs" || saved === "en") return saved;
+  } catch { /* storage unavailable */ }
+  const nav = typeof navigator !== "undefined" ? (navigator.language || "").toLowerCase() : "";
+  return nav.startsWith("cs") || nav.startsWith("sk") ? "cs" : "en";
+}
+
+export function rememberLang(lang: Lang): void {
+  try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* fine */ }
+}
+
+/** The label for `key` in `lang`, with `{name}` placeholders filled; Czech falls back to English text. */
+export function t(lang: Lang, key: Key, vars: Record<string, string | number> = {}): string {
+  const raw = (lang === "cs" ? CS[key] : undefined) ?? EN[key];
+  return raw.replace(/\{(\w+)\}/g, (_, name: string) => (vars[name] !== undefined ? String(vars[name]) : `{${name}}`));
+}
+
+const WEEKDAYS_CS = ["ne", "po", "út", "st", "čt", "pá", "so"];
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "st 23. 9. 2026" / "Wed 23 Sep 2026" from an ISO date; the raw string when it does not parse. */
+export function fmtDate(lang: Lang, iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (Number.isNaN(d.getTime())) return iso;
+  if (lang === "cs") return `${WEEKDAYS_CS[d.getUTCDay()]} ${d.getUTCDate()}. ${d.getUTCMonth() + 1}. ${d.getUTCFullYear()}`;
+  return `${WEEKDAYS_EN[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS_EN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}

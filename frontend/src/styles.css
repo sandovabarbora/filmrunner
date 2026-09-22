@@ -332,3 +332,8 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .tomorrow b { font-family: var(--mono); }
 .tomorrow[data-kind="cancelled"] strong { color: #b3261e; letter-spacing: 0.06em; }
 @media print { .tomorrow { border-color: #000; } }
+
+/* FR-48: language toggle in the masthead. */
+.masthead { position: relative; }
+.lang-toggle { position: absolute; right: 0; top: 4px; padding: 4px 8px; border: 1px solid var(--rule-strong); border-radius: 3px; background: #fff; font: inherit; font-size: 0.75rem; letter-spacing: 0.04em; cursor: pointer; }
+@media print { .lang-toggle { display: none; } }

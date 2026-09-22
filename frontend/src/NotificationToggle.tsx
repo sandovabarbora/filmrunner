@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, subscribe, unsubscribe } from "./push";
+import { t, type Lang } from "./i18n";
 
 type State =
   | { kind: "checking" }
@@ -11,7 +12,7 @@ type State =
   | { kind: "error"; text: string };
 
 /** "Enable notifications" for a crew member's own device, shown on their personal link only (FR-16). */
-export function NotificationToggle({ apiBase, token }: { apiBase: string; token: string }) {
+export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: string; token: string; lang?: Lang }) {
   const [state, setState] = useState<State>({ kind: "checking" });
 
   useEffect(() => {
@@ -53,16 +54,16 @@ export function NotificationToggle({ apiBase, token }: { apiBase: string; token:
     <div className="notify" id="notifyToggle">
       {state.kind === "on" && (
         <>
-          <span className="notify-on">🔔 Notifications on for this device</span>
-          <button type="button" className="quiet" onClick={() => void disable()}>Turn off</button>
+          <span className="notify-on">{t(lang, "notify.on")}</span>
+          <button type="button" className="quiet" onClick={() => void disable()}>{t(lang, "notify.off")}</button>
         </>
       )}
       {state.kind === "off" && (
         <button type="button" className="secondary" onClick={() => void enable(state.vapidPublicKey)}>
-          Notify me when this call sheet changes
+          {t(lang, "notify.enable")}
         </button>
       )}
-      {state.kind === "busy" && <span className="hint">Working…</span>}
+      {state.kind === "busy" && <span className="hint">{t(lang, "notify.busy")}</span>}
       {state.kind === "error" && (
         <div className="status error" role="status">{state.text}</div>
       )}

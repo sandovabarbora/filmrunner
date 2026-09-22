@@ -3,6 +3,7 @@ import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
 import type { CrewDayRef, CrewNextDay, PersonalSheet } from "./types";
+import { detectLang, fmtDate, rememberLang, t, type Lang } from "./i18n";
 
 /**
  * The URL decides what the page is:
@@ -57,6 +58,10 @@ function tomorrowLine(days: CrewDayRef[], currentId: string): { kind: "day" | "c
 
 export function App() {
   const [mode, setMode] = useState<Mode>(modeFromLocation);
+  // FR-48: labels in the crew member's language; the toggle is remembered per device.
+  const [lang, setLang] = useState<Lang>(detectLang);
+  const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
+  function switchLang() { const next: Lang = lang === "cs" ? "en" : "cs"; rememberLang(next); setLang(next); }
   const [mine, setMine] = useState<CrewNextDay | null>(null);
   const [apiBase, setApiBase] = useState("http://localhost:8000");
   const [sheetId, setSheetId] = useState("");
@@ -72,11 +77,11 @@ export function App() {
     setResult(r);
     // A live load through a personal link is a read receipt (FR-36); a cached copy is not — the AD must not think REV B arrived.
     if (r.kind === "live" && me && mode.kind === "share") markSeen(mode.api, id, me);
-    if (r.kind === "live") setStatus({ kind: "online", text: "Live · saved on this phone for offline use." });
-    if (r.kind === "cached") setStatus({ kind: "offline", text: `Offline · showing the copy saved ${new Date(r.fetchedAt).toLocaleString()}. Times may have changed since.` });
-    if (r.kind === "unknown") setStatus({ kind: "offline", text: "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening." });
-    if (r.kind === "not_found") setStatus({ kind: "error", text: "This call sheet does not exist or is not available any more." });
-    if (r.kind === "error") setStatus({ kind: "error", text: `Could not load this call sheet (${r.reason}).` });
+    if (r.kind === "live") setStatus({ kind: "online", text: L("status.live") });
+    if (r.kind === "cached") setStatus({ kind: "offline", text: L("status.cached", { when: new Date(r.fetchedAt).toLocaleString() }) });
+    if (r.kind === "unknown") setStatus({ kind: "offline", text: L("status.unknown") });
+    if (r.kind === "not_found") setStatus({ kind: "error", text: L("status.notfound") });
+    if (r.kind === "error") setStatus({ kind: "error", text: L("status.error", { reason: r.reason }) });
   }
 
   useEffect(() => {
@@ -92,10 +97,10 @@ export function App() {
     if (mode.kind === "mine") {
       // The stable link: resolve to a day, then behave exactly like the day's own share link.
       void loadNextDay(mode.api, mode.me).then((next) => {
-        if (next === "invalid") { setPersonal("invalid"); setStatus({ kind: "error", text: "This personal link is not on any crew list. Ask your AD for a new one." }); return; }
-        if (next === null) { setStatus({ kind: "error", text: "Could not reach the server and no day is saved on this phone yet. Open this link once in signal." }); return; }
+        if (next === "invalid") { setPersonal("invalid"); setStatus({ kind: "error", text: L("status.invalidToken") }); return; }
+        if (next === null) { setStatus({ kind: "error", text: L("status.unreachable") }); return; }
         setMine(next);
-        if (!next.call_sheet_id) { setStatus({ kind: "offline", text: `${next.production_name}: no shoot day published yet. Keep this link; it will open your next day.` }); return; }
+        if (!next.call_sheet_id) { setStatus({ kind: "offline", text: L("status.noDay", { production: next.production_name }) }); return; }
         setMode({ kind: "share", api: mode.api, sheet: next.call_sheet_id, me: mode.me });
       });
     }
@@ -116,7 +121,7 @@ export function App() {
     : null;
 
   const subtitle =
-    mode.kind === "dev" ? "Development" : mode.kind === "share" || mode.kind === "mine" ? "Your call sheet" : mode.kind === "demo" ? "Demo shoot day" : "The living call sheet";
+    mode.kind === "dev" ? L("sub.dev") : mode.kind === "share" || mode.kind === "mine" ? L("sub.your") : mode.kind === "demo" ? L("sub.demo") : L("sub.home");
   const loading = result === null && status.kind === "" && (mode.kind === "demo" || mode.kind === "share" || mode.kind === "mine");
 
   function onLookup() {
@@ -133,20 +138,21 @@ export function App() {
       <header className="masthead">
         <h1>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
+        <button type="button" className="lang-toggle" id="langToggle" onClick={switchLang} aria-label={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{L("lang.toggle")}</button>
       </header>
-      <p className="print-meta" aria-hidden="true">Printed {new Date().toLocaleString()} · check the live link before call; revisions replace this page.</p>
+      <p className="print-meta" aria-hidden="true">{L("print.meta", { when: new Date().toLocaleString() })}</p>
 
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
           <div className="home-card">
-            <h2>Crew</h2>
-            <p>Open the link your AD sent you. It works with no signal once opened, and updates itself when a revision goes out.</p>
-            <a className="button" id="openDemo" href="?demo=1">See a demo call sheet</a>
+            <h2>{L("home.crew")}</h2>
+            <p>{L("home.crewText")}</p>
+            <a className="button" id="openDemo" href="?demo=1">{L("home.demo")}</a>
           </div>
           <div className="home-card">
-            <h2>Running a production</h2>
-            <p>Create shoot days, publish revisions, keep the crew and their numbers in one place.</p>
-            <a className="button primary" id="openEditor" href="editor.html">Open the editor</a>
+            <h2>{L("home.running")}</h2>
+            <p>{L("home.runningText")}</p>
+            <a className="button primary" id="openEditor" href="editor.html">{L("home.editor")}</a>
           </div>
           <p className="home-about"><a id="openLanding" href="landing.html">What is FilmRunner?</a></p>
         </section>
@@ -169,10 +175,10 @@ export function App() {
       )}
 
       {personal === "invalid" && (
-        <div className="status offline" id="personalInvalid" role="status">This personal link is not on the crew list any more. Showing the general call sheet.</div>
+        <div className="status offline" id="personalInvalid" role="status">{L("personal.invalid")}</div>
       )}
       {mode.kind === "share" && mode.me && personal && personal !== "invalid" && (
-        <NotificationToggle apiBase={mode.api} token={mode.me} />
+        <NotificationToggle apiBase={mode.api} token={mode.me} lang={lang} />
       )}
       {result && result.kind !== "error" && result.kind !== "not_found" && (
         <CallSheetView
@@ -180,6 +186,7 @@ export function App() {
           personal={personal && personal !== "invalid" ? personal : null}
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
           shareUrl={shareUrl}
+          lang={lang}
         />
       )}
       {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {
@@ -187,14 +194,14 @@ export function App() {
         if (!t) return null;
         const dayHref = `?api=${encodeURIComponent(mode.api)}&sheet=${t.day.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`;
         return (
-          <aside className="tomorrow" id="tomorrow" data-kind={t.kind} aria-label="Tomorrow">
-            <span className="k">Tomorrow</span>{" "}
-            {t.kind === "off" && <>day off · next is <a href={dayHref}>Day {t.day.day_number} · {t.day.shoot_date}</a></>}
-            {t.kind === "cancelled" && <>Day {t.day.day_number} · {t.day.shoot_date} · <strong>cancelled</strong></>}
+          <aside className="tomorrow" id="tomorrow" data-kind={t.kind} aria-label={L("tomorrow")}>
+            <span className="k">{L("tomorrow")}</span>{" "}
+            {t.kind === "off" && <>{L("tomorrow.off")} <a href={dayHref}>{L("day.n", { n: t.day.day_number })} · {fmtDate(lang, t.day.shoot_date)}</a></>}
+            {t.kind === "cancelled" && <>{L("day.n", { n: t.day.day_number })} · {fmtDate(lang, t.day.shoot_date)} · <strong>{L("tomorrow.cancelled")}</strong></>}
             {t.kind === "day" && (
               <>
-                <a href={dayHref}>Day {t.day.day_number} · {t.day.shoot_date}</a>
-                {t.day.general_crew_call && <> · crew call <b>{t.day.general_crew_call}</b></>}
+                <a href={dayHref}>{L("day.n", { n: t.day.day_number })} · {fmtDate(lang, t.day.shoot_date)}</a>
+                {t.day.general_crew_call && <> · {L("tomorrow.crewCall")} <b>{t.day.general_crew_call}</b></>}
                 {t.day.first_location_name && <> · {t.day.first_location_name}</>}
               </>
             )}
@@ -203,22 +210,22 @@ export function App() {
       })()}
       {mine && mine.days.length > 1 && mode.kind === "share" && (
         <nav className="other-days" id="otherDays" aria-label="Other days">
-          <span className="label">Days</span>
+          <span className="label">{L("days")}</span>
           {mine.days.map((d) => (
             d.call_sheet_id === mode.sheet
-              ? <span key={d.call_sheet_id} className="day on" aria-current="page">Day {d.day_number} · {d.shoot_date}{d.status === "cancelled" ? " · cancelled" : ""}</span>
-              : <a key={d.call_sheet_id} className={`day${d.status === "cancelled" ? " off" : ""}`} href={`?api=${encodeURIComponent(mode.api)}&sheet=${d.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`}>Day {d.day_number} · {d.shoot_date}{d.status === "cancelled" ? " · cancelled" : ""}</a>
+              ? <span key={d.call_sheet_id} className="day on" aria-current="page">{L("day.n", { n: d.day_number })} · {fmtDate(lang, d.shoot_date)}{d.status === "cancelled" ? ` · ${L("tomorrow.cancelled")}` : ""}</span>
+              : <a key={d.call_sheet_id} className={`day${d.status === "cancelled" ? " off" : ""}`} href={`?api=${encodeURIComponent(mode.api)}&sheet=${d.call_sheet_id}&me=${encodeURIComponent(mode.me ?? "")}`}>{L("day.n", { n: d.day_number })} · {fmtDate(lang, d.shoot_date)}{d.status === "cancelled" ? ` · ${L("tomorrow.cancelled")}` : ""}</a>
           ))}
         </nav>
       )}
       {result?.kind === "error" && (
         <div className="empty" role="status">
-          This call sheet is not on this phone yet and the server could not be reached. Get back in signal and reload; it will be saved for offline use after the first load.
+          {L("empty.notCached")}
         </div>
       )}
       {result?.kind === "not_found" && (
         <div className="empty" id="notFound" role="status">
-          This call sheet does not exist or is not available any more. Check the link with whoever sent it — reloading will not help.
+          {L("empty.notFound")}
         </div>
       )}
       {(!result || result.kind === "error" || result.kind === "not_found") && <div id="sheet" className="sheet" />}

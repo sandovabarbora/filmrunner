@@ -251,3 +251,26 @@ def test_print_media_shows_paper_chrome_and_hides_screen_controls(page: Page, fr
     page.emulate_media(media="screen")
     assert not page.locator("#printFoot").is_visible()
     assert page.locator(".actions").is_visible()
+
+
+def test_czech_browser_gets_a_czech_sheet_and_the_toggle_switches(browser, frontend_url: str) -> None:
+    """FR-48: a cs-CZ browser reads the demo sheet in Czech; the toggle flips to English and is remembered."""
+    ctx = browser.new_context(locale="cs-CZ", viewport={"width": 390, "height": 844})
+    page = ctx.new_page()
+    page.goto(f"{frontend_url}/index.html?demo=1")
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert "7. den z 24" in page.locator("#dayLabel").inner_text()
+    assert page.locator("#dateLabel").inner_text().strip() == "· út 22. 9. 2026"
+    assert "REV B nahrazuje A" in page.locator("#revReplaces").inner_text()
+    assert page.locator(".calls .label").first.text_content().strip() == "Sraz štábu"  # CSS uppercases it
+    assert page.locator("#locations h2").text_content().strip() == "Kde"
+    assert page.locator("#contacts h2").text_content().strip() == "Komu volat"
+    assert page.locator("#castTable th").first.text_content().strip() == "Herci"
+    # user-entered text is never translated
+    assert "Riverbank, Troja" in page.locator("#locations").inner_text()
+    page.click("#langToggle")
+    assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()
+    page.reload(); page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()  # remembered
+    assert page.locator("#langToggle").inner_text().strip() == "Čeština"
+    ctx.close()
