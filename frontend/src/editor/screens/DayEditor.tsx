@@ -6,7 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
-import type { CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
+import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
 
 function revisionPayload(d: Draft): RevisionCreate {
@@ -83,7 +83,12 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [shareText, setShareText] = useState<string | null>(null);
   const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
   const [seen, setSeen] = useState<SeenReport | null>(null);  // FR-36: who opened the current revision
-  const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
+  const [dayStatus, setDayStatus] = useState<string | null>(null);
+  // FR-65: the production's numbers after the day; saved on their own, no revision, never on the crew's sheet.
+  const EMPTY_ACTUALS: Actuals = { first_shot: null, lunch_out: null, lunch_in: null, wrap: null, note: null };
+  const [actuals, setActuals] = useState<Actuals>(EMPTY_ACTUALS);
+  const [actualsDirty, setActualsDirty] = useState(false);
+  const [actualsBusy, setActualsBusy] = useState(false);  // FR-34: "cancelled" shows the banner and the restore button
   const [confirmCancel, setConfirmCancel] = useState(false);
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
@@ -97,7 +102,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       if (callSheetId) {
         try {
           const sheet = await api.getCallSheet(conn, callSheetId);
-          if (!cancelled) setDayStatus(sheet.status ?? "published");
+          if (!cancelled) { setDayStatus(sheet.status ?? "published"); setActuals(sheet.actuals ?? EMPTY_ACTUALS); setActualsDirty(false); }
           const fromServer = draftFromServer(productionId, productionName, sheet);
           // Keep unpublished local edits if they are newer than the last publish.
           const keepLocal = local && local.dirtySincePublish && local.lastPublishedLetter === fromServer.lastPublishedLetter;
@@ -228,6 +233,20 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         : noticeFromError(err, L("Publish failed")));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveActuals() {
+    if (!draft?.callSheetId) return;
+    setActualsBusy(true);
+    try {
+      const sheet = await api.setActuals(conn, draft.callSheetId, actuals);
+      setActuals(sheet.actuals ?? EMPTY_ACTUALS); setActualsDirty(false);
+      setNotice({ kind: "ok", text: L("Actual times saved. They stay with the production; the crew's sheet does not change.") });
+    } catch (err) {
+      setNotice(noticeFromError(err, L("Could not save the actual times")));
+    } finally {
+      setActualsBusy(false);
     }
   }
 
@@ -517,6 +536,30 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   })}
                 </ul>}
             <p className="hint">{L("Counts a personal link opened live; a copy shown offline does not count. Refreshes every minute.")}</p>
+          </div>
+        )}
+        {published && dayStatus !== "cancelled" && (
+          <div className="actuals" id="actuals">
+            <div className="label">{L("Actual times")}</div>
+            <p className="hint">{L("After wrap: what really happened. For the production's records only; the crew's sheet does not change and nobody is notified.")}</p>
+            <div className="actuals-grid">
+              {([["first_shot", "First shot"], ["lunch_out", "Lunch out"], ["lunch_in", "Lunch in"], ["wrap", "Wrap"]] as const).map(([key, label]) => (
+                <label key={key} className="field" htmlFor={`actual_${key}`}>
+                  <span className="label">{L(label)}</span>
+                  <input id={`actual_${key}`} className="mono" placeholder="19:40" value={actuals[key] ?? ""} disabled={readOnly || actualsBusy}
+                    onChange={(e) => { setActuals({ ...actuals, [key]: e.target.value }); setActualsDirty(true); }} />
+                </label>
+              ))}
+            </div>
+            <label className="field" htmlFor="actual_note"><span className="label">{L("Note")}</span>
+              <input id="actual_note" value={actuals.note ?? ""} disabled={readOnly || actualsBusy} placeholder={L("Rain from 15:00; lost the last two scenes")}
+                onChange={(e) => { setActuals({ ...actuals, note: e.target.value }); setActualsDirty(true); }} />
+            </label>
+            {!readOnly && (
+              <div className="inline">
+                <button type="button" id="saveActuals" className="secondary" disabled={!actualsDirty || actualsBusy} onClick={() => void saveActuals()}>{actualsBusy ? L("Saving…") : L("Save actual times")}</button>
+              </div>
+            )}
           </div>
         )}
         {published && !readOnly && dayStatus !== "cancelled" && (

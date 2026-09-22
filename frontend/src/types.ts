@@ -79,6 +79,8 @@ export interface CallSheet {
   locations?: SheetLocation[];
   /** FR-43: on the AD's days list only. */
   opened?: { seen: number; total: number; first_location_name: string | null } | null;
+  /** FR-65: what actually happened; authenticated reads only, never on the crew's sheet. */
+  actuals?: Actuals | null;
   /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
   previous_revision?: RevisionSummary | null;
   changes?: RevisionChange[];
@@ -334,4 +336,12 @@ export interface CallSheetPdfExtraction {
   method: "claude" | "heuristics" | string;
   pages: number;
   warnings: string[];
+}
+
+export interface Actuals {
+  first_shot: string | null;
+  lunch_out: string | null;
+  lunch_in: string | null;
+  wrap: string | null;
+  note: string | null;
 }

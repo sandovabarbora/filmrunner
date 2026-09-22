@@ -25,7 +25,7 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import CrewNextDay, PersonalSheet, RevisionSummary, SeenReport
+from app.schemas.call_sheet import Actuals, CrewNextDay, PersonalSheet, RevisionSummary, SeenReport
 from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
 from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
@@ -88,6 +88,26 @@ def create_call_sheet_endpoint(
     if read.current_revision is not None:
         read.current_revision.notifications = _summary_read(summary)
     return read
+
+
+@router.put("/call-sheets/{call_sheet_id}/actuals", response_model=CallSheetRead)
+def set_actuals(call_sheet_id: uuid.UUID, payload: Actuals, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
+    """FR-65: what actually happened. Only on a published day: a draft has not happened and a cancelled one did not."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
+    if call_sheet.status != CallSheetStatus.PUBLISHED:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Actual times need a published day; this one is {call_sheet.status.value}")
+
+    def clean(v: str | None) -> str | None:
+        return (v.strip() or None) if isinstance(v, str) else None
+
+    call_sheet.actual_first_shot = clean(payload.first_shot)
+    call_sheet.actual_lunch_out = clean(payload.lunch_out)
+    call_sheet.actual_lunch_in = clean(payload.lunch_in)
+    call_sheet.actual_wrap = clean(payload.wrap)
+    call_sheet.actual_note = clean(payload.note)
+    db.commit()
+    return _read_with_contacts(db, call_sheet_id)
 
 
 @router.delete("/call-sheets/{call_sheet_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -177,6 +197,7 @@ def list_call_sheets(
     for sheet in sheets:
         read = CallSheetRead.model_validate(sheet)
         read.opened = build_opened_summary(db, sheet)
+        read.actuals = _actuals_of(sheet)
         if read.current_revision is not None:
             # The list shows the call, the first location and a count; the scenes belong to the day screen.
             # FR-52: with 30 days of 50 scenes this was 520 KB and 2.8 s on a phone — now ~15 KB.
@@ -187,9 +208,16 @@ def list_call_sheets(
     return reads
 
 
-def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID) -> CallSheetRead:
+def _actuals_of(call_sheet: CallSheet) -> Actuals:
+    return Actuals(first_shot=call_sheet.actual_first_shot, lunch_out=call_sheet.actual_lunch_out, lunch_in=call_sheet.actual_lunch_in,
+                   wrap=call_sheet.actual_wrap, note=call_sheet.actual_note)
+
+
+def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID, *, public: bool = False) -> CallSheetRead:
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     read = CallSheetRead.model_validate(call_sheet)
+    if not public:
+        read.actuals = _actuals_of(call_sheet)
     read.contacts = build_contacts(db, call_sheet)
     read.personal_calls = build_personal_calls(db, call_sheet)
     read.cast_calls = build_cast_calls(db, call_sheet)
@@ -216,7 +244,7 @@ def get_call_sheet_public(call_sheet_id: uuid.UUID, db: Session = Depends(get_db
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     if call_sheet.status == CallSheetStatus.DRAFT:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
-    return _read_with_contacts(db, call_sheet_id)
+    return _read_with_contacts(db, call_sheet_id, public=True)
 
 
 @public_router.get("/public/call-sheets/{call_sheet_id}/me/{token}", response_model=PersonalSheet)

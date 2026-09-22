@@ -630,7 +630,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: every step names the exact button label as it reads in the Czech editor (checked against `cs.ts`)
 
 ## FR-65 · frontend · Actual times per day: first shot, lunch, wrap
-- state: ready
+- state: done
+- note: delivered 2026-09-22 (feat/fr-65-actuals): five columns on call_sheets (migration f3b8d6e1a9c7), `PUT /call-sheets/{id}/actuals` (day:publish; 409 on a draft or cancelled day), returned on authenticated reads and the days list, stripped from the public read; editor: an "Actual times" block on a published day (first shot, lunch out/in, wrap, note) saved on its own — no revision, no push; days list shows "wrap 19:40"; "Export actual times (CSV)" (day, date, crew call, first shot, lunch, wrap, note; semicolons and BOM so Czech Excel opens it). CS/EN. 2 backend tests, 1 E2E incl. the CSV and the crew's sheet staying on REV A. Backend changed: deploy needed (migration)
 - gated: no
 - why: after wrap the AD reports first shot and wrap to production; it is the one number everyone asks for the next morning, and it belongs next to the planned call — the seed of a daily report without building one
 - dod:

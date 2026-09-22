@@ -1050,3 +1050,33 @@ def test_czech_browser_gets_a_czech_editor_and_the_toggle_is_shared_with_the_she
     v = ctx.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
     assert "Day 1 of 1" in v.locator("#dayLabel").inner_text()
     v.close(); ctx.close()
+
+
+def test_actual_times_after_wrap_stay_with_the_production(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-65: after the day the AD writes first shot and wrap; the days list shows the wrap; the crew's sheet does not change
+    and stays on REV A; the CSV export carries the row."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E actuals {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Days']"); page.click("#newDay"); page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.wait_for_selector("#actuals", timeout=10_000)
+    page.fill("#actual_first_shot", "08:12"); page.fill("#actual_wrap", "19:40"); page.fill("#actual_note", "Rain from 15:00")
+    page.click("#saveActuals")
+    expect(page.locator("#notice")).to_contain_text("Actual times saved", timeout=10_000)
+    assert page.locator("#publishState").inner_text().strip() == "REV A is live."  # no revision from actuals
+    link = page.locator("#shareLink").get_attribute("href")
+
+    page.reload(); page.wait_for_selector("#actuals", timeout=10_000)
+    expect(page.locator("#actual_wrap")).to_have_value("19:40", timeout=10_000)
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']"); page.wait_for_selector("#days", timeout=10_000)
+    expect(page.locator("#days li").first).to_contain_text("wrap 19:40")
+    with page.expect_download() as dl:
+        page.click("#exportActuals")
+    csv = open(dl.value.path(), encoding="utf-8-sig").read()
+    assert csv.splitlines()[0] == '"day";"date";"crew_call";"first_shot";"lunch_out";"lunch_in";"wrap";"note"'
+    assert '"08:12";"";"";"19:40";"Rain from 15:00"' in csv
+
+    v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
+    assert "19:40" not in v.locator("#sheet").inner_text() and v.locator("#revBadgeWrap").inner_text().strip() == "REV A"
+    v.close()

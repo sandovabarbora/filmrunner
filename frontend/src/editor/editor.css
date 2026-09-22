@@ -147,3 +147,8 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 /* FR-56: import the schedule. */
 .day-actions { align-items: center; flex-wrap: wrap; gap: 12px; }
 .day-actions label.quiet-link { cursor: pointer; text-decoration: underline; }
+
+/* FR-65: actual times after the day. */
+.actuals { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
+.actuals .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.actuals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

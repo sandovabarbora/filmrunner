@@ -202,6 +202,16 @@ class OpenedSummary(BaseModel):
     first_location_name: str | None = None
 
 
+class Actuals(BaseModel):
+    """FR-65: what actually happened on the day; the production's numbers, never the crew's instruction."""
+
+    first_shot: str | None = None
+    lunch_out: str | None = None
+    lunch_in: str | None = None
+    wrap: str | None = None
+    note: str | None = None
+
+
 class CallSheetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -219,6 +229,8 @@ class CallSheetRead(BaseModel):
     locations: list[SheetLocation] = []
     # FR-43: on the AD's days list only — how many of the crew have opened the current revision.
     opened: OpenedSummary | None = None
+    # FR-65: on authenticated reads only; stripped from the public read.
+    actuals: Actuals | None = None
     # FR-23: what the current revision replaced and what changed; both empty on a sheet with only REV A.
     previous_revision: RevisionSummary | None = None
     changes: list[RevisionChange] = []
