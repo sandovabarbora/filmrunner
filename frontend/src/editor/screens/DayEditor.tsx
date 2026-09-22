@@ -6,7 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
-import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
+import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
 
 function revisionPayload(d: Draft): RevisionCreate {
@@ -83,12 +83,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [shareText, setShareText] = useState<string | null>(null);
   const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
   const [seen, setSeen] = useState<SeenReport | null>(null);  // FR-36: who opened the current revision
-  const [dayStatus, setDayStatus] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);  // FR-50: who published each revision, when, what changed
+  const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
   // FR-65: the production's numbers after the day; saved on their own, no revision, never on the crew's sheet.
   const EMPTY_ACTUALS: Actuals = { first_shot: null, lunch_out: null, lunch_in: null, wrap: null, note: null };
   const [actuals, setActuals] = useState<Actuals>(EMPTY_ACTUALS);
   const [actualsDirty, setActualsDirty] = useState(false);
-  const [actualsBusy, setActualsBusy] = useState(false);  // FR-34: "cancelled" shows the banner and the restore button
+  const [actualsBusy, setActualsBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
@@ -140,6 +141,12 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     void refresh();
     const timer = window.setInterval(refresh, 60_000);  // people open the link over the evening; the AD keeps the screen open
     return () => { cancelled = true; window.clearInterval(timer); };
+  }, [conn, callSheetId, publishedLetter]);
+  useEffect(() => {
+    if (!callSheetId || !publishedLetter) { setHistory([]); return; }
+    let cancelled = false;
+    api.history(conn, callSheetId).then((h) => { if (!cancelled) setHistory(h); }).catch(() => undefined);
+    return () => { cancelled = true; };
   }, [conn, callSheetId, publishedLetter]);
   useEffect(() => {
     const flush = () => { if (latest.current) void saveDraft(latest.current); };
@@ -561,6 +568,31 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               </div>
             )}
           </div>
+        )}
+        {published && history.length > 0 && (
+          <details className="history" id="historyPanel">
+            <summary>{L("History")}</summary>
+            <ul className="history-list" id="historyList">
+              {[...history].reverse().map((h) => (
+                <li key={h.revision_letter}>
+                  <span className="rev">{L("REV {rev}", { rev: h.revision_letter })}</span>
+                  {" · "}{new Date(h.created_at).toLocaleString()}
+                  {" · "}{h.created_by}
+                  {" · "}{L("{n} opened", { n: h.opened })}
+                  {h.changes.length > 0 && (
+                    <ul className="history-changes">
+                      {h.changes.map((c) => (
+                        <li key={c.field}>
+                          <span className="k">{c.label}</span>{" "}
+                          {c.before !== null ? <><s>{c.before}</s> → <b>{c.after ?? "—"}</b></> : <b>{c.after ?? "—"}</b>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
         {published && !readOnly && dayStatus !== "cancelled" && (
           <div className="inline cancel-day" id="cancelDay">

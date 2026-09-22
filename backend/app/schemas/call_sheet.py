@@ -212,6 +212,19 @@ class Actuals(BaseModel):
     note: str | None = None
 
 
+class HistoryEntry(BaseModel):
+    """One line of the day's publish history (FR-50): who published this
+    revision, when, what it changed versus the one before, and how many
+    crew have opened it. `created_by` is never null on the wire — a
+    revision with no recorded author reads as "unknown", not an empty cell."""
+
+    revision_letter: str
+    created_at: datetime
+    created_by: str
+    changes: list[RevisionChange]
+    opened: int
+
+
 class CallSheetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

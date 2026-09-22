@@ -18,7 +18,7 @@ from app.models.production import CastMember, CrewMember, Location
 from app.models.push import PushSubscription
 from app.models.seen import RevisionView
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, PersonalCallRow, PersonalSheet, OpenedSummary, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, HistoryEntry, PersonalCallRow, PersonalSheet, OpenedSummary, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
 from app.services import weather
 from app.services.astronomy import sunrise_sunset
 
@@ -503,6 +503,30 @@ def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
     ]
     return SeenReport(revision_letter=revision.revision_letter,
                       seen=[e for e in entries if e.seen_at is not None], not_seen=[e for e in entries if e.seen_at is None])
+
+
+def build_history(db: Session, call_sheet: CallSheet) -> list[HistoryEntry]:
+    """FR-50: one line per revision — who published it, when, what it changed
+    versus the one before, and how many crew have opened it. `call_sheet.revisions`
+    is already ordered oldest-first (the relationship's own order_by), so each
+    entry only needs the revision immediately before it in that same list.
+
+    Cancel/restore is not recorded here: no `call_sheet_events` model exists
+    yet to carry it, so the dod's own instruction is followed literally —
+    left out rather than guessed at."""
+    revisions = call_sheet.revisions
+    entries = []
+    for i, revision in enumerate(revisions):
+        before = revisions[i - 1] if i > 0 else None
+        opened = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).count()
+        entries.append(HistoryEntry(
+            revision_letter=revision.revision_letter,
+            created_at=revision.created_at,
+            created_by=revision.created_by or "unknown",
+            changes=revision_changes(before, revision),
+            opened=opened,
+        ))
+    return entries
 
 
 def build_opened_summary(db: Session, call_sheet: CallSheet) -> OpenedSummary | None:

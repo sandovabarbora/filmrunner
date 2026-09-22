@@ -321,6 +321,15 @@ export interface SeenReport {
   not_seen: SeenEntry[];
 }
 
+/** FR-50: one line of the day's publish history. */
+export interface HistoryEntry {
+  revision_letter: string;
+  created_at: string;
+  created_by: string;
+  changes: RevisionChange[];
+  opened: number;
+}
+
 /** FR-57: candidates out of an old call sheet PDF; the AD confirms in the crew preview. */
 export interface ExtractedContact {
   name: string;
