@@ -69,6 +69,11 @@ def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date,
     the caller). `weather_suggestion` already has its own timeout and
     returns None on any failure, so a down provider never fails or delays
     the publish — the field is simply left blank."""
+    # Open-Meteo forecasts 16 days ahead and nothing in the past; outside that window the call can only
+    # fail (FR-52 found a 400 per publish on a 30-day schedule import), so it is not made.
+    horizon = (shoot_date - date.today()).days
+    if horizon < 0 or horizon > 16:
+        return
     ordered = sorted((i for i in schedule_items if i.location_id is not None), key=lambda i: i.order_index)
     if not ordered:
         return

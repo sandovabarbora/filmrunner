@@ -177,6 +177,12 @@ def list_call_sheets(
     for sheet in sheets:
         read = CallSheetRead.model_validate(sheet)
         read.opened = build_opened_summary(db, sheet)
+        if read.current_revision is not None:
+            # The list shows the call, the first location and a count; the scenes belong to the day screen.
+            # FR-52: with 30 days of 50 scenes this was 520 KB and 2.8 s on a phone — now ~15 KB.
+            read.current_revision.schedule_items = []
+            read.current_revision.cast_calls = []
+            read.current_revision.crew_calls = []
         reads.append(read)
     return reads
 

@@ -6,6 +6,8 @@ for the services' own request/response handling."""
 
 import uuid
 
+from datetime import date, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
@@ -199,7 +201,7 @@ def test_publish_fills_weather_forecast_from_first_located_scene_when_blank(clie
     resp = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
         json={
-            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "shoot_date": (date.today() + timedelta(days=1)).isoformat(), "day_number": 1, "day_count": 1,
             "initial_revision": {
                 "general_crew_call": "05:00",
                 "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
@@ -227,7 +229,7 @@ def test_publish_does_not_overwrite_weather_typed_by_the_ad(client: TestClient, 
     resp = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
         json={
-            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "shoot_date": (date.today() + timedelta(days=1)).isoformat(), "day_number": 1, "day_count": 1,
             "initial_revision": {
                 "weather_forecast": "Jasno, 20°C",
                 "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
@@ -254,7 +256,7 @@ def test_publish_succeeds_and_leaves_weather_blank_when_the_provider_is_down(cli
     resp = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
         json={
-            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "shoot_date": (date.today() + timedelta(days=1)).isoformat(), "day_number": 1, "day_count": 1,
             "initial_revision": {
                 "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
                                      "set_description": "Riverbank", "page_count_eighths": 8, "location_id": loc_id}],
@@ -295,7 +297,7 @@ def test_delete_location_drops_the_link_on_a_scene_that_used_it_and_the_day_stil
     resp = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
         json={
-            "shoot_date": "2026-06-21", "day_number": 1, "day_count": 1,
+            "shoot_date": (date.today() + timedelta(days=1)).isoformat(), "day_number": 1, "day_count": 1,
             "initial_revision": {
                 "general_crew_call": "06:30",
                 "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY",
@@ -337,3 +339,21 @@ def test_delete_location_that_does_not_exist_returns_404(client: TestClient) -> 
     pid = _production(client)
     resp = client.delete(f"/api/v1/productions/{pid}/locations/{uuid.uuid4()}", headers=AUTH)
     assert resp.status_code == 404
+
+
+def test_publish_skips_weather_outside_the_forecast_window(client: TestClient, monkeypatch) -> None:
+    """FR-52 finding: a day 30 days out (a schedule import) cannot have a forecast; the provider is not asked."""
+    from app.routers import productions as productions_router
+    from app.services import weather as weather_service
+    monkeypatch.setattr(productions_router.geocoding, "geocode", lambda address: GeocodeResult(lat=50.08, lng=14.42, display_name="Praha"))
+    calls = []
+    monkeypatch.setattr(weather_service, "weather_suggestion", lambda lat, lng, d: calls.append(d) or "12-18°C, sun")
+    pid = _production(client)
+    loc = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Far", "address": "Somewhere"}, headers=AUTH).json()
+    far = (date.today() + timedelta(days=40)).isoformat()
+    r = client.post(f"/api/v1/productions/{pid}/call-sheets", json={
+        "shoot_date": far, "day_number": 1, "day_count": 1,
+        "initial_revision": {"schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "EXT", "day_night": "DAY", "set_description": "S", "page_count_eighths": 8, "location_id": loc["id"]}]},
+    }, headers=AUTH)
+    assert r.status_code == 201 and r.json()["current_revision"]["weather_forecast"] is None
+    assert calls == []
