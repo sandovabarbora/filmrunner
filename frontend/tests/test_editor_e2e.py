@@ -850,6 +850,60 @@ def test_a_person_is_one_contact_across_productions(page: Page, frontend_url: st
     expect(page.locator(".picker-item", has_text=f"Tom{tag} Novák")).to_have_count(2, timeout=10_000)
 
 
+def test_copy_the_crew_from_another_production(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-46: "Copy crew from…" previews another production's crew with checkboxes (all on), skips
+    anyone already on this crew, and never copies standing call times (they belong to a production)."""
+    _connect(page, frontend_url, api_url)
+    tag = uuid.uuid4().hex[:6]
+    prod_a = f"E2E copy A {tag}"
+    _create_production(page, prod_a)
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    for name, dept, pos, hod, call in (
+        ("Eva Dvořáková", "AD", "1st AD", True, "05:30"),
+        ("Petr Malý", "Electric", "Best boy", False, ""),
+        ("Tomáš Novák", "Electric", "Gaffer", True, ""),
+    ):
+        page.fill("#crewName", name); page.fill("#crewDept", dept); page.fill("#crewPos", pos)
+        if call:
+            page.fill("#crewCall", call)
+        if hod:
+            page.check("#crewHod")
+        page.click("#addCrew")
+        expect(page.locator("#crew")).to_contain_text(name, timeout=10_000)
+    expect(page.locator("#crew li")).to_have_count(3)
+
+    page.click("role=link[name='Productions']"); page.wait_for_selector("#newProduction", timeout=10_000)
+    _create_production(page, f"E2E copy B {tag}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#crewName", timeout=10_000)
+    expect(page.locator("section[aria-label='Crew']")).to_contain_text("copy the crew from another production")
+
+    page.click("#copyCrew")
+    page.wait_for_selector("#copySource", timeout=10_000)
+    page.select_option("#copySource", label=prod_a)
+    preview = page.locator("#copyPreview li")
+    expect(preview).to_have_count(3, timeout=10_000)
+    expect(page.locator("#copyPreview input[type=checkbox]:checked")).to_have_count(3)
+    expect(page.locator("#copyCrewSubmit")).to_have_text("Add 3 people")
+    page.click("#copyCrewSubmit")
+    expect(page.locator("#notice")).to_contain_text(f"Added 3 people from {prod_a}", timeout=15_000)
+    expect(page.locator("#crew li")).to_have_count(3, timeout=10_000)
+    hods = page.locator("#crew li", has_text="HoD")
+    expect(hods).to_have_count(2)
+    # Standing call times belong to a production, not the person: never copied.
+    expect(page.locator("#crew li", has_text="Eva Dvořáková")).not_to_contain_text("call 05:30")
+
+    # Copying the same production again shows every one of them as already here, none selected.
+    page.click("#copyCrew")
+    page.wait_for_selector("#copySource", timeout=10_000)
+    page.select_option("#copySource", label=prod_a)
+    preview = page.locator("#copyPreview li")
+    expect(preview).to_have_count(3, timeout=10_000)
+    expect(page.locator("#copyPreview li", has_text="already on this crew")).to_have_count(3)
+    expect(page.locator("#copyPreview input[type=checkbox]:checked")).to_have_count(0)
+    expect(page.locator("#copyCrewSubmit")).to_have_text("Add 0 people")
+    expect(page.locator("#copyCrewSubmit")).to_be_disabled()
+
+
 def test_import_the_crew_from_an_excel_file(page: Page, frontend_url: str, api_url: str) -> None:
     """FR-55: a Czech production-office .xlsx (title row, Czech headers, HoD column, an odd phone, a name-only row)
     is detected, previewed with warnings, and imported; the file never leaves the browser."""

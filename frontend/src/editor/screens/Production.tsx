@@ -256,6 +256,80 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
   // Edits made offline (FR-18 failure case): kept in IndexedDB and overlaid on the crew list until they sync.
   const [pending, setPending] = useState<Map<string, PendingCrewEdit>>(new Map());
 
+  // FR-46: reuse a crew list already entered on another production instead of retyping it.
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [otherProductions, setOtherProductions] = useState<Production[] | null>(null);
+  const [copySourceId, setCopySourceId] = useState("");
+  const [copySourceName, setCopySourceName] = useState("");
+  const [copyPreview, setCopyPreview] = useState<CrewMember[] | null>(null);
+  const [copySelected, setCopySelected] = useState<Set<string>>(new Set());
+  const [copyBusy, setCopyBusy] = useState(false);
+
+  async function toggleCopyCrew() {
+    setCopyOpen((o) => !o);
+    if (otherProductions === null) {
+      try {
+        const all = await api.listProductions(conn);
+        setOtherProductions(all.filter((p) => p.id !== productionId));
+      } catch (err) {
+        setOtherProductions([]);
+        setNotice(noticeFromError(err, "Could not load your other productions"));
+      }
+    }
+  }
+
+  async function pickCopySource(sourceId: string, sourceName: string) {
+    setCopySourceId(sourceId);
+    setCopySourceName(sourceName);
+    setCopyPreview(null);
+    setCopySelected(new Set());
+    if (!sourceId) return;
+    try {
+      const people = await api.listCrew(conn, sourceId);
+      setCopyPreview(people);
+      const already = new Set((crew ?? []).map((m) => m.contact_id));
+      setCopySelected(new Set(people.filter((m) => !already.has(m.contact_id)).map((m) => m.id)));
+    } catch (err) {
+      setCopyPreview([]);
+      setNotice(noticeFromError(err, "Could not load that production's crew"));
+    }
+  }
+
+  function toggleCopySelected(id: string) {
+    setCopySelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  async function copySelectedCrew() {
+    if (!copyPreview) return;
+    setCopyBusy(true);
+    const toAdd = copyPreview.filter((m) => copySelected.has(m.id));
+    const added: CrewMember[] = [];
+    const failed: string[] = [];
+    for (const m of toAdd) {
+      try {
+        // Standing call times belong to a production, not to the person; never copied.
+        const member = await api.createCrewMember(conn, productionId, {
+          contact_id: m.contact_id, department: m.department, position: m.position, standard_call_time: null, is_head_of_department: m.is_head_of_department,
+        });
+        added.push(member);
+      } catch {
+        failed.push(m.contact.name);
+      }
+    }
+    setCrew((c) => [...(c ?? []), ...added]);
+    setCopyBusy(false);
+    if (failed.length === 0) {
+      setCopyOpen(false); setCopySourceId(""); setCopySourceName(""); setCopyPreview(null); setCopySelected(new Set());
+    }
+    setNotice(failed.length === 0
+      ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} from ${copySourceName}.` }
+      : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}.` });
+  }
+
   async function syncPendingEdit(edit: PendingCrewEdit, announce: boolean): Promise<void> {
     try {
       const contact = await api.updateContact(conn, edit.contactId, { name: edit.name, phone: edit.phone || null });
@@ -475,7 +549,9 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     <section className="block" aria-label="Crew">
       <h2>Crew</h2>
       {crew === null && <p className="hint">Loading…</p>}
-      {crew && crew.length === 0 && <p className="hint">No crew yet. Heads of department appear on every call sheet under "Who to call".</p>}
+      {crew && crew.length === 0 && (
+        <p className="hint">No crew yet. Heads of department appear on every call sheet under "Who to call".{canEdit && " Paste a list, import a file, or copy the crew from another production."}</p>
+      )}
       {visibleCrew && visibleCrew.length > 0 && (
         <ul className="list" id="crew">
           {visibleCrew.map((m) => (
@@ -556,7 +632,47 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to crew"}</button>
         {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>Cancel</button>}
         {!editing && <button type="button" className="quiet" id="pasteCrew" onClick={() => setPasteOpen((o) => !o)}>{pasteOpen ? "Close the list" : "Paste a list…"}</button>}
+        {!editing && <button type="button" className="quiet" id="copyCrew" onClick={() => void toggleCopyCrew()}>{copyOpen ? "Close" : "Copy crew from…"}</button>}
       </div>
+      {copyOpen && !editing && (
+        <div className="paste-crew" id="copyCrewPanel">
+          {otherProductions === null && <p className="hint">Loading your other productions…</p>}
+          {otherProductions && otherProductions.length === 0 && <p className="hint">No other productions yet — crew from a future one can be copied here.</p>}
+          {otherProductions && otherProductions.length > 0 && (
+            <label className="field" htmlFor="copySource"><span className="label">Copy crew from</span>
+              <select id="copySource" value={copySourceId} onChange={(e) => void pickCopySource(e.target.value, e.target.selectedOptions[0]?.text ?? "")}>
+                <option value="">— pick a production —</option>
+                {otherProductions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+          )}
+          {copyPreview && copyPreview.length === 0 && <p className="hint">That production has no crew yet.</p>}
+          {copyPreview && copyPreview.length > 0 && (
+            <ul className="list preview" id="copyPreview">
+              {copyPreview.map((m) => {
+                const already = (crew ?? []).some((x) => x.contact_id === m.contact_id);
+                return (
+                  <li key={m.id} className={`row static${already ? " warn" : ""}`}>
+                    <label className="check">
+                      <input type="checkbox" checked={copySelected.has(m.id)} disabled={already} onChange={() => toggleCopySelected(m.id)} />
+                      {m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
+                      <span className="meta"> · {m.department} · {m.position}</span>
+                      {already && <span className="meta warn-text"> · already on this crew</span>}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {copyPreview && copyPreview.length > 0 && (
+            <div className="inline">
+              <button type="button" id="copyCrewSubmit" className="secondary" disabled={copySelected.size === 0 || copyBusy} onClick={() => void copySelectedCrew()}>
+                {copyBusy ? "Adding…" : `Add ${copySelected.size} ${copySelected.size === 1 ? "person" : "people"}`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {pasteOpen && !editing && (
         <div className="paste-crew" id="pasteCrewPanel">
           <p className="hint">One person per line: name, position, phone — or name, department, position, phone. A line like "Camera:" sets the department for the lines below. "HoD" marks a head of department.</p>
