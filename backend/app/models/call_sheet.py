@@ -70,6 +70,13 @@ class CallSheet(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # FR-65: what actually happened, entered after the day. Not part of any revision: no push, no REV letter,
+    # never on the crew's sheet — it is the production's number, not the crew's instruction.
+    actual_first_shot: Mapped[str | None] = mapped_column(String(10))
+    actual_lunch_out: Mapped[str | None] = mapped_column(String(10))
+    actual_lunch_in: Mapped[str | None] = mapped_column(String(10))
+    actual_wrap: Mapped[str | None] = mapped_column(String(10))
+    actual_note: Mapped[str | None] = mapped_column(String(500))
 
     production: Mapped["Production"] = relationship(back_populates="call_sheets")  # noqa: F821
     revisions: Mapped[list["CallSheetRevision"]] = relationship(

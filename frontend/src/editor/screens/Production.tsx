@@ -185,6 +185,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
                     {d.current_revision?.general_crew_call && <>{L("call")} <b>{d.current_revision.general_crew_call}</b></>}
                     {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
                     {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>{L("opened {seen}/{total}", { seen: d.opened.seen, total: d.opened.total })}</span></>}
+                    {d.actuals?.wrap && <> · {L("wrap")} <b>{d.actuals.wrap}</b></>}
                   </span>
                 </span>
                 <span className="rev-badge small" data-rev={d.current_revision?.revision_letter ?? "A"}>REV {d.current_revision?.revision_letter ?? "–"}</span>
@@ -200,6 +201,16 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       {canPublish
         ? <div className="inline day-actions">
             <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>{L("+ New day")}</a>
+            {days && days.some((d) => d.actuals && (d.actuals.first_shot || d.actuals.wrap)) && (
+              <button type="button" className="quiet-link" id="exportActuals" onClick={() => {
+                // FR-65: day, date, planned call, first shot, lunch, wrap, note — what the office asks for at the end of the week.
+                const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+                const rows = [["day", "date", "crew_call", "first_shot", "lunch_out", "lunch_in", "wrap", "note"],
+                  ...days.map((d) => [d.day_number, d.shoot_date, d.current_revision?.general_crew_call ?? "", d.actuals?.first_shot ?? "", d.actuals?.lunch_out ?? "", d.actuals?.lunch_in ?? "", d.actuals?.wrap ?? "", d.actuals?.note ?? ""])];
+                const blob = new Blob(["\ufeff" + rows.map((r) => r.map(esc).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "filmrunner-actuals.csv"; a.click(); URL.revokeObjectURL(a.href);
+              }}>{L("Export actual times (CSV)")}</button>
+            )}
             <label className="quiet-link" htmlFor="scheduleFile">{L("Import schedule… (.xlsx, .csv)")}</label>
             <input id="scheduleFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readScheduleFile(f); }} disabled={importing} />
