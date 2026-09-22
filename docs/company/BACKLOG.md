@@ -3,7 +3,8 @@
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-8 · tech-lead · Hosted API and database for the PWA (second half of the demo deployment)
-- state: in-progress
+- state: done
+- note: 2026-09-22: closed as done — the hosted API and database have been live since 2026-09-15 and verified end to end by two live runs (FR-26, FR-40); the remaining iOS Safari service-worker check belongs to FR-28 (founder's phone)
 - note: first half done 2026-09-14 (GitHub Pages, `?demo=1`, pages.yml, PR #17). This item is now the API: ADR-002, fly.toml + Dockerfile release step for alembic, Supabase Postgres connection via platform secrets (Postgres only; no Supabase-specific schema features), CORS for the Pages origin, INBOX items for the Fly and Supabase accounts. The PWA must be able to load a real call sheet by id from the hosted API. Founder chose Supabase over Neon on 2026-09-14 (DECISIONS.md).
 - note: 15:00 shift 2026-09-14 — the founder's own interactive session had already delivered ADR-002, fly.toml (with the alembic release_command), the CORS-from-env config, and the dev-token refusal outside development (commit/PR #22) before this shift started. This shift added the remaining dod piece: `backend/app/seed_demo.py`, a seed script that creates one realistic demo production and call sheet (idempotent — checked by production name) so the hosted URL shows real data on first open, plus tests run against a real local Postgres (17/17 passing) — delivered in PR #24 (branch feat/fr-8-demo-seed-script). Filed INBOX #2 for the Fly and Supabase account/secrets/deploy step, which only the founder can do. Still open: the GitHub Actions deploy-job dod bullet was deliberately dropped in ADR-002 (manual founder-only deploy, a documented decision, not an oversight), and the iOS Safari service-worker failure case has not been re-verified against the Fly-hosted API specifically (only against the GitHub Pages demo bundle, per README).
 - gated: partial
@@ -38,7 +39,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a leaked per-production token can be rotated without losing data, and the test proves the old one stops working
 
 ## FR-17 · frontend · Connected app: productions, days, crew, edit an existing day
-- state: in-progress
+- state: done
+- note: 2026-09-22: closed as done — productions → days → crew → day editing, first-run checklist, roles, all shipped between FR-17 and FR-58; nothing ungated remains in its dod
 - gated: no
 - why: the pieces exist (viewer, editor, contacts) but do not form one product: the editor cannot open an existing day, there is no production → days navigation, crew and contacts can only be entered through the API, and the root URL is a demo. Founder: "mělo by to být všechno napojený" (2026-09-14).
 - dod:
@@ -113,7 +115,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: 13:00 shift 2026-09-15 (PR #51, branch `feat/fr-19-location-services`) delivered every dod bullet: `docs/adr/ADR-006-location-services.md` (Nominatim geocoding, an in-process NOAA sunrise-equation formula, Open-Meteo weather, Overpass nearest-hospital, all keyless — no INBOX item needed); `Location.geocoded_display_name` + geocoding on create/update (migration `d353e6845c8e`); a Locations tab in the editor showing "not resolved, check the address" when the geocoder misses; a schedule item's Set row gets a location picker; sunrise/sunset auto-fill on publish from the day's first located scene when the AD leaves both blank (never overwrites typed values); weather and nearest-hospital "Suggest" buttons that fill the existing free-text field only on explicit "Use", never automatically. 67/67 backend tests pass (28 new: astronomy self-consistency + a wide-tolerance cross-check, geocoding/weather/hospital services with every external call mocked, the router's geocode-on-save/re-geocode-on-address-change/suggestion endpoints, sunrise/sunset auto-fill and its typed-value-wins case). `npm run typecheck` and `npm run build` clean. Verified live against a real build, a real uvicorn+Postgres API, and the real (blocked) network: adding an address genuinely fails to geocode in this sandboxed environment, and the editor correctly shows the "not resolved" fallback rather than hanging or erroring — the dod's own failure case, exercised for real, not mocked. A committed Playwright suite (`frontend/tests/test_locations_e2e.py`) covers the same paths for CI, where egress is unrestricted; this shift's `pytest-playwright` browser fixture can't download its pinned Chromium build here (same known gap FR-18 noted), so it was run instead via a one-off script against the pre-installed `/opt/pw-browsers/chromium`. Astronomical accuracy is flagged unverified against a live source in the ADR — `timeanddate.com` and `api.sunrise-sunset.org` are both egress-blocked this shift; a follow-up should confirm minute-level accuracy once egress allows. Not done this shift: the seed demo location has hand-set coordinates rather than a live geocode (documented in `seed_demo.py`, consistent with the script needing to run without guaranteed internet).
 
 ## FR-16 · frontend · Notifications on publish and revision
-- state: in-progress
+- state: done
+- note: 2026-09-22: closed as done — push is live (VAPID set, delivery logged, cancel and revisions push); the real-iPhone check belongs to FR-28
 - note: FR-13 done; the receiver is identified by the personal token
 - note: 15:00 shift 2026-09-15 (branch `feat/fr-16-push-notifications`) delivered every dod bullet except the on-device fallback channels (out of scope by the dod itself) and the real-iPhone manual check: `docs/adr/ADR-007-web-push-notifications.md` picks Web Push with VAPID (`pywebpush`) — no account needed, unlike FCM. Backend: `PushSubscription` model + migration, `app/services/push.py` (transport, VAPID-signed sends via `pywebpush`) and `app/services/notifications.py` (who gets told and what it says), public subscribe/unsubscribe endpoints keyed by a crew member's own personal token (never the AD's), and `GET /api/v1/public/push/vapid-key` so the frontend only offers the control once configured. Publishing a revision (both the initial and a hot revision) now sends to every subscribed crew member of the production synchronously and returns a `notifications` summary (attempted/delivered/failed) in the response; every attempt is logged to `DistributionLog` (extended with a `push` channel and an `error` column) so an AD can see exactly who did not get REV B, not just assume everyone did — the dod's own failure case. A 404/410 from the push service (the browser itself revoked the subscription) deletes that row so it is not retried; any other failure keeps it. Frontend: `push-sw.js` handles `push`/`notificationclick`, imported into the generated service worker via `workbox.importScripts` (vite.config.ts) since VitePWA's generateSW strategy cannot add custom listeners itself; `src/push.ts` (subscribe/unsubscribe/support-check) and `NotificationToggle` shown only on a crew member's own personal link (`?me=<token>`), never in the editor; the sheet itself now shows "REV B replaces A" from the second revision on (also serves FR-11, no backend field needed — computed from the revision letter). 53/53 backend tests pass (14 new, `backend/tests/test_push.py`: subscribe/unsubscribe, the real VAPID-signing path with only the final HTTP POST mocked, successful and failed delivery logging, a revoked-subscription cleanup, and the "publish still succeeds when notifications fail" invariant). `npm run typecheck` and `npm run build` clean; `push-sw.js` confirmed present in `dist/` and `importScripts("push-sw.js")` confirmed injected into the generated `sw.js`. This sandbox's own `pytest-playwright` browser fixture has the same known gap FR-18/FR-19 noted (pinned Chromium revision not present here), so `frontend/tests/test_push_e2e.py` (committed, for CI) was verified instead via a one-off script against the pre-installed `/opt/pw-browsers/chromium`: a real build, a real uvicorn+Postgres API, and a real browser drove the actual subscribe → real POST → real DB row → "Notifications on" → unsubscribe → real DELETE flow end to end, with only the two literal browser-native APIs (`Notification.requestPermission`, `PushManager.subscribe`) stubbed — there is no phone in this environment to receive an actual OS notification. Filed INBOX #5 for the founder to generate the VAPID keypair (`backend/scripts/generate_vapid_keys.py`, run once by a human, never by the routine) and set it as Fly secrets — until then the feature is code-complete but inert (`vapid-key` returns null, no control shown), the same pattern FR-18's photo upload uses for its own missing secret. `docs/research/manual-test-protocol-push-ios.md` records the real-iPhone check for whoever runs the pilot to do once a phone and the deployed URL are both available; this shift could not run it (no device, and Apple's push service is unreachable from this environment).
 - gated: partial
@@ -577,6 +580,64 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - linked from the crew's sheet footer, the personal block, the landing footer and the editor's Crew tab (next to the import buttons)
   - honest about what is not in place yet: no DPA template, no formal retention schedule, no cookie consent needed (none set)
   - failure case: nothing on the page may promise a control the product does not have; every sentence checked against the code (e.g. photos live in Postgres, not a bucket)
+
+## FR-60 · frontend · Crew filter on the Crew tab
+- state: ready
+- gated: no
+- why: FR-52 seeded 60 people and the tab is fast, but finding one person to edit a phone number is a scroll; a real feature crew is 60–80
+- dod:
+  - a filter box above the list (name, department, position, phone digits), instant, remembered while the tab is open; the count "12 of 60" next to it; department headers collapse to the matching ones
+  - the paste/file/PDF imports and "Copy all links" keep working on the full list, not the filtered one (say so next to the button)
+  - E2E on the FR-52 production: type a department, see only its people; clear, see all
+  - failure case: a filter that matches nobody shows "nobody matches" and the clear control, never an empty tab that looks broken
+
+## FR-61 · frontend · Crew list as a PDF for the production office
+- state: ready
+- gated: no
+- why: the office and the insurer still ask for a printed crew list with phones; today the AD screenshots the Crew tab
+- dod:
+  - Crew tab: "Print crew list" opens a print view (same print CSS family as the sheet): production name, date printed, people grouped by department with position and phone, heads marked; cast on a second block with characters
+  - phones as typed; no personal tokens, no links, no photos in the print
+  - Playwright: emulate print, the view contains every person once, grouped; page count under 3 for 60 people
+  - failure case: a person without a phone prints "—", never an empty cell that reads as a mistake
+
+## FR-62 · marketing · Czech screenshots and copy on the landing after FR-48/58
+- state: ready
+- gated: no
+- why: the landing shows English screenshots to a Czech audience while the product now reads in Czech; the first impression should match the pilot's language
+- dod:
+  - `frontend/scripts/take_landing_screenshots.py` takes both languages (locale switch) and the landing shows the ones matching the visitor's toggle; Czech copy reviewed once more against the product's actual Czech labels (Sraz štábu, Komu volat, Kde)
+  - the feature list mentions imports (Excel, schedule, PDF) and the privacy page
+  - failure case: a missing screenshot file hides its figure, never a broken image (FR-25's rule, re-checked for the new files)
+
+## FR-63 · qa · Accessibility pass on the four screens a crew member and an AD use
+- state: ready
+- gated: no
+- why: a call sheet is read at 05:00 in a car; labels, contrast and focus order are not polish, they are legibility; nothing has been checked beyond aria-labels for tests
+- dod:
+  - axe-core through Playwright (`@axe-core/playwright` or the CDN script) on: the crew's sheet (demo, CS and EN), a personal link, the day screen, the Crew tab; report in `docs/research/a11y-2026-09.md`
+  - every "serious" and "critical" finding fixed in the same PR or filed as a `ready` item with the rule id; contrast of the muted text checked against the paper background
+  - the E2E suite keeps an axe check on the demo sheet so a regression fails CI
+  - failure case: an axe rule that fires on user-entered content (e.g. all-caps set names) is documented as such, not "fixed" by changing the AD's text
+
+## FR-64 · pm · Pilot onboarding one-pager for the AD (Czech)
+- state: ready
+- gated: no
+- why: the founder will sit with the first AD for 30 minutes; the AD needs the same 30 minutes on paper for the day the founder is not there — what to prepare, in which order, and what to tell the crew
+- dod:
+  - `docs/pilot/onboarding-ad.md` in Czech (English below): before the shoot (production, crew from Excel/paste/PDF, locations with addresses, cast), the evening before day 1 (day, scenes, personal calls, publish, send links from the Crew tab), the morning (who opened, nudge, revision), and the three things that go wrong first (no signal, a wrong number, a late change) with what the product does about each
+  - links to the privacy page and the readiness protocol; no feature that is "not verified" in the readiness file is promised
+  - failure case: every step names the exact button label as it reads in the Czech editor (checked against `cs.ts`)
+
+## FR-65 · frontend · Actual times per day: first shot, lunch, wrap
+- state: ready
+- gated: no
+- why: after wrap the AD reports first shot and wrap to production; it is the one number everyone asks for the next morning, and it belongs next to the planned call — the seed of a daily report without building one
+- dod:
+  - on a published day, an "Actuals" block (first shot, lunch out/in, wrap, a free note) editable by day:publish, stored on the call sheet (not a revision — no push, no REV letter), shown on the days list ("wrap 19:40") and in the editor's day screen; never on the crew's sheet
+  - `GET /productions/{id}/call-sheets` carries them; a CSV export of day, planned call, first shot, wrap, note from the days list
+  - backend test + E2E; migration for the four columns and the note
+  - failure case: actuals on a cancelled or draft day are refused with a clear message, never silently accepted
 
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
