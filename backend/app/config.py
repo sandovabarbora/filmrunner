@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:admin@filmrunner.app"
     # FR-57: extracting contacts from an old call sheet PDF. Without the key the
     # heuristics pass runs alone; with it, Claude does the structured extraction.
+    # FR-51 / ADR-008: requests per minute on /api/v1/public/* per client IP, and per personal token
+    # on the token routes. 0 disables a limit. Sized for a crew on one Wi-Fi: see app/ratelimit.py.
+    public_rate_limit_per_ip: int = 300
+    public_rate_limit_per_token: int = 30
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
 

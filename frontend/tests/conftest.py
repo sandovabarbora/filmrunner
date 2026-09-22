@@ -56,6 +56,9 @@ def api_url() -> Iterator[str]:
         "FILMRUNNER_API_BEARER_TOKEN": E2E_TOKEN,
         "FILMRUNNER_ENVIRONMENT": "development",
         "FILMRUNNER_CORS_ORIGINS": "*",
+        # FR-51: the whole E2E suite hits the public routes from one IP within a minute; the guard is not under test here.
+        "FILMRUNNER_PUBLIC_RATE_LIMIT_PER_IP": "0",
+        "FILMRUNNER_PUBLIC_RATE_LIMIT_PER_TOKEN": "0",
     }
     subprocess.run(
         [sys.executable, "-c", "from app.database import Base, engine; import app.models; Base.metadata.create_all(engine)"],
