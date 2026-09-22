@@ -476,7 +476,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a contact without a number shows "no number on file" and no dead controls
 
 ## FR-50 · frontend · Publish history on the day screen
-- state: ready
+- state: done
+- note: 12:00 shift 2026-09-22 (PR #156, branch `feat/fr-50-publish-history`) delivered the whole dod: `GET /call-sheets/{id}/history` (production:read) returns one entry per revision — `revision_letter`, `created_at`, `created_by` (defaults to `"unknown"`, never a null cell — the dod's own failure case), `opened` (reusing FR-36's `RevisionView` receipts), and `changes` (reusing FR-23's `revision_changes()` against the revision immediately before it). Day screen shows it as a collapsed `<details>` "History" panel (same pattern as the public sheet's "other departments"), most-recent-revision first, each line with its own compact change list; REV A always shows no diff. Cancel/restore is deliberately left out — no `call_sheet_events` model exists to record it, so the dod's own named fallback ("otherwise leave cancel out and say so") applies rather than adding a new model for it. Backend: 3 new tests, 144/144 total. Frontend: `npm run typecheck`/`npm run build` clean, `npm test` 43/43, new Playwright E2E for the history panel, full suite 58/60 (the 2 failures are the pre-existing, unrelated Nominatim-egress-block failures every prior shift touching `test_locations_e2e.py` has also hit). No migration, no deploy needed. PR open with auto-merge enabled at shift end.
 - gated: no
 - why: revisions carry `created_by` and `created_at` already; the AD asks "who sent REV C at 22:40?" when a coordinator also edits; today the only trace is the API
 - dod:
