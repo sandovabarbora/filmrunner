@@ -584,7 +584,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing on the page may promise a control the product does not have; every sentence checked against the code (e.g. photos live in Postgres, not a bucket)
 
 ## FR-60 · frontend · Crew filter on the Crew tab
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 13:50 by the founder's interactive session (feat/fr-60-61-crew-filter-print); shifts skip it
 - gated: no
 - why: FR-52 seeded 60 people and the tab is fast, but finding one person to edit a phone number is a scroll; a real feature crew is 60–80
 - dod:
@@ -594,7 +595,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a filter that matches nobody shows "nobody matches" and the clear control, never an empty tab that looks broken
 
 ## FR-61 · frontend · Crew list as a PDF for the production office
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 13:50 by the founder's interactive session (feat/fr-60-61-crew-filter-print); shifts skip it
 - gated: no
 - why: the office and the insurer still ask for a printed crew list with phones; today the AD screenshots the Crew tab
 - dod:
