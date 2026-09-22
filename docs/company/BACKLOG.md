@@ -492,7 +492,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: 40 crew members opening the sheet at 05:00 from one production office Wi-Fi (one IP) must not be throttled — the per-IP number is chosen for that (40 people × 3 requests each in a minute) and the test covers it
 
 ## FR-52 · qa · Pilot scale: 40 crew, 30 days, 60 scenes on a phone
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 11:20 by the founder's interactive session (feat/fr-52-pilot-scale); shifts skip it
 - gated: no
 - why: everything was tested with 2–3 people and 1–2 days; a real Prague feature has 40–80 crew and 25–40 days; the editor's day screen and the days list must stay usable on an iPhone at that size before the pilot, not after
 - dod:
