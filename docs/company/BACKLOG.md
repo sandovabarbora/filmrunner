@@ -584,8 +584,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: nothing on the page may promise a control the product does not have; every sentence checked against the code (e.g. photos live in Postgres, not a bucket)
 
 ## FR-60 · frontend · Crew filter on the Crew tab
-- state: in-progress
-- note: taken 2026-09-22 13:50 by the founder's interactive session (feat/fr-60-61-crew-filter-print); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-60-61-crew-filter-print): a search box above the list matches every word against name, department, position and phone digits (however the number is written); the count reads "5 people" or "2 of 5"; no match shows "Nobody matches …" with a clear control, never an empty tab. Imports, "Copy all links" and the print deliberately stay on the whole crew, not the filtered view. 8 unit tests, 1 E2E. Frontend only
 - gated: no
 - why: FR-52 seeded 60 people and the tab is fast, but finding one person to edit a phone number is a scroll; a real feature crew is 60–80
 - dod:
@@ -595,8 +595,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a filter that matches nobody shows "nobody matches" and the clear control, never an empty tab that looks broken
 
 ## FR-61 · frontend · Crew list as a PDF for the production office
-- state: in-progress
-- note: taken 2026-09-22 13:50 by the founder's interactive session (feat/fr-60-61-crew-filter-print); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-60-61-crew-filter-print): "Print crew list" opens a plain A4 document in a new tab (blob URL, `noopener`, prints itself on load) — production name, printed-at line, crew grouped by department with the head first, position and phone ("—" when there is none), cast with characters in its own block; no links, no tokens, no photos; rows and department blocks avoid page breaks. Everything the AD typed is HTML-escaped (tested). Frontend only
 - gated: no
 - why: the office and the insurer still ask for a printed crew list with phones; today the AD screenshots the Crew tab
 - dod:

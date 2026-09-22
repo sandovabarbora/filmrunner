@@ -161,3 +161,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .actuals { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
 .actuals .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .actuals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* FR-60: filter the crew list. */
+.crew-filter { align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.crew-filter input { flex: 1 1 12rem; }

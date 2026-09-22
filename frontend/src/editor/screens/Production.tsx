@@ -6,6 +6,7 @@ import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
 import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
 import { detectScheduleColumns, locationNames, rowsToSchedule, type ImportedDay } from "../scheduleImport";
+import { crewPrintWindow, matchesCrew } from "../crewPrint";
 import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
@@ -262,6 +263,7 @@ function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
 }
 
 function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn: Connection; productionId: string; productionName: string | null; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const [cast, setCast] = useState<CastMember[]>([]);
   const L = useL();
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
   const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
@@ -365,6 +367,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
 
   useEffect(() => {
     let cancelled = false;
+    // The cast rides along for the printed list (FR-61); a failure there never blocks the crew.
+    api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch(() => undefined);
     api.listCrew(conn, productionId)
       .then(async (list) => {
         if (cancelled) return;
@@ -378,7 +382,11 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     return () => { cancelled = true; };
   }, [conn, productionId, setNotice]);
 
-  const visibleCrew = crew ? crew.map((m) => (pending.has(m.id) ? applyPendingEdit(m, pending.get(m.id)!) : m)) : null;
+  const allCrew = crew ? crew.map((m) => (pending.has(m.id) ? applyPendingEdit(m, pending.get(m.id)!) : m)) : null;
+  // FR-60: with 60–80 people, finding one person to fix a number is a scroll. The filter narrows the list only;
+  // imports, "Copy all links" and the print stay on the whole crew (the hints say so).
+  const [filter, setFilter] = useState("");
+  const visibleCrew = allCrew ? allCrew.filter((m) => matchesCrew(m, filter)) : null;
 
   function startEdit(m: CrewMember) {
     setEditing(m);
@@ -565,6 +573,18 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     <section className="block" aria-label={L("Crew")}>
       <h2>{L("Crew")}</h2>
       {crew === null && <p className="hint">{L("Loading…")}</p>}
+      {allCrew && allCrew.length > 0 && (
+        <div className="inline crew-filter">
+          <input id="crewFilter" type="search" value={filter} placeholder={L("Filter by name, department, position or number")}
+            aria-label={L("Filter by name, department, position or number")} onChange={(e) => setFilter(e.target.value)} />
+          {filter.trim() !== "" && <button type="button" className="quiet" id="clearCrewFilter" onClick={() => setFilter("")}>{L("Clear")}</button>}
+          <span className="hint" id="crewCount">{filter.trim() === "" ? L("{n} people", { n: allCrew.length }) : L("{n} of {total}", { n: visibleCrew!.length, total: allCrew.length })}</span>
+          <button type="button" className="quiet" id="printCrew" onClick={() => crewPrintWindow(allCrew, cast, productionName ?? "", L)}>{L("Print crew list")}</button>
+        </div>
+      )}
+      {allCrew && allCrew.length > 0 && visibleCrew && visibleCrew.length === 0 && (
+        <p className="hint" id="noCrewMatch">{L("Nobody matches \"{filter}\".", { filter: filter.trim() })} <button type="button" className="linklike" onClick={() => setFilter("")}>{L("Clear the filter")}</button></p>
+      )}
       {crew && crew.length === 0 && (
         <p className="hint">No crew yet. Heads of department appear on every call sheet under "Who to call".{canEdit && " Paste a list, import a file, or copy the crew from another production."}</p>
       )}
@@ -597,11 +617,11 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
           ))}
         </ul>
       )}
-      {visibleCrew && visibleCrew.length > 0 && (
+      {allCrew && allCrew.length > 0 && (
         <div className="inline" id="allLinks">
           <button type="button" className="quiet" id="copyAllLinks" onClick={() => {
-            void navigator.clipboard?.writeText(allLinksText(visibleCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
-            setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: visibleCrew.length }) });
+            void navigator.clipboard?.writeText(allLinksText(allCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
+            setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: allCrew.length }) });
           }}>{L("Copy all links")}</button>
           <span className="hint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</span>
         </div>
