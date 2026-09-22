@@ -611,7 +611,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a missing screenshot file hides its figure, never a broken image (FR-25's rule, re-checked for the new files)
 
 ## FR-63 · qa · Accessibility pass on the four screens a crew member and an AD use
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 12:25 by the founder's interactive session (feat/fr-63-a11y); shifts skip it
 - gated: no
 - why: a call sheet is read at 05:00 in a car; labels, contrast and focus order are not polish, they are legibility; nothing has been checked beyond aria-labels for tests
 - dod:
