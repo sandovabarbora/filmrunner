@@ -621,7 +621,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: an axe rule that fires on user-entered content (e.g. all-caps set names) is documented as such, not "fixed" by changing the AD's text
 
 ## FR-64 · pm · Pilot onboarding one-pager for the AD (Czech)
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 12:15 by the founder's interactive session (docs/fr-64-onboarding-ad); shifts skip it
 - gated: no
 - why: the founder will sit with the first AD for 30 minutes; the AD needs the same 30 minutes on paper for the day the founder is not there — what to prepare, in which order, and what to tell the crew
 - dod:
