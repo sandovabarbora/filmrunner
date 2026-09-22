@@ -621,7 +621,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: an axe rule that fires on user-entered content (e.g. all-caps set names) is documented as such, not "fixed" by changing the AD's text
 
 ## FR-64 · pm · Pilot onboarding one-pager for the AD (Czech)
-- state: ready
+- state: done
+- note: delivered 2026-09-22 (docs/fr-64-onboarding-ad): `docs/pilot/onboarding-ad.md` — Czech first, English below: before the shoot (production, the three crew imports, locations, cast, privacy page), the evening before day 1 (day or schedule import, calls, personal calls, cast, scenes, publish, links per person via WhatsApp, day text to the group), morning and during the day (opened-by, nudge, REV B, cancel/restore, next day, actual times, PDF), and the three things that go wrong first with what the product does; 31 quoted labels checked against `cs.ts` (the rest are templated). Sign-in by code and the real-iPhone checks are stated as pending, not promised
 - gated: no
 - why: the founder will sit with the first AD for 30 minutes; the AD needs the same 30 minutes on paper for the day the founder is not there — what to prepare, in which order, and what to tell the crew
 - dod:
