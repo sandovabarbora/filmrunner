@@ -1,7 +1,8 @@
-"""Sunrise/sunset formula tests — see ADR-006 for why these are
-self-consistency checks plus a wide sanity band rather than a live-source
-comparison (egress to timeanddate.com and api.sunrise-sunset.org is
-blocked in this environment)."""
+"""Sunrise/sunset formula tests: physical self-consistency plus a pinned
+cross-check against sunrise-sunset.org's live answer for Prague (FR-67,
+measured 2026-09-22 — see ADR-006). The live comparison itself reruns
+daily and on demand in CI (scripts/check_astronomy_accuracy.py), since
+this sandbox's own egress proxy still blocks the reference API directly."""
 
 from datetime import date, datetime, timedelta
 
@@ -41,18 +42,20 @@ def test_day_length_longest_at_summer_solstice_shortest_at_winter():
     assert abs(autumn_eq - 12 * 60) < 20
 
 
-def test_solstices_within_20_minutes_of_commonly_published_prague_times():
-    """Cross-check against approximate, commonly-published Prague solstice
-    times (recalled from general knowledge, not fetched live this shift —
-    see ADR-006). A follow-up shift should tighten this once egress allows
-    fetching an authoritative source."""
+def test_solstices_within_3_minutes_of_a_live_reference():
+    """Cross-check against sunrise-sunset.org's actual answer for Prague,
+    measured 2026-09-22 by FR-67's CI job (see ADR-006 and
+    scripts/check_astronomy_accuracy.py, which reruns this comparison
+    live against all four solstices/equinoxes daily and on demand — this
+    test pins the two solstice values so a formula regression fails the
+    fast local suite too, not only the daily CI job)."""
     summer_rise, summer_set = sunrise_sunset(PRAGUE_LAT, PRAGUE_LNG, date(2026, 6, 21))
     winter_rise, winter_set = sunrise_sunset(PRAGUE_LAT, PRAGUE_LNG, date(2026, 12, 21))
 
-    assert abs(_minutes(summer_rise) - _minutes("04:59")) <= 20
-    assert abs(_minutes(summer_set) - _minutes("21:08")) <= 20
-    assert abs(_minutes(winter_rise) - _minutes("07:58")) <= 20
-    assert abs(_minutes(winter_set) - _minutes("16:00")) <= 20
+    assert abs(_minutes(summer_rise) - _minutes("04:50")) <= 3
+    assert abs(_minutes(summer_set) - _minutes("21:17")) <= 3
+    assert abs(_minutes(winter_rise) - _minutes("07:56")) <= 3
+    assert abs(_minutes(winter_set) - _minutes("16:04")) <= 3
 
 
 def test_dst_transition_uses_correct_local_offset():

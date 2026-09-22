@@ -37,19 +37,29 @@ party (dod's own failure-case bullet):
   to account for atmospheric refraction and the solar disk's radius,
   converted from UTC to `Europe/Prague` via `zoneinfo` so DST is
   correct automatically. `app/services/astronomy.py`. Accuracy is
-  roughly ±1-2 minutes versus published almanacs; this shift could not
-  independently fetch a live reference value to check against —
-  `timeanddate.com` and `api.sunrise-sunset.org` are both blocked by
-  this session's egress proxy (verified 2026-09-15, same failure mode
-  as FR-2's teardown) — so `tests/test_astronomy.py` checks physical
-  self-consistency (sunrise before solar noon before sunset, day length
-  longest at the summer solstice and shortest at the winter solstice,
-  the two equinoxes within a few minutes of 12h day length) plus a wide
-  ±20-minute sanity band against commonly-published approximate Prague
-  solstice times recalled from general knowledge, not fetched this
-  shift. Flagged here as **unverified against a live source** — a
-  follow-up shift with unblocked egress should confirm minute-level
-  accuracy and tighten the test tolerance.
+  roughly ±1-2 minutes versus published almanacs. This routine's own
+  egress proxy has always blocked `timeanddate.com` and
+  `api.sunrise-sunset.org` directly (verified 2026-09-15 through
+  2026-09-22, same failure mode as FR-2's teardown), so the check
+  (FR-67, 2026-09-22) runs instead from a GitHub Actions runner with
+  open egress: `scripts/check_astronomy_accuracy.py`, wired into
+  `.github/workflows/pilot-readiness.yml`, compares this formula
+  against sunrise-sunset.org (https://sunrise-sunset.org/api, free, no
+  key, attribution required) for Prague across both solstices and both
+  equinoxes of 2026. **Measured 2026-09-22** (run
+  https://github.com/sandovabarbora/filmrunner/actions/runs/35738976530):
+  every one of the 8 sunrise/sunset values was within 1-3 minutes of the
+  live reference (spring equinox sunrise the largest, at 3 minutes;
+  summer/winter solstice and autumn equinox all 1-2 minutes) — in line
+  with the ±1-2 minute expectation above, now measured rather than
+  assumed. `tests/test_astronomy.py` keeps the physical
+  self-consistency checks (sunrise before solar noon before sunset, day
+  length longest at the summer solstice and shortest at the winter
+  solstice) and its solstice cross-check now asserts against these real
+  measured values at ±3 minutes (was a ±20-minute band against
+  approximate times recalled from memory, not fetched). The CI check
+  reruns daily and on demand, so a regression in the formula or a
+  provider change would be caught, not just checked once.
 - **Weather — Open-Meteo** (`api.open-meteo.com`). Free for
   non-commercial use, no key, CC-BY 4.0 attribution required (checked
   2026-09-15, https://open-meteo.com/en/terms): up to 10,000 calls/day.
@@ -107,6 +117,7 @@ name/address).
 
 ## Revisit when
 
-Egress unblocks `timeanddate.com` or `api.sunrise-sunset.org` (or an
-equivalent) so the astronomy formula gets an independent check; or a
-production needs a location outside OpenStreetMap's coverage.
+The daily/on-demand CI accuracy check (FR-67) reports a deviation above
+its ±3-minute tolerance for two runs in a row (a genuine formula issue,
+not a one-off provider hiccup); or a production needs a location outside
+OpenStreetMap's coverage.
