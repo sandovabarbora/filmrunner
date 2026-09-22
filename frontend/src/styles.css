@@ -352,3 +352,8 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .masthead { position: relative; }
 .lang-toggle { position: absolute; right: 0; top: 4px; padding: 4px 8px; border: 1px solid var(--rule-strong); border-radius: 3px; background: #fff; font: inherit; font-size: 0.75rem; letter-spacing: 0.04em; cursor: pointer; }
 @media print { .lang-toggle { display: none; } }
+
+/* FR-59: one tap to "what is stored about me". */
+.privacy-line { margin: 18px 0 0; font-size: 0.8125rem; color: var(--muted); }
+.privacy-line a { color: inherit; }
+@media print { .privacy-line { display: none; } }

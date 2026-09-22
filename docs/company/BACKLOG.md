@@ -568,8 +568,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a key missing from Czech shows the English text, never a key; a notice built from a server detail keeps the server's text
 
 ## FR-59 · pm · Privacy note before the first real crew list
-- state: in-progress
-- note: taken 2026-09-22 11:50 by the founder's interactive session (feat/fr-59-privacy); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-59-privacy): `frontend/privacy.html` (CS/EN, landing design and toggle; controller = the production, processor = the founder as a natural person until a company exists; every stored field listed; Supabase EU-Ireland, Fly Frankfurt, GitHub Pages, Anthropic for an uploaded PDF's text only, Nominatim/Open-Meteo get addresses and dates only; who sees what by role and link; retention until removal; removal via the AD or e-mail; what is not in place: DPA template, automatic deletion, a company); linked from the sheet (below it, hidden in print), the landing footer and the Crew tab next to the imports; every sentence checked against the code. Smoke test covers reachability and the toggle. Frontend only
 - gated: no
 - why: a pilot means 40 real names and phone numbers, photos and read receipts in our database; the AD who uploads them is the controller and needs to be able to answer "where is this and who sees it" — and a crew member opening a personal link should find the same answer in one tap; without it the founder should not ask anyone to import a crew
 - dod:

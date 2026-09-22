@@ -229,6 +229,7 @@ export function App() {
         </div>
       )}
       {(!result || result.kind === "error" || result.kind === "not_found") && <div id="sheet" className="sheet" />}
+      {mode.kind !== "dev" && <p className="privacy-line"><a href="privacy.html" id="privacyLink">{L("privacy")}</a></p>}
     </div>
   );
 }

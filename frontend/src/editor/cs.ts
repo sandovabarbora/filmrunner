@@ -71,6 +71,7 @@ export const CS: Record<string, string> = {
   " {n} skipped (a day with that date already exists).": " {n} přeskočeno (den s tím datem už existuje).",
   " Cast not on the Cast tab yet: {names}.": " Herci, kteří ještě nejsou na kartě Herci: {names}.",
   // crew
+  "What FilmRunner stores about the people you add, where, and who sees it": "Co FilmRunner ukládá o lidech, které přidáváte, kde, a kdo to vidí",
   "HoD": "VO",
   "not saved": "neuloženo",
   "Sync": "Synchronizovat",

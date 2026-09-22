@@ -310,3 +310,20 @@ def test_czech_browser_gets_a_czech_sheet_and_the_toggle_switches(browser, front
     assert "Day 7 of 24" in page.locator("#dayLabel").inner_text()  # remembered
     assert page.locator("#langToggle").inner_text().strip() == "Čeština"
     ctx.close()
+
+
+def test_privacy_page_reachable_from_sheet_landing_and_editor(page: Page, frontend_url: str) -> None:
+    """FR-59: one tap from the crew's sheet and the landing to what is stored about them; CS/EN."""
+    page.goto(f"{frontend_url}/index.html?demo=1")
+    page.wait_for_selector("#sheet.visible", timeout=10_000)
+    assert page.locator("#privacyLink").get_attribute("href") == "privacy.html"
+    page.click("#privacyLink")
+    page.wait_for_selector(".privacy", timeout=10_000)
+    assert page.locator("body").get_attribute("data-lang") == "en"  # en-US browser
+    assert "what FilmRunner stores about you" in page.locator("h1[lang='en']").inner_text()
+    assert "Supabase" in page.locator(".privacy").inner_text() and "Anthropic" in page.locator(".privacy").inner_text()
+    page.click(".langToggle button[data-lang='cs']")
+    assert page.locator("body").get_attribute("data-lang") == "cs"
+    assert page.locator("h1[lang='cs']").is_visible() and not page.locator("h1[lang='en']").is_visible()
+    page.goto(f"{frontend_url}/landing.html"); page.wait_for_selector("#privacyLink", timeout=10_000)
+    assert page.locator("#privacyLink").get_attribute("href") == "privacy.html"
