@@ -85,3 +85,13 @@ def auth_headers():
     from app.config import get_settings
 
     return {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limit_windows():
+    """FR-51: every test starts with empty sliding windows, so the suite's own volume of public calls
+    (all from the one TestClient "IP") never trips the per-IP limit."""
+    from app.ratelimit import INSTANCES
+    for m in INSTANCES:
+        m.reset()
+    yield

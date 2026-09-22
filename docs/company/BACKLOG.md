@@ -481,7 +481,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a revision with `created_by` null shows "unknown", never an empty cell
 
 ## FR-51 · tech-lead · Public endpoints: abuse guard without hurting the 05:00 rush
-- state: ready
+- state: done
+- note: delivered 2026-09-22 (feat/fr-51-public-rate-limit, ADR-008): `app/ratelimit.py` — sliding one-minute windows in process, 300/min per client IP (`Fly-Client-IP`, then X-Forwarded-For, then socket) on `/api/v1/public/*` and 30/min per personal token on the token routes; 429 with Retry-After inside CORS; OPTIONS, /healthz and authenticated routes never limited; both limits are settings, 0 disables (the E2E harness does). Sized from ~5 requests per person per open: the test drives 40 tokens × 5 requests from one IP with no 429. Per-IP raised from the dod's 120 to 300 for that reason. 4 backend tests; conftest resets the windows per test. Backend changed: deploy needed (no migration)
 - gated: no
 - why: `/public/call-sheets/{id}`, `/public/crew/{token}/next`, `/public/.../seen/{token}` and the push subscribe endpoints are unauthenticated by design (FR-13 tokens are the credential); before a pilot with a public URL there must be a limit on how fast an unknown client can probe tokens or fill `revision_views`
 - dod:
