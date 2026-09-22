@@ -141,6 +141,7 @@ export function App() {
         <button type="button" className="lang-toggle" id="langToggle" onClick={switchLang} aria-label={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{L("lang.toggle")}</button>
       </header>
       <p className="print-meta" aria-hidden="true">{L("print.meta", { when: new Date().toLocaleString() })}</p>
+      <main id="main">
 
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
@@ -230,6 +231,7 @@ export function App() {
       )}
       {(!result || result.kind === "error" || result.kind === "not_found") && <div id="sheet" className="sheet" />}
       {mode.kind !== "dev" && <p className="privacy-line"><a href="privacy.html" id="privacyLink">{L("privacy")}</a></p>}
+      </main>
     </div>
   );
 }

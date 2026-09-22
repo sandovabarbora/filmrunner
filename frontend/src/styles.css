@@ -6,7 +6,8 @@
   --paper-2: #efeae1;
   --ink: #17150f;
   --ink-2: #4d4842;
-  --muted: #7a746b;
+  /* FR-63: 5.0:1 on paper, 4.6:1 on the shaded panels — AA for the small text it carries (hints, meta, labels). */
+  --muted: #6e685f;
   --rule: #d8d1c4;
   --rule-strong: #17150f;
   --warn-bg: #fff2cc;
@@ -194,7 +195,8 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .contact .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .contact .who-text { display: flex; flex-direction: column; min-width: 0; }
 .avatar { flex: none; border-radius: 50%; object-fit: cover; background: var(--rule); }
-.avatar-fallback { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: var(--muted); background: var(--rule); }
+/* FR-63: the initials are decorative (the name is next to them) but still text on screen — 6:1 on the chip. */
+.avatar-fallback { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: var(--ink-2); background: var(--rule); }
 .contact .name { font-weight: 600; }
 .contact .role { font-size: 0.8125rem; color: var(--muted); }
 /* FR-49: call, WhatsApp and copy per contact — 44px targets for a wet thumb on set. */
