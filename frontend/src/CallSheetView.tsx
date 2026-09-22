@@ -89,14 +89,20 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           </p>
           {(callSheet.changes ?? []).length > 0 && (
             <ul className="rev-changes" id="revChanges" aria-label={L("rev.changes")}>
-              {callSheet.changes!.map((c) => (
-                <li key={c.field} data-field={c.field}>
-                  <span className="k">{c.label}</span>{" "}
-                  {c.before !== null
-                    ? <><s>{c.before}</s> → <b>{c.after ?? "—"}</b></>
-                    : <b>{c.after ?? "—"}</b>}
-                </li>
-              ))}
+              {callSheet.changes!.map((c) => {
+                // The server's `label` and the "N changed" summary are English (they also feed the push text);
+                // the sheet renders them from the stable `field` key instead, falling back to what came in.
+                const key = `change.${c.field}` as Parameters<typeof t>[1];
+                const label = t(lang, key) === key ? c.label : L(key);
+                const count = c.field === "personal_calls" ? /^(\d+)/.exec(c.after ?? "")?.[1] : undefined;
+                const after = count ? L("change.personalCount", { n: count }) : c.after ?? "—";
+                return (
+                  <li key={c.field} data-field={c.field}>
+                    <span className="k">{label}</span>{" "}
+                    {c.before !== null ? <><s>{c.before}</s> → <b>{after}</b></> : <b>{after}</b>}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

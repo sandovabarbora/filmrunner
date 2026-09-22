@@ -25,12 +25,14 @@ DIST_DIR = ROOT / "dist"
 OUT_DIR = ROOT / "public" / "landing"
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"
 
-# (output filename, selector to screenshot, what it shows)
+# (base filename, selector to screenshot, what it shows) — taken once per language (FR-62),
+# written as <base>.cs.jpg and <base>.en.jpg; the landing shows the pair matching its toggle.
 SHOTS = [
-    ("call-sheet-top.jpg", "header.sheet-header", "the sheet header: production, day, REV badge"),
-    ("locations.jpg", "#locations", "the Where block: address, parking, hospital, maps link"),
-    ("contacts.jpg", "#contacts", "Who to call: head of day and department heads, tap-to-call"),
+    ("call-sheet-top", "header.sheet-header", "the sheet header: production, day, REV badge"),
+    ("locations", "#locations", "the Where block: address, parking, hospital, maps link"),
+    ("contacts", "#contacts", "Who to call: head of day and department heads, tap-to-call"),
 ]
+LOCALES = [("cs", "cs-CZ"), ("en", "en-US")]
 
 
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -62,10 +64,32 @@ def main() -> int:
                 browser = pw.chromium.launch(executable_path=CHROMIUM_PATH, headless=False, args=["--headless=new"])
             else:
                 browser = pw.chromium.launch(headless=True)
-            page = browser.new_page(viewport={"width": 390, "height": 844})
-            page.goto(f"http://127.0.0.1:{port}/index.html?demo=1", wait_until="networkidle")
-            page.wait_for_selector("#sheet.visible", timeout=10_000)
+            for suffix, locale in LOCALES:
+                context = browser.new_context(viewport={"width": 390, "height": 844}, locale=locale)
+                page = context.new_page()
+                page.goto(f"http://127.0.0.1:{port}/index.html?demo=1", wait_until="networkidle")
+                page.wait_for_selector("#sheet.visible", timeout=10_000)
+                _shoot(page, suffix, written)
+                context.close()
+            browser.close()
+    finally:
+        server.shutdown()
 
+    for base, _selector, what in SHOTS:
+        for suffix, _locale in LOCALES:
+            filename = f"{base}.{suffix}.jpg"
+            path = OUT_DIR / filename
+            if filename in written:
+                print(f"wrote {path} ({path.stat().st_size / 1024:.0f} KB) — {what} [{suffix}]")
+            else:
+                print(f"not written: {path} — {what} [{suffix}]", file=sys.stderr)
+
+    return 0 if written else 1
+
+
+def _shoot(page, suffix: str, written: list[str]) -> None:
+    """The three shots for one language; a missed one never stops the others."""
+    if True:
             try:
                 # "At a glance" hero shot: header through the sunrise/weather
                 # strip, as one clipped region rather than a single element,
@@ -74,7 +98,7 @@ def main() -> int:
                 bottom = page.locator("section.meta").bounding_box()
                 if top and bottom:
                     page.screenshot(
-                        path=str(OUT_DIR / "call-sheet-top.jpg"),
+                        path=str(OUT_DIR / f"call-sheet-top.{suffix}.jpg"),
                         type="jpeg",
                         quality=82,
                         clip={
@@ -84,11 +108,12 @@ def main() -> int:
                             "height": (bottom["y"] + bottom["height"]) - top["y"],
                         },
                     )
-                    written.append("call-sheet-top.jpg")
+                    written.append(f"call-sheet-top.{suffix}.jpg")
             except Exception as exc:  # noqa: BLE001 - a missed shot must not fail the others
-                print(f"skipped call-sheet-top.jpg: {exc}", file=sys.stderr)
+                print(f"skipped call-sheet-top.{suffix}.jpg: {exc}", file=sys.stderr)
 
-            for filename, selector, _what in SHOTS[1:]:
+            for base, selector, _what in SHOTS[1:]:
+                filename = f"{base}.{suffix}.jpg"
                 try:
                     page.locator(selector).first.screenshot(
                         path=str(OUT_DIR / filename), type="jpeg", quality=82
@@ -96,19 +121,6 @@ def main() -> int:
                     written.append(filename)
                 except Exception as exc:  # noqa: BLE001 - a missed shot must not fail the others
                     print(f"skipped {filename} ({selector}): {exc}", file=sys.stderr)
-            browser.close()
-    finally:
-        server.shutdown()
-
-    for filename, _selector, what in SHOTS:
-        path = OUT_DIR / filename
-        if filename in written:
-            size_kb = path.stat().st_size / 1024
-            print(f"wrote {path} ({size_kb:.0f} KB) — {what}")
-        else:
-            print(f"not written: {path} — {what}", file=sys.stderr)
-
-    return 0 if written else 1
 
 
 if __name__ == "__main__":

@@ -38,10 +38,21 @@ for (const btn of document.querySelectorAll<HTMLButtonElement>(".langToggle butt
 
 // A screenshot that failed to render (missing file, e.g. FR-25's own
 // failure case) disappears instead of showing a broken-image icon.
+// FR-25/FR-62 failure case: a screenshot that failed to render (missing file) hides its own <img>,
+// so the visitor sees the other language's shot or nothing — never a broken-image icon.
+function dropShot(img: HTMLImageElement): void {
+  // Each figure holds one shot per language (FR-62): drop only the one that failed,
+  // and the whole figure only when nothing is left to show.
+  const figure = img.closest("figure");
+  img.remove();
+  if (figure && figure.querySelectorAll("[data-screenshot]").length === 0) figure.remove();
+}
+
 for (const img of document.querySelectorAll<HTMLImageElement>("[data-screenshot]")) {
-  img.addEventListener("error", () => {
-    img.closest("figure")?.remove();
-  });
+  // This module is deferred, so an image can already have failed before the listener exists;
+  // `complete` with no intrinsic width is exactly that case.
+  if (img.complete && img.naturalWidth === 0) dropShot(img);
+  else img.addEventListener("error", () => dropShot(img));
 }
 
 // FR-54: the recorded flow video autoplays only when the visitor hasn't
