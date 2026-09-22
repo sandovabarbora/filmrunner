@@ -1,12 +1,27 @@
 # Status
 
-Updated: 2026-09-21 17:00 (17:00 shift, last of the day)
+Updated: 2026-09-22 08:00 (morning brief)
 
 ## today
 
-Updated: 2026-09-21 14:00 (founder's interactive session, closing for now)
+Updated: 2026-09-22 08:00 (morning brief)
 
 Hackathon week goal (founder, 2026-09-21): pilot-ready by Friday. A Prague AD can run a real shoot day end to end: sign in with a code, crew with photos, day with locations, publish, crew gets a push, personal links, PDF; and a landing page from the FR-6 positioning. Shifts hourly 09 to 17, everything auto-merges (TEAM.md).
+
+Plan (priority order in BACKLOG.md; FR-48 skipped — PR #138 is already open for it):
+- 09:00 — FR-8: repeat the iOS Safari service-worker check against the live Fly-hosted API; every prior attempt this week hit this session's egress block on `filmrunner-api.fly.dev`, so fall through to the next ready item if it is still blocked.
+- 10:00 — FR-16: repeat the real-iPhone Web Push manual test protocol; no phone exists in this environment, so fall through to the next ready item if it is still undoable.
+- 11:00 — FR-46: let an AD copy an existing crew list from another production instead of retyping it.
+- 12:00 — FR-47: make the published day's PDF complete from the editor and have it paginate cleanly.
+- 13:00 — FR-49: add WhatsApp and copy-number actions to every contact card, not just tap-to-call.
+- 14:00 — FR-50: show a collapsed publish history (who, when, what changed) on the day screen.
+- 15:00 — FR-51: add a per-IP/per-token rate limit to the public endpoints so a pilot URL cannot be probed or hammered.
+- 16:00 — FR-52: seed a 60-crew/30-day production and measure editor performance at pilot scale on a phone.
+- 17:00 — FR-53: write the backup/restore doc and the export/import scripts for one production.
+
+Not scheduled today (still `ready`, ungated): FR-54 (landing flow recording); FR-48 stays blocked until PR #138 merges or closes.
+
+### Yesterday (2026-09-21), for reference
 
 - 11:00 — done: FR-22 (call sheet role/tooling desk research).
 - 12:00 — done: FR-20 (Prague market sizing, BRIEF Q5). Between 11:00 and 12:00, other sessions (not this routine) merged FR-23, FR-24, FR-27, FR-29, FR-30, FR-31 to `main` — all now `done` in the backlog; `gh pr list --state open` was empty at the start of this shift, so nothing was skipped.
