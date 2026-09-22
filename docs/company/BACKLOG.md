@@ -519,7 +519,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: importing into a production that already has days is refused with a clear message, never merged silently
 
 ## FR-54 · marketing · Thirty-second recording of the flow for the landing
-- state: ready
+- state: done
+- note: 13:00 shift 2026-09-22 (PR #158, branch feat/fr-54-landing-flow-video): `frontend/scripts/record_landing_flow.py` drives the real editor (service token, iPhone viewport) through create day → publish REV A → crew link → publish REV B with a changed call, captured with Playwright's `record_video_dir`; 826 KB WebM, well under the 3 MB cap. `landing.html` embeds it muted/looped with the first screenshot as poster; a `prefers-reduced-motion` visitor gets manual controls instead of autoplay; a missing/broken video file removes the whole section rather than a broken player — the dod's own failure case, verified live (a mocked 404 removes `section.flow`), not just read from the code. New Playwright test covers all three states. README line added on how to re-record. `npm run typecheck`/`npm run build` clean, `npm test` 43/43, full Playwright suite 58/60 (2 pre-existing unrelated Nominatim-egress failures). Backend baseline 143/143, unaffected. Frontend only, no deploy needed. Auto-merge enabled, PR's own `ci` check pending at shift end.
 - gated: no
 - why: the landing has three screenshots; a Prague AD deciding whether to reply wants to see the phone flow — publish, the crew's sheet, REV B replacing A — in half a minute, without an account
 - dod:
