@@ -32,9 +32,11 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .publish { padding: 20px 0; }
 .publish-state { font-size: 0.9375rem; color: var(--ink-2); margin-bottom: 10px; }
 #publish { width: 100%; padding: 14px; font-size: 1.0625rem; }
-.share { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; word-break: break-all; }
+.share { margin-top: 14px; padding: 12px; border: 1.5px solid var(--rule-strong); border-radius: 3px; background: #fff; }
 .share .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-.share a { display: block; margin: 6px 0 8px; color: var(--ink); font-family: var(--mono); font-size: 0.8125rem; }
+/* Only the raw URL may break anywhere; names, hints and action links wrap on words. */
+.share > a { display: block; margin: 6px 0 8px; color: var(--ink); font-family: var(--mono); font-size: 0.8125rem; word-break: break-all; }
+.share .list a { font-family: inherit; }
 .share .qr { margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .share .qr svg { border: 1px solid var(--rule); border-radius: 3px; }
 .publish .quiet { margin-top: 12px; }
@@ -53,7 +55,8 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .row.static { cursor: default; }
 .row .name { font-weight: 600; }
 .row .meta { font-weight: 400; color: var(--muted); font-size: 0.8125rem; }
-.row-actions { display: flex; gap: 10px; align-items: center; padding: 0 0 10px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 0 0 10px; }
+.row-actions button, .row-actions .quiet-link { white-space: nowrap; }
 .quiet-link { font-size: 0.8125rem; color: var(--ink-2); }
 .rev-badge.small { font-size: 0.6875rem; padding: 3px 7px; }
 .tag { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid var(--rule-strong); border-radius: 3px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; vertical-align: middle; }

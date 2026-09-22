@@ -1018,3 +1018,35 @@ def test_import_contacts_from_an_old_call_sheet_pdf(page: Page, frontend_url: st
     expect(page.locator("#notice")).to_contain_text("Added 6 people", timeout=30_000)
     expect(page.locator("#crew li")).to_have_count(6, timeout=10_000)
     expect(page.locator("#crew li", has_text="Eva Dvořáková")).to_contain_text("REŽIE · 1. asistent režie · +420 777 111 222")
+
+
+def test_czech_browser_gets_a_czech_editor_and_the_toggle_is_shared_with_the_sheet(browser, frontend_url: str, api_url: str) -> None:
+    """FR-58: a cs-CZ browser reads the editor in Czech — productions, a day screen, the crew tab, notices;
+    the toggle flips to English and the choice carries over to the crew's sheet (same storage key)."""
+    ctx = browser.new_context(locale="cs-CZ", viewport={"width": 390, "height": 844})
+    page = ctx.new_page()
+    _connect(page, frontend_url, api_url)
+    assert page.locator("#createProduction").inner_text().strip() == "Založit"  # the intro shows only with no productions; the test DB has many
+    _create_production(page, f"E2E cz {uuid.uuid4().hex[:6]}")
+    expect(page.locator("#checklist")).to_contain_text("Produkce založena")
+    assert [t.strip() for t in page.locator(".tabs a").all_inner_texts()][:4] == ["Dny", "Štáb", "Herci", "Lokace"]
+    page.click("role=tab[name='Štáb']"); page.wait_for_selector("#crewName", timeout=10_000)
+    assert page.locator("#addCrew").inner_text().strip() == "Přidat do štábu"
+    page.fill("#crewName", "Tomáš Novák"); page.fill("#crewDept", "Osvětlovači"); page.fill("#crewPos", "Gaffer"); page.click("#addCrew")
+    expect(page.locator("#notice")).to_contain_text("Tomáš Novák: přidán/a.", timeout=10_000)
+    expect(page.locator("#crew")).to_contain_text("Osvětlovači · Gaffer")  # typed text untouched
+    page.click("role=tab[name='Dny']"); page.click("#newDay"); page.wait_for_selector("#general_crew_call", timeout=10_000)
+    assert page.locator("label[for='general_crew_call'] .label").text_content().strip() == "Sraz štábu"
+    assert page.locator("#publishState").inner_text().strip() == "Zatím nevydáno. Koncept je uložený v tomto telefonu."
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Sraz štábu je povinný")
+    page.fill("#general_crew_call", "06:30"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Vydáno REV A", timeout=15_000)
+    page.wait_for_selector("#shareLink", timeout=10_000)
+    link = page.locator("#shareLink").get_attribute("href")
+    # the toggle: English in the editor, and the sheet follows
+    page.click("#langToggle")
+    expect(page.locator("#publishState")).to_contain_text("REV A is live")
+    v = ctx.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
+    assert "Day 1 of 1" in v.locator("#dayLabel").inner_text()
+    v.close(); ctx.close()

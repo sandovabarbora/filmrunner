@@ -11,6 +11,7 @@ import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
+import { useL } from "../lang";
 
 /** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
 async function reuseOrCreateContact(conn: Connection, contactId: string | null, name: string, phone: string | null) {
@@ -35,6 +36,7 @@ export function can(production: Production | null, permission: string): boolean 
 
 /** First-run guidance: the four things a production needs before the crew gets a link. Hidden once all are done. */
 function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connection; productionId: string; canEdit: boolean; refreshKey: number }) {
+  const L = useL();
   const [state, setState] = useState<{ crew: number; days: number; published: number } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -45,16 +47,16 @@ function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connecti
   }, [conn, productionId, refreshKey]);
   if (!state || !canEdit) return null;
   const steps = [
-    { done: true, text: "Production created" },
-    { done: state.crew > 0, text: "Add the crew: names, numbers, heads of department", href: href({ screen: "production", productionId, tab: "crew" }) },
-    { done: state.days > 0, text: "Create the first shoot day", href: href({ screen: "day", productionId, callSheetId: null }) },
-    { done: state.published > 0, text: "Publish it and send the crew link (or personal links)", href: href({ screen: "production", productionId, tab: "days" }) },
+    { done: true, text: L("Production created") },
+    { done: state.crew > 0, text: L("Add the crew: names, numbers, heads of department"), href: href({ screen: "production", productionId, tab: "crew" }) },
+    { done: state.days > 0, text: L("Create the first shoot day"), href: href({ screen: "day", productionId, callSheetId: null }) },
+    { done: state.published > 0, text: L("Publish it and send the crew link (or personal links)"), href: href({ screen: "production", productionId, tab: "days" }) },
   ];
   if (steps.every((st) => st.done)) return null;
   const next = steps.find((st) => !st.done);
   return (
-    <section className="checklist" id="checklist" aria-label="Getting started">
-      <h2>Getting started</h2>
+    <section className="checklist" id="checklist" aria-label={L("Getting started")}>
+      <h2>{L("Getting started")}</h2>
       <ol>
         {steps.map((st) => (
           <li key={st.text} className={st.done ? "done" : st === next ? "next" : ""}>
@@ -71,18 +73,19 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
   conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "cast" | "locations" | "members" | "settings";
   setNotice: (n: Notice) => void; onUpdated: (p: Production) => void;
 }) {
+  const L = useL();
   const manage = can(production, "production:manage_members");
   const edit = can(production, "production:edit");
   return (
     <>
       <Checklist conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} refreshKey={tab === "days" ? 0 : 1} />
       <div className="tabs" role="tablist">
-        <a role="tab" aria-selected={tab === "days"} className={tab === "days" ? "on" : ""} href={href({ screen: "production", productionId, tab: "days" })}>Days</a>
-        <a role="tab" aria-selected={tab === "crew"} className={tab === "crew" ? "on" : ""} href={href({ screen: "production", productionId, tab: "crew" })}>Crew</a>
-        <a role="tab" aria-selected={tab === "cast"} className={tab === "cast" ? "on" : ""} href={href({ screen: "production", productionId, tab: "cast" })}>Cast</a>
-        <a role="tab" aria-selected={tab === "locations"} className={tab === "locations" ? "on" : ""} href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>
-        {manage && <a role="tab" aria-selected={tab === "members"} className={tab === "members" ? "on" : ""} href={href({ screen: "production", productionId, tab: "members" })}>Members</a>}
-        {edit && <a role="tab" aria-selected={tab === "settings"} className={tab === "settings" ? "on" : ""} href={href({ screen: "production", productionId, tab: "settings" })}>Settings</a>}
+        <a role="tab" aria-selected={tab === "days"} className={tab === "days" ? "on" : ""} href={href({ screen: "production", productionId, tab: "days" })}>{L("Days")}</a>
+        <a role="tab" aria-selected={tab === "crew"} className={tab === "crew" ? "on" : ""} href={href({ screen: "production", productionId, tab: "crew" })}>{L("Crew")}</a>
+        <a role="tab" aria-selected={tab === "cast"} className={tab === "cast" ? "on" : ""} href={href({ screen: "production", productionId, tab: "cast" })}>{L("Cast")}</a>
+        <a role="tab" aria-selected={tab === "locations"} className={tab === "locations" ? "on" : ""} href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a>
+        {manage && <a role="tab" aria-selected={tab === "members"} className={tab === "members" ? "on" : ""} href={href({ screen: "production", productionId, tab: "members" })}>{L("Members")}</a>}
+        {edit && <a role="tab" aria-selected={tab === "settings"} className={tab === "settings" ? "on" : ""} href={href({ screen: "production", productionId, tab: "settings" })}>{L("Settings")}</a>}
         {production?.my_role && <span className="role-chip" id="myRole">{production.my_role}</span>}
       </div>
       {tab === "days" && <Days conn={conn} productionId={productionId} canPublish={can(production, "day:publish")} setNotice={setNotice} />}
@@ -91,12 +94,13 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
       {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
       {tab === "settings" && edit && production && <Settings conn={conn} production={production} setNotice={setNotice} onUpdated={onUpdated} />}
-      {production === null && <p className="hint">Production not found in this list; go back to Productions.</p>}
+      {production === null && <p className="hint">{L("Production not found in this list; go back to Productions.")}</p>}
     </>
   );
 }
 
 function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection; productionId: string; canPublish: boolean; setNotice: (n: Notice) => void }) {
+  const L = useL();
   const [days, setDays] = useState<CallSheetCreated[] | null>(null);
   const [reload, setReload] = useState(0);
   useEffect(() => {
@@ -112,12 +116,12 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
       const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
       const detected = detectScheduleColumns(rows);
-      if (!detected) { setNotice({ kind: "error", text: "No scene column found. The sheet needs a header row with a Scene (Obraz) column." }); return; }
+      if (!detected) { setNotice({ kind: "error", text: L("No scene column found. The sheet needs a header row with a Scene (Obraz) column.") }); return; }
       const parsed = rowsToSchedule(rows, detected.headerIndex, detected.map);
-      if (parsed.length === 0) { setNotice({ kind: "warn", text: "No scene rows under the header." }); return; }
+      if (parsed.length === 0) { setNotice({ kind: "warn", text: L("No scene rows under the header.") }); return; }
       setImported({ fileName: file.name, days: parsed });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not read that file"));
+      setNotice(noticeFromError(err, L("Could not read that file")));
     }
   }
   const existingDates = new Set((days ?? []).map((d) => d.shoot_date));
@@ -158,36 +162,36 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       }
       setImported(null); setReload((n) => n + 1);
       const skipped = (imported.days.length - importable.length);
-      setNotice({ kind: "ok", text: `${created} planned ${created === 1 ? "day" : "days"} created as drafts — the crew sees nothing until you publish each one.${skipped ? ` ${skipped} skipped (a day with that date already exists).` : ""}${unmatchedCast.size ? ` Cast not on the Cast tab yet: ${[...unmatchedCast].join(", ")}.` : ""}` });
+      setNotice({ kind: "ok", text: (created === 1 ? L("1 planned day created as a draft — the crew sees nothing until you publish it.") : L("{n} planned days created as drafts — the crew sees nothing until you publish each one.", { n: created })) + (skipped ? L(" {n} skipped (a day with that date already exists).", { n: skipped }) : "") + (unmatchedCast.size ? L(" Cast not on the Cast tab yet: {names}.", { names: [...unmatchedCast].join(", ") }) : "") });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not create the days")); setReload((n) => n + 1);
+      setNotice(noticeFromError(err, L("Could not create the days"))); setReload((n) => n + 1);
     } finally {
       setImporting(false);
     }
   }
 
   return (
-    <section className="block" aria-label="Days">
-      <h2>Days</h2>
-      {days === null && <p className="hint">Loading…</p>}
-      {days && days.length === 0 && <p className="hint">No shoot days yet.</p>}
+    <section className="block" aria-label={L("Days")}>
+      <h2>{L("Days")}</h2>
+      {days === null && <p className="hint">{L("Loading…")}</p>}
+      {days && days.length === 0 && <p className="hint">{L("No shoot days yet.")}</p>}
       {days && days.length > 0 && (
         <ul className="list" id="days">
           {days.map((d) => (
             <li key={d.id}>
               <a className="row" href={href({ screen: "day", productionId, callSheetId: d.id })}>
-                <span className="name">Day {d.day_number} of {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">CANCELLED</span>}{d.status === "draft" && <span className="tag">DRAFT</span>}
+                <span className="name">{L("Day")} {d.day_number} {L("of")} {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">{L("CANCELLED")}</span>}{d.status === "draft" && <span className="tag">{L("DRAFT")}</span>}
                   <span className="meta day-glance">
-                    {d.current_revision?.general_crew_call && <>call <b>{d.current_revision.general_crew_call}</b></>}
+                    {d.current_revision?.general_crew_call && <>{L("call")} <b>{d.current_revision.general_crew_call}</b></>}
                     {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
-                    {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>opened {d.opened.seen}/{d.opened.total}</span></>}
+                    {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>{L("opened {seen}/{total}", { seen: d.opened.seen, total: d.opened.total })}</span></>}
                   </span>
                 </span>
                 <span className="rev-badge small" data-rev={d.current_revision?.revision_letter ?? "A"}>REV {d.current_revision?.revision_letter ?? "–"}</span>
               </a>
               <div className="row-actions">
-                <a className="quiet-link" href={crewLink(conn.apiBase, d.id)} target="_blank" rel="noreferrer">Crew link</a>
-                <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, d.id))}>Copy</button>
+                <a className="quiet-link" href={crewLink(conn.apiBase, d.id)} target="_blank" rel="noreferrer">{L("Crew link")}</a>
+                <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, d.id))}>{L("Copy")}</button>
               </div>
             </li>
           ))}
@@ -195,35 +199,35 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       )}
       {canPublish
         ? <div className="inline day-actions">
-            <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>+ New day</a>
-            <label className="quiet-link" htmlFor="scheduleFile">Import schedule… (.xlsx, .csv)</label>
+            <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>{L("+ New day")}</a>
+            <label className="quiet-link" htmlFor="scheduleFile">{L("Import schedule… (.xlsx, .csv)")}</label>
             <input id="scheduleFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readScheduleFile(f); }} disabled={importing} />
           </div>
-        : <p className="hint" id="readOnlyHint">You can view this production; publishing needs the editor or owner role.</p>}
+        : <p className="hint" id="readOnlyHint">{L("You can view this production; publishing needs the editor or owner role.")}</p>}
       {imported && (
         <div className="paste-crew" id="schedulePreview">
-          <div className="label">{imported.fileName} · {imported.days.length} {imported.days.length === 1 ? "day" : "days"}</div>
+          <div className="label">{imported.fileName} · {imported.days.length === 1 ? L("1 day") : L("{n} days", { n: imported.days.length })}</div>
           <ul className="list preview">
             {imported.days.map((d, i) => {
               const dup = !!d.shoot_date && existingDates.has(d.shoot_date);
               return (
                 <li key={i} className={`row static${dup || d.warnings.length ? " warn" : ""}`}>
-                  <span className="name">{d.day_number ? `Day ${d.day_number}` : "Imported schedule"}{d.shoot_date && <span className="meta"> · {d.shoot_date}</span>}
-                    <span className="meta"> · {d.scenes.length} {d.scenes.length === 1 ? "scene" : "scenes"} · {d.scenes.map((s) => s.scene_number).join(", ")}</span>
-                    {dup && <span className="meta warn-text"> · a day with this date exists, skipped</span>}
+                  <span className="name">{d.day_number ? L("Day {n}", { n: d.day_number }) : L("Imported schedule")}{d.shoot_date && <span className="meta"> · {d.shoot_date}</span>}
+                    <span className="meta"> · {d.scenes.length === 1 ? L("1 scene") : L("{n} scenes", { n: d.scenes.length })} · {d.scenes.map((s) => s.scene_number).join(", ")}</span>
+                    {dup && <span className="meta warn-text"> {L("· a day with this date exists, skipped")}</span>}
                     {d.warnings.map((w) => <span key={w} className="meta warn-text"> · {w}</span>)}
                   </span>
                 </li>
               );
             })}
           </ul>
-          <p className="hint">Days are created as drafts: the crew sees nothing until you open each day, check it and publish. Locations named in the file that are not on the Locations tab yet are created there (address to fill in). The file stays on this phone.</p>
+          <p className="hint">{L("Days are created as drafts: the crew sees nothing until you open each day, check it and publish. Locations named in the file that are not on the Locations tab yet are created there (address to fill in). The file stays on this phone.")}</p>
           <div className="inline">
             <button type="button" id="createImportedDays" className="secondary" disabled={importable.length === 0 || importing} onClick={() => void createImportedDays()}>
-              {importing ? "Creating…" : `Create ${importable.length} ${importable.length === 1 ? "day" : "days"}`}
+              {importing ? L("Creating…") : importable.length === 1 ? L("Create 1 day") : L("Create {n} days", { n: importable.length })}
             </button>
-            <button type="button" className="quiet" onClick={() => setImported(null)}>Cancel</button>
+            <button type="button" className="quiet" onClick={() => setImported(null)}>{L("Cancel")}</button>
           </div>
         </div>
       )}
@@ -247,6 +251,7 @@ function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
 }
 
 function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn: Connection; productionId: string; productionName: string | null; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const L = useL();
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
   const [form, setForm] = useState<CrewForm>(EMPTY_FORM);
   const [editing, setEditing] = useState<CrewMember | null>(null);
@@ -326,8 +331,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       setCopyOpen(false); setCopySourceId(""); setCopySourceName(""); setCopyPreview(null); setCopySelected(new Set());
     }
     setNotice(failed.length === 0
-      ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} from ${copySourceName}.` }
-      : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}.` });
+      ? { kind: "ok", text: added.length === 1 ? L("Added 1 person from {source}.", { source: copySourceName }) : L("Added {n} people from {source}.", { n: added.length, source: copySourceName }) }
+      : { kind: "warn", text: L("Added {n}; could not add {names}.", { n: added.length, names: failed.join(", ") }) });
   }
 
   async function syncPendingEdit(edit: PendingCrewEdit, announce: boolean): Promise<void> {
@@ -339,10 +344,10 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       await clearPendingCrewEdit(edit.memberId);
       setCrew((c) => (c ?? []).map((x) => (x.id === member.id ? { ...member, contact } : x)));
       setPending((p) => { if (!p.has(edit.memberId)) return p; const n = new Map(p); n.delete(edit.memberId); return n; });
-      if (announce) setNotice({ kind: "ok", text: `${contact.name} synced.` });
+      if (announce) setNotice({ kind: "ok", text: L("{name} synced.", { name: contact.name }) });
     } catch (err) {
       if (announce) setNotice(err instanceof ApiError && err.status === 0
-        ? { kind: "warn", text: "Still offline; the change stays on this phone." }
+        ? { kind: "warn", text: L("Still offline; the change stays on this phone.") }
         : noticeFromError(err, "Could not sync the change"));
     }
   }
@@ -383,7 +388,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
           await clearPendingCrewEdit(editing.id);
           setPending((p) => { const n = new Map(p); n.delete(editing.id); return n; });
         }
-        setNotice({ kind: "ok", text: `${contact.name} updated. The sheet shows it immediately.` });
+        setNotice({ kind: "ok", text: L("{name} updated. The sheet shows it immediately.", { name: contact.name }) });
         cancelEdit();
       } else {
         // FR-45: a picked person is reused (their phone corrected if edited here); otherwise a new contact.
@@ -393,7 +398,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         });
         setCrew((c) => [...(c ?? []), member]);
         setForm({ ...EMPTY_FORM, department: form.department });
-        setNotice({ kind: "ok", text: `${contact.name} added${form.hod ? " as head of department" : ""}.` });
+        setNotice({ kind: "ok", text: form.hod ? L("{name} added as head of department.", { name: contact.name }) : L("{name} added.", { name: contact.name }) });
       }
     } catch (err) {
       // An edit to an existing person is never lost offline: it queues on this phone (FR-18 failure case).
@@ -408,10 +413,10 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         };
         await savePendingCrewEdit(edit);
         setPending((p) => new Map(p).set(edit.memberId, edit));
-        setNotice({ kind: "warn", text: "No connection. The change is kept on this phone as not saved; it will sync when you are back online." });
+        setNotice({ kind: "warn", text: L("No connection. The change is kept on this phone as not saved; it will sync when you are back online.") });
         cancelEdit();
       } else {
-        setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the crew member"));
+        setNotice(noticeFromError(err, editing ? L("Could not save the changes") : L("Could not add the crew member")));
       }
     } finally {
       setBusy(false);
@@ -434,9 +439,9 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       const detected = detectColumns(rows);
       setFileRows(rows); setFileName(file.name); setPasteText("");
       setFileMap(detected ?? { headerIndex: 0, map: {} });
-      if (!detected) setNotice({ kind: "warn", text: "Which column has the names? Pick it below; the first row is treated as the header." });
+      if (!detected) setNotice({ kind: "warn", text: L("Which column has the names? Pick it below; the first row is treated as the header.") });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not read that file"));
+      setNotice(noticeFromError(err, L("Could not read that file")));
     }
   }
   // FR-57: an old call sheet PDF goes to the API (text extraction, Claude when configured) and comes back as candidates.
@@ -454,9 +459,9 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       });
       setPdfRows({ fileName: file.name, method: result.method, rows, warnings: result.warnings });
       clearFile(); setPasteText("");
-      if (rows.length === 0) setNotice({ kind: "warn", text: result.warnings[0] ?? "No contacts found in that PDF." });
+      if (rows.length === 0) setNotice({ kind: "warn", text: result.warnings[0] ?? L("No contacts found in that PDF.") });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not read that call sheet"));
+      setNotice(noticeFromError(err, L("Could not read that call sheet")));
     } finally {
       setPdfBusy(false);
     }
@@ -492,8 +497,8 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
     if (failed.length === 0) { setPasteText(""); clearFile(); setPdfRows(null); setPasteOpen(false); }
     else { clearFile(); setPdfRows(null); setPasteText(parsed.filter((r) => failed.includes(r.name)).map((r) => `${r.department}: ${r.name}, ${r.position}${r.phone ? `, ${r.phone}` : ""}`).join("\n")); }
     setNotice(failed.length === 0
-      ? { kind: "ok", text: `Added ${added.length} ${added.length === 1 ? "person" : "people"} to the crew.` }
-      : { kind: "warn", text: `Added ${added.length}; could not add ${failed.join(", ")}. They stay in the box so you can try again.` });
+      ? { kind: "ok", text: added.length === 1 ? L("Added 1 person to the crew.") : L("Added {n} people to the crew.", { n: added.length }) }
+      : { kind: "warn", text: L("Added {n}; could not add {names}. They stay in the box so you can try again.", { n: added.length, names: failed.join(", ") }) });
   }
 
   async function remove(m: CrewMember) {
@@ -506,7 +511,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         await clearPendingCrewEdit(m.id);
         setPending((p) => { const n = new Map(p); n.delete(m.id); return n; });
       }
-      setNotice({ kind: "ok", text: `${m.contact.name} removed.` });
+      setNotice({ kind: "ok", text: L("{name} removed.", { name: m.contact.name }) });
     } catch (err) {
       setNotice(noticeFromError(err, "Could not remove"));
     }
@@ -523,10 +528,10 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       const resized = await resizeImageToBlob(file);
       const contact = await api.uploadContactPhoto(conn, m.contact_id, resized);
       applyContactPhoto(m.contact_id, contact.photo_url);
-      setNotice({ kind: "ok", text: `Photo updated for ${m.contact.name}.` });
+      setNotice({ kind: "ok", text: L("Photo updated for {name}.", { name: m.contact.name }) });
     } catch (err) {
       // A failed upload never touches the rest of the person's saved fields.
-      setNotice(noticeFromError(err, "Could not upload the photo"));
+      setNotice(noticeFromError(err, L("Could not upload the photo")));
     } finally {
       setPhotoBusy(false);
     }
@@ -538,7 +543,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       const contact = await api.removeContactPhoto(conn, m.contact_id);
       applyContactPhoto(m.contact_id, contact.photo_url);
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not remove the photo"));
+      setNotice(noticeFromError(err, L("Could not remove the photo")));
     } finally {
       setPhotoBusy(false);
     }
@@ -546,9 +551,9 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
 
   const canSave = form.name.trim() && form.department.trim() && form.position.trim() && !busy;
   return (
-    <section className="block" aria-label="Crew">
-      <h2>Crew</h2>
-      {crew === null && <p className="hint">Loading…</p>}
+    <section className="block" aria-label={L("Crew")}>
+      <h2>{L("Crew")}</h2>
+      {crew === null && <p className="hint">{L("Loading…")}</p>}
       {crew && crew.length === 0 && (
         <p className="hint">No crew yet. Heads of department appear on every call sheet under "Who to call".{canEdit && " Paste a list, import a file, or copy the crew from another production."}</p>
       )}
@@ -559,22 +564,22 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
               <span className="name crew-name">
                 <Avatar name={m.contact.name} photoUrl={m.contact.photo_url} size={28} />
                 <span>{m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
-                  {pending.has(m.id) && <span className="tag warn" id={`notSaved-${m.id}`}>not saved</span>}
+                  {pending.has(m.id) && <span className="tag warn" id={`notSaved-${m.id}`}>{L("not saved")}</span>}
                   <span className="meta"> · {m.department} · {m.position}{m.contact.phone ? ` · ${m.contact.phone}` : ""}{m.standard_call_time ? ` · call ${m.standard_call_time}` : ""}</span>
                 </span>
               </span>
               {canEdit && (
                 <span className="row-actions">
                   {pending.has(m.id) && (
-                    <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={`Sync ${m.contact.name}`}>Sync</button>
+                    <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={L("Sync {name}", { name: m.contact.name })}>{L("Sync")}</button>
                   )}
-                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: `${m.contact.name}'s link copied. One link for the whole shoot; it always opens their next day.` }); }} aria-label={`Copy link for ${m.contact.name}`}>Link</button>
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: L("{name}'s link copied. One link for the whole shoot; it always opens their next day.", { name: m.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: m.contact.name })}>{L("Link")}</button>
                   {whatsappNumber(m.contact.phone) && (
                     <a className="quiet-link whatsapp" href={whatsappUrl(whatsappNumber(m.contact.phone), onboardingMessageText(productionName, m, personalLink(conn.apiBase, m.personal_token)))}
-                      target="_blank" rel="noreferrer" aria-label={`Send link to ${m.contact.name} on WhatsApp`}>WhatsApp</a>
+                      target="_blank" rel="noreferrer" aria-label={L("Send link to {name} on WhatsApp", { name: m.contact.name })}>{L("WhatsApp")}</a>
                   )}
-                  <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={`Edit ${m.contact.name}`}>Edit</button>
-                  <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.contact.name}`}>Remove</button>
+                  <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={L("Edit {name}", { name: m.contact.name })}>{L("Edit")}</button>
+                  <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={L("Remove {name}", { name: m.contact.name })}>{L("Remove")}</button>
                 </span>
               )}
             </li>
@@ -585,13 +590,13 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         <div className="inline" id="allLinks">
           <button type="button" className="quiet" id="copyAllLinks" onClick={() => {
             void navigator.clipboard?.writeText(allLinksText(visibleCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
-            setNotice({ kind: "ok", text: `${visibleCrew.length} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.` });
-          }}>Copy all links</button>
-          <span className="hint">Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.</span>
+            setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: visibleCrew.length }) });
+          }}>{L("Copy all links")}</button>
+          <span className="hint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</span>
         </div>
       )}
       {canEdit && (<>
-      <h3 className="subhead" id="crewFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add a person"}</h3>
+      <h3 className="subhead" id="crewFormTitle">{editing ? L("Editing {name}", { name: editing.contact.name }) : L("Add a person")}</h3>
       {editing && (
         <div className="inline photo-field" id="crewPhotoField">
           <Avatar name={editing.contact.name} photoUrl={editing.contact.photo_url} size={48} />
@@ -599,7 +604,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
             {photoBusy ? "Uploading…" : editing.contact.photo_url ? "Change photo" : "Add photo"}
           </button>
           {editing.contact.photo_url && (
-            <button type="button" className="quiet danger" disabled={photoBusy} onClick={() => void removePhoto(editing)}>Remove photo</button>
+            <button type="button" className="quiet danger" disabled={photoBusy} onClick={() => void removePhoto(editing)}>{L("Remove photo")}</button>
           )}
           <input
             ref={photoInputRef}
@@ -616,37 +621,37 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
         </div>
       )}
       <div className="grid2">
-        <label className="field" htmlFor="crewName"><span className="label">Name</span>
+        <label className="field" htmlFor="crewName"><span className="label">{L("Name")}</span>
           {editing
             ? <input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             : <PersonPicker conn={conn} id="crewName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
                 onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
         </label>
-        <label className="field" htmlFor="crewPhone"><span className="label">Phone</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-        <label className="field" htmlFor="crewDept"><span className="label">Department</span><input id="crewDept" placeholder="Camera" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></label>
-        <label className="field" htmlFor="crewPos"><span className="label">Position</span><input id="crewPos" placeholder="DoP" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></label>
-        <label className="field" htmlFor="crewCall"><span className="label">Personal call (optional)</span><input id="crewCall" className="mono" placeholder="05:45" value={form.call} onChange={(e) => setForm({ ...form, call: e.target.value })} /></label>
+        <label className="field" htmlFor="crewPhone"><span className="label">{L("Phone")}</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+        <label className="field" htmlFor="crewDept"><span className="label">{L("Department")}</span><input id="crewDept" placeholder="Camera" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></label>
+        <label className="field" htmlFor="crewPos"><span className="label">{L("Position")}</span><input id="crewPos" placeholder="DoP" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></label>
+        <label className="field" htmlFor="crewCall"><span className="label">{L("Personal call (optional)")}</span><input id="crewCall" className="mono" placeholder="05:45" value={form.call} onChange={(e) => setForm({ ...form, call: e.target.value })} /></label>
       </div>
-      <label className="check"><input id="crewHod" type="checkbox" checked={form.hod} onChange={(e) => setForm({ ...form, hod: e.target.checked })} /> Head of department (shown under "Who to call")</label>
+      <label className="check"><input id="crewHod" type="checkbox" checked={form.hod} onChange={(e) => setForm({ ...form, hod: e.target.checked })} /> {L("Head of department (shown under \"Who to call\")")}</label>
       <div className="inline">
-        <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to crew"}</button>
-        {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>Cancel</button>}
-        {!editing && <button type="button" className="quiet" id="pasteCrew" onClick={() => setPasteOpen((o) => !o)}>{pasteOpen ? "Close the list" : "Paste a list…"}</button>}
-        {!editing && <button type="button" className="quiet" id="copyCrew" onClick={() => void toggleCopyCrew()}>{copyOpen ? "Close" : "Copy crew from…"}</button>}
+        <button type="button" id="addCrew" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? L("Save changes") : L("Add to crew")}</button>
+        {editing && <button type="button" className="quiet" id="cancelEdit" onClick={cancelEdit}>{L("Cancel")}</button>}
+        {!editing && <button type="button" className="quiet" id="pasteCrew" onClick={() => setPasteOpen((o) => !o)}>{pasteOpen ? L("Close the list") : L("Paste a list…")}</button>}
+        {!editing && <button type="button" className="quiet" id="copyCrew" onClick={() => void toggleCopyCrew()}>{copyOpen ? L("Close") : L("Copy crew from…")}</button>}
       </div>
       {copyOpen && !editing && (
         <div className="paste-crew" id="copyCrewPanel">
-          {otherProductions === null && <p className="hint">Loading your other productions…</p>}
-          {otherProductions && otherProductions.length === 0 && <p className="hint">No other productions yet — crew from a future one can be copied here.</p>}
+          {otherProductions === null && <p className="hint">{L("Loading your other productions…")}</p>}
+          {otherProductions && otherProductions.length === 0 && <p className="hint">{L("No other productions yet — crew from a future one can be copied here.")}</p>}
           {otherProductions && otherProductions.length > 0 && (
-            <label className="field" htmlFor="copySource"><span className="label">Copy crew from</span>
+            <label className="field" htmlFor="copySource"><span className="label">{L("Copy crew from")}</span>
               <select id="copySource" value={copySourceId} onChange={(e) => void pickCopySource(e.target.value, e.target.selectedOptions[0]?.text ?? "")}>
-                <option value="">— pick a production —</option>
+                <option value="">{L("— pick a production —")}</option>
                 {otherProductions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
           )}
-          {copyPreview && copyPreview.length === 0 && <p className="hint">That production has no crew yet.</p>}
+          {copyPreview && copyPreview.length === 0 && <p className="hint">{L("That production has no crew yet.")}</p>}
           {copyPreview && copyPreview.length > 0 && (
             <ul className="list preview" id="copyPreview">
               {copyPreview.map((m) => {
@@ -657,7 +662,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
                       <input type="checkbox" checked={copySelected.has(m.id)} disabled={already} onChange={() => toggleCopySelected(m.id)} />
                       {m.contact.name}{m.is_head_of_department && <span className="tag">HoD</span>}
                       <span className="meta"> · {m.department} · {m.position}</span>
-                      {already && <span className="meta warn-text"> · already on this crew</span>}
+                      {already && <span className="meta warn-text"> {L("· already on this crew")}</span>}
                     </label>
                   </li>
                 );
@@ -667,7 +672,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
           {copyPreview && copyPreview.length > 0 && (
             <div className="inline">
               <button type="button" id="copyCrewSubmit" className="secondary" disabled={copySelected.size === 0 || copyBusy} onClick={() => void copySelectedCrew()}>
-                {copyBusy ? "Adding…" : `Add ${copySelected.size} ${copySelected.size === 1 ? "person" : "people"}`}
+                {copyBusy ? L("Adding…") : copySelected.size === 1 ? L("Add 1 person") : L("Add {n} people", { n: copySelected.size })}
               </button>
             </div>
           )}
@@ -675,21 +680,21 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       )}
       {pasteOpen && !editing && (
         <div className="paste-crew" id="pasteCrewPanel">
-          <p className="hint">One person per line: name, position, phone — or name, department, position, phone. A line like "Camera:" sets the department for the lines below. "HoD" marks a head of department.</p>
+          <p className="hint">{L("One person per line: name, position, phone — or name, department, position, phone. A line like \"Camera:\" sets the department for the lines below. \"HoD\" marks a head of department.")}</p>
           {!fileRows && !pdfRows && <textarea id="pasteCrewText" rows={6} placeholder={"Camera:\nJan Novák, DoP, 777 123 456, HoD\nPetra K., 1st AC\nElectric:\nTomáš Novák, Gaffer"} value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={busy} />}
           <div className="inline file-import">
-            <label className="quiet-link" htmlFor="crewFile">{fileRows ? `File: ${fileName}` : "…or import a file (.xlsx, .csv)"}</label>
+            <label className="quiet-link" htmlFor="crewFile">{fileRows ? L("File: {name}", { name: fileName }) : L("…or import a file (.xlsx, .csv)")}</label>
             <input id="crewFile" type="file" accept=".xlsx,.xls,.csv,.numbers,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="visually-hidden"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCrewFile(f); }} disabled={busy} />
-            {fileRows && <button type="button" className="quiet" onClick={clearFile}>Use paste instead</button>}
-            <label className="quiet-link" htmlFor="callSheetPdf">{pdfBusy ? "Reading the PDF…" : pdfRows ? `PDF: ${pdfRows.fileName}` : "…or an old call sheet PDF"}</label>
+            {fileRows && <button type="button" className="quiet" onClick={clearFile}>{L("Use paste instead")}</button>}
+            <label className="quiet-link" htmlFor="callSheetPdf">{pdfBusy ? L("Reading the PDF…") : pdfRows ? L("PDF: {name}", { name: pdfRows.fileName }) : L("…or an old call sheet PDF")}</label>
             <input id="callSheetPdf" type="file" accept=".pdf,application/pdf" className="visually-hidden"
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCallSheetPdf(f); }} disabled={busy || pdfBusy} />
-            {pdfRows && <button type="button" className="quiet" onClick={() => setPdfRows(null)}>Discard</button>}
+            {pdfRows && <button type="button" className="quiet" onClick={() => setPdfRows(null)}>{L("Discard")}</button>}
           </div>
           {pdfRows && (
             <p className="hint" id="pdfHint">
-              {pdfRows.method === "claude" ? "Read by Claude from the PDF's text" : "Read by the plain-text pass"} · {pdfRows.rows.length} {pdfRows.rows.length === 1 ? "person" : "people"} found. Check names and numbers before adding; nothing is created until you do. The PDF is not stored.
+              {pdfRows.method === "claude" ? L("Read by Claude from the PDF's text") : L("Read by the plain-text pass")} · {L("{n} people found. Check names and numbers before adding; nothing is created until you do. The PDF is not stored.", { n: pdfRows.rows.length })}
               {pdfRows.warnings.map((w) => <span key={w} className="warn-text"> · {w}</span>)}
             </p>
           )}
@@ -704,7 +709,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
                   </select>
                 </label>
               ))}
-              <p className="hint">{fileMap.map.name === undefined ? "Which column has the names? Pick it to see the preview." : `Header row ${fileMap.headerIndex + 1}; ${fileRows.length - fileMap.headerIndex - 1} rows below it. The file stays on this phone.`}</p>
+              <p className="hint">{fileMap.map.name === undefined ? L("Which column has the names? Pick it to see the preview.") : L("Header row {row}; {n} rows below it. The file stays on this phone.", { row: fileMap.headerIndex + 1, n: fileRows.length - fileMap.headerIndex - 1 })}</p>
             </div>
           )}
           {parsed.length > 0 && (
@@ -721,7 +726,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
           )}
           <div className="inline">
             <button type="button" id="importCrew" className="secondary" disabled={toImport.length === 0 || busy} onClick={() => void importPasted()}>
-              {busy ? "Adding…" : `Add ${toImport.length} ${toImport.length === 1 ? "person" : "people"}`}
+              {busy ? L("Adding…") : toImport.length === 1 ? L("Add 1 person") : L("Add {n} people", { n: toImport.length })}
             </button>
           </div>
         </div>
@@ -733,6 +738,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
 
 /** FR-34: rename, or move the production along prep → shooting → wrapped. Nothing else lives here on purpose. */
 function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection; production: Production; setNotice: (n: Notice) => void; onUpdated: (p: Production) => void }) {
+  const L = useL();
   const [name, setName] = useState(production.name);
   const [status, setStatus] = useState(production.status);
   const [busy, setBusy] = useState(false);
@@ -742,27 +748,27 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
     try {
       const updated = await api.updateProduction(conn, production.id, { name: name.trim(), status });
       onUpdated(updated);
-      setNotice({ kind: "ok", text: `Saved. ${updated.name} is ${updated.status}.` });
+      setNotice({ kind: "ok", text: L("Saved. {name} is {status}.", { name: updated.name, status: L(updated.status) }) });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not save the production"));
+      setNotice(noticeFromError(err, L("Could not save the production")));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <section className="block" aria-label="Settings">
-      <h2>Settings</h2>
+    <section className="block" aria-label={L("Settings")}>
+      <h2>{L("Settings")}</h2>
       <div className="grid2">
-        <label className="field" htmlFor="productionName"><span className="label">Name</span><input id="productionName" value={name} onChange={(e) => setName(e.target.value)} /></label>
-        <label className="field" htmlFor="productionStatus"><span className="label">Status</span>
+        <label className="field" htmlFor="productionName"><span className="label">{L("Name")}</span><input id="productionName" value={name} onChange={(e) => setName(e.target.value)} /></label>
+        <label className="field" htmlFor="productionStatus"><span className="label">{L("Status")}</span>
           <select id="productionStatus" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="prep">prep</option><option value="shooting">shooting</option><option value="wrapped">wrapped</option>
+            <option value="prep">{L("prep")}</option><option value="shooting">{L("shooting")}</option><option value="wrapped">{L("wrapped")}</option>
           </select>
         </label>
       </div>
-      <p className="hint">Wrapped productions stay readable; every link keeps working. Days are never deleted — cancel a day from its own screen.</p>
+      <p className="hint">{L("Wrapped productions stay readable; every link keeps working. Days are never deleted — cancel a day from its own screen.")}</p>
       <div className="inline">
-        <button type="button" id="saveProduction" className="secondary" disabled={!changed || !name.trim() || busy} onClick={() => void save()}>Save</button>
+        <button type="button" id="saveProduction" className="secondary" disabled={!changed || !name.trim() || busy} onClick={() => void save()}>{L("Save")}</button>
       </div>
     </section>
   );
@@ -773,6 +779,7 @@ const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: 
 
 /** FR-33: the people in front of the camera. Per-day times are set on the day (status, pickup, M/H, on set). */
 function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const L = useL();
   const [cast, setCast] = useState<CastMember[] | null>(null);
   const [form, setForm] = useState<CastForm>(EMPTY_CAST_FORM);
   const [editing, setEditing] = useState<CastMember | null>(null);
@@ -780,7 +787,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
 
   useEffect(() => {
     let cancelled = false;
-    api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch((err) => { if (!cancelled) setNotice(noticeFromError(err, "Could not load the cast")); });
+    api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch((err) => { if (!cancelled) setNotice(noticeFromError(err, L("Could not load the cast"))); });
     return () => { cancelled = true; };
   }, [conn, productionId, setNotice]);
 
@@ -797,17 +804,17 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         const contact = await api.updateContact(conn, editing.contact_id, { name: form.name.trim(), phone: form.phone.trim() || null });
         const actor = await api.updateCastMember(conn, productionId, editing.id, { character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
         setCast((c) => (c ?? []).map((x) => (x.id === actor.id ? { ...actor, contact } : x)));
-        setNotice({ kind: "ok", text: `${contact.name} updated.` });
+        setNotice({ kind: "ok", text: L("{name} updated.", { name: contact.name }) });
         cancelEdit();
       } else {
         const contact = await reuseOrCreateContact(conn, form.contactId, form.name.trim(), form.phone.trim() || null);
         const actor = await api.createCastMember(conn, productionId, { contact_id: contact.id, character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
         setCast((c) => [...(c ?? []), actor]);
         setForm(EMPTY_CAST_FORM);
-        setNotice({ kind: "ok", text: `${contact.name} added as ${actor.character_name}. Set their times on each day.` });
+        setNotice({ kind: "ok", text: L("{name} added as {character}. Set their times on each day.", { name: contact.name, character: actor.character_name }) });
       }
     } catch (err) {
-      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the cast member"));
+      setNotice(noticeFromError(err, editing ? L("Could not save the changes") : L("Could not add the cast member")));
     } finally {
       setBusy(false);
     }
@@ -818,9 +825,9 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
     try {
       await api.deleteCastMember(conn, productionId, a.id);
       setCast((c) => (c ?? []).filter((x) => x.id !== a.id));
-      setNotice({ kind: "ok", text: `${a.contact.name} removed from the cast. Their lines drop from the sheets.` });
+      setNotice({ kind: "ok", text: L("{name} removed from the cast. Their lines drop from the sheets.", { name: a.contact.name }) });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not remove the cast member"));
+      setNotice(noticeFromError(err, L("Could not remove the cast member")));
     } finally {
       setBusy(false);
     }
@@ -828,10 +835,10 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
 
   const canSave = form.name.trim() && form.character.trim() && !busy;
   return (
-    <section className="block" aria-label="Cast">
-      <h2>Cast</h2>
-      {cast === null && <p className="hint">Loading…</p>}
-      {cast && cast.length === 0 && <p className="hint">No cast yet. Add the actors once; each day then gets its own status, pickup, make-up and on-set times.</p>}
+    <section className="block" aria-label={L("Cast")}>
+      <h2>{L("Cast")}</h2>
+      {cast === null && <p className="hint">{L("Loading…")}</p>}
+      {cast && cast.length === 0 && <p className="hint">{L("No cast yet. Add the actors once; each day then gets its own status, pickup, make-up and on-set times.")}</p>}
       {cast && cast.length > 0 && (
         <ul className="list" id="cast">
           {cast.map((a) => (
@@ -844,8 +851,8 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
               </span>
               {canEdit && (
                 <span className="row-actions">
-                  <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={`Edit ${a.contact.name}`}>Edit</button>
-                  <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={`Remove ${a.contact.name}`}>Remove</button>
+                  <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={L("Edit {name}", { name: a.contact.name })}>{L("Edit")}</button>
+                  <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={L("Remove {name}", { name: a.contact.name })}>{L("Remove")}</button>
                 </span>
               )}
             </li>
@@ -853,21 +860,21 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
         </ul>
       )}
       {canEdit && (<>
-        <h3 className="subhead" id="castFormTitle">{editing ? `Editing ${editing.contact.name}` : "Add an actor"}</h3>
+        <h3 className="subhead" id="castFormTitle">{editing ? L("Editing {name}", { name: editing.contact.name }) : L("Add an actor")}</h3>
         <div className="grid2">
-          <label className="field" htmlFor="castName"><span className="label">Name</span>
+          <label className="field" htmlFor="castName"><span className="label">{L("Name")}</span>
             {editing
               ? <input id="castName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               : <PersonPicker conn={conn} id="castName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
                   onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
           </label>
-          <label className="field" htmlFor="castCharacter"><span className="label">Character</span><input id="castCharacter" placeholder="MARTA" value={form.character} onChange={(e) => setForm({ ...form, character: e.target.value })} /></label>
-          <label className="field" htmlFor="castPhone"><span className="label">Phone</span><input id="castPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-          <label className="field" htmlFor="castPickup"><span className="label">Usual pickup (optional)</span><input id="castPickup" className="mono" placeholder="05:30" value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} /></label>
+          <label className="field" htmlFor="castCharacter"><span className="label">{L("Character")}</span><input id="castCharacter" placeholder="MARTA" value={form.character} onChange={(e) => setForm({ ...form, character: e.target.value })} /></label>
+          <label className="field" htmlFor="castPhone"><span className="label">{L("Phone")}</span><input id="castPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+          <label className="field" htmlFor="castPickup"><span className="label">{L("Usual pickup (optional)")}</span><input id="castPickup" className="mono" placeholder="05:30" value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} /></label>
         </div>
         <div className="inline">
-          <button type="button" id="addCast" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add to cast"}</button>
-          {editing && <button type="button" className="quiet" onClick={cancelEdit}>Cancel</button>}
+          <button type="button" id="addCast" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? L("Save changes") : L("Add to cast")}</button>
+          {editing && <button type="button" className="quiet" onClick={cancelEdit}>{L("Cancel")}</button>}
         </div>
       </>)}
     </section>
@@ -878,6 +885,7 @@ type LocationForm = { name: string; address: string; parking_notes: string; near
 const EMPTY_LOCATION_FORM: LocationForm = { name: "", address: "", parking_notes: "", nearest_hospital: "" };
 
 function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
+  const L = useL();
   const [locations, setLocations] = useState<Location[] | null>(null);
   const [form, setForm] = useState<LocationForm>(EMPTY_LOCATION_FORM);
   const [editing, setEditing] = useState<Location | null>(null);
@@ -902,7 +910,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
       await api.deleteLocation(conn, productionId, l.id);
       setLocations((ls) => (ls ?? []).filter((x) => x.id !== l.id));
       if (editing?.id === l.id) cancelEdit();
-      setNotice({ kind: "ok", text: `${l.name} removed.` });
+      setNotice({ kind: "ok", text: L("{name} removed.", { name: l.name }) });
     } catch (err) {
       setNotice(noticeFromError(err, "Could not remove"));
     }
@@ -917,7 +925,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
           parking_notes: form.parking_notes.trim() || null, nearest_hospital: form.nearest_hospital.trim() || null,
         } satisfies LocationUpdate);
         setLocations((ls) => (ls ?? []).map((x) => (x.id === updated.id ? updated : x)));
-        setNotice({ kind: "ok", text: `${updated.name} updated.` });
+        setNotice({ kind: "ok", text: L("{name} updated.", { name: updated.name }) });
         cancelEdit();
       } else {
         const created = await api.createLocation(conn, productionId, {
@@ -926,10 +934,10 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
         });
         setLocations((ls) => [...(ls ?? []), created]);
         setForm(EMPTY_LOCATION_FORM);
-        setNotice({ kind: "ok", text: `${created.name} added${created.address ? (created.geocoded_display_name ? `, resolved to ${created.geocoded_display_name}` : ", could not resolve that address — check it") : ""}.` });
+        setNotice({ kind: "ok", text: !created.address ? L("{name} added.", { name: created.name }) : created.geocoded_display_name ? L("{name} added, resolved to {place}.", { name: created.name, place: created.geocoded_display_name }) : L("{name} added, could not resolve that address — check it.", { name: created.name }) });
       }
     } catch (err) {
-      setNotice(noticeFromError(err, editing ? "Could not save the changes" : "Could not add the location"));
+      setNotice(noticeFromError(err, editing ? L("Could not save the changes") : L("Could not add the location")));
     } finally {
       setBusy(false);
     }
@@ -941,7 +949,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
     try {
       const { suggestion } = await api.hospitalSuggestion(conn, productionId, editing.id);
       setHospitalSuggestion(suggestion ?? null);
-      if (!suggestion) setNotice({ kind: "warn", text: "No hospital suggestion nearby; enter one by hand." });
+      if (!suggestion) setNotice({ kind: "warn", text: L("No hospital suggestion nearby; enter one by hand.") });
     } catch (err) {
       setNotice(noticeFromError(err, "Could not get a suggestion"));
     } finally {
@@ -951,11 +959,11 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
 
   const canSave = form.name.trim() && !busy;
   return (
-    <section className="block" aria-label="Locations">
-      <h2>Locations</h2>
-      <p className="hint">An address is geocoded on save so a scene can be tied to it for sunrise/sunset and a nearby hospital can be suggested.</p>
-      {locations === null && <p className="hint">Loading…</p>}
-      {locations && locations.length === 0 && <p className="hint">No locations yet.</p>}
+    <section className="block" aria-label={L("Locations")}>
+      <h2>{L("Locations")}</h2>
+      <p className="hint">{L("An address is geocoded on save so a scene can be tied to it for sunrise/sunset and a nearby hospital can be suggested.")}</p>
+      {locations === null && <p className="hint">{L("Loading…")}</p>}
+      {locations && locations.length === 0 && <p className="hint">{L("No locations yet.")}</p>}
       {locations && locations.length > 0 && (
         <ul className="list" id="locations">
           {locations.map((l) => (
@@ -970,8 +978,8 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
               </span>
               {canEdit && (
                 <span className="row-actions">
-                  <button type="button" className="quiet" onClick={() => startEdit(l)} aria-label={`Edit ${l.name}`}>Edit</button>
-                  <button type="button" className="quiet danger" onClick={() => void remove(l)} aria-label={`Remove ${l.name}`}>Remove</button>
+                  <button type="button" className="quiet" onClick={() => startEdit(l)} aria-label={L("Edit {name}", { name: l.name })}>{L("Edit")}</button>
+                  <button type="button" className="quiet danger" onClick={() => void remove(l)} aria-label={L("Remove {name}", { name: l.name })}>{L("Remove")}</button>
                 </span>
               )}
             </li>
@@ -979,19 +987,19 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
         </ul>
       )}
       {canEdit && (<>
-      <h3 className="subhead" id="locationFormTitle">{editing ? `Editing ${editing.name}` : "Add a location"}</h3>
+      <h3 className="subhead" id="locationFormTitle">{editing ? L("Editing {name}", { name: editing.name }) : L("Add a location")}</h3>
       <div className="grid2">
-        <label className="field" htmlFor="locName"><span className="label">Name</span><input id="locName" placeholder="Riverbank, Troja" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <label className="field" htmlFor="locAddress"><span className="label">Address</span><input id="locAddress" placeholder="Nábřeží, Praha" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
+        <label className="field" htmlFor="locName"><span className="label">{L("Name")}</span><input id="locName" placeholder="Riverbank, Troja" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="field" htmlFor="locAddress"><span className="label">{L("Address")}</span><input id="locAddress" placeholder="Nábřeží, Praha" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></label>
       </div>
       {editing?.address === form.address && editing?.geocoded_display_name && (
         <p className="hint">Resolved to: {editing.geocoded_display_name}. Wrong place? Change the address and save again.</p>
       )}
-      <label className="field" htmlFor="locParking"><span className="label">Parking notes</span><input id="locParking" value={form.parking_notes} onChange={(e) => setForm({ ...form, parking_notes: e.target.value })} /></label>
-      <label className="field" htmlFor="locHospital"><span className="label">Nearest hospital</span><input id="locHospital" value={form.nearest_hospital} onChange={(e) => setForm({ ...form, nearest_hospital: e.target.value })} /></label>
+      <label className="field" htmlFor="locParking"><span className="label">{L("Parking notes")}</span><input id="locParking" value={form.parking_notes} onChange={(e) => setForm({ ...form, parking_notes: e.target.value })} /></label>
+      <label className="field" htmlFor="locHospital"><span className="label">{L("Nearest hospital")}</span><input id="locHospital" value={form.nearest_hospital} onChange={(e) => setForm({ ...form, nearest_hospital: e.target.value })} /></label>
       {editing && editing.geo_lat != null && (
         <div className="inline">
-          <button type="button" className="quiet" disabled={suggesting} onClick={() => void suggestHospital()}>{suggesting ? "Looking…" : "Suggest nearest hospital"}</button>
+          <button type="button" className="quiet" disabled={suggesting} onClick={() => void suggestHospital()}>{suggesting ? L("Looking…") : L("Suggest nearest hospital")}</button>
           {hospitalSuggestion && (
             <button type="button" className="quiet" onClick={() => { setForm({ ...form, nearest_hospital: hospitalSuggestion }); setHospitalSuggestion(null); }}>
               Use: {hospitalSuggestion}
@@ -1000,8 +1008,8 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
         </div>
       )}
       <div className="inline">
-        <button type="button" id="addLocation" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? "Save changes" : "Add location"}</button>
-        {editing && <button type="button" className="quiet" id="cancelLocationEdit" onClick={cancelEdit}>Cancel</button>}
+        <button type="button" id="addLocation" className="secondary" disabled={!canSave} onClick={() => void save()}>{editing ? L("Save changes") : L("Add location")}</button>
+        {editing && <button type="button" className="quiet" id="cancelLocationEdit" onClick={cancelEdit}>{L("Cancel")}</button>}
       </div>
       </>)}
     </section>
@@ -1009,6 +1017,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
 }
 
 function Members({ conn, productionId, setNotice }: { conn: Connection; productionId: string; setNotice: (n: Notice) => void }) {
+  const L = useL();
   const [members, setMembers] = useState<Member[] | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<ProductionRole>("editor");
@@ -1024,7 +1033,7 @@ function Members({ conn, productionId, setNotice }: { conn: Connection; producti
       const m = await api.addMember(conn, productionId, email.trim(), role);
       setMembers((ms) => [...(ms ?? []).filter((x) => x.id !== m.id), m]);
       setEmail("");
-      setNotice({ kind: "ok", text: `${m.email} can now ${m.role === "viewer" ? "view" : m.role === "editor" ? "edit and publish" : "do everything"}. They sign in with that email.` });
+      setNotice({ kind: "ok", text: L(m.role === "viewer" ? "{email} can now view. They sign in with that email." : m.role === "editor" ? "{email} can now edit and publish. They sign in with that email." : "{email} can now do everything. They sign in with that email.", { email: m.email }) });
     } catch (err) {
       setNotice(noticeFromError(err, "Could not add the member"));
     } finally {
@@ -1036,34 +1045,34 @@ function Members({ conn, productionId, setNotice }: { conn: Connection; producti
       await api.removeMember(conn, productionId, m.id);
       setMembers((ms) => (ms ?? []).filter((x) => x.id !== m.id));
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not remove the member"));
+      setNotice(noticeFromError(err, L("Could not remove the member")));
     }
   }
 
   return (
-    <section className="block" aria-label="Members">
-      <h2>Members</h2>
-      <p className="hint">Owner: everything, incl. members. Editor: days, crew, publish. Viewer: read only.</p>
-      {members === null && <p className="hint">Loading…</p>}
+    <section className="block" aria-label={L("Members")}>
+      <h2>{L("Members")}</h2>
+      <p className="hint">{L("Owner: everything, incl. members. Editor: days, crew, publish. Viewer: read only.")}</p>
+      {members === null && <p className="hint">{L("Loading…")}</p>}
       {members && members.length > 0 && (
         <ul className="list" id="members">
           {members.map((m) => (
             <li key={m.id} className="row static">
-              <span className="name">{m.email}<span className="tag">{m.role}</span>{!m.user_id && <span className="meta"> · not signed in yet</span>}</span>
-              <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={`Remove ${m.email}`}>Remove</button>
+              <span className="name">{m.email}<span className="tag">{m.role}</span>{!m.user_id && <span className="meta"> {L("· not signed in yet")}</span>}</span>
+              <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={L("Remove {name}", { name: m.email })}>{L("Remove")}</button>
             </li>
           ))}
         </ul>
       )}
       <div className="grid2">
-        <label className="field" htmlFor="memberEmail"><span className="label">Email</span><input id="memberEmail" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-        <label className="field" htmlFor="memberRole"><span className="label">Role</span>
+        <label className="field" htmlFor="memberEmail"><span className="label">{L("Email")}</span><input id="memberEmail" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <label className="field" htmlFor="memberRole"><span className="label">{L("Role")}</span>
           <select id="memberRole" value={role} onChange={(e) => setRole(e.target.value as ProductionRole)}>
-            <option value="editor">editor</option><option value="viewer">viewer</option><option value="owner">owner</option>
+            <option value="editor">{L("editor")}</option><option value="viewer">{L("viewer")}</option><option value="owner">{L("owner")}</option>
           </select>
         </label>
       </div>
-      <button type="button" id="addMember" className="secondary" disabled={!email.includes("@") || busy} onClick={() => void add()}>Invite</button>
+      <button type="button" id="addMember" className="secondary" disabled={!email.includes("@") || busy} onClick={() => void add()}>{L("Invite")}</button>
     </section>
   );
 }
