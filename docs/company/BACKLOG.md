@@ -630,7 +630,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: every step names the exact button label as it reads in the Czech editor (checked against `cs.ts`)
 
 ## FR-65 · frontend · Actual times per day: first shot, lunch, wrap
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 12:05 by the founder's interactive session (feat/fr-65-actuals); shifts skip it
 - gated: no
 - why: after wrap the AD reports first shot and wrap to production; it is the one number everyone asks for the next morning, and it belongs next to the planned call — the seed of a daily report without building one
 - dod:
