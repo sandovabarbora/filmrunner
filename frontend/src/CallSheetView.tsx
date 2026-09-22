@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Avatar } from "./Avatar";
 import { QrCode } from "./editor/screens/QrCode";
+import { whatsappNumber, whatsappUrl } from "./editor/shareText";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
 import { fmtDate, t, type Lang } from "./i18n";
 
@@ -267,6 +269,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
 function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
   const tel = c.phone ? `tel:${c.phone.replace(/[^+\d]/g, "")}` : null;
+  const wa = whatsappNumber(c.phone);
   return (
     <div className="contact">
       <div className="who">
@@ -276,7 +279,46 @@ function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
           <span className="role">{c.department} · {c.position}</span>
         </div>
       </div>
-      {tel ? <a className="phone" href={tel}>{c.phone}</a> : <span className="phone none">{t(lang, "contacts.noNumber")}</span>}
+      {tel ? (
+        <div className="contact-actions">
+          <a className="phone contact-btn" href={tel} aria-label={`${t(lang, "contacts.call")} ${c.name}, ${c.phone}`}>
+            <span className="btn-icon" aria-hidden="true">☎</span>{c.phone}
+          </a>
+          {wa && (
+            <a
+              className="contact-btn wa"
+              href={whatsappUrl(wa, "")}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`WhatsApp ${c.name}`}
+            >
+              <span className="btn-icon" aria-hidden="true">💬</span>{t(lang, "contacts.whatsapp")}
+            </a>
+          )}
+          <ContactCopyButton phone={c.phone!} name={c.name} lang={lang} />
+        </div>
+      ) : (
+        <span className="phone none">{t(lang, "contacts.noNumber")}</span>
+      )}
     </div>
+  );
+}
+
+/** A contact's number, copyable without selecting text with a wet thumb; a brief "Copied" confirms it worked. */
+function ContactCopyButton({ phone, name, lang }: { phone: string; name: string; lang: Lang }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="contact-btn copy"
+      onClick={() => {
+        void navigator.clipboard?.writeText(phone);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      aria-label={`${t(lang, "contacts.copy")} ${name}`}
+    >
+      <span className="btn-icon" aria-hidden="true">⧉</span>{copied ? t(lang, "contacts.copied") : t(lang, "contacts.copy")}
+    </button>
   );
 }
