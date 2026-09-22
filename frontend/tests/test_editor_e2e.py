@@ -1109,3 +1109,47 @@ def test_actual_times_after_wrap_stay_with_the_production(page: Page, frontend_u
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#sheet.visible", timeout=15_000)
     assert "19:40" not in v.locator("#sheet").inner_text() and v.locator("#revBadgeWrap").inner_text().strip() == "REV A"
     v.close()
+
+
+def test_crew_filter_narrows_the_list_and_the_print_view_has_everyone(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-60/FR-61: the filter narrows the list (and says 2 of 5) while imports, links and the print stay on the whole
+    crew; a filter matching nobody offers a way out; the printed list groups by department with phones and no links."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E filter {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#pasteCrew", timeout=10_000)
+    page.click("#pasteCrew")
+    page.fill("#pasteCrewText", "Camera:\nMarek Sýkora, DoP, 603 555 010, HoD\nPetra Králová, 1st AC, 602 111 222\nElectric:\nTomáš Novák, Gaffer, 601 234 567\nLukáš Malý, Best boy\nSound:\nJana Tichá, Mixer, 604 222 333")
+    page.click("#importCrew")
+    expect(page.locator("#crew li")).to_have_count(5, timeout=20_000)
+    expect(page.locator("#crewCount")).to_have_text("5 people")
+
+    page.fill("#crewFilter", "camera")
+    expect(page.locator("#crew li")).to_have_count(2)
+    expect(page.locator("#crewCount")).to_have_text("2 of 5")
+    page.fill("#crewFilter", "601234")  # phone digits
+    expect(page.locator("#crew li")).to_have_count(1)
+    expect(page.locator("#crew li").first).to_contain_text("Tomáš Novák")
+    page.fill("#crewFilter", "nikdo takový")
+    expect(page.locator("#noCrewMatch")).to_be_visible()
+    assert page.locator("#crew li").count() == 0
+    page.click("#clearCrewFilter")
+    expect(page.locator("#crew li")).to_have_count(5)
+
+    # Copy all links works on the whole crew even while filtered.
+    page.fill("#crewFilter", "camera")
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.click("#copyAllLinks")
+    expect(page.locator("#notice")).to_contain_text("5 links copied", timeout=5_000)
+
+    # The print view: a new window with everyone, grouped, phones, nothing personal.
+    with page.context.expect_page() as popup:
+        page.click("#printCrew")
+    printed = popup.value
+    printed.wait_for_load_state("domcontentloaded")
+    html = printed.content()
+    for name in ("Marek Sýkora", "Petra Králová", "Tomáš Novák", "Lukáš Malý", "Jana Tichá"):
+        assert name in html, name
+    assert "603 555 010" in html and "<td>—</td>" in html  # Lukáš has no number
+    assert "tok-" not in html and "sheet=" not in html
+    assert html.index("Camera") < html.index("Marek Sýkora") < html.index("Petra Králová")
+    printed.close()
