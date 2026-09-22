@@ -7,10 +7,12 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Connection } from "./api";
 import type { ContactMatch } from "../types";
+import { useL } from "./lang";
 
 export function PersonPicker({ conn, id, value, onChange, onPick, disabled }: {
   conn: Connection; id: string; value: string; onChange: (name: string) => void; onPick: (c: ContactMatch) => void; disabled?: boolean;
 }) {
+  const L = useL();
   const [matches, setMatches] = useState<ContactMatch[]>([]);
   const [open, setOpen] = useState(false);
   const timer = useRef<number | null>(null);
@@ -34,7 +36,7 @@ export function PersonPicker({ conn, id, value, onChange, onPick, disabled }: {
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)} />
       {open && matches.length > 0 && (
-        <ul className="picker-list" role="listbox" aria-label="People already in FilmRunner">
+        <ul className="picker-list" role="listbox" aria-label={L("People already in FilmRunner")}>
           {matches.map((c) => (
             <li key={c.id} role="option" aria-selected={false}>
               <button type="button" className="picker-item" onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(c); setOpen(false); }}>

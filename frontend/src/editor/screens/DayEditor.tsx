@@ -7,6 +7,7 @@ import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
 import type { CallSheetCreated, CastMember, CastStatus, CrewMember, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
+import { useL } from "../lang";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -66,6 +67,7 @@ function nextLetter(letter: string): string {
 export function DayEditor({ conn, productionId, productionName, callSheetId, canPublish, setNotice }: {
   conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; canPublish: boolean; setNotice: (n: Notice) => void;
 }) {
+  const L = useL();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [offline, setOffline] = useState(false);
   const readOnly = offline || !canPublish;
@@ -102,8 +104,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           if (!cancelled) { setDraft(keepLocal ? local : fromServer); setReadOnly(false); }
         } catch (err) {
           if (cancelled) return;
-          if (local) { setDraft(local); setReadOnly(true); setNotice({ kind: "warn", text: "Offline: showing the last copy on this phone. Reconnect to publish." }); }
-          else { setDraft(null); setReadOnly(true); setNotice(noticeFromError(err, "Cannot load this day")); }
+          if (local) { setDraft(local); setReadOnly(true); setNotice({ kind: "warn", text: L("Offline: showing the last copy on this phone. Reconnect to publish.") }); }
+          else { setDraft(null); setReadOnly(true); setNotice(noticeFromError(err, L("Cannot load this day"))); }
         }
       } else if (!cancelled) {
         if (local) { setDraft(local); setReadOnly(false); return; }
@@ -187,14 +189,14 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   async function suggestWeather() {
     if (!draft) return;
     const locationId = firstLocationId();
-    if (!locationId) { setNotice({ kind: "warn", text: "Pick a location for the first scene to get a weather suggestion." }); return; }
+    if (!locationId) { setNotice({ kind: "warn", text: L("Pick a location for the first scene to get a weather suggestion.") }); return; }
     setSuggestingWeather(true);
     try {
       const { suggestion } = await api.weatherSuggestion(conn, productionId, locationId, draft.shoot_date);
       setWeatherSuggestion(suggestion ?? null);
-      if (!suggestion) setNotice({ kind: "warn", text: "No weather suggestion available for that date/location." });
+      if (!suggestion) setNotice({ kind: "warn", text: L("No weather suggestion available for that date/location.") });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not get a weather suggestion"));
+      setNotice(noticeFromError(err, L("Could not get a weather suggestion")));
     } finally {
       setSuggestingWeather(false);
     }
@@ -202,7 +204,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   async function publish() {
     if (!draft || readOnly) return;
-    if (!draft.general_crew_call.trim()) { setNotice({ kind: "error", text: "Crew call is required; the crew wakes up for that number." }); return; }
+    if (!draft.general_crew_call.trim()) { setNotice({ kind: "error", text: L("Crew call is required; the crew wakes up for that number.") }); return; }
     setBusy(true);
     try {
       if (!draft.callSheetId) {
@@ -212,18 +214,18 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         await clearDraft(key);
         const letter = created.current_revision?.revision_letter ?? "A";
         await saveDraft({ ...draft, id: draftKey(productionId, created.id), callSheetId: created.id, lastPublishedLetter: letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
-        setNotice({ kind: "ok", text: `Published REV ${letter}. Everyone with the link sees it now.` });
+        setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: letter }) });
         window.location.hash = href({ screen: "day", productionId, callSheetId: created.id });
       } else {
         const rev = await api.publishRevision(conn, draft.callSheetId, revisionPayload(draft));
         update({ lastPublishedLetter: rev.revision_letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
         setDayStatus("published");  // publishing puts a cancelled day back on, and makes a planned day real
-        setNotice({ kind: "ok", text: `Published REV ${rev.revision_letter}. Everyone with the link sees it now.` });
+        setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: rev.revision_letter }) });
       }
     } catch (err) {
       setNotice(err instanceof ApiError && err.status === 0
-        ? { kind: "warn", text: "No connection. Your draft is safe on this phone; publish when you are back in signal." }
-        : noticeFromError(err, "Publish failed"));
+        ? { kind: "warn", text: L("No connection. Your draft is safe on this phone; publish when you are back in signal.") }
+        : noticeFromError(err, L("Publish failed")));
     } finally {
       setBusy(false);
     }
@@ -236,10 +238,10 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     try {
       await api.deleteDraftCallSheet(conn, draft.callSheetId);
       await clearDraft(key);
-      setNotice({ kind: "ok", text: `Planned Day ${draft.day_number} deleted.` });
+      setNotice({ kind: "ok", text: L("Planned Day {n} deleted.", { n: draft.day_number }) });
       window.location.hash = href({ screen: "production", productionId, tab: "days" });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not delete the planned day"));
+      setNotice(noticeFromError(err, L("Could not delete the planned day")));
     } finally {
       setBusy(false);
     }
@@ -253,9 +255,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       const sheet = await api.cancelCallSheet(conn, draft.callSheetId);
       setDayStatus("cancelled"); setConfirmCancel(false);
       const n = sheet.current_revision?.notifications;
-      setNotice({ kind: "ok", text: `Day ${draft.day_number} cancelled.${n ? ` Told ${n.delivered} of ${n.attempted} subscribed phones.` : ""} The sheet now says so; the link still works.` });
+      setNotice({ kind: "ok", text: L("Day {n} cancelled.", { n: draft.day_number }) + (n ? L(" Told {delivered} of {attempted} subscribed phones.", { delivered: n.delivered, attempted: n.attempted }) : "") + L(" The sheet now says so; the link still works.") });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not cancel the day"));
+      setNotice(noticeFromError(err, L("Could not cancel the day")));
     } finally {
       setBusy(false);
     }
@@ -266,9 +268,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     try {
       await api.restoreCallSheet(conn, draft.callSheetId);
       setDayStatus("published");
-      setNotice({ kind: "warn", text: `Day ${draft.day_number} is back on. Publish a revision so the crew gets told.` });
+      setNotice({ kind: "warn", text: L("Day {n} is back on. Publish a revision so the crew gets told.", { n: draft.day_number }) });
     } catch (err) {
-      setNotice(noticeFromError(err, "Could not restore the day"));
+      setNotice(noticeFromError(err, L("Could not restore the day")));
     } finally {
       setBusy(false);
     }
@@ -281,7 +283,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!replace && draftHasContent(await loadDraft(newKey).catch(() => null))) { setNextDayClash(true); return; }
     await saveDraft(nextDayFrom(draft));
     setNextDayClash(false);
-    setNotice({ kind: "ok", text: `Day ${draft.day_number + 1} started from Day ${draft.day_number}. Change the date and scenes, then publish.` });
+    setNotice({ kind: "ok", text: L("Day {next} started from Day {n}. Change the date and scenes, then publish.", { next: draft.day_number + 1, n: draft.day_number }) });
     window.location.hash = href({ screen: "day", productionId, callSheetId: null });
   }
 
@@ -291,8 +293,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       try { await navigator.share({ title, text }); return; }
       catch (err) { if ((err as { name?: string }).name === "AbortError") return; }
     }
-    try { await navigator.clipboard?.writeText(text); setNotice({ kind: "ok", text: "Copied. Paste it into the WhatsApp group." }); }
-    catch { setNotice({ kind: "warn", text: "Could not copy; select the text below." }); }
+    try { await navigator.clipboard?.writeText(text); setNotice({ kind: "ok", text: L("Copied. Paste it into the WhatsApp group.") }); }
+    catch { setNotice({ kind: "warn", text: L("Could not copy; select the text below.") }); }
     setShareText(text);
   }
 
@@ -306,62 +308,62 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   return (
     <>
-      <section className="block" aria-label="Shoot day">
-        <h2>Shoot day</h2>
+      <section className="block" aria-label={L("Shoot day")}>
+        <h2>{L("Shoot day")}</h2>
         <div className="grid2">
-          <Field label="Date" id="shoot_date" type="date" value={draft.shoot_date} onChange={(v) => update({ shoot_date: v })} disabled={dis || !!draft.callSheetId} />
-          <Field label="Unit" id="unit_name" value={draft.unit_name} onChange={(v) => update({ unit_name: v })} disabled={dis || !!draft.callSheetId} />
-          <Field label="Day" id="day_number" type="number" value={String(draft.day_number)} onChange={(v) => update({ day_number: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
-          <Field label="of" id="day_count" type="number" value={String(draft.day_count)} onChange={(v) => update({ day_count: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
+          <Field label={L("Date")} id="shoot_date" type="date" value={draft.shoot_date} onChange={(v) => update({ shoot_date: v })} disabled={dis || !!draft.callSheetId} />
+          <Field label={L("Unit")} id="unit_name" value={draft.unit_name} onChange={(v) => update({ unit_name: v })} disabled={dis || !!draft.callSheetId} />
+          <Field label={L("Day")} id="day_number" type="number" value={String(draft.day_number)} onChange={(v) => update({ day_number: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
+          <Field label={L("of")} id="day_count" type="number" value={String(draft.day_count)} onChange={(v) => update({ day_count: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
         </div>
-        {draft.callSheetId && <p className="hint">Date, unit and day number are fixed once published; times, notes and scenes change through revisions.</p>}
+        {draft.callSheetId && <p className="hint">{L("Date, unit and day number are fixed once published; times, notes and scenes change through revisions.")}</p>}
       </section>
 
-      <section className="block" aria-label="Calls">
-        <h2>Calls</h2>
+      <section className="block" aria-label={L("Calls")}>
+        <h2>{L("Calls")}</h2>
         <div className="grid2">
-          <Field label="Crew call" id="general_crew_call" placeholder="06:30" mono value={draft.general_crew_call} onChange={(v) => update({ general_crew_call: v })} disabled={dis} />
-          <Field label="Shooting call" id="shooting_call" placeholder="07:30" mono value={draft.shooting_call} onChange={(v) => update({ shooting_call: v })} disabled={dis} />
-          <Field label="Sunrise" id="sunrise" placeholder="06:41" mono value={draft.sunrise} onChange={(v) => update({ sunrise: v })} disabled={dis} />
-          <Field label="Sunset" id="sunset" placeholder="19:03" mono value={draft.sunset} onChange={(v) => update({ sunset: v })} disabled={dis} />
+          <Field label={L("Crew call")} id="general_crew_call" placeholder="06:30" mono value={draft.general_crew_call} onChange={(v) => update({ general_crew_call: v })} disabled={dis} />
+          <Field label={L("Shooting call")} id="shooting_call" placeholder="07:30" mono value={draft.shooting_call} onChange={(v) => update({ shooting_call: v })} disabled={dis} />
+          <Field label={L("Sunrise")} id="sunrise" placeholder="06:41" mono value={draft.sunrise} onChange={(v) => update({ sunrise: v })} disabled={dis} />
+          <Field label={L("Sunset")} id="sunset" placeholder="19:03" mono value={draft.sunset} onChange={(v) => update({ sunset: v })} disabled={dis} />
         </div>
-        <Field label="Weather" id="weather_forecast" value={draft.weather_forecast} onChange={(v) => update({ weather_forecast: v })} disabled={dis} />
+        <Field label={L("Weather")} id="weather_forecast" value={draft.weather_forecast} onChange={(v) => update({ weather_forecast: v })} disabled={dis} />
         {!dis && (
           <div className="inline">
             <button type="button" className="quiet" disabled={suggestingWeather} onClick={() => void suggestWeather()}>
-              {suggestingWeather ? "Looking…" : "Suggest weather"}
+              {suggestingWeather ? L("Looking…") : L("Suggest weather")}
             </button>
             {weatherSuggestion && (
               <button type="button" className="quiet" onClick={() => { update({ weather_forecast: weatherSuggestion }); setWeatherSuggestion(null); }}>
-                Use: {weatherSuggestion}
+                {L("Use: {text}", { text: weatherSuggestion })}
               </button>
             )}
           </div>
         )}
-        <p className="hint" id="weatherHint">Left blank, weather fills in from the first location's forecast when you publish — like sunrise and sunset.</p>
+        <p className="hint" id="weatherHint">{L("Left blank, weather fills in from the first location's forecast when you publish — like sunrise and sunset.")}</p>
         <p className="hint" id="sunHint" data-state={sunState}>
           {sunState === "none" && (locations.length === 0
-            ? <>Add a location to this day to get sunrise, sunset, weather and the nearest hospital. <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a></>
-            : <>Pick a location on a scene below to get sunrise, sunset, weather and the nearest hospital. No location yet? <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a></>)}
-          {sunState === "filled" && <>Sunrise and sunset come from the first scene's location; edit them if you know better.</>}
-          {sunState === "no-coords" && <>That location has no map position, so sunrise and sunset cannot be computed; type them, or add an address under <a href={href({ screen: "production", productionId, tab: "locations" })}>Locations</a>.</>}
-          {sunState === "failed" && <>Could not fetch suggestions; type sunrise and sunset yourself.</>}
+            ? <>{L("Add a location to this day to get sunrise, sunset, weather and the nearest hospital.")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a></>
+            : <>{L("Pick a location on a scene below to get sunrise, sunset, weather and the nearest hospital. No location yet?")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a></>)}
+          {sunState === "filled" && <>{L("Sunrise and sunset come from the first scene's location; edit them if you know better.")}</>}
+          {sunState === "no-coords" && <>{L("That location has no map position, so sunrise and sunset cannot be computed; type them, or add an address under")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a>.</>}
+          {sunState === "failed" && <>{L("Could not fetch suggestions; type sunrise and sunset yourself.")}</>}
         </p>
-        <Field label="Safety notes" id="safety_notes" textarea value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
+        <Field label={L("Safety notes")} id="safety_notes" textarea value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
         <label className="field" htmlFor="headOfDay">
-          <span className="label">Head of day</span>
+          <span className="label">{L("Head of day")}</span>
           <select id="headOfDay" value={draft.headOfDayId ?? ""} onChange={(e) => update({ headOfDayId: e.target.value || null })} disabled={dis}>
-            <option value="">— not set —</option>
+            <option value="">{L("— not set —")}</option>
             {crew.map((m) => <option key={m.id} value={m.id}>{m.contact.name} · {m.position}{m.is_head_of_department ? " (HoD)" : ""}</option>)}
           </select>
-          {crew.length === 0 && <span className="hint">Add crew under the Crew tab to pick who runs the day.</span>}
+          {crew.length === 0 && <span className="hint">{L("Add crew under the Crew tab to pick who runs the day.")}</span>}
         </label>
       </section>
 
-      <section className="block" aria-label="Personal calls">
-        <h2>Personal calls</h2>
-        <p className="hint">Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.</p>
-        {crew.length === 0 && <p className="hint">Add crew under the Crew tab first.</p>}
+      <section className="block" aria-label={L("Personal calls")}>
+        <h2>{L("Personal calls")}</h2>
+        <p className="hint">{L("Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.")}</p>
+        {crew.length === 0 && <p className="hint">{L("Add crew under the Crew tab first.")}</p>}
         {(() => {
           // FR-44: with 40 people on the crew, list only those with an entry today; the rest are one pick away.
           const withEntry = crew.filter((m) => draft.crewCalls?.[m.id] !== undefined);
@@ -376,13 +378,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   return (
                     <li key={m.id} className="item pcall">
                       <div className="pcall-who">
-                        <span className="name">{m.contact.name}</span><span className="meta"> · {m.department} · {m.position}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</span>
-                        {!dis && <button type="button" className="quiet danger" onClick={() => remove(m.id)} aria-label={`Drop ${m.contact.name} from personal calls`}>×</button>}
+                        <span className="name">{m.contact.name}</span><span className="meta"> · {m.department} · {m.position}{m.standard_call_time ? ` · ${L("usually {time}", { time: m.standard_call_time })}` : ""}</span>
+                        {!dis && <button type="button" className="quiet danger" onClick={() => remove(m.id)} aria-label={L("Drop {name} from personal calls", { name: m.contact.name })}>×</button>}
                       </div>
                       <div className="pcall-row">
-                        <input className="mono" aria-label={`Call for ${m.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
-                        <input className="mono" aria-label={`Pickup for ${m.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
-                        <input aria-label={`Note for ${m.contact.name}`} placeholder="note" value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
+                        <input className="mono" aria-label={L("Call for {name}", { name: m.contact.name })} placeholder={L("call")} value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
+                        <input className="mono" aria-label={L("Pickup for {name}", { name: m.contact.name })} placeholder={L("pickup")} value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
+                        <input aria-label={L("Note for {name}", { name: m.contact.name })} placeholder={L("note")} value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
                       </div>
                     </li>
                   );
@@ -390,10 +392,10 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               </ul>
               {!dis && without.length > 0 && (
                 <label className="field" htmlFor="addPersonalCall">
-                  <span className="label">Personal call for…</span>
+                  <span className="label">{L("Personal call for…")}</span>
                   <select id="addPersonalCall" value="" onChange={(e) => { const id = e.target.value; if (id) update({ crewCalls: { ...(draft.crewCalls ?? {}), [id]: { call: "", pickup: "", note: "" } } }); }}>
-                    <option value="">— pick a person ({without.length} without one) —</option>
-                    {without.map((m) => <option key={m.id} value={m.id}>{m.contact.name} · {m.department}{m.standard_call_time ? ` · usually ${m.standard_call_time}` : ""}</option>)}
+                    <option value="">{L("— pick a person ({n} without one) —", { n: without.length })}</option>
+                    {without.map((m) => <option key={m.id} value={m.id}>{m.contact.name} · {m.department}{m.standard_call_time ? ` · ${L("usually {time}", { time: m.standard_call_time })}` : ""}</option>)}
                   </select>
                 </label>
               )}
@@ -403,9 +405,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       </section>
 
       {cast.length > 0 && (
-        <section className="block" aria-label="Cast calls">
-          <h2>Cast</h2>
-          <p className="hint">Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.</p>
+        <section className="block" aria-label={L("Cast calls")}>
+          <h2>{L("Cast")}</h2>
+          <p className="hint">{L("Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.")}</p>
           <ul className="items" id="castCalls">
             {cast.map((a) => {
               const v = draft.castCalls?.[a.id] ?? null;
@@ -417,18 +419,18 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               return (
                 <li key={a.id} className={`item pcall${v ? "" : " off"}`}>
                   <div className="pcall-who">
-                    <label className="check"><input type="checkbox" aria-label={`${a.contact.name} works today`} checked={!!v} disabled={dis} onChange={(e) => (e.target.checked ? setEntry({}) : clear())} /> <span className="name">{a.contact.name}</span></label>
+                    <label className="check"><input type="checkbox" aria-label={L("{name} works today", { name: a.contact.name })} checked={!!v} disabled={dis} onChange={(e) => (e.target.checked ? setEntry({}) : clear())} /> <span className="name">{a.contact.name}</span></label>
                     <span className="meta"> · {a.character_name}</span>
                   </div>
                   {v && (
                     <div className="pcall-row cast-row">
-                      <select aria-label={`Status for ${a.contact.name}`} value={v.status} disabled={dis} onChange={(e) => setEntry({ status: e.target.value as CastStatus })}>
+                      <select aria-label={L("Status for {name}", { name: a.contact.name })} value={v.status} disabled={dis} onChange={(e) => setEntry({ status: e.target.value as CastStatus })}>
                         {(["W", "SW", "WF", "SWF", "H", "R"] as CastStatus[]).map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
-                      <input className="mono" aria-label={`Pickup for ${a.contact.name}`} placeholder="pickup" value={v.pickup} disabled={dis} onChange={(e) => setEntry({ pickup: e.target.value })} />
-                      <input className="mono" aria-label={`Call for ${a.contact.name}`} placeholder="call" value={v.call} disabled={dis} onChange={(e) => setEntry({ call: e.target.value })} />
-                      <input className="mono" aria-label={`Make-up for ${a.contact.name}`} placeholder="M/H" value={v.makeup} disabled={dis} onChange={(e) => setEntry({ makeup: e.target.value })} />
-                      <input className="mono" aria-label={`On set for ${a.contact.name}`} placeholder="on set" value={v.onSet} disabled={dis} onChange={(e) => setEntry({ onSet: e.target.value })} />
+                      <input className="mono" aria-label={L("Pickup for {name}", { name: a.contact.name })} placeholder={L("pickup")} value={v.pickup} disabled={dis} onChange={(e) => setEntry({ pickup: e.target.value })} />
+                      <input className="mono" aria-label={L("Call for {name}", { name: a.contact.name })} placeholder={L("call")} value={v.call} disabled={dis} onChange={(e) => setEntry({ call: e.target.value })} />
+                      <input className="mono" aria-label={L("Make-up for {name}", { name: a.contact.name })} placeholder="M/H" value={v.makeup} disabled={dis} onChange={(e) => setEntry({ makeup: e.target.value })} />
+                      <input className="mono" aria-label={L("On set for {name}", { name: a.contact.name })} placeholder={L("on set")} value={v.onSet} disabled={dis} onChange={(e) => setEntry({ onSet: e.target.value })} />
                     </div>
                   )}
                 </li>
@@ -438,29 +440,29 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         </section>
       )}
 
-      <section className="block" aria-label="Schedule">
-        <h2>Schedule</h2>
-        {draft.items.length === 0 && <p className="hint">No scenes yet. Add the first one; order is the shooting order.</p>}
+      <section className="block" aria-label={L("Schedule")}>
+        <h2>{L("Schedule")}</h2>
+        {draft.items.length === 0 && <p className="hint">{L("No scenes yet. Add the first one; order is the shooting order.")}</p>}
         <ol className="items" id="items">
           {draft.items.map((it, i) => (
             <li key={i} className="item">
               <div className="item-row">
-                <input className="mono scene" aria-label="Scene" placeholder="42" value={it.scene_number} disabled={dis} onChange={(e) => updateItem(i, { scene_number: e.target.value })} />
-                <select aria-label="Int/Ext" value={it.int_ext} disabled={dis} onChange={(e) => updateItem(i, { int_ext: e.target.value as "INT" | "EXT" })}><option>INT</option><option>EXT</option></select>
-                <select aria-label="Day/Night" value={it.day_night} disabled={dis} onChange={(e) => updateItem(i, { day_night: e.target.value as "DAY" | "NIGHT" })}><option>DAY</option><option>NIGHT</option></select>
-                <input className="mono pages" aria-label="Pages in eighths" type="number" min={0} value={it.page_count_eighths} disabled={dis} onChange={(e) => updateItem(i, { page_count_eighths: Math.max(0, Number(e.target.value) || 0) })} />
+                <input className="mono scene" aria-label={L("Scene")} placeholder="42" value={it.scene_number} disabled={dis} onChange={(e) => updateItem(i, { scene_number: e.target.value })} />
+                <select aria-label={L("Int/Ext")} value={it.int_ext} disabled={dis} onChange={(e) => updateItem(i, { int_ext: e.target.value as "INT" | "EXT" })}><option>INT</option><option>EXT</option></select>
+                <select aria-label={L("Day/Night")} value={it.day_night} disabled={dis} onChange={(e) => updateItem(i, { day_night: e.target.value as "DAY" | "NIGHT" })}><option>DAY</option><option>NIGHT</option></select>
+                <input className="mono pages" aria-label={L("Pages in eighths")} type="number" min={0} value={it.page_count_eighths} disabled={dis} onChange={(e) => updateItem(i, { page_count_eighths: Math.max(0, Number(e.target.value) || 0) })} />
                 <span className="hint">/8</span>
               </div>
-              <input className="set" aria-label="Set" placeholder="RIVERBANK, TROJA. Marta finds the boat." value={it.set_description} disabled={dis} onChange={(e) => updateItem(i, { set_description: e.target.value })} />
-              <select aria-label="Location" value={it.location_id ?? ""} disabled={dis} onChange={(e) => updateItem(i, { location_id: e.target.value || null })}>
-                <option value="">— no location —</option>
+              <input className="set" aria-label={L("Set")} placeholder="RIVERBANK, TROJA. Marta finds the boat." value={it.set_description} disabled={dis} onChange={(e) => updateItem(i, { set_description: e.target.value })} />
+              <select aria-label={L("Location")} value={it.location_id ?? ""} disabled={dis} onChange={(e) => updateItem(i, { location_id: e.target.value || null })}>
+                <option value="">{L("— no location —")}</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
               {!dis && (
                 <div className="item-actions">
-                  <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
-                  <button type="button" className="quiet" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label="Move down">↓</button>
-                  <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>Remove</button>
+                  <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}>↑</button>
+                  <button type="button" className="quiet" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}>↓</button>
+                  <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>{L("Remove")}</button>
                 </div>
               )}
             </li>
@@ -468,108 +470,108 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         </ol>
         {!dis && (
           <button type="button" id="addScene" className="secondary" onClick={() => setDraft((d) => d ? { ...d, items: [...d.items, { order_index: d.items.length + 1, scene_number: "", int_ext: "EXT", day_night: "DAY", set_description: "", location_id: null, page_count_eighths: 8 }] } : d)}>
-            + Add scene
+            {L("+ Add scene")}
           </button>
         )}
       </section>
 
-      <section className="publish" aria-label="Publish">
+      <section className="publish" aria-label={L("Publish")}>
         {dayStatus === "cancelled" && (
           <div className="cancelled-banner" id="cancelledBanner" role="status">
-            <strong>CANCELLED</strong> — this day is off. The crew link says so.
-            {!readOnly && <button type="button" className="quiet" id="restoreDay" disabled={busy} onClick={() => void restoreDay()}>Restore the day</button>}
+            <strong>{L("CANCELLED")}</strong> — this day is off. The crew link says so.
+            {!readOnly && <button type="button" className="quiet" id="restoreDay" disabled={busy} onClick={() => void restoreDay()}>{L("Restore the day")}</button>}
           </div>
         )}
         <div className="publish-state" id="publishState">
-          {offline && "Read-only while offline. Reconnect to publish."}
-          {!offline && !canPublish && "Read-only: your role on this production can view but not publish."}
-          {!readOnly && !published && !planned && "Not published yet. Your draft is saved on this phone."}
-          {!readOnly && planned && "Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A."}
-          {!readOnly && published && !draft.dirtySincePublish && `REV ${draft.lastPublishedLetter} is live.`}
-          {!readOnly && published && draft.dirtySincePublish && `Changes since REV ${draft.lastPublishedLetter}. Publish to send REV ${nextLetter(draft.lastPublishedLetter!)}.`}
+          {offline && L("Read-only while offline. Reconnect to publish.")}
+          {!offline && !canPublish && L("Read-only: your role on this production can view but not publish.")}
+          {!readOnly && !published && !planned && L("Not published yet. Your draft is saved on this phone.")}
+          {!readOnly && planned && L("Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A.")}
+          {!readOnly && published && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
+          {!readOnly && published && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter(draft.lastPublishedLetter!) })}
         </div>
         <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
-          {busy ? "Publishing…" : published ? `Publish REV ${nextLetter(draft.lastPublishedLetter!)}` : "Publish"}
+          {busy ? L("Publishing…") : published ? L("Publish REV {rev}", { rev: nextLetter(draft.lastPublishedLetter!) }) : L("Publish")}
         </button>
         {planned && !readOnly && (
           <div className="inline">
-            <button type="button" className="quiet danger" id="deleteDraftDay" disabled={busy} onClick={() => void deleteDraft()}>Delete this planned day</button>
+            <button type="button" className="quiet danger" id="deleteDraftDay" disabled={busy} onClick={() => void deleteDraft()}>{L("Delete this planned day")}</button>
           </div>
         )}
         {published && seen && (
           <div className="seen" id="seenPanel">
-            <div className="label">REV {seen.revision_letter} opened by {seen.seen.length} of {seen.seen.length + seen.not_seen.length}</div>
+            <div className="label">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: seen.seen.length + seen.not_seen.length })}</div>
             {seen.not_seen.length === 0
-              ? <p className="hint">Everyone on the crew has opened it through their personal link.</p>
-              : <ul className="chips" id="notSeen" aria-label="Not opened yet">
+              ? <p className="hint">{L("Everyone on the crew has opened it through their personal link.")}</p>
+              : <ul className="chips" id="notSeen" aria-label={L("Not opened yet")}>
                   {seen.not_seen.map((e) => {
                     const number = whatsappNumber(e.phone);
                     const link = personalLink(conn.apiBase, e.personal_token);
                     const nudge = `Did you see REV ${seen.revision_letter} for Day ${draft.day_number}? Crew call ${draft.general_crew_call || "—"}. Your call sheet: ${link}`;
                     return (
                       <li key={e.crew_member_id} className="chip">
-                        <span>{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? " · push on" : ""}</span>
-                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={`Nudge ${e.name} on WhatsApp`}>nudge</a>}
+                        <span>{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
+                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}>{L("nudge")}</a>}
                       </li>
                     );
                   })}
                 </ul>}
-            <p className="hint">Counts a personal link opened live; a copy shown offline does not count. Refreshes every minute.</p>
+            <p className="hint">{L("Counts a personal link opened live; a copy shown offline does not count. Refreshes every minute.")}</p>
           </div>
         )}
         {published && !readOnly && dayStatus !== "cancelled" && (
           <div className="inline cancel-day" id="cancelDay">
             {!confirmCancel
-              ? <button type="button" className="quiet danger" id="cancelDayBtn" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel this day…</button>
+              ? <button type="button" className="quiet danger" id="cancelDayBtn" disabled={busy} onClick={() => setConfirmCancel(true)}>{L("Cancel this day…")}</button>
               : <>
-                  <span className="hint">Every subscribed phone gets "Day {draft.day_number}: CANCELLED". The sheet stays readable. Sure?</span>
-                  <button type="button" className="quiet danger" id="confirmCancelDay" disabled={busy} onClick={() => void cancelDay()}>Yes, cancel Day {draft.day_number}</button>
-                  <button type="button" className="quiet" onClick={() => setConfirmCancel(false)}>Keep it</button>
+                  <span className="hint">{L("Every subscribed phone gets \"Day {n}: CANCELLED\". The sheet stays readable. Sure?", { n: draft.day_number })}</span>
+                  <button type="button" className="quiet danger" id="confirmCancelDay" disabled={busy} onClick={() => void cancelDay()}>{L("Yes, cancel Day {n}", { n: draft.day_number })}</button>
+                  <button type="button" className="quiet" onClick={() => setConfirmCancel(false)}>{L("Keep it")}</button>
                 </>}
           </div>
         )}
         {published && !readOnly && (
           <div className="inline next-day" id="nextDay">
             {!nextDayClash
-              ? <button type="button" className="secondary" id="startNextDay" onClick={() => void startNextDay(false)}>Start Day {draft.day_number + 1} from this one</button>
+              ? <button type="button" className="secondary" id="startNextDay" onClick={() => void startNextDay(false)}>{L("Start Day {n} from this one", { n: draft.day_number + 1 })}</button>
               : <>
-                  <span className="hint" id="nextDayClash">An unpublished new day already exists on this phone.</span>
-                  <button type="button" className="quiet danger" id="replaceNextDay" onClick={() => void startNextDay(true)}>Replace it</button>
-                  <button type="button" className="quiet" onClick={() => setNextDayClash(false)}>Keep it</button>
+                  <span className="hint" id="nextDayClash">{L("An unpublished new day already exists on this phone.")}</span>
+                  <button type="button" className="quiet danger" id="replaceNextDay" onClick={() => void startNextDay(true)}>{L("Replace it")}</button>
+                  <button type="button" className="quiet" onClick={() => setNextDayClash(false)}>{L("Keep it")}</button>
                 </>}
           </div>
         )}
         {published && (
           <div className="share">
-            <div className="label">Crew link</div>
+            <div className="label">{L("Crew link")}</div>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
-            <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
-            <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer">PDF</a>
+            <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>{L("Copy")}</button>
+            <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer">{L("PDF")}</a>
             <div className="inline share-text-actions">
               <button type="button" id="sendDayAsText" className="secondary" disabled={!shareable}
                 onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))}>
-                Send day as text
+                {L("Send day as text")}
               </button>
               {shareable
-                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))} target="_blank" rel="noreferrer">Open in WhatsApp</a>
-                : <span className="hint" id="shareTextHint">Publish first so the text matches the link.</span>}
+                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))} target="_blank" rel="noreferrer">{L("Open in WhatsApp")}</a>
+                : <span className="hint" id="shareTextHint">{L("Publish first so the text matches the link.")}</span>}
             </div>
             {shareText !== null && (
               <div className="share-preview">
-                <textarea id="shareTextPreview" readOnly value={shareText} rows={8} aria-label="Message text" onFocus={(e) => e.currentTarget.select()} />
-                <button type="button" className="quiet" onClick={() => setShareText(null)}>Close</button>
+                <textarea id="shareTextPreview" readOnly value={shareText} rows={8} aria-label={L("Message text")} onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" className="quiet" onClick={() => setShareText(null)}>{L("Close")}</button>
               </div>
             )}
             <div className="qr" id="shareQr">
               <QrCode value={crewLink(conn.apiBase, draft.callSheetId!)} />
-              <span className="hint">Scan to open the crew link</span>
+              <span className="hint">{L("Scan to open the crew link")}</span>
             </div>
           </div>
         )}
         {published && crew.length > 0 && (
           <div className="share" id="personalLinks">
-            <div className="label">Personal links · one per person, for the whole shoot</div>
-            <p className="hint">Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.</p>
+            <div className="label">{L("Personal links · one per person, for the whole shoot")}</div>
+            <p className="hint">{L("Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.")}</p>
             <ul className="list">
               {crew.map((m) => {
                 const link = personalLink(conn.apiBase, m.personal_token);  // stable for the whole shoot (FR-32)
@@ -579,11 +581,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <li key={m.id} className="row static">
                     <span className="name">{m.contact.name}<span className="meta"> · {m.department}</span></span>
                     <span className="row-actions">
-                      <a className="quiet-link" href={link} target="_blank" rel="noreferrer">Open</a>
-                      <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={`Copy link for ${m.contact.name}`}>Copy</button>
+                      <a className="quiet-link" href={link} target="_blank" rel="noreferrer">{L("Open")}</a>
+                      <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={L("Copy link for {name}", { name: m.contact.name })}>{L("Copy")}</button>
                       {number && shareable
-                        ? <a className="quiet-link whatsapp" href={whatsappUrl(number, message())} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${m.contact.name}`} data-number={number}>WhatsApp</a>
-                        : <button type="button" className="quiet" disabled={!shareable} onClick={() => void shareAsText(`Day ${draft.day_number} · ${m.contact.name}`, message())} aria-label={`Send message to ${m.contact.name}`}>Message</button>}
+                        ? <a className="quiet-link whatsapp" href={whatsappUrl(number, message())} target="_blank" rel="noreferrer" aria-label={L("WhatsApp {name}", { name: m.contact.name })} data-number={number}>{L("WhatsApp")}</a>
+                        : <button type="button" className="quiet" disabled={!shareable} onClick={() => void shareAsText(`Day ${draft.day_number} · ${m.contact.name}`, message())} aria-label={L("Send message to {name}", { name: m.contact.name })}>{L("Message")}</button>}
                     </span>
                   </li>
                 );

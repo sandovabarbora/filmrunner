@@ -556,8 +556,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the extractor returning a person with no name or a phone that does not normalise is shown in the preview with a warning, never created silently
 
 ## FR-58 · frontend · The editor in Czech
-- state: in-progress
-- note: taken 2026-09-22 11:30 by the founder's interactive session (feat/fr-58-czech-editor); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-58-czech-editor): `src/editor/lang.tsx` (context, `useL`, English text as the key) + `src/editor/cs.ts` (~290 strings); every label, placeholder, hint, notice, confirm text and button in the editor, including templated notices with placeholders and plural forms; the toggle sits in the masthead's sub line and shares the storage key with the crew's sheet; `noticeFromError` translates its fixed texts and keeps the server's detail. Found on the way: `.share { word-break: break-all }` broke names and hints mid-word at 390 px (it now applies to the raw URL only) and row actions did not wrap. 1 E2E with `locale="cs-CZ"`; English suite unchanged. Frontend only
 - gated: no
 - why: FR-48 put the crew's sheet in Czech; the AD who writes it is Czech too, and the editor is where the first impression of "is this for us" happens; labels, hints, notices and button texts, not the AD's own words
 - dod:

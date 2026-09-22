@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { api, ApiError, saveConnection, type Connection } from "./api";
 import { API_BASE, connectionFromSession, requestCode, serviceConnection, signInConfigured, signOut, supabase, verifyCode } from "./session";
 import { href, navigate, useRoute } from "./route";
@@ -6,13 +6,16 @@ import { ProductionsScreen } from "./screens/Productions";
 import { ProductionScreen } from "./screens/Production";
 import { DayEditor } from "./screens/DayEditor";
 import type { Production } from "../types";
+import { LangContext, currentLang, setCurrentLang, translate, useL } from "./lang";
+import { detectLang, rememberLang, type Lang } from "../i18n";
 
 export type Notice = { kind: "ok" | "warn" | "error"; text: string } | null;
 
 export function noticeFromError(err: unknown, fallback: string): Notice {
   if (err instanceof ApiError) {
-    if (err.status === 0) return { kind: "warn", text: "No connection. Nothing was lost; try again when you are back in signal." };
-    if (err.status === 401) return { kind: "error", text: "The token was rejected. Disconnect and connect again." };
+    const T = (text: string) => translate(currentLang(), text);
+    if (err.status === 0) return { kind: "warn", text: T("No connection. Nothing was lost; try again when you are back in signal.") };
+    if (err.status === 401) return { kind: "error", text: T("The token was rejected. Disconnect and connect again.") };
     return { kind: "error", text: `${fallback}: ${err.message}` };
   }
   return { kind: "error", text: `${fallback}: ${String(err)}` };
@@ -31,7 +34,8 @@ function useTapGesture(onTrigger: () => void, taps = 5, windowMs = 3000) {
   };
 }
 
-export function EditorApp() {
+function EditorAppInner() {
+  const L = useL();
   const [conn, setConn] = useState<Connection | null>(serviceConnection);
   const [authChecked, setAuthChecked] = useState(() => serviceConnection() !== null || !signInConfigured);
   const [adminScreen, setAdminScreen] = useState(false);
@@ -51,7 +55,7 @@ export function EditorApp() {
 
   useEffect(() => {
     if (!conn) { setProductions(null); return; }
-    api.listProductions(conn).then(setProductions).catch((err: unknown) => { setProductions([]); setNotice(noticeFromError(err, "Cannot load productions")); });
+    api.listProductions(conn).then(setProductions).catch((err: unknown) => { setProductions([]); setNotice(noticeFromError(err, L("Cannot load productions"))); });
   }, [conn]);
 
   if (!authChecked) return <div className="wrap"><div className="skeleton" aria-hidden="true"><i /><i /><i /></div></div>;
@@ -80,18 +84,18 @@ export function EditorApp() {
     <div className="wrap">
       <header className="masthead">
         <h1 id="logo" onClick={onLogoTap}><a href="#/" className="plain">FilmRunner</a></h1>
-        <p className="sub">{serviceConnection() ? "Admin" : "Editor"} · <button className="linklike" onClick={() => void disconnect()}>sign out</button></p>
+        <p className="sub">{serviceConnection() ? "Admin" : L("Editor")} · <button className="linklike" onClick={() => void disconnect()}>{L("sign out")}</button> · <LangToggle /></p>
       </header>
 
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <a href={href({ screen: "productions" })}>Productions</a>
+      <nav className="crumbs" aria-label={L("Breadcrumb")}>
+        <a href={href({ screen: "productions" })}>{L("Productions")}</a>
         {route.screen !== "productions" && (
           <>
             <span className="sep">/</span>
             <a href={href({ screen: "production", productionId: route.productionId, tab: "days" })}>{production?.name ?? "Production"}</a>
           </>
         )}
-        {route.screen === "day" && (<><span className="sep">/</span><span>{route.callSheetId ? "Day" : "New day"}</span></>)}
+        {route.screen === "day" && (<><span className="sep">/</span><span>{route.callSheetId ? L("Day") : L("New day")}</span></>)}
       </nav>
 
       {notice && <div id="notice" className={`status ${notice.kind === "ok" ? "online" : notice.kind === "warn" ? "offline" : "error"}`} role="status">{notice.text}</div>}
@@ -111,7 +115,22 @@ export function EditorApp() {
   );
 }
 
+/** FR-58: the editor's language, shared with the crew's sheet (same storage key); the toggle lives in every masthead. */
+export function EditorApp() {
+  const [lang, setLang] = useState<Lang>(detectLang);
+  setCurrentLang(lang);
+  const L = (text: string, vars?: Record<string, string | number>) => translate(lang, text, vars);
+  const value = { lang, L, toggle: () => { const next: Lang = lang === "cs" ? "en" : "cs"; rememberLang(next); setCurrentLang(next); setLang(next); } };
+  return <LangContext.Provider value={value}><EditorAppInner /></LangContext.Provider>;
+}
+
+function LangToggle() {
+  const { lang, toggle } = useContext(LangContext);
+  return <button type="button" className="linklike" id="langToggle" onClick={toggle} aria-label={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{lang === "cs" ? "English" : "Čeština"}</button>;
+}
+
 function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: () => void }) {
+  const L = useL();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -133,22 +152,22 @@ function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: 
 
   return (
     <div className="wrap">
-      <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">Editor</p></header>
-      <section className="block" aria-label="Sign in">
-        <h2>Sign in</h2>
+      <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{L("Editor")} · <LangToggle /></p></header>
+      <section className="block" aria-label={L("Sign in")}>
+        <h2>{L("Sign in")}</h2>
         {error && <div id="notice" className="status error" role="status">{error}</div>}
         {!sent ? (
           <>
-            <p className="hint">Enter your email. You will get a 6-digit code (and a link) to sign in; no password.</p>
-            <label className="field" htmlFor="email"><span className="label">Email</span><input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && email.includes("@")) void send(); }} /></label>
-            <button id="sendCode" disabled={!email.includes("@") || busy} onClick={() => void send()}>{busy ? "Sending…" : "Send me a code"}</button>
+            <p className="hint">{L("Enter your email. You will get a 6-digit code (and a link) to sign in; no password.")}</p>
+            <label className="field" htmlFor="email"><span className="label">{L("Email")}</span><input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && email.includes("@")) void send(); }} /></label>
+            <button id="sendCode" disabled={!email.includes("@") || busy} onClick={() => void send()}>{busy ? L("Sending…") : L("Send me a code")}</button>
           </>
         ) : (
           <>
             <p className="hint">Check {email}. Type the 6-digit code from the email, or tap the link in it.</p>
-            <label className="field" htmlFor="code"><span className="label">Code</span><input id="code" className="mono" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && code.trim().length >= 6) void verify(); }} /></label>
-            <button id="verifyCode" disabled={code.trim().length < 6 || busy} onClick={() => void verify()}>{busy ? "Checking…" : "Sign in"}</button>
-            <button type="button" className="quiet" onClick={() => { setSent(false); setCode(""); }}>Use a different email</button>
+            <label className="field" htmlFor="code"><span className="label">{L("Code")}</span><input id="code" className="mono" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && code.trim().length >= 6) void verify(); }} /></label>
+            <button id="verifyCode" disabled={code.trim().length < 6 || busy} onClick={() => void verify()}>{busy ? L("Checking…") : L("Sign in")}</button>
+            <button type="button" className="quiet" onClick={() => { setSent(false); setCode(""); }}>{L("Use a different email")}</button>
           </>
         )}
       </section>
@@ -157,12 +176,13 @@ function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: 
 }
 
 function Connect({ onConnect, admin = false, onCancel, onLogoTap }: { onConnect: (c: Connection) => void; admin?: boolean; onCancel?: () => void; onLogoTap?: () => void }) {
+  const L = useL();
   const [apiBase, setApiBase] = useState(API_BASE);
   const [token, setToken] = useState("");
   return (
     <div className="wrap">
       <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{admin ? "Admin" : "Editor"}</p></header>
-      <section className="block" aria-label="Connect" id={admin ? "adminScreen" : "connectScreen"}>
+      <section className="block" aria-label={L("Connect")} id={admin ? "adminScreen" : "connectScreen"}>
         <h2>{admin ? "Admin access" : "Connect"}</h2>
         <p className="hint">
           {admin
@@ -170,9 +190,9 @@ function Connect({ onConnect, admin = false, onCancel, onLogoTap }: { onConnect:
             : "Development build without sign-in configured: paste the API token once; it stays on this phone."}
         </p>
         <label className="field" htmlFor="apiBase"><span className="label">API</span><input id="apiBase" value={apiBase} onChange={(e) => setApiBase(e.target.value)} /></label>
-        <label className="field" htmlFor="token"><span className="label">Token</span><input id="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} /></label>
-        <button id="connect" disabled={!token.trim() || !apiBase.trim()} onClick={() => onConnect({ apiBase: apiBase.trim(), token: token.trim() })}>Connect</button>
-        {onCancel && <button type="button" className="quiet" id="adminCancel" onClick={onCancel}>Back</button>}
+        <label className="field" htmlFor="token"><span className="label">{L("Token")}</span><input id="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} /></label>
+        <button id="connect" disabled={!token.trim() || !apiBase.trim()} onClick={() => onConnect({ apiBase: apiBase.trim(), token: token.trim() })}>{L("Connect")}</button>
+        {onCancel && <button type="button" className="quiet" id="adminCancel" onClick={onCancel}>{L("Back")}</button>}
       </section>
     </div>
   );
