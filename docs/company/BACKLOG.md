@@ -555,6 +555,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - tests: two committed sample PDFs (a Czech and an English layout) through the heuristics path; the LLM path tested with the client mocked
   - failure case: the extractor returning a person with no name or a phone that does not normalise is shown in the preview with a warning, never created silently
 
+## FR-58 · frontend · The editor in Czech
+- state: in-progress
+- note: taken 2026-09-22 11:30 by the founder's interactive session (feat/fr-58-czech-editor); shifts skip it
+- gated: no
+- why: FR-48 put the crew's sheet in Czech; the AD who writes it is Czech too, and the editor is where the first impression of "is this for us" happens; labels, hints, notices and button texts, not the AD's own words
+- dod:
+  - the same `i18n` mechanism as the viewer (browser language, CS/EN toggle in the editor masthead, remembered per device, shared key with the viewer so one choice covers both pages)
+  - every label, placeholder, hint, notice, confirm text and button in the editor; department/position/set text as typed stays; dates in inputs stay ISO (native pickers)
+  - E2E: with `locale="cs-CZ"` the Productions screen, a day screen and the Crew tab read in Czech; the toggle flips to English; existing English tests unchanged (en-US default)
+  - failure case: a key missing from Czech shows the English text, never a key; a notice built from a server detail keeps the server's text
+
 ## FR-25 · marketing · Landing page from the positioning
 - state: done
 - note: 13:00 shift 2026-09-21 (PR #111, branch feat/fr-25-landing-page) delivered every dod bullet: `frontend/landing.html` as a third Vite entry, FR-6's chosen position as the headline, three real screenshots of the bundled demo call sheet (header/calls/weather, Where, Who to call) taken by a committed Playwright script (`frontend/scripts/take_landing_screenshots.py`, re-run after any visual change to the sheet), a live-demo link, and a no-forms "Request a pilot" mailto to the founder. Czech/English toggle is two static `[lang]`-tagged blocks per element switched by a small vanilla script (`frontend/src/landing.ts`, no framework), defaulting to the visitor's browser language and falling back to Czech with no JS at all. The root entry page (`index.html`) gets one added link, "What is FilmRunner?", kept to that page's existing "two doors, no marketing" design. No external fonts; all three images 28-40 KB; verified at 390px in both languages. Handled the dod's failure case directly: a screenshot the script could not produce is simply not written, and `landing.ts` removes any `<figure>` whose image fails to load, so a missing shot never becomes a broken-image placeholder. `npm run typecheck`/`npm run build` clean, `npm test` 23/23; full Playwright suite 39/41 (the 2 failures are `test_locations_e2e.py`'s pre-existing Nominatim-egress-block, unrelated, flagged by every prior shift touching that suite). Touches `frontend/`, so per TEAM.md's hackathon mode this still gets `gh pr merge --auto --squash` (only TEAM.md itself is excluded); PR is the whole deliverable.
