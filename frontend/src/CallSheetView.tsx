@@ -1,4 +1,5 @@
 import { Avatar } from "./Avatar";
+import { QrCode } from "./editor/screens/QrCode";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
 
 /** "06:12" in the phone's own time zone; the raw value if it does not parse. */
@@ -39,9 +40,11 @@ export interface CallSheetViewProps {
   callSheet: CallSheet;
   personal?: PersonalSheet | null;
   freshness: { fromCache: false } | { fromCache: true; fetchedAt: string };
+  /** FR-47: the crew link this sheet was opened from, printed with a QR code in the footer so paper leads back to it. */
+  shareUrl?: string | null;
 }
 
-export function CallSheetView({ callSheet, personal = null, freshness }: CallSheetViewProps) {
+export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null }: CallSheetViewProps) {
   const rev = callSheet.current_revision;
   const myDept = personal?.department ?? null;
   const heads = callSheet.contacts?.department_heads ?? [];
@@ -242,6 +245,13 @@ export function CallSheetView({ callSheet, personal = null, freshness }: CallShe
         {rev?.created_at ? ` · issued ${new Date(rev.created_at).toLocaleString()}` : ""}
         {" · FilmRunner"}
       </p>
+
+      {shareUrl && (
+        <div className="print-footer-bar" id="printFooterBar" aria-hidden="true">
+          <QrCode value={shareUrl} size={64} />
+          <span className="url">{shareUrl}</span>
+        </div>
+      )}
 
       <div className="actions">
         <button onClick={() => window.print()}>Print / Save PDF</button>

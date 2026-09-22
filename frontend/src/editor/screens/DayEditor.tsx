@@ -544,6 +544,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <div className="label">Crew link</div>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>Copy</button>
+            <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer">PDF</a>
             <div className="inline share-text-actions">
               <button type="button" id="sendDayAsText" className="secondary" disabled={!shareable}
                 onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))}>
