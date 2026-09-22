@@ -85,3 +85,9 @@ header.top .word { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.06e
 
 footer.foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 0.8125rem; color: var(--muted); }
 footer.foot a { color: inherit; }
+
+/* privacy.html */
+.privacy h2 { margin: 28px 0 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.privacy p, .privacy li { color: var(--ink-2); font-size: 0.9375rem; line-height: 1.5; }
+.privacy ul.plain { margin: 0; padding-left: 1.1em; }
+.privacy li { margin: 4px 0; }

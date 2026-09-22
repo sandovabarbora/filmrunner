@@ -692,6 +692,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
               onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void readCallSheetPdf(f); }} disabled={busy || pdfBusy} />
             {pdfRows && <button type="button" className="quiet" onClick={() => setPdfRows(null)}>{L("Discard")}</button>}
           </div>
+          <p className="hint"><a href="privacy.html" target="_blank" rel="noreferrer" id="privacyLink">{L("What FilmRunner stores about the people you add, where, and who sees it")}</a></p>
           {pdfRows && (
             <p className="hint" id="pdfHint">
               {pdfRows.method === "claude" ? L("Read by Claude from the PDF's text") : L("Read by the plain-text pass")} · {L("{n} people found. Check names and numbers before adding; nothing is created until you do. The PDF is not stored.", { n: pdfRows.rows.length })}

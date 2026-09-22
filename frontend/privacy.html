@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FilmRunner · Soukromí / Privacy</title>
+  <meta name="description" content="Co FilmRunner ukládá o lidech ze štábu, kde, kdo to vidí a jak požádat o smazání. / What FilmRunner stores about crew members, where, who sees it and how to ask for removal." />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/src/landing.css" />
+</head>
+<body data-lang="cs">
+  <div class="wrap">
+    <header class="top">
+      <a class="word" href="landing.html" style="text-decoration:none;color:inherit">FilmRunner</a>
+      <div class="langToggle" role="group" aria-label="Language / Jazyk">
+        <button type="button" data-lang="cs" aria-pressed="true">CS</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1 lang="cs">Soukromí: co o vás FilmRunner ukládá a kdo to vidí</h1>
+      <h1 lang="en">Privacy: what FilmRunner stores about you and who sees it</h1>
+      <p lang="cs">Krátce a poctivě. Stav k 22. 9. 2026, pilotní provoz v Praze. Když se něco změní, změní se i tahle stránka.</p>
+      <p lang="en">Short and honest. As of 22 Sep 2026, pilot use in Prague. When something changes, this page changes with it.</p>
+    </section>
+
+    <section class="privacy">
+      <h2 lang="cs">Kdo za data odpovídá</h2>
+      <h2 lang="en">Who is responsible for the data</h2>
+      <p lang="cs"><strong>Správcem</strong> vašich údajů je produkce (asistent režie nebo produkční), která vás do FilmRunneru zapsala — stejně jako když má vaše číslo v tabulce nebo na papírovém call sheetu. <strong>Zpracovatelem</strong> je FilmRunner, který data ukládá a zobrazuje na pokyn produkce. FilmRunner zatím provozuje jeho zakladatelka jako fyzická osoba (Barbora Šandová, Praha); až vznikne firma, bude tu uvedená.</p>
+      <p lang="en"><strong>The controller</strong> of your data is the production (the AD or coordinator) that entered you into FilmRunner — the same as when they keep your number in a spreadsheet or on a paper call sheet. <strong>The processor</strong> is FilmRunner, which stores and shows the data on the production's instruction. FilmRunner is currently run by its founder as a natural person (Barbora Šandová, Prague); once a company exists it will be named here.</p>
+
+      <h2 lang="cs">Co se o vás ukládá</h2>
+      <h2 lang="en">What is stored about you</h2>
+      <ul lang="cs" class="plain">
+        <li>jméno, telefon a případně e-mail — tak, jak je zadala produkce;</li>
+        <li>oddělení, pozice, zda jste vedoucí oddělení, obvyklý čas srazu;</li>
+        <li>u herců postava a obvyklé vyzvednutí;</li>
+        <li>fotka, pokud ji produkce nahrála (zmenšená, uložená v naší databázi, ne u třetí strany);</li>
+        <li>osobní časy na jednotlivé dny (sraz, vyzvednutí, poznámka);</li>
+        <li>záznam, že jste přes svůj osobní odkaz otevřeli konkrétní revizi dispozic a kdy (ne polohu, ne zařízení);</li>
+        <li>pokud si zapnete upozornění: adresa push odběru vašeho prohlížeče, nic jiného.</li>
+      </ul>
+      <ul lang="en" class="plain">
+        <li>name, phone and possibly e-mail — as the production entered them;</li>
+        <li>department, position, whether you head a department, your usual call time;</li>
+        <li>for cast: the character and the usual pickup;</li>
+        <li>a photo if the production uploaded one (downsized, stored in our own database, not with a third party);</li>
+        <li>your personal times per day (call, pickup, note);</li>
+        <li>a record that you opened a given revision of the sheet through your personal link, and when (not your location, not your device);</li>
+        <li>if you turn notifications on: your browser's push subscription address, nothing else.</li>
+      </ul>
+      <p lang="cs">Žádná analytika, žádné sledovací skripty, žádné cookies třetích stran. Váš telefon si ukládá kopii dispozic pro čtení bez signálu a vaši volbu jazyka; obojí zůstává jen v něm.</p>
+      <p lang="en">No analytics, no tracking scripts, no third-party cookies. Your phone keeps a copy of the sheet for reading without signal and your language choice; both stay on it.</p>
+
+      <h2 lang="cs">Kde data jsou</h2>
+      <h2 lang="en">Where the data is</h2>
+      <ul lang="cs" class="plain">
+        <li>databáze: Supabase (PostgreSQL), datové centrum v EU (Irsko);</li>
+        <li>aplikační server: Fly.io, Frankfurt; neukládá nic trvale;</li>
+        <li>stránky, které čtete: GitHub Pages;</li>
+        <li>když produkce nahraje starý call sheet v PDF, text z něj se jednorázově pošle službě Anthropic (Claude), aby z něj vytáhla kontakty; PDF ani text se neukládají a nic se nevytvoří, dokud to produkce nepotvrdí;</li>
+        <li>adresy lokací se převádějí na souřadnice přes OpenStreetMap (Nominatim) a počasí se bere z Open-Meteo — posílá se jen adresa/souřadnice a datum, nikdy jména.</li>
+      </ul>
+      <ul lang="en" class="plain">
+        <li>database: Supabase (PostgreSQL), EU data centre (Ireland);</li>
+        <li>application server: Fly.io, Frankfurt; stores nothing permanently;</li>
+        <li>the pages you read: GitHub Pages;</li>
+        <li>when a production uploads an old call sheet PDF, its text is sent once to Anthropic (Claude) to extract contacts; neither the PDF nor the text is stored and nothing is created until the production confirms;</li>
+        <li>location addresses are turned into coordinates through OpenStreetMap (Nominatim) and weather comes from Open-Meteo — only the address/coordinates and the date are sent, never names.</li>
+      </ul>
+
+      <h2 lang="cs">Kdo co vidí</h2>
+      <h2 lang="en">Who sees what</h2>
+      <ul lang="cs" class="plain">
+        <li>členové produkce ve FilmRunneru (vlastník, editor, divák) vidí štáb celé produkce;</li>
+        <li>obecný odkaz na dispozice ukazuje časy, harmonogram, lokace, herce a kontakty na vedoucí oddělení — tedy to, co bývá na papírovém call sheetu;</li>
+        <li>váš osobní odkaz ukazuje navíc jen váš vlastní blok; nikdo cizí z něj vaše číslo nezíská, ale odkaz je jako klíč: kdo ho má, vidí vaše dispozice. Neposílejte ho dál;</li>
+        <li>produkce vidí, kdo revizi otevřel, aby nemusela obvolávat, kdo o změně neví.</li>
+      </ul>
+      <ul lang="en" class="plain">
+        <li>members of the production in FilmRunner (owner, editor, viewer) see the whole production's crew;</li>
+        <li>the general sheet link shows times, schedule, locations, cast and department heads' contacts — what a paper call sheet carries;</li>
+        <li>your personal link adds only your own block; nobody gets your number from it, but the link is a key: whoever has it sees your sheet. Do not forward it;</li>
+        <li>the production sees who opened a revision, so it does not have to phone around asking who missed the change.</li>
+      </ul>
+
+      <h2 lang="cs">Jak dlouho a jak to smazat</h2>
+      <h2 lang="en">How long, and how to have it removed</h2>
+      <p lang="cs">Údaje zůstávají, dokud vás produkce ze štábu neodebere nebo dokud produkci nesmaže; odebrání odstraní i vaše osobní časy, záznamy o otevření a push odběr. Zálohy, které si produkce nebo FilmRunner dělá, mohou kopii držet déle — ručně, ne automaticky. Chcete-li být odstraněni, řekněte to produkci (odebere vás v editoru na jedno klepnutí), nebo napište na <a href="mailto:sandovabarb@gmail.com?subject=FilmRunner%20%E2%80%93%20smaz%C3%A1n%C3%AD%20%C3%BAdaj%C5%AF">sandovabarb@gmail.com</a>.</p>
+      <p lang="en">Data stays until the production removes you from the crew or deletes the production; removal also drops your personal times, open records and push subscription. Backups the production or FilmRunner keeps may hold a copy longer — made by hand, not automatically. To be removed, tell the production (one tap in the editor), or write to <a href="mailto:sandovabarb@gmail.com?subject=FilmRunner%20%E2%80%93%20data%20removal">sandovabarb@gmail.com</a>.</p>
+
+      <h2 lang="cs">Co zatím není</h2>
+      <h2 lang="en">What is not in place yet</h2>
+      <ul lang="cs" class="plain">
+        <li>vzorová smlouva o zpracování mezi produkcí a FilmRunnerem (pro pilot ji nahrazuje tahle stránka a domluva s produkcí);</li>
+        <li>automatické mazání po skončení natáčení — zatím ručně;</li>
+        <li>firma jako provozovatel — zatím fyzická osoba.</li>
+      </ul>
+      <ul lang="en" class="plain">
+        <li>a data-processing agreement template between the production and FilmRunner (for the pilot this page and the agreement with the production stand in);</li>
+        <li>automatic deletion after wrap — manual for now;</li>
+        <li>a company as the operator — a natural person for now.</li>
+      </ul>
+    </section>
+
+    <footer class="foot">
+      <p><a href="landing.html"><span lang="cs">O FilmRunneru</span><span lang="en">About FilmRunner</span></a> · <a href="index.html?demo=1"><span lang="cs">Živé demo</span><span lang="en">Live demo</span></a></p>
+    </footer>
+  </div>
+  <script type="module" src="/src/landing.ts"></script>
+</body>
+</html>

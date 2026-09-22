@@ -80,6 +80,7 @@ export default defineConfig({
         viewer: resolve(__dirname, "index.html"),
         editor: resolve(__dirname, "editor.html"),
         landing: resolve(__dirname, "landing.html"),
+        privacy: resolve(__dirname, "privacy.html"),
       },
     },
   },

@@ -90,6 +90,7 @@ const EN = {
   "notify.enable": "Notify me when this call sheet changes",
   "notify.busy": "Working…",
   "lang.toggle": "Čeština",
+  "privacy": "Privacy: what is stored about you",
 } as const;
 
 export type Key = keyof typeof EN;
@@ -177,6 +178,7 @@ const CS: Partial<Record<Key, string>> = {
   "notify.enable": "Dej mi vědět, když se dispozice změní",
   "notify.busy": "Pracuji…",
   "lang.toggle": "English",
+  "privacy": "Soukromí: co se o vás ukládá",
 };
 
 const STORAGE_KEY = "filmrunner.lang";
