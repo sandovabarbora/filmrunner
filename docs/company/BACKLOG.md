@@ -606,7 +606,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a person without a phone prints "—", never an empty cell that reads as a mistake
 
 ## FR-62 · marketing · Czech screenshots and copy on the landing after FR-48/58
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 14:00 by the founder's interactive session (feat/fr-62-czech-landing); shifts skip it
 - gated: no
 - why: the landing shows English screenshots to a Czech audience while the product now reads in Czech; the first impression should match the pilot's language
 - dod:
