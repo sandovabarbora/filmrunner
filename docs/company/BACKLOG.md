@@ -481,7 +481,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a revision with `created_by` null shows "unknown", never an empty cell
 
 ## FR-51 · tech-lead · Public endpoints: abuse guard without hurting the 05:00 rush
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 11:00 by the founder's interactive session (feat/fr-51-public-rate-limit); shifts skip it
 - gated: no
 - why: `/public/call-sheets/{id}`, `/public/crew/{token}/next`, `/public/.../seen/{token}` and the push subscribe endpoints are unauthenticated by design (FR-13 tokens are the credential); before a pilot with a public URL there must be a limit on how fast an unknown client can probe tokens or fill `revision_views`
 - dod:
