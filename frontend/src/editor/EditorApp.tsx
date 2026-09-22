@@ -99,6 +99,7 @@ function EditorAppInner() {
       </nav>
 
       {notice && <div id="notice" className={`status ${notice.kind === "ok" ? "online" : notice.kind === "warn" ? "offline" : "error"}`} role="status">{notice.text}</div>}
+      <main id="main">
 
       {route.screen === "productions" && (
         <ProductionsScreen conn={conn} productions={productions} onCreated={(p) => setProductions((ps) => [...(ps ?? []), p])} setNotice={setNotice} />
@@ -111,6 +112,7 @@ function EditorAppInner() {
         <DayEditor conn={conn} productionId={route.productionId} productionName={production?.name ?? null} callSheetId={route.callSheetId}
           canPublish={(production?.permissions ?? []).includes("day:publish")} setNotice={setNotice} />
       )}
+      </main>
     </div>
   );
 }
@@ -153,7 +155,7 @@ function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: 
   return (
     <div className="wrap">
       <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{L("Editor")} · <LangToggle /></p></header>
-      <section className="block" aria-label={L("Sign in")}>
+      <main className="block" id="main" aria-label={L("Sign in")}>
         <h2>{L("Sign in")}</h2>
         {error && <div id="notice" className="status error" role="status">{error}</div>}
         {!sent ? (
@@ -170,7 +172,7 @@ function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: 
             <button type="button" className="quiet" onClick={() => { setSent(false); setCode(""); }}>{L("Use a different email")}</button>
           </>
         )}
-      </section>
+      </main>
     </div>
   );
 }
@@ -182,7 +184,7 @@ function Connect({ onConnect, admin = false, onCancel, onLogoTap }: { onConnect:
   return (
     <div className="wrap">
       <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{admin ? "Admin" : "Editor"}</p></header>
-      <section className="block" aria-label={L("Connect")} id={admin ? "adminScreen" : "connectScreen"}>
+      <main className="block" id={admin ? "adminScreen" : "connectScreen"} aria-label={L("Connect")}>
         <h2>{admin ? "Admin access" : "Connect"}</h2>
         <p className="hint">
           {admin
@@ -193,7 +195,7 @@ function Connect({ onConnect, admin = false, onCancel, onLogoTap }: { onConnect:
         <label className="field" htmlFor="token"><span className="label">{L("Token")}</span><input id="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} /></label>
         <button id="connect" disabled={!token.trim() || !apiBase.trim()} onClick={() => onConnect({ apiBase: apiBase.trim(), token: token.trim() })}>{L("Connect")}</button>
         {onCancel && <button type="button" className="quiet" id="adminCancel" onClick={onCancel}>{L("Back")}</button>}
-      </section>
+      </main>
     </div>
   );
 }

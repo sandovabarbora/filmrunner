@@ -611,8 +611,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a missing screenshot file hides its figure, never a broken image (FR-25's rule, re-checked for the new files)
 
 ## FR-63 · qa · Accessibility pass on the four screens a crew member and an AD use
-- state: in-progress
-- note: taken 2026-09-22 12:25 by the founder's interactive session (feat/fr-63-a11y); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-63-a11y): `frontend/tests/test_a11y.py` runs axe-core 4.10.2 over seven screens (sheet in EN and CS, personal link, day screen, Crew tab, landing, privacy note) and fails CI on any serious/critical finding; report `docs/research/a11y-2026-09.md`. Two real defects fixed: `--muted` was 4.22:1 on paper — under AA for the hints, meta lines and labels it carries on every screen (41 + 13 nodes) — now #6e685f at 5.0:1; avatar initials were 3.6:1 on their chip, now `--ink-2` at 6:1. Every page gained a `<main>` (landmark-one-main, region: 40 nodes). Result: 0 violations at any impact level. Not covered, said so in the report: screen-reader order (belongs to the FR-28 phone protocol), 200 % zoom, user-typed capitals. Frontend only
 - gated: no
 - why: a call sheet is read at 05:00 in a car; labels, contrast and focus order are not polish, they are legibility; nothing has been checked beyond aria-labels for tests
 - dod:
