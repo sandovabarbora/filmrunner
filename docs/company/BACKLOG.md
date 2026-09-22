@@ -492,7 +492,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: 40 crew members opening the sheet at 05:00 from one production office Wi-Fi (one IP) must not be throttled — the per-IP number is chosen for that (40 people × 3 requests each in a minute) and the test covers it
 
 ## FR-52 · qa · Pilot scale: 40 crew, 30 days, 60 scenes on a phone
-- state: ready
+- state: done
+- note: delivered 2026-09-22 (feat/fr-52-pilot-scale): `frontend/tests/test_scale.py` seeds 60 crew / 8 cast / 6 locations / 30 days of 40–60 scenes through the API and measures on an iPhone-width, CDP-throttled 4G profile; report `docs/research/pilot-scale-2026-09.md`. One real problem found and fixed: the days list shipped every day's full schedule (520 KB, 2.8 s) — the list read now empties schedule/cast/crew calls (27 KB, 0.8 s); side fix: publish no longer asks Open-Meteo outside its 16-day window (a 400 per publish on a schedule import). Everything else under 1 s; the crew's 60-scene sheet opens in 0.7 s throttled (0.1 s warm). Lighthouse not run (not in the harness), said so in the report. Backend changed: deploy needed (no migration)
 - gated: no
 - why: everything was tested with 2–3 people and 1–2 days; a real Prague feature has 40–80 crew and 25–40 days; the editor's day screen and the days list must stay usable on an iPhone at that size before the pilot, not after
 - dod:
