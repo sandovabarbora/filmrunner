@@ -129,6 +129,16 @@ moment `fly`/direct HTTPS egress is available: re-run
 five) against the live stack and fold PASS/FAIL back into this file, the
 same pattern FR-28 already uses for the phone-only steps.
 
+## The live stack is checked daily by CI (FR-66)
+
+`.github/workflows/pilot-readiness.yml` runs `scripts/check_live_stack.py` every morning (05:10 UTC)
+and on demand (`gh workflow run "pilot readiness (live)"`), from a runner that can actually reach
+`filmrunner-api.fly.dev` — the routine's sandbox cannot. It checks only public endpoints: API health,
+that the deployed build carries this week's routes, that an unknown personal token and an unknown
+call sheet are refused, that the Web Push key is configured, that CORS allows the Pages origin, that
+all four pages serve, and that a handful of requests is not rate-limited. The run summary carries a
+pass/fail table. **Read its last run instead of repeating a blocked `curl`.**
+
 ## For the founder's phone (step-by-step)
 
 1. Safari → https://sandovabarbora.github.io/filmrunner/editor.html → email → code from the mail (needs INBOX #3) → Productions visible.

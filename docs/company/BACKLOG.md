@@ -3,8 +3,8 @@
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-66 · qa · CI check of the live Fly + Pages stack, unblocked by this environment's egress proxy
-- state: in-progress
-- note: taken 2026-09-22 14:45 by the founder's interactive session (feat/fr-66-live-check-workflow); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-66-live-check-workflow): `.github/workflows/pilot-readiness.yml` (daily 05:10 UTC + workflow_dispatch) runs `scripts/check_live_stack.py` — eleven public checks: API health, the deployed build carries this week's routes (FR-32/36/57/65), unknown token and unknown sheet refused, VAPID key configured, CORS allows the Pages origin, all four pages serve their own content, a handful of requests is not rate-limited. Pass/fail table into the job summary; any unreachable host or unexpected status fails the job with the error text (verified by pointing it at an invalid host). No tokens in the workflow. The readiness file now points at the workflow instead of a blocked curl
 - gated: no
 - why: every FR-8/FR-16/FR-40 attempt this week has been undoable from this routine's sandbox — its egress proxy 403s `filmrunner-api.fly.dev` outright, confirmed again on every hourly shift since 2026-09-14 — so "NOT VERIFIED against the live API" rows have piled up in `docs/research/pilot-readiness-2026-09.md` (FR-38, FR-39, FR-42, FR-43, FR-44) with no path to close them from this environment. A GitHub Actions runner is not behind this proxy and can reach the real deployed URLs, which matters before the founder's Friday pilot-ready goal.
 - dod:

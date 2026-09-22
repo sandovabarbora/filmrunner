@@ -1,0 +1,29 @@
+# FR-66: the live stack, checked from somewhere that can actually reach it.
+#
+# Every FR-8/FR-16/FR-40 attempt from the routine's sandbox has been blocked by its egress proxy
+# (403 CONNECT to filmrunner-api.fly.dev), so "not verified" kept meaning "could not look", not
+# "does not work". GitHub's runners have open egress; this job looks for us, daily and on demand,
+# and writes a pass/fail table into the run summary a shift can read instead of retrying a curl.
+#
+# Public, unauthenticated endpoints only: no tokens live here.
+name: pilot readiness (live)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "10 5 * * *" # 07:10 Prague in summer, 06:10 in winter — before a Czech crew call
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      API: ${{ vars.VITE_API_BASE || 'https://filmrunner-api.fly.dev' }}
+      PAGES: https://sandovabarbora.github.io/filmrunner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the live stack
+        run: python3 scripts/check_live_stack.py
