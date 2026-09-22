@@ -9,7 +9,7 @@ with no signal on set.
 
 from pathlib import Path
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 DIST_DIR = Path(__file__).resolve().parents[1] / "dist"
 
@@ -336,7 +336,7 @@ def test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missi
     page.goto(f"{frontend_url}/landing.html")
     video = page.locator("video[data-flow-video]")
     video.wait_for(timeout=10_000)
-    assert video.get_attribute("poster") == "landing/call-sheet-top.jpg"
+    assert video.get_attribute("poster") == "landing/call-sheet-top.cs.jpg"  # FR-62: per-language shots
     assert video.get_attribute("src") == "landing/landing-flow.webm"
     page.wait_for_timeout(500)
     assert video.evaluate("el => el.autoplay") is True
@@ -362,3 +362,44 @@ def test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missi
     missing.wait_for_timeout(2_000)
     assert missing.locator("section.flow").count() == 0
     ctx2.close()
+
+
+def test_landing_shows_the_screenshots_of_the_visitor_s_language(browser, frontend_url: str) -> None:
+    """FR-62: a Czech visitor sees the Czech shots (and Czech copy); English sees the English ones; a missing
+    file hides only its own image, never the figure the other language still needs."""
+    for locale, suffix, other in (("cs-CZ", "cs", "en"), ("en-US", "en", "cs")):
+        ctx = browser.new_context(locale=locale, viewport={"width": 390, "height": 844})
+        page = ctx.new_page()
+        page.goto(f"{frontend_url}/landing.html")
+        page.wait_for_selector(".shots figure", timeout=10_000)
+        shown = page.locator(f".shots img[lang='{suffix}']")
+        expect(shown).to_have_count(3)
+        for i in range(3):
+            assert shown.nth(i).is_visible(), f"{locale}: shot {i} hidden"
+            assert f".{suffix}.jpg" in shown.nth(i).get_attribute("src")
+        assert not page.locator(f".shots img[lang='{other}']").first.is_visible()
+        # every shot really loaded (naturalWidth 0 means a broken file)
+        widths = page.eval_on_selector_all(f".shots img[lang='{suffix}']", "els => els.map(e => e.naturalWidth)")
+        assert all(w > 0 for w in widths), widths
+        ctx.close()
+
+
+def test_landing_survives_a_missing_screenshot(browser, frontend_url: str) -> None:
+    """FR-25/FR-62 failure case: one missing file drops that image only; the figure and its caption stay
+    as long as the other language's shot is there. The context blocks service workers: the PWA's worker
+    serves precached assets without touching the network, so `route` would never see the request
+    (the same gap FR-9's offline tests documented)."""
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+    page = ctx.new_page()
+    # and no HTTP cache either: a cached copy would be served without a request, so the route
+    # would never fire and the test would pass or fail by accident.
+    cdp = ctx.new_cdp_session(page)
+    cdp.send("Network.enable")
+    cdp.send("Network.setCacheDisabled", {"cacheDisabled": True})
+    page.route("**/landing/contacts.en.jpg", lambda route: route.abort())
+    page.goto(f"{frontend_url}/landing.html")
+    page.wait_for_selector(".shots figure", timeout=10_000)
+    expect(page.locator(".shots img[lang='en']")).to_have_count(2, timeout=5_000)
+    assert page.locator(".shots figure").count() == 3  # the Czech shot keeps the third figure alive
+    assert page.locator(".shots img[lang='cs']").count() == 3
+    ctx.close()

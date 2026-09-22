@@ -606,8 +606,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a person without a phone prints "—", never an empty cell that reads as a mistake
 
 ## FR-62 · marketing · Czech screenshots and copy on the landing after FR-48/58
-- state: in-progress
-- note: taken 2026-09-22 14:00 by the founder's interactive session (feat/fr-62-czech-landing); shifts skip it
+- state: done
+- note: delivered 2026-09-22 (feat/fr-62-czech-landing): `take_landing_screenshots.py` now shoots each view once per language (`<name>.cs.jpg` / `.en.jpg`, locale-switched contexts) and the landing shows the pair matching its toggle; caption "Kam" → "Kde" to match the product's own label; two feature lines added (imports from Excel/schedule/PDF; Czech + English with a link to the privacy page). Two real bugs found on the way: the revision diff's labels came from the server in English on every Czech sheet — the viewer now renders them from the stable `field` key (`change.*`, with "změn: N" for personal calls) and falls back to the server's text; and a screenshot that failed *before* the deferred landing module ran kept its broken-image icon — handled with a `complete && naturalWidth === 0` check, and one missing file now drops only its own image, never the figure the other language needs. 2 E2E (language-matched shots; missing-file path with service workers and HTTP cache disabled, which is what made it flaky). Frontend only
 - gated: no
 - why: the landing shows English screenshots to a Czech audience while the product now reads in Czech; the first impression should match the pilot's language
 - dod:
