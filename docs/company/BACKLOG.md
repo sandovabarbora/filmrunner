@@ -2,6 +2,16 @@
 
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
+## FR-66 · qa · CI check of the live Fly + Pages stack, unblocked by this environment's egress proxy
+- state: ready
+- gated: no
+- why: every FR-8/FR-16/FR-40 attempt this week has been undoable from this routine's sandbox — its egress proxy 403s `filmrunner-api.fly.dev` outright, confirmed again on every hourly shift since 2026-09-14 — so "NOT VERIFIED against the live API" rows have piled up in `docs/research/pilot-readiness-2026-09.md` (FR-38, FR-39, FR-42, FR-43, FR-44) with no path to close them from this environment. A GitHub Actions runner is not behind this proxy and can reach the real deployed URLs, which matters before the founder's Friday pilot-ready goal.
+- dod:
+  - `.github/workflows/pilot-readiness.yml`, triggered on `workflow_dispatch` and a daily schedule, hits only public, unauthenticated endpoints on the live stack: the seeded demo call sheet at `GET https://filmrunner-api.fly.dev/api/v1/public/call-sheets/{demo_id}` (the id `backend/app/seed_demo.py` creates), the GitHub Pages demo URL (`https://sandovabarbora.github.io/filmrunner/`), and a throwaway-token 404 check on `/api/v1/public/crew/{token}/next` — no bearer token or new GitHub secret needed, so no INBOX item
+  - the job writes a pass/fail table to the workflow's job summary and fails the job on any unreachable host or non-2xx/non-404-as-expected result
+  - `docs/research/pilot-readiness-2026-09.md` gets one line pointing at the workflow, so a future shift reads its last run instead of repeating a blocked `curl`
+  - failure case: if the deployed stack itself is down, the job fails loudly with the HTTP status or connection error, never silently recorded as "not verified"
+
 ## FR-8 · tech-lead · Hosted API and database for the PWA (second half of the demo deployment)
 - state: done
 - note: 2026-09-22: closed as done — the hosted API and database have been live since 2026-09-15 and verified end to end by two live runs (FR-26, FR-40); the remaining iOS Safari service-worker check belongs to FR-28 (founder's phone)
