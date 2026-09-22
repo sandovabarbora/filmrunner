@@ -27,3 +27,7 @@ jobs:
 
       - name: Check the live stack
         run: python3 scripts/check_live_stack.py
+
+      - name: Check astronomy accuracy against a live reference
+        if: always()
+        run: PYTHONPATH=backend python3 scripts/check_astronomy_accuracy.py

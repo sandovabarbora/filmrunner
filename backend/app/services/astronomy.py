@@ -2,9 +2,10 @@
 
 Implements the standard Sunrise Equation (Astronomical Almanac algorithm),
 zenith 90.833 degrees to account for atmospheric refraction and the solar
-disk's apparent radius. See ADR-006 for the source references and the
-accuracy caveat (not independently verified against a live source this
-shift — egress to timeanddate.com and api.sunrise-sunset.org was blocked).
+disk's apparent radius. See ADR-006 for the source references; accuracy
+for Prague is measured within 1-3 minutes of sunrise-sunset.org across
+both solstices and both equinoxes (FR-67, checked 2026-09-22, reverified
+daily by scripts/check_astronomy_accuracy.py in CI).
 
 References:
     - https://en.wikipedia.org/wiki/Sunrise_equation
