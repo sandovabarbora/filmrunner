@@ -3,7 +3,8 @@
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-66 · qa · CI check of the live Fly + Pages stack, unblocked by this environment's egress proxy
-- state: ready
+- state: in-progress
+- note: taken 2026-09-22 14:45 by the founder's interactive session (feat/fr-66-live-check-workflow); shifts skip it
 - gated: no
 - why: every FR-8/FR-16/FR-40 attempt this week has been undoable from this routine's sandbox — its egress proxy 403s `filmrunner-api.fly.dev` outright, confirmed again on every hourly shift since 2026-09-14 — so "NOT VERIFIED against the live API" rows have piled up in `docs/research/pilot-readiness-2026-09.md` (FR-38, FR-39, FR-42, FR-43, FR-44) with no path to close them from this environment. A GitHub Actions runner is not behind this proxy and can reach the real deployed URLs, which matters before the founder's Friday pilot-ready goal.
 - dod:
