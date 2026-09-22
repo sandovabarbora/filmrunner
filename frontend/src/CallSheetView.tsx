@@ -1,6 +1,7 @@
 import { Avatar } from "./Avatar";
 import { QrCode } from "./editor/screens/QrCode";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
+import { fmtDate, t, type Lang } from "./i18n";
 
 /** "06:12" in the phone's own time zone; the raw value if it does not parse. */
 function issuedAt(iso: string): string {
@@ -42,9 +43,12 @@ export interface CallSheetViewProps {
   freshness: { fromCache: false } | { fromCache: true; fetchedAt: string };
   /** FR-47: the crew link this sheet was opened from, printed with a QR code in the footer so paper leads back to it. */
   shareUrl?: string | null;
+  /** FR-48: labels in the crew member's language; user-entered text is never translated. */
+  lang?: Lang;
 }
 
-export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null }: CallSheetViewProps) {
+export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null, lang = "en" }: CallSheetViewProps) {
+  const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
   const rev = callSheet.current_revision;
   const myDept = personal?.department ?? null;
   const heads = callSheet.contacts?.department_heads ?? [];
@@ -60,8 +64,8 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
         <div>
           <h2 className="production">{title}</h2>
           <p className="day" id="dayLabel">
-            Day {callSheet.day_number} of {callSheet.day_count} — {callSheet.unit_name}
-            {" "}<span className="date" id="dateLabel">· {callSheet.shoot_date}</span>
+            {L("day.of", { n: callSheet.day_number, count: callSheet.day_count })} — {callSheet.unit_name}
+            {" "}<span className="date" id="dateLabel">· {fmtDate(lang, callSheet.shoot_date)}</span>
           </p>
         </div>
         <div id="revBadgeWrap">
@@ -71,18 +75,18 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {callSheet.status === "cancelled" && (
         <div className="cancelled" id="cancelledBanner" role="alert">
-          <strong>CANCELLED</strong> — Day {callSheet.day_number} ({callSheet.shoot_date}) is off. Times below no longer apply; wait for the next day's sheet.
+          <strong>{L("cancelled")}</strong> — {L("cancelled.text", { n: callSheet.day_number, date: fmtDate(lang, callSheet.shoot_date) })}
         </div>
       )}
 
       {rev && rev.revision_letter !== "A" && (
         <div className="rev-replaces" id="revReplaces">
           <p>
-            REV {rev.revision_letter} replaces {callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1)}
-            {rev.created_at && <>, issued {issuedAt(rev.created_at)}</>}
+            {L("rev.replaces", { rev: rev.revision_letter, prev: callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1) })}
+            {rev.created_at && L("rev.issued", { time: issuedAt(rev.created_at) })}
           </p>
           {(callSheet.changes ?? []).length > 0 && (
-            <ul className="rev-changes" id="revChanges" aria-label="What changed">
+            <ul className="rev-changes" id="revChanges" aria-label={L("rev.changes")}>
               {callSheet.changes!.map((c) => (
                 <li key={c.field} data-field={c.field}>
                   <span className="k">{c.label}</span>{" "}
@@ -97,15 +101,15 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       {personal && (
-        <section className="you" id="you" aria-label="Your call">
+        <section className="you" id="you" aria-label={L("you.call")}>
           <div className="you-head">
-            <div className="label">Your call</div>
+            <div className="label">{L("you.call")}</div>
             <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.department} · {personal.position}</span></div>
           </div>
           <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
           {(personal.pickup_time || personal.note) && (
             <div className="you-extra" id="yourExtra">
-              {personal.pickup_time && <span><span className="k">Pickup </span><span className="v">{personal.pickup_time}</span></span>}
+              {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span></span>}
               {personal.note && <span className="note">{personal.note}</span>}
             </div>
           )}
@@ -114,43 +118,43 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       <section className="calls" aria-label="Call times">
         <div className="call crew">
-          <div className="label">Crew call</div>
+          <div className="label">{L("crewCall")}</div>
           <div className="value" id="crewCall">{rev?.general_crew_call || "—"}</div>
         </div>
         <div className="call shoot">
-          <div className="label">Shooting call</div>
+          <div className="label">{L("shootingCall")}</div>
           <div className="value" id="shootingCall">{rev?.shooting_call || "—"}</div>
         </div>
       </section>
 
       <section className="meta" aria-label="Light and weather">
-        <span><span className="k">Sunrise </span><span className="v" id="sunrise">{rev?.sunrise || "—"}</span></span>
-        <span><span className="k">Sunset </span><span className="v" id="sunset">{rev?.sunset || "—"}</span></span>
-        <span className="weather"><span className="k">Weather </span><span id="weather">{rev?.weather_forecast || "—"}</span></span>
+        <span><span className="k">{L("sunrise")} </span><span className="v" id="sunrise">{rev?.sunrise || "—"}</span></span>
+        <span><span className="k">{L("sunset")} </span><span className="v" id="sunset">{rev?.sunset || "—"}</span></span>
+        <span className="weather"><span className="k">{L("weather")} </span><span id="weather">{rev?.weather_forecast || "—"}</span></span>
       </section>
 
       {rev?.safety_notes && (
-        <section className="safety" id="safetyBox" aria-label="Safety notes">
-          <div className="label">Safety</div>
+        <section className="safety" id="safetyBox" aria-label={L("safety")}>
+          <div className="label">{L("safety")}</div>
           <p id="safetyText">{rev.safety_notes}</p>
         </section>
       )}
 
       {sheetLocations.length > 0 && (
-        <section className="locations" id="locations" aria-label="Where">
-          <h2>Where</h2>
+        <section className="locations" id="locations" aria-label={L("where")}>
+          <h2>{L("where")}</h2>
           {sheetLocations.map((loc) => {
             const url = mapsUrl(loc);
             return (
               <div className="location" key={loc.id} data-location={loc.id}>
                 <div className="location-head">
                   <span className="name">{loc.name}</span>
-                  {loc.scene_numbers.length > 0 && <span className="scenes">Sc {loc.scene_numbers.join(", ")}</span>}
+                  {loc.scene_numbers.length > 0 && <span className="scenes">{L("where.sc")} {loc.scene_numbers.join(", ")}</span>}
                 </div>
                 {loc.address && <div className="address">{url ? <a href={url} target="_blank" rel="noreferrer">{loc.address}</a> : loc.address}</div>}
-                {!loc.address && url && <div className="address"><a href={url} target="_blank" rel="noreferrer">Open in maps</a></div>}
-                {loc.parking_notes && <div className="line"><span className="k">Parking </span>{loc.parking_notes}</div>}
-                {loc.nearest_hospital && <div className="line"><span className="k">Hospital </span>{loc.nearest_hospital}</div>}
+                {!loc.address && url && <div className="address"><a href={url} target="_blank" rel="noreferrer">{L("where.maps")}</a></div>}
+                {loc.parking_notes && <div className="line"><span className="k">{L("where.parking")} </span>{loc.parking_notes}</div>}
+                {loc.nearest_hospital && <div className="line"><span className="k">{L("where.hospital")} </span>{loc.nearest_hospital}</div>}
               </div>
             );
           })}
@@ -158,10 +162,10 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       <section className="schedule" aria-label="Shooting schedule">
-        <h2>Schedule</h2>
+        <h2>{L("schedule")}</h2>
         <table>
           <thead>
-            <tr><th>#</th><th>Scene</th><th>I/E</th><th>D/N</th><th>Set</th><th>Pages</th></tr>
+            <tr><th>#</th><th>{L("th.scene")}</th><th>{L("th.ie")}</th><th>{L("th.dn")}</th><th>{L("th.set")}</th><th>{L("th.pages")}</th></tr>
           </thead>
           <tbody id="scheduleBody">
             {items.map((item) => <ScheduleRow key={item.id ?? item.order_index} item={item} locationName={locationNames.get(item.location_id ?? "")} />)}
@@ -171,9 +175,9 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {(callSheet.cast_calls?.length ?? 0) > 0 && (
         <section className="schedule cast" id="castTable" aria-label="Cast">
-          <h2>Cast</h2>
+          <h2>{L("cast")}</h2>
           <table>
-            <thead><tr><th>Cast</th><th>Character</th><th>St.</th><th>Pickup</th><th>Call</th><th>M/H</th><th>On set</th></tr></thead>
+            <thead><tr><th>{L("cast")}</th><th>{L("th.character")}</th><th>{L("th.status")}</th><th>{L("th.pickup")}</th><th>{L("th.call")}</th><th>{L("th.mh")}</th><th>{L("th.onSet")}</th></tr></thead>
             <tbody>
               {callSheet.cast_calls!.map((r) => (
                 <tr key={r.cast_member_id} data-cast={r.cast_member_id}>
@@ -187,10 +191,10 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       {(callSheet.personal_calls?.length ?? 0) > 0 && (
-        <section className="pcalls print-only" id="personalCallsTable" aria-label="Personal calls">
-          <h2>Personal calls</h2>
+        <section className="pcalls print-only" id="personalCallsTable" aria-label={L("personalCalls")}>
+          <h2>{L("personalCalls")}</h2>
           <table>
-            <thead><tr><th>Name</th><th>Department</th><th>Call</th><th>Pickup</th><th>Note</th></tr></thead>
+            <thead><tr><th>{L("th.name")}</th><th>{L("th.department")}</th><th>{L("th.call")}</th><th>{L("th.pickup")}</th><th>{L("th.note")}</th></tr></thead>
             <tbody>
               {callSheet.personal_calls!.map((r) => (
                 <tr key={r.crew_member_id}><td>{r.name}</td><td>{r.department} · {r.position}</td><td className="scene">{r.call_time ?? ""}</td><td className="scene">{r.pickup_time ?? ""}</td><td>{r.note ?? ""}</td></tr>
@@ -201,34 +205,34 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       {callSheet.contacts && (callSheet.contacts.head_of_day || callSheet.contacts.department_heads.length > 0 || callSheet.contacts.nearest_hospital) && (
-        <section className="contacts" id="contacts" aria-label="Who to call">
-          <h2>Who to call</h2>
+        <section className="contacts" id="contacts" aria-label={L("contacts")}>
+          <h2>{L("contacts")}</h2>
           {callSheet.contacts.head_of_day && (
             <div className="hod">
-              <div className="label">Head of day</div>
-              <ContactRow c={callSheet.contacts.head_of_day} />
+              <div className="label">{L("contacts.headOfDay")}</div>
+              <ContactRow c={callSheet.contacts.head_of_day} lang={lang} />
             </div>
           )}
           {mine.length > 0 && (
             <div className="hod mine" id="yourDepartment">
-              <div className="label">Your department · {myDept}</div>
-              {mine.map((c) => <ContactRow key={`${c.department}-${c.name}`} c={c} />)}
+              <div className="label">{L("contacts.yourDept")} · {myDept}</div>
+              {mine.map((c) => <ContactRow key={`${c.department}-${c.name}`} c={c} lang={lang} />)}
             </div>
           )}
           {others.length > 0 && (myDept ? (
             <details className="others" id="otherDepartments">
-              <summary>Other departments ({others.length})</summary>
+              <summary>{L("contacts.others", { n: others.length })}</summary>
               <ul className="contact-list">
-                {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
+                {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} lang={lang} /></li>)}
               </ul>
             </details>
           ) : (
             <ul className="contact-list">
-              {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} /></li>)}
+              {others.map((c) => <li key={`${c.department}-${c.name}`}><ContactRow c={c} lang={lang} /></li>)}
             </ul>
           ))}
           {callSheet.contacts.nearest_hospital && (
-            <p className="hospital"><span className="k">Nearest hospital </span>{callSheet.contacts.nearest_hospital}</p>
+            <p className="hospital"><span className="k">{L("contacts.hospital")} </span>{callSheet.contacts.nearest_hospital}</p>
           )}
         </section>
       )}
@@ -240,9 +244,9 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       <p className="print-foot" id="printFoot">
-        {title} · Day {callSheet.day_number} of {callSheet.day_count} · {callSheet.shoot_date}
+        {title} · {L("day.of", { n: callSheet.day_number, count: callSheet.day_count })} · {fmtDate(lang, callSheet.shoot_date)}
         {rev ? ` · REV ${rev.revision_letter}` : ""}
-        {rev?.created_at ? ` · issued ${new Date(rev.created_at).toLocaleString()}` : ""}
+        {rev?.created_at ? ` · ${L("footer.issued")} ${new Date(rev.created_at).toLocaleString()}` : ""}
         {" · FilmRunner"}
       </p>
 
@@ -254,14 +258,14 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       <div className="actions">
-        <button onClick={() => window.print()}>Print / Save PDF</button>
-        <span className="hint">Add to home screen to open it with no signal. On iPhone: Share → Print → pinch out for PDF.</span>
+        <button onClick={() => window.print()}>{L("print")}</button>
+        <span className="hint">{L("print.hint")}</span>
       </div>
     </article>
   );
 }
 
-function ContactRow({ c }: { c: ContactCard }) {
+function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
   const tel = c.phone ? `tel:${c.phone.replace(/[^+\d]/g, "")}` : null;
   return (
     <div className="contact">
@@ -272,7 +276,7 @@ function ContactRow({ c }: { c: ContactCard }) {
           <span className="role">{c.department} · {c.position}</span>
         </div>
       </div>
-      {tel ? <a className="phone" href={tel}>{c.phone}</a> : <span className="phone none">no number on file</span>}
+      {tel ? <a className="phone" href={tel}>{c.phone}</a> : <span className="phone none">{t(lang, "contacts.noNumber")}</span>}
     </div>
   );
 }

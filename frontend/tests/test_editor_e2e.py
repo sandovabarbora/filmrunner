@@ -794,7 +794,7 @@ def test_tomorrow_at_a_glance_on_a_personal_link(page: Page, frontend_url: str, 
 
     v = page.context.new_page(); v.goto(link); v.wait_for_selector("#tomorrow", timeout=15_000)
     expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "day")
-    expect(v.locator("#tomorrow")).to_contain_text("Day 2 · 2099-01-06 · crew call 07:15 · Studio B")
+    expect(v.locator("#tomorrow")).to_contain_text("Day 2 · Tue 6 Jan 2099 · crew call 07:15 · Studio B")
     v.locator("#tomorrow a").click(); v.wait_for_selector("#tomorrow", timeout=15_000)
     expect(v.locator("#tomorrow")).to_have_attribute("data-kind", "off")
     expect(v.locator("#tomorrow")).to_contain_text("day off · next is Day 3")
