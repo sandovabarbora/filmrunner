@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
@@ -63,6 +63,9 @@ export function App() {
   const [status, setStatus] = useState<Status>({ kind: "", text: "" });
   const [result, setResult] = useState<LoadResult | null>(null);
   const [personal, setPersonal] = useState<PersonalSheet | null | "invalid">(null);
+  // FR-47: the PDF button appends ?print=1 so the printed page opens the print dialog on load, no extra tap.
+  const [printRequested] = useState(() => new URLSearchParams(window.location.search).get("print") === "1");
+  const printedRef = useRef(false);
 
   async function load(url: string, id: string, me: string | null = null) {
     const r = await loadCallSheet(url, id);
@@ -97,6 +100,20 @@ export function App() {
       });
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (!printRequested || printedRef.current) return;
+    if (result && (result.kind === "live" || result.kind === "cached")) {
+      printedRef.current = true;
+      // Let the sheet paint before the print dialog steals focus.
+      const t = setTimeout(() => window.print(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [printRequested, result]);
+
+  const shareUrl = mode.kind === "share"
+    ? `${window.location.origin}${window.location.pathname}?sheet=${mode.sheet}&api=${encodeURIComponent(mode.api)}`
+    : null;
 
   const subtitle =
     mode.kind === "dev" ? "Development" : mode.kind === "share" || mode.kind === "mine" ? "Your call sheet" : mode.kind === "demo" ? "Demo shoot day" : "The living call sheet";
@@ -162,6 +179,7 @@ export function App() {
           callSheet={result.data}
           personal={personal && personal !== "invalid" ? personal : null}
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
+          shareUrl={shareUrl}
         />
       )}
       {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {
