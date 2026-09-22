@@ -187,7 +187,7 @@ def create_contact(payload: ContactCreate, db: Session = Depends(get_db)) -> Con
     return contact
 
 
-def _geocode_into(location: Location) -> None:
+def _geocode_into(location: Location, *, trust_coordinates: bool = False) -> None:
     """Fill geo_lat/geo_lng/geocoded_display_name from `location.address`.
 
     A geocoder miss or timeout leaves the coordinate fields untouched (they
@@ -196,6 +196,8 @@ def _geocode_into(location: Location) -> None:
     """
     if not location.address:
         return
+    if trust_coordinates and location.geo_lat is not None and location.geo_lng is not None:
+        return  # coordinates supplied with the address (a restore, FR-53): trust them, do not ask the geocoder again
     result = geocoding.geocode(location.address)
     if result is None:
         return
@@ -213,7 +215,7 @@ def create_location(
     production_id: uuid.UUID, payload: LocationCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
 ) -> Location:
     location = Location(production_id=production_id, **payload.model_dump())
-    _geocode_into(location)
+    _geocode_into(location, trust_coordinates=True)
     db.add(location)
     db.commit()
     db.refresh(location)

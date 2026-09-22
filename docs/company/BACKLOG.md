@@ -502,7 +502,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the public sheet for a 60-scene day must render under 2 s on the throttled profile or it is filed as a bug, not noted
 
 ## FR-53 · tech-lead · Backups and the restore path
-- state: ready
+- state: done
+- note: delivered 2026-09-22 (feat/fr-53-backups-restore): `docs/ops/backup-restore.md` (what the Free plan keeps — nothing; JSON export per production through the API; full pg_dump/pg_restore path with the Fly secret swap; DB password rotation steps; which secret is recoverable how; drill log) and `backend/scripts/production_backup.py` (export one or all productions, import into a new or an empty existing one, refused otherwise; crew get new tokens on restore; coordinates travel with addresses so the geocoder is not re-asked — `create_location` trusts supplied coordinates). 2 backend tests: export → import gives field-for-field identical sheets; non-empty target refused. Not yet drilled: pg_dump against the hosted project (noted in the doc). Backend changed: deploy needed (no migration). The read-only Supabase PAT no longer works (revoked), so the plan facts are from Supabase's published plan page, not the API
 - gated: no
 - why: the pilot's call sheets live in one Supabase Postgres; a wrong migration or a deleted production is recoverable only if someone knows how; nobody has written it down or tried it
 - dod:
