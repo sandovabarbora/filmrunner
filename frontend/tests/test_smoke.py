@@ -121,6 +121,42 @@ def test_contacts_render_with_tap_to_call_and_no_number_fallback(page: Page, fro
     assert "Bulovka" in page.locator("#contacts .hospital").inner_text()
 
 
+def test_contacts_get_whatsapp_and_copy_only_when_the_number_normalises(page: Page, frontend_url: str) -> None:
+    """FR-49: every contact card offers call, WhatsApp and copy; a non-numeric phone gets no WhatsApp link."""
+    page.route(
+        "**/api/v1/public/call-sheets/wa1",
+        lambda route: route.fulfill(
+            content_type="application/json",
+            body=(
+                '{"unit_name":"U","day_number":1,"day_count":1,"shoot_date":"2026-01-01",'
+                '"current_revision":{"revision_letter":"A","schedule_items":[]},'
+                '"contacts":{"head_of_day":null,"nearest_hospital":null,"department_heads":['
+                '{"name":"Petr Novak","department":"Grip","position":"Key Grip",'
+                '"phone":"777 123 456","email":null,"photo_url":null},'
+                '{"name":"Jana Svobodova","department":"Art","position":"Set Dresser",'
+                '"phone":"ask Petra","email":null,"photo_url":null}'
+                "]}}"
+            ),
+        ),
+    )
+    page.goto(f"{frontend_url}/index.html?sheet=wa1&api=http://api.test")
+    page.wait_for_selector("#contacts", timeout=10_000)
+    rows = page.locator("#contacts .contact")
+    assert rows.count() == 2
+
+    petr = rows.filter(has_text="Petr Novak")
+    assert petr.locator("a.phone").get_attribute("href").startswith("tel:")
+    wa = petr.locator("a.contact-btn.wa")
+    assert wa.count() == 1
+    assert wa.get_attribute("href").startswith("https://wa.me/420777123456")
+    assert petr.locator("button.contact-btn.copy").count() == 1
+
+    jana = rows.filter(has_text="Jana Svobodova")
+    assert jana.locator("a.phone").count() == 1  # the tel: link stays; no WhatsApp for unusable text
+    assert jana.locator("a.contact-btn.wa").count() == 0
+    assert jana.locator("button.contact-btn.copy").count() == 1
+
+
 _SHEET_BODY = (
     '{"unit_name":"Second Unit","day_number":3,"day_count":9,"shoot_date":"2026-10-01",'
     '"current_revision":{"revision_letter":"A","schedule_items":[]}}'

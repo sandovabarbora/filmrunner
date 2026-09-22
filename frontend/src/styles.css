@@ -190,14 +190,26 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .contact-list { list-style: none; margin: 0; padding: 0; }
 .contact-list li { border-bottom: 1px solid var(--rule); }
 .contact-list li:last-child { border-bottom: 1px solid var(--rule-strong); }
-.contact { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; }
+.contact { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; flex-wrap: wrap; }
 .contact .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .contact .who-text { display: flex; flex-direction: column; min-width: 0; }
 .avatar { flex: none; border-radius: 50%; object-fit: cover; background: var(--rule); }
 .avatar-fallback { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: var(--muted); background: var(--rule); }
 .contact .name { font-weight: 600; }
 .contact .role { font-size: 0.8125rem; color: var(--muted); }
-.contact .phone { flex: none; font-family: var(--mono); font-size: 0.9375rem; color: var(--ink); text-decoration: none; padding: 6px 0 6px 12px; }
+/* FR-49: call, WhatsApp and copy per contact — 44px targets for a wet thumb on set. */
+.contact-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.contact-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px; min-width: 44px; padding: 6px 10px; box-sizing: border-box;
+  border: 1px solid var(--rule); border-radius: 6px;
+  background: #fff; color: var(--ink); text-decoration: none;
+  font-family: var(--sans); font-size: 0.8125rem; font-weight: 600;
+  cursor: pointer;
+}
+.contact-btn.phone { font-family: var(--mono); }
+.contact-btn.wa { border-color: #25d366; color: #0d7a3a; }
+.contact-btn .btn-icon { font-size: 1rem; line-height: 1; }
 .contact .phone.none { color: var(--muted); font-family: var(--sans); font-size: 0.8125rem; }
 .hospital { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-2); }
 .hospital .k { color: var(--muted); }
@@ -275,7 +287,10 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
   .contacts { margin-top: 10pt; page-break-inside: avoid; }
   .contacts .hod { border: 1pt solid #000; padding: 5pt 8pt; background: #fff !important; }
   .contact { padding: 3pt 0; }
-  .contact .phone { padding: 0 0 0 8pt; font-size: 9.5pt; }
+  .contact-actions { gap: 0; }
+  .contact-btn.wa, .contact-btn.copy { display: none !important; }
+  .contact-btn .btn-icon { display: none; }
+  .contact-btn.phone { border: none; background: none; min-height: 0; min-width: 0; padding: 0 0 0 8pt; font-size: 9.5pt; }
   .others { display: block; }
   .others[open] > summary, .others > summary { display: none !important; }
   .others .contact-list { display: block; }
