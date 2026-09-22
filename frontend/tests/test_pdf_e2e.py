@@ -126,10 +126,15 @@ def test_a_40_scene_30_crew_day_paginates_under_four_pages_with_no_split_row(pag
     if not re.search(r"Page \d+ / \d+", combined):
         print("note: no page-number footer text found in this run's PDF (expected on this repo's pinned pre-2025 test Chromium; verify manually on a current browser)")
 
-    # Every scene appears exactly once across the whole PDF; a split or dropped row would
-    # change this list (missing a number, or a number counted twice).
-    scene_labels = sorted(int(n) for n in re.findall(r"Set (\d+) ", combined))
-    assert scene_labels == list(range(1, 41))
+    # Every scene row appears exactly once, and no row is split across a page break. Digits in the
+    # proportional font come out of pypdf as NUL on some Chromium builds (font subsetting without a
+    # ToUnicode map), so the check counts two letter-only tokens of each seeded row instead: the row's
+    # head ("Set ") and its wrapped tail ("slugline"). Per page they must match — a row cut by a page
+    # break would leave a head on one page and its tail on the next.
+    per_page = [p.extract_text() for p in reader.pages]
+    assert sum(t.count("Set ") for t in per_page) == 40, "every scene row once across the PDF"
+    for i, t in enumerate(per_page, start=1):
+        assert t.count("Set ") == t.count("slugline"), f"page {i}: a scene row is split across the page break"
 
     view.close()
 
