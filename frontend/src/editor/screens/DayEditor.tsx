@@ -6,6 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
+import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
 
@@ -202,11 +203,16 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!draft) return;
     const locationId = firstLocationId();
     if (!locationId) { setNotice({ kind: "warn", text: L("Pick a location for the first scene to get a weather suggestion.") }); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    if (isBeyondWeatherForecastHorizon(draft.shoot_date, today)) {
+      setNotice({ kind: "warn", text: L("Too far ahead to forecast yet — try again closer to the date.") });
+      return;
+    }
     setSuggestingWeather(true);
     try {
       const { suggestion } = await api.weatherSuggestion(conn, productionId, locationId, draft.shoot_date);
       setWeatherSuggestion(suggestion ?? null);
-      if (!suggestion) setNotice({ kind: "warn", text: L("No weather suggestion available for that date/location.") });
+      if (!suggestion) setNotice({ kind: "warn", text: L("Could not get a weather forecast right now — the provider may be unreachable. Try again shortly.") });
     } catch (err) {
       setNotice(noticeFromError(err, L("Could not get a weather suggestion")));
     } finally {

@@ -111,6 +111,52 @@ def test_suggest_weather_without_resolved_location_warns_instead_of_hanging(page
     expect(page.locator("#notice")).to_contain_text("Pick a location", timeout=15_000)
 
 
+def test_suggest_weather_too_far_ahead_names_the_horizon_not_a_failure(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-75: `backend/app/services/weather.py` returns null both when the shoot date is past
+    Open-Meteo's ~16-day forecast window and when the provider is genuinely down — the editor must
+    tell them apart. A date this far out never even reaches the API (no route mock needed, no
+    network call happens): asserting that keeps this the deterministic half of the pair, the other
+    half (a real provider failure) covered below with a mocked response."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E loc-horizon {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Studio A"); page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Studio A", timeout=15_000)
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#shoot_date", "2027-06-01")  # far more than 16 days from any date this suite runs on
+    page.click("#addScene")
+    page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Studio A")
+    page.route(f"{api_url}/**/weather-suggestion?*", lambda route: route.abort())  # must never be called
+    page.click("text=Suggest weather")
+    expect(page.locator("#notice")).to_contain_text("Too far ahead to forecast yet", timeout=15_000)
+
+
+def test_suggest_weather_provider_failure_shows_a_distinct_message(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-75's other half: within the forecast horizon, a provider failure (mocked here — a real
+    Open-Meteo outage isn't reproducible on demand) must read differently from "too far ahead"."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E loc-wxfail {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Studio A"); page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Studio A", timeout=15_000)
+
+    page.click("role=tab[name='Days']"); page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.click("#addScene")
+    page.locator("#items .item").nth(0).get_by_label("Location").select_option(label="Studio A")
+    page.route(
+        f"{api_url}/**/weather-suggestion?*",
+        lambda route: route.fulfill(status=200, content_type="application/json", body='{"suggestion": null}'),
+    )
+    page.click("text=Suggest weather")
+    expect(page.locator("#notice")).to_contain_text("provider may be unreachable", timeout=15_000)
+    expect(page.locator("#notice")).not_to_contain_text("Too far ahead")
+
+
 def test_day_without_location_says_what_is_missing_and_picking_one_fills_sunrise(page: Page, frontend_url: str, api_url: str) -> None:
     """FR-27: the sunrise hint names what a location would give and links to Locations; once a
     scene gets a resolved location, sunrise fills without a reload. Real Nominatim, as above."""
