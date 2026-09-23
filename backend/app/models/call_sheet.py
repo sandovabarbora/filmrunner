@@ -11,7 +11,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -87,12 +87,11 @@ class CallSheet(Base):
     def current_revision(self) -> "CallSheetRevision | None":
         """The single revision flagged is_current, if any.
 
-        Note: enforced at the application layer (see services/call_sheets.py),
-        not by a DB constraint — a partial unique index on
-        (call_sheet_id) WHERE is_current would be the stronger version;
-        left as a documented TODO rather than added silently.
-        TODO: add a partial unique index once the target DB (Postgres) is
-        fixed for production, so this invariant can't be violated by a bug.
+        Enforced at the application layer (services/call_sheets.py) and,
+        since FR-69 (migration 22f098e3dc1d), by a partial unique index
+        on call_sheet_revisions(call_sheet_id) WHERE is_current — a bug
+        that tries to set two current revisions on one sheet gets an
+        IntegrityError instead of silently corrupting the sheet.
         """
         return next((r for r in self.revisions if r.is_current), None)
 
@@ -102,6 +101,14 @@ class CallSheetRevision(Base):
     it never edits an existing one — see DESIGN.md."""
 
     __tablename__ = "call_sheet_revisions"
+    __table_args__ = (
+        Index(
+            "uq_call_sheet_revisions_one_current",
+            "call_sheet_id",
+            unique=True,
+            postgresql_where=text("is_current"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     call_sheet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("call_sheets.id"), nullable=False)
