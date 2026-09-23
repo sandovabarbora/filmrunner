@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-23 08:00 (morning brief)
+Updated: 2026-09-23 09:00 (09:00 shift)
 
 ## today
 
@@ -36,10 +36,10 @@ Full detail in `LOG.md`; condensed here to keep this file readable. Nine shifts 
 - needs_approval: yes — INBOX #1 (recruit and invite five Prague interview candidates, founder's own network) and INBOX #3 (custom SMTP for sign-in, the founder-only blocker for any new person signing in) both still `pending`.
 
 ## engineering (tech-lead + frontend + qa)
-- summary: carried over from 2026-09-22 — every FR-1 through FR-67 backlog item is `done`; FR-68 is `ready` and first in today's plan. Today's plan adds FR-69 (DB invariant), FR-71/FR-73/FR-76 (qa follow-ups), FR-72 (push latency), FR-75 (frontend copy fix).
-- tests: last known-green baseline (2026-09-22 16:00): backend suite and full Playwright suite both green modulo the pre-existing, unrelated Nominatim-egress failures in `test_locations_e2e.py` that every shift touching that suite has hit all week.
+- summary: 09:00 shift (qa) took FR-68 per today's plan: `scripts/check_live_write_path.py` (PR #174, branch `test/fr-68-live-write-path-check`) drives the live API through five features never exercised there — FR-38 (delete a location), FR-39 (weather auto-fill), FR-42 (tomorrow at a glance), FR-43 (days list at a glance), FR-44 (personal calls picker) — by creating a disposable `CI check <uuid>` production and publishing three real revisions. Wired into `pilot-readiness.yml` guarded on `FILMRUNNER_CI_TOKEN`, skipped (not failed) until the token exists or if it's ever rejected. FR-68 set to `done` (ungated dod delivered); gated half (the token itself) filed as INBOX #6. Doc-only + `scripts/`/`.github/workflows/` — auto-merge enabled per hackathon mode. Remaining today's-plan items (FR-69 through FR-76) are for the next shifts.
+- tests: FR-68's script verified against a real local Postgres + uvicorn (this sandbox's egress proxy blocks the live host, same limitation FR-66 worked around): 10/11 checks pass; the one local failure (FR-39 weather auto-fill) is the same known egress block hitting Open-Meteo, falling back to blank exactly as designed — not a script bug, expected to pass live. Also verified the script's own skip paths: a rejected token reports "skipped" (exit 0), a missing token exits 1 with a clear message (never reached in CI, guarded by the workflow `if:`). Last known-green baseline for the wider suite unchanged (2026-09-22 16:00): backend suite and full Playwright suite both green modulo the pre-existing, unrelated Nominatim-egress failures in `test_locations_e2e.py`.
 - blockers: none open right now beyond the standing egress-proxy limits on this sandbox (does not block CI, which runs with open egress).
-- needs_approval: no new items this brief; FR-68's own token/account INBOX item stays for whichever shift picks FR-68 up.
+- needs_approval: yes — new INBOX #6 (GitHub Actions secret `FILMRUNNER_CI_TOKEN`, needed for the new guarded workflow step to actually run; the step reports "skipped" harmlessly until then).
 
 ## security (gate)
 - summary: unchanged — FR-7 and FR-5 stand `done`, last re-verified 2026-09-16.
