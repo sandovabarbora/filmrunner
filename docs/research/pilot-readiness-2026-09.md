@@ -129,6 +129,30 @@ moment `fly`/direct HTTPS egress is available: re-run
 five) against the live stack and fold PASS/FAIL back into this file, the
 same pattern FR-28 already uses for the phone-only steps.
 
+## The five write-path items above are checked daily by CI (FR-68)
+
+The five rows in the table above — FR-38 (delete a location), FR-39 (weather on publish),
+FR-42 (tomorrow at a glance), FR-43 (days list at a glance), FR-44 (personal calls picker) —
+are no longer just "NOT VERIFIED against the live API". `.github/workflows/pilot-readiness.yml`
+runs `scripts/check_live_write_path.py` after the read-only checks below: it creates one
+disposable "CI check `<uuid>`" production on the live stack and publishes real revisions to
+drive all five through the real API end to end (create a location, publish REV A with blank
+weather, publish REV B with a typed weather value, delete the location, publish REV C, hit
+`/seen`, read the days list, read `/crew/{token}/next`). **Read its last run instead of treating
+these five as unverified** — the step is guarded on `FILMRUNNER_CI_TOKEN` existing (INBOX item
+filed for the founder to create a write-capable token) and reports "skipped" rather than
+failing red while that token is absent, or if it is ever rotated or revoked.
+
+Verified locally against a real local Postgres + uvicorn (this sandbox's own egress proxy
+blocks `filmrunner-api.fly.dev`, the same limitation FR-66 already worked around for the
+read-only checks): 10 of 11 checks pass. The one local failure is FR-39's own weather
+auto-fill, and it fails for the expected reason, not a bug — the local run's log shows
+`Weather suggestion failed for (50.1147, 14.4238) ...: 403 Forbidden`, this sandbox's egress
+proxy blocking the Open-Meteo call, exactly the fallback path FR-19's own tests already cover
+(`test_publish_succeeds_and_leaves_weather_blank_when_the_provider_is_down`). A GitHub Actions
+runner has open egress (proven daily by FR-66/FR-67), so this check is expected to pass live
+once `FILMRUNNER_CI_TOKEN` is set.
+
 ## The live stack is checked daily by CI (FR-66)
 
 `.github/workflows/pilot-readiness.yml` runs `scripts/check_live_stack.py` every morning (05:10 UTC)

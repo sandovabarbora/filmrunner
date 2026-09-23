@@ -22,6 +22,9 @@ jobs:
     env:
       API: ${{ vars.VITE_API_BASE || 'https://filmrunner-api.fly.dev' }}
       PAGES: https://sandovabarbora.github.io/filmrunner
+      # FR-68: a dedicated write-capable token, set once the founder files INBOX (FR-68's own
+      # gated item). Empty until then, which is exactly what the next step's guard checks for.
+      FILMRUNNER_CI_TOKEN: ${{ secrets.FILMRUNNER_CI_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,3 +34,17 @@ jobs:
       - name: Check astronomy accuracy against a live reference
         if: always()
         run: PYTHONPATH=backend python3 scripts/check_astronomy_accuracy.py
+
+      # FR-68: create a production and publish real revisions on the live stack to exercise five
+      # write-path features (delete a location, weather auto-fill, tomorrow/days-at-a-glance,
+      # the personal calls picker) that the two read-only checks above cannot reach. Skipped, not
+      # failed, until FILMRUNNER_CI_TOKEN exists (see INBOX.md) — a rotated or revoked token also
+      # reads as skipped (the script itself tells a 401 apart from a real failure).
+      - name: Check the live write path
+        if: always() && env.FILMRUNNER_CI_TOKEN != ''
+        run: python3 scripts/check_live_write_path.py
+
+      - name: Note the live write-path check was skipped
+        if: always() && env.FILMRUNNER_CI_TOKEN == ''
+        run: |
+          echo "## Live write-path checks (FR-68) — skipped: FILMRUNNER_CI_TOKEN is not set (see INBOX.md)" >> "$GITHUB_STEP_SUMMARY"
