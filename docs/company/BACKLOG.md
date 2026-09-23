@@ -763,7 +763,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if any existing row already violates the invariant, the migration fails loudly naming the `call_sheet_id` rather than silently dropping rows or adding an index that can never actually be enforced
 
 ## FR-70 · marketing · Revisit positioning.md's "Local" rejection now that FR-20 has run
-- state: ready
+- state: done
+- note: 11:00 shift 2026-09-23 (branch docs/fr-70-positioning-local-revisit) rewrote the "Local" alternative in `docs/marketing/positioning.md` citing FR-20's actual finding (order-of-magnitude estimate, "low tens to low hundreds" active Prague productions, largest uncertainty in the untracked student/ad/micro-budget category) and its own explicit conclusion ("does not confirm Prague is dense enough... not obviously out of reach"). Decision: this does not move "Local" to the lead position — the estimate is too uncertain (order-of-magnitude, not a count) to carry a locality headline; it continues to support only the distribution angle (H3 Prague-first go-to-market, film-school free tier). Named what would move it: FR-20's own follow-ups (a direct read of `filmcommission.cz/en/statistics/` or `productionlist.com`'s real date range) or FR-3 interview data (still blocked on INBOX #1). The chosen position (live+offline-honest) is separately re-confirmed against the same evidence, unrevised. Doc-only (`docs/marketing/**`), qualifies for auto-merge. PR is the whole deliverable.
 - gated: no
 - why: `docs/marketing/positioning.md:44-49` rejects the "built for Prague" position because "BRIEF.md Q5 ... is still open — FR-20 has not run yet"; FR-20 (Prague market sizing, BRIEF Q5) delivered its order-of-magnitude estimate the same day, 2026-09-21, and positioning.md was never revisited against it — the doc still reads as if Q5 is unanswered.
 - dod:
