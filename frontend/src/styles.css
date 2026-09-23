@@ -178,7 +178,11 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
   td.pages { grid-area: pages; padding-left: 6px; }
   td.n { display: none; }
   td.ie { grid-area: ie; padding-top: 3px; }
-  td.dn { grid-area: dn; padding-top: 3px; }
+  /* FR-73: dn is the row's last cell here, not a column boundary like in the desktop
+     table; the desktop rule's fixed width:5ch and 12px padding-right were sized for
+     "DAY"/"NIGHT" in the wider desktop column, and clipped "NIGHT" (not "DAY") at a
+     320px viewport (WCAG 1.4.10 reflow) — the grid area itself has the room. */
+  td.dn { grid-area: dn; padding-top: 3px; padding-right: 0; width: auto; }
   td.ie::after { content: "·"; color: var(--muted); margin-left: 6px; }
   tbody tr:last-child { border-bottom: 1px solid var(--rule-strong); }
 }
