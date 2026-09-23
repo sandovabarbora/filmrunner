@@ -33,8 +33,32 @@ Production: 60 crew across 12 departments, 8 cast, 6 geocoded locations, 30 days
 
 Nothing exceeded 1.5 s after the fix, so no further items are filed.
 
+## Lighthouse mobile score (FR-71, run 2026-09-23)
+
+Run against this same production's day 5 (60 scenes), public sheet, no `me` token, local build served
+statically, local API + Postgres, Chrome's own simulated mobile throttling (`lighthouse` default config,
+`--form-factor=mobile`, headless `/opt/pw-browsers/chromium`, `npx lighthouse` — `npm`'s registry is in fact
+reachable from this sandbox, so the earlier "no Lighthouse in the harness" note above was wrong; `lighthouse`
+is now an exact-pinned devDependency and the run is reproducible via `frontend/scripts/lighthouse_pilot_scale.py`).
+Full report: `docs/research/lighthouse-pilot-scale.json`.
+
+| Category | Score |
+|---|---|
+| Performance | **69** |
+| Accessibility | 100 |
+| Best Practices | 96 |
+| SEO | 90 |
+
+Performance is under the 90 line the dod checks for. The metrics behind it: FCP 2.3 s, LCP 2.6 s, TBT 140 ms,
+Speed Index 2.3 s (all fine) — the score is dragged down by **Cumulative Layout Shift = 0.843** (audit score
+0.04, "poor" starts above 0.25) and, to a lesser extent, Max Potential First Input Delay = 280 ms (audit score
+0.41). Lighthouse's own culprit trace names `main#main` (the whole sheet body, top:55 to bottom:10026) as the
+one shifting element — consistent with `styles.css`'s `.skeleton`/`.sheet.visible` pattern (`CallSheetView.tsx`):
+the sheet renders a ~100 px skeleton first, then swaps in the full ~10,000 px sheet (60 scenes, cast, contacts)
+in one shot once the API responds, so the whole page height jumps in a single frame. Filed as FR-77 (its own
+`ready` item, with this reproduction) rather than fixed here — this task was to measure and record, not to
+redesign the loading state.
+
 ## Not measured here
 
-- Lighthouse mobile score: not run (no Lighthouse in the harness; the numbers above are time-to-usable on a throttled
-  network, which is what the dod's 2 s line is about). The public sheet bundle is 66 KB gzipped JS + 12 KB CSS.
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
