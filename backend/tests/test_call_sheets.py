@@ -10,7 +10,7 @@ import uuid
 
 import pytest
 
-from app.models.call_sheet import CallSheet
+from app.models.call_sheet import CallSheet, CallSheetRevision
 from app.services.call_sheets import create_call_sheet, publish_revision
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate
 
@@ -175,6 +175,34 @@ class TestRevisionSupersession:
         assert current_flags.count(True) == 1
         assert len(call_sheet.revisions) == 4  # A + 3 more
         assert call_sheet.current_revision.revision_letter == "D"
+
+    def test_current_revision_uniqueness_is_enforced_by_the_database(self, db_session):
+        """FR-69: a partial unique index on call_sheet_revisions(call_sheet_id)
+        WHERE is_current backs up publish_revision's application-layer
+        invariant. Insert a second current revision directly, bypassing
+        the service function entirely, and assert Postgres itself refuses
+        it rather than silently allowing two "current" revisions."""
+        from sqlalchemy.exc import IntegrityError
+
+        from app.models.production import Production
+
+        production = Production(name="DB-level uniqueness test")
+        db_session.add(production)
+        db_session.flush()
+
+        call_sheet = create_call_sheet(
+            db_session, production.id, _minimal_call_sheet_payload()
+        )
+        db_session.add(
+            CallSheetRevision(
+                call_sheet_id=call_sheet.id,
+                revision_letter="B",
+                is_current=True,
+            )
+        )
+        with pytest.raises(IntegrityError, match=str(call_sheet.id)):
+            db_session.flush()
+        db_session.rollback()  # the failed flush leaves the session's transaction inactive
 
     def test_27th_revision_in_one_day_is_rejected(self, db_session):
         """Exercises the documented A-Z exhaustion guard rather than
