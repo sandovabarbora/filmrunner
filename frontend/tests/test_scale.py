@@ -124,3 +124,39 @@ def test_pilot_scale_on_a_throttled_phone(page: Page, frontend_url: str, api_url
     assert times["public sheet, first open (60 scenes, throttled)"] < 2.0, "the crew's sheet must open under 2 s on throttled 4G"
     for k, v in times.items():
         assert v < 6.0, f"{k} took {v}s"
+
+
+# FR-76: FR-52 measured the day screen at 60 scenes rendering in 0.88 s on this same
+# throttled profile (docs/research/pilot-scale-2026-09.md, "Day screen, 60 scenes" row —
+# the doc itself flags ±0.4 s run-to-run noise on a throttled profile). This test pins a
+# ceiling tighter than the blanket 6 s line above: a generous 3x multiple of that measured
+# figure (~2.64 s), so a real regression (e.g. a new schedule column, an un-memoised row)
+# fails CI well before it reaches a real shoot day, without the test flaking on ordinary
+# noise. The number is a multiple of a citation, not re-derived or guessed.
+DAY_SCREEN_BUDGET_S = 0.88 * 3  # generous 3x FR-52's measured 0.88 s
+
+
+def test_day_screen_stays_within_its_pilot_scale_budget(page: Page, frontend_url: str, api_url: str, scale_production: dict) -> None:
+    pid, big, n_big = scale_production["id"], scale_production["biggest_day_id"], scale_production["n_big"]
+    assert n_big == 60
+
+    _connect(page, frontend_url, api_url)
+    _throttle(page)
+    render_time = _timed(
+        page, f"{frontend_url}/editor.html#/p/{pid}/day/{big}", "#items .item",
+        lambda: expect(page.locator("#items .item")).to_have_count(n_big, timeout=30_000),
+    )
+    assert render_time < DAY_SCREEN_BUDGET_S, (
+        f"day screen with {n_big} scenes took {render_time}s to render — more than "
+        f"{DAY_SCREEN_BUDGET_S:.2f}s (3x FR-52's measured 0.88s), a real regression not noise"
+    )
+
+    # "stays interactive", not just rendered: typing into the last scene's Set field must
+    # reflect back immediately, proving the 60-row form isn't blocking the main thread.
+    last_set = page.locator("#items .item .set").last
+    t0 = time.perf_counter()
+    text = "REGRESSION CHECK — typed after render to prove the form stays responsive"
+    last_set.fill(text)
+    expect(last_set).to_have_value(text, timeout=1_000)
+    interact_time = round(time.perf_counter() - t0, 2)
+    assert interact_time < 1.0, f"typing into the last of {n_big} scenes took {interact_time}s to reflect — the form is not staying interactive at this scale"
