@@ -749,3 +749,79 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - `docs/research/pilot-readiness-2026-09.md`'s NOT VERIFIED table is updated to point at this workflow step once it exists, the same pattern FR-66 used for the read-only checks
   - the gated part — obtaining a real signed-in Supabase JWT for a dedicated "ci-checker" identity (or a service account, whichever the founder prefers) and storing it as a GitHub Actions repository secret — is filed as a new INBOX.md item, since creating that identity and holding its token are both actions TEAM.md reserves for the founder (an account, and a secret, respectively); until she does this the new workflow step stays present but silently skipped, never failing the job
   - failure case: if the token secret is ever removed or expires, the guarded step is skipped (not failed) and the job summary says so by name, so a rotated or revoked credential reads as "not run" rather than a false red build
+
+## FR-69 · tech-lead · Partial unique index enforcing one current revision per call sheet
+- state: ready
+- gated: no
+- why: `backend/app/models/call_sheet.py:94` carries an open TODO — "add a partial unique index once the target DB (Postgres) is fixed for production, so this invariant can't be violated by a bug" — and Postgres has been the production DB since FR-8 (2026-09-15); today only the application layer (`services/call_sheets.py`) stops two "current" revisions existing on one call sheet, with no DB-level guard against a future bug. Serves the hackathon goal: an AD publishing a real day end to end must be able to trust that "the current revision" is never ambiguous.
+- dod:
+  - a migration adds `CREATE UNIQUE INDEX ... ON call_sheet_revisions(call_sheet_id) WHERE is_current`, so the database itself rejects two current revisions for one sheet
+  - the TODO comment in `call_sheet.py` is removed or updated to point at the migration that closed it
+  - a test inserts two current revisions for the same call sheet directly (bypassing `publish_revision`) and asserts the database raises an `IntegrityError`
+  - failure case: if any existing row already violates the invariant, the migration fails loudly naming the `call_sheet_id` rather than silently dropping rows or adding an index that can never actually be enforced
+
+## FR-70 · marketing · Revisit positioning.md's "Local" rejection now that FR-20 has run
+- state: ready
+- gated: no
+- why: `docs/marketing/positioning.md:44-49` rejects the "built for Prague" position because "BRIEF.md Q5 ... is still open — FR-20 has not run yet"; FR-20 (Prague market sizing, BRIEF Q5) delivered its order-of-magnitude estimate the same day, 2026-09-21, and positioning.md was never revisited against it — the doc still reads as if Q5 is unanswered.
+- dod:
+  - the "Local" alternative's paragraph in `positioning.md` is rewritten citing FR-20's actual finding (the estimate and its stated confidence), with an explicit decision: does it change the lead position, or only support a distribution angle (H3's Prague-first go-to-market, film-school free tier)
+  - the chosen position (live+offline-honest) is re-confirmed or revised using the same reasoning standard the doc already applies to its other alternatives
+  - failure case: if FR-20's estimate is too uncertain to move the decision, the doc says so explicitly and names what would move it (e.g. real interview data from FR-3, still blocked on INBOX #1) rather than leaving the stale "not yet known" text uncorrected
+
+## FR-71 · qa · Lighthouse mobile performance score for the public sheet at pilot scale
+- state: ready
+- gated: no
+- why: FR-52's own dod asked for "Lighthouse mobile performance score for the public sheet"; `docs/research/pilot-scale-2026-09.md:38` records it was never run ("no Lighthouse in the harness") and FR-52 was still closed `done` on its other numbers — a dropped dod bullet, not a filed gap, on the item that set the hackathon's own performance bar.
+- dod:
+  - run Lighthouse (or `lighthouse-ci` via CDP against the local build, `/opt/pw-browsers/chromium`) against the public sheet for the FR-52 60-crew/30-day production, mobile config, and record the performance score in `docs/research/pilot-scale-2026-09.md`
+  - any finding scoring under 90, or any specific audit flagged red, is filed as its own `ready` backlog item with the reproduction, not just noted in prose
+  - failure case: if Lighthouse cannot run in this environment either, the report says exactly why (not the same "no Lighthouse in the harness" line repeated unchanged) and names the next environment that could run it, the same convention FR-40/FR-66 use for environment-blocked checks
+
+## FR-72 · tech-lead · Measure push-notification publish latency at pilot scale, close ADR-007's own trigger
+- state: ready
+- gated: no
+- why: `docs/adr/ADR-007-web-push-notifications.md:147-149` names its own revisit trigger — "Sending is synchronous with publish; revisit if a production's crew count makes publish latency noticeable" — but FR-52's pilot-scale test (`frontend/tests/test_scale.py`) seeds 60 crew members with zero `PushSubscription` rows, so publish latency with many subscribed devices has never actually been measured, only asserted safe by design. The hackathon goal's "crew gets a push" step must hold at real pilot crew sizes, not just the 2-3 test users every other test uses.
+- dod:
+  - a backend test seeds 40-60 `PushSubscription` rows for one production (mocking `app.services.push.webpush`, the same pattern `backend/tests/test_push.py` already uses) and measures `publish_revision`'s wall-clock time at that scale
+  - the measured number is written into ADR-007's Consequences section, either closing the trigger with the real figure or, if it is in fact noticeable, filing a follow-up item for a background queue rather than redesigning now
+  - failure case: if the mocked transport makes the measurement meaningless (too fast to be representative of a real network), the test says so and proposes what a representative measurement would need, rather than reporting a falsely reassuring number
+
+## FR-73 · qa · Accessibility: 200% zoom and reflow on the crew sheet and personal link
+- state: ready
+- gated: no
+- why: `docs/research/a11y-2026-09.md:40` explicitly names this as not covered when FR-63 closed ("The layout is single-column and in relative units; not measured at 200 %") — WCAG 1.4.10 reflow, and a call sheet read at 05:00 with the phone's accessibility text scaling on must not clip content or force horizontal scroll.
+- dod:
+  - a Playwright test forces 200% zoom equivalent (per WCAG 1.4.10's own 320px-equivalent-viewport definition, or an actual browser zoom) on the crew sheet (EN and CS) and a personal link, and asserts no horizontal scroll and no clipped or overlapping text
+  - any real finding is fixed in the same PR or filed as a `ready` item naming the criterion
+  - the result (finding or clean pass) is appended to `docs/research/a11y-2026-09.md`'s "Not covered" section, converting it from "not measured" to a stated result
+  - failure case: a layout issue that only appears on user-typed content (e.g. an unusually long set name or address) is documented as such, per FR-63's own precedent, not "fixed" by truncating the AD's text
+
+## FR-74 · pm · Data retention policy: what happens to a wrapped production's data
+- state: ready
+- gated: no
+- why: FR-59's own dod (done) is explicit that this is missing — "honest about what is not in place yet: no DPA template, no formal retention schedule" — and `docs/ops/backup-restore.md` never addresses deletion either; a pilot AD who asks "where is this and who sees it" (FR-59's own framing, privacy.html) will also ask "and when does it go away."
+- dod:
+  - `docs/ops/data-retention.md` states a concrete policy: what happens to a production's contacts, photos, push subscriptions and read receipts after it is marked wrapped/cancelled for N months (propose a number, e.g. 12, with the reasoning), and how a crew member's removal already deletes vs. retains their data today (checked against the actual code, not assumed)
+  - a dry-run report script (`backend/scripts/retention_report.py`) lists what would be affected today under that policy — read-only, no deletion performed, no account needed
+  - `frontend/privacy.html` is updated if the actual retention behaviour it currently states turns out to differ, checked line by line the same way FR-59 checked it against the code
+  - failure case: the policy may propose a future automatic-deletion mechanism, but this item never implements deletion itself — that stays proposed text until the founder approves it via a new INBOX item, so nothing here can delete real pilot data
+
+## FR-75 · frontend · Weather suggestion: distinguish "too far ahead to forecast" from "provider down"
+- state: ready
+- gated: no
+- why: `frontend/src/editor/screens/DayEditor.tsx:209` shows the identical "No weather suggestion available for that date/location." whether Open-Meteo is unreachable or the shoot date is simply beyond its ~16-day forecast horizon (`backend/app/services/weather.py` returns `None` for both cases by design); an AD prepping a day three weeks out reads this as a bug in the tool. Serves BRIEF Q3 (wrong or missing information undermines trust) and the hackathon goal's "day with locations" step.
+- dod:
+  - the backend or frontend distinguishes the two cases (e.g. comparing the shoot date against today plus the provider's known forecast window, no new external call needed) rather than collapsing both into one generic message
+  - the editor shows "Too far ahead to forecast yet — try again closer to the date" for the horizon case and a distinct message for a real provider failure
+  - a unit or E2E test covers both messages
+  - failure case: if the two cases cannot be reliably distinguished without an extra provider call, the copy is at least changed to stop implying a specific failure ("no suggestion available yet" rather than "not available"), and the remaining ambiguity is stated in the PR
+
+## FR-76 · qa · Pin today's 60-scene/day schedule size as a regression ceiling
+- state: ready
+- gated: no
+- why: `docs/research/pilot-scale-2026-09.md` names the schedule list's row-virtualisation limit as a known future risk ("Above ~150 scenes a day it would need virtualising; noted, not planned") with no test guarding the size that is actually safe today; a later change (e.g. a new schedule column) could regress performance well before 150 scenes with nobody noticing until a real shoot day.
+- dod:
+  - a Playwright or unit performance test asserts the day screen with 60 scenes (FR-52's own pilot-scale figure) renders and stays interactive within the budget FR-52 measured, so a future regression fails CI instead of surfacing on a real set
+  - the test's number and source (FR-52's own measurement, cited by file) are documented in a comment so nobody re-derives it as a coincidence
+  - failure case: if the current numbers can't be reproduced deterministically in CI (timing flakiness), the test uses a generous multiple of FR-52's measured time (documented why) rather than being skipped or removed
