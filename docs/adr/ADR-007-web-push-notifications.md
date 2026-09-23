@@ -147,6 +147,32 @@ before relying on push for a live shoot day.
 - Sending is synchronous with publish; revisit if a production's crew
   count makes publish latency noticeable (a background queue is the
   obvious next step, not a redesign).
+  - **Measured 2026-09-23 (FR-72), `backend/tests/test_push_scale.py`, 50
+    subscribers (within the 40-60 pilot-scale range):** this codebase's own
+    per-subscriber overhead — the ORM query, one `DistributionLog` row per
+    subscriber, one commit, with `webpush()` mocked to return instantly —
+    is 89 ms total, not the bottleneck. But that number excludes the one
+    thing this trigger is actually about: a real HTTPS POST to a push
+    service. This sandbox has no live push service and no real subscribed
+    device (every FR-16-era shift note says the same), and a targeted
+    `WebSearch` this shift for a published "typical" Web Push endpoint
+    latency turned up nothing more specific than "under one second" (the
+    IETF `webpush-protocol` draft's push-window discussion) — not a number
+    worth treating as fact. So the trigger is **not closed with a verified
+    real-world figure**; instead, a stated assumption (150 ms/request, a
+    conservative low end for one synchronous HTTPS POST — the same order of
+    magnitude this module's own `_SEND_TIMEOUT_SECONDS = 5` treats as a
+    generous upper bound) projects **~7.7 s** of added, in-request latency
+    for 50 subscribers, because the loop in
+    `app/services/notifications.py`'s `_notify` is strictly serial. Even at
+    the low end of a plausible real latency, that is long enough for an AD
+    to notice "Publish" hanging. A representative measurement instead needs
+    either a live pilot with real subscribed devices, or a local server
+    that injects realistic connection/TLS/response delay — neither exists
+    yet. Given the projection is not reassuring even as a floor, this is
+    treated as the "noticeable" branch of the trigger: **FR-78** files the
+    follow-up (deliver notifications from a background task after the
+    publish response returns) rather than redesigning now.
 - `link_url` trusts the client to report its own URL truthfully at
   subscribe time; this is the same trust boundary the personal-token
   link itself already carries (anyone with the link can already read the
