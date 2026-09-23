@@ -41,18 +41,48 @@ a replacement, not a wedge (`competitive-teardown.md`, "What this means
 for BRIEF.md's open questions"). Keeps a supporting role: without it, the
 chosen position below is not credible either.
 
-**3. Local: "built for Prague / Czech productions."** Rejected as the lead
-position: BRIEF.md Q5 (is Prague dense enough for word-of-mouth
-distribution) is still open — FR-20 has not run yet — so this repo cannot
-yet back a locality claim with a number. It may become a distribution
-angle (H3's Prague-first go-to-market, film-school free tier) once FR-20
-answers Q5, but distribution channel and product positioning are
-different questions; this draft is about the latter.
+**3. Local: "built for Prague / Czech productions."** Still rejected as the
+lead position, now on FR-20's actual finding rather than an open question.
+FR-20 (`docs/research/prague-market-sizing.md`, 2026-09-21) answered
+BRIEF.md Q5, but with an order-of-magnitude estimate, not a count: no
+public source publishes the 30-day active-production figure Q5 asks for,
+so FR-20 built one from proxies (~88 Czech films completing per year,
+several large foreign productions confirmed overlapping the current
+window, a real but unquantified annual FAMU output) and put the
+Prague-region count of active productions in any 30-day window at "low
+tens to low hundreds," with large uncertainty on the top end because the
+most numerous category — student, ad, and micro-budget shoots — is
+exactly what none of the sources track. Measured against a commonly-cited
+15–20% word-of-mouth critical-mass threshold (Rogers' diffusion research,
+via a marketing-OER paraphrase FR-20 itself flags for re-verification),
+FR-20's own conclusion is explicit: this "does not confirm Prague is dense
+enough; it shows the threshold is not obviously out of reach for a market
+this size" — weaker than a locality lead position needs.
+
+**Decision: this does not move "Local" to the lead position.** The
+estimate is order-of-magnitude, not a count, with its widest uncertainty
+in exactly the category (smallest, most numerous productions) that would
+matter most for word-of-mouth density — too uncertain to carry a locality
+claim as the product's headline. It continues to support only a
+distribution angle (H3's Prague-first go-to-market, the film-school free
+tier), never the position itself; distribution channel and product
+positioning stay different questions, and this draft is about the latter.
+What would move it: FR-20's own named follow-ups (a direct read of
+`filmcommission.cz/en/statistics/` or `productionlist.com`'s actual date
+range landing a real count instead of an estimate), or real interview data
+from FR-3 — still blocked on INBOX #1 — including the estimation question
+FR-20 proposed adding to that script.
 
 **4. Live and offline-honest: "the call sheet that still works when the
 set has no signal."** Chosen. Reasoning below.
 
 ## Chosen position
+
+Re-confirmed against FR-20 (2026-09-23, FR-70): the same reasoning standard
+applied to alternative 3 above applies here — FR-20's order-of-magnitude,
+high-uncertainty estimate is not strong enough evidence to unseat the
+chosen position either, so live+offline-honest stands as drafted below,
+unrevised.
 
 **"The call sheet that's actually live — and honest the moment it isn't."**
 
