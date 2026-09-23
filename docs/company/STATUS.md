@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-23 10:00 (10:00 shift)
+Updated: 2026-09-23 11:00 (11:00 shift)
 
 ## today
 
@@ -48,7 +48,7 @@ Full detail in `LOG.md`; condensed here to keep this file readable. Nine shifts 
 - needs_approval: no.
 
 ## marketing
-- summary: unchanged from 2026-09-22 — FR-6/FR-20/FR-25/FR-41/FR-54 all `done`. Today's plan adds FR-70 (revisit the positioning doc's stale "Local" rejection). Sending FR-41's outreach drafts and FR-3's own invitation (INBOX #1) both still wait on the founder.
-- tests: n/a.
+- summary: 11:00 shift took FR-70 per today's plan: `docs/marketing/positioning.md`'s "Local" alternative rewritten citing FR-20's actual finding (order-of-magnitude estimate, "low tens to low hundreds" active Prague productions, largest uncertainty in the untracked student/ad/micro-budget category) and FR-20's own conclusion ("does not confirm Prague is dense enough... not obviously out of reach"). Decision: this does not move "Local" to the lead position — the estimate is too uncertain to carry a locality headline; it continues to support only the distribution angle (H3 Prague-first go-to-market, film-school free tier). Named what would move it: FR-20's own follow-ups or FR-3 interview data (still blocked on INBOX #1). Chosen position (live+offline-honest) separately re-confirmed unrevised. PR #178 (`docs/fr-70-positioning-local-revisit`), doc-only, auto-merge enabled. FR-70 set to `done`. Sending FR-41's outreach drafts and FR-3's own invitation (INBOX #1) both still wait on the founder.
+- tests: n/a — doc-only change; `python scripts/check_company_docs.py docs/company` clean.
 - blockers: none.
-- needs_approval: no new items this brief.
+- needs_approval: no new items this shift.
