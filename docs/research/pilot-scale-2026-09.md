@@ -179,6 +179,45 @@ Every category from FR-71's original 69/100/96/90 baseline is now at or above th
 red audits (`max-potential-fid` 44, `forced-reflow-insight`, `network-dependency-tree-insight`) are informational/
 zero-weighted and pre-existing, not from this fix. Full report overwritten at `docs/research/lighthouse-pilot-scale.json`.
 
+## FR-85 (17:00 shift, 2026-09-24): Pages cache headers on hashed assets — local-test-server artifact, not a real gap
+
+A prior local-only check would have had to run against a bare static-file server (Python's
+`http.server`, or Vite's own unconfigured preview server), not the real GitHub Pages CDN, so a
+"no cache headers" finding from one of those risked being an artifact of the test harness rather
+than a fact about the live deployment. This sandbox's own egress proxy blocks
+`sandovabarbora.github.io` (confirmed again this shift), so `scripts/check_pages_cache_headers.py`
+(PR #212) ran instead from `.github/workflows/pilot-readiness.yml` on a GitHub Actions runner with
+open egress — the same pattern FR-66/67/68/83 used — dispatched once from `main` after the PR merged
+(run [36019478245](https://github.com/sandovabarbora/filmrunner/actions/runs/36019478245)).
+
+It discovered the live build's real hashed asset URLs from `index.html`/`editor.html`/`landing.html`
+(the hash changes every build, nothing hardcoded) and fetched each one 3 times to tell a stable
+header apart from CDN edge-cache warm-up variance, per the item's own failure case:
+
+| Asset | `Cache-Control` (3 fetches) | ETag | `x-cache` (3 fetches) |
+|---|---|---|---|
+| `editor-BOjTVerP.css` | `max-age=600`, stable | present, stable | MISS → HIT → HIT |
+| `editor-C63y0A-1.js` | `max-age=600`, stable | present, stable | MISS → HIT → HIT |
+| `landing-1Z_E4lnT.css` | `max-age=600`, stable | present, stable | MISS → HIT → HIT |
+| `landing-CO3uC06V.js` | `max-age=600`, stable | present, stable | MISS → MISS → HIT |
+| `modulepreload-polyfill-B5Qt9EMX.js` | `max-age=600`, stable | present, stable | MISS → HIT → HIT |
+
+**Conclusion: local-test-server artifact, not a real gap.** GitHub Pages does send `Cache-Control`
+and a stable `ETag` for every hashed asset checked; the `x-cache` progression (a cold `MISS` warming
+to `HIT` on later fetches, once needing a second `MISS`) is exactly the edge-cache warm-up variance
+the dod's failure case named, not missing caching. Self-tested locally first (not committed, not
+asserted as a live finding): a bare Python `http.server` serving a real copy of `frontend/dist` under
+`/filmrunner/` sends no `Cache-Control` at all for the same files — confirming that *is* where a
+"no caching" finding would have come from, had one been reported without checking the real CDN.
+
+One real, secondary observation, not filed as its own backlog item: `max-age=600` (10 minutes) is
+short for a content-hashed filename that never changes once built — a browser could safely cache it
+for a year (`max-age=31536000, immutable`) since a new build always ships a new hash. This is a
+GitHub Pages platform default (not configurable from this repo — Pages serves no custom response
+headers), costs at most one revalidation round-trip every 10 minutes per asset per visitor, and
+600s already prevents the concern this item was raised to check (assets re-fetched from scratch on
+every load). Not worth a `ready` item on its own.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
