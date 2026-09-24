@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.auth import Principal, require_api_token, require_principal
@@ -26,9 +26,8 @@ from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
 from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
-from app.services.notifications import NotificationSummary, notify_day_cancelled, notify_subscribers
+from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +40,6 @@ def _audit_label(principal: Principal, body_value: str | None) -> str:
     if principal.kind == "user":
         return principal.label
     return f"service:{body_value or 'unknown'}"
-
-
-def _summary_read(summary: NotificationSummary) -> NotificationSummaryRead:
-    return NotificationSummaryRead(
-        attempted=summary.attempted,
-        delivered=summary.delivered,
-        failed=[DeliveryFailureRead(crew_member_name=f.crew_member_name, reason=f.reason) for f in summary.failed],
-    )
 
 
 def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
@@ -75,6 +66,7 @@ def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
 def create_call_sheet_endpoint(
     production_id: uuid.UUID,
     payload: CallSheetCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     principal: Principal = Depends(require_principal),
 ) -> CallSheet:
@@ -83,11 +75,11 @@ def create_call_sheet_endpoint(
         call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    summary = notify_subscribers(db, call_sheet, call_sheet.current_revision) if not payload.draft else NotificationSummary()
-    read = _read_with_contacts(db, call_sheet.id)
-    if read.current_revision is not None:
-        read.current_revision.notifications = _summary_read(summary)
-    return read
+    # FR-78: delivery runs after this response is sent (see notifications.py); the AD
+    # checks who was told via the history panel, not this response.
+    if not payload.draft and call_sheet.current_revision is not None:
+        background_tasks.add_task(notify_subscribers_in_background, call_sheet.id, call_sheet.current_revision.id)
+    return _read_with_contacts(db, call_sheet.id)
 
 
 @router.put("/call-sheets/{call_sheet_id}/actuals", response_model=CallSheetRead)
@@ -133,6 +125,7 @@ def delete_draft_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_
 def publish_revision_endpoint(
     call_sheet_id: uuid.UUID,
     payload: CallSheetRevisionCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     principal: Principal = Depends(require_principal),
 ):
@@ -146,14 +139,20 @@ def publish_revision_endpoint(
         # 26 revisions/day exhausted — a real operational limit, not a bug,
         # so it's a 409 (Conflict) rather than a 500.
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    summary = notify_subscribers(db, call_sheet, revision)
-    read = CallSheetRevisionRead.model_validate(revision)
-    read.notifications = _summary_read(summary)
-    return read
+    # FR-78: publish no longer waits ~7.7s (50 subscribers) on delivery; it runs
+    # in the background once this response is already on its way. The AD sees
+    # who was told via the history panel (build_history), not this response.
+    background_tasks.add_task(notify_subscribers_in_background, call_sheet.id, revision.id)
+    return CallSheetRevisionRead.model_validate(revision)
 
 
 @router.post("/call-sheets/{call_sheet_id}/cancel", response_model=CallSheetRead)
-def cancel_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
+def cancel_call_sheet(
+    call_sheet_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_principal),
+) -> CallSheetRead:
     """FR-34: the day is off. The sheet stays readable with a CANCELLED banner and every subscriber is told; nothing is deleted."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
@@ -161,11 +160,8 @@ def cancel_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), p
         call_sheet.status = CallSheetStatus.CANCELLED
         db.commit()
         logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.label)
-    summary = notify_day_cancelled(db, call_sheet)
-    read = _read_with_contacts(db, call_sheet_id)
-    if read.current_revision is not None:
-        read.current_revision.notifications = _summary_read(summary)
-    return read
+    background_tasks.add_task(notify_day_cancelled_in_background, call_sheet.id)
+    return _read_with_contacts(db, call_sheet_id)
 
 
 @router.post("/call-sheets/{call_sheet_id}/restore", response_model=CallSheetRead)

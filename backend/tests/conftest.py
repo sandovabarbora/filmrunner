@@ -87,6 +87,29 @@ def auth_headers():
     return {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
 
+@pytest.fixture()
+def background_tasks_share_db(db_session, monkeypatch):
+    """FR-78: `app/services/notifications.py`'s *_in_background helpers open
+    their own `app.database.SessionLocal()` — correct in production, where a
+    request's own session has already committed for real by the time a
+    background task runs. In a test, `db_session` never really commits (see
+    its own docstring: commits just close a SAVEPOINT on a connection whose
+    outer transaction is rolled back at teardown), so a background task's
+    separate connection cannot see any of it and silently no-ops. Tests that
+    exercise a code path ending in a background notify task need this so
+    their assertions see what it wrote."""
+    from app.services import notifications
+
+    class _SharedSessionProxy:
+        def close(self) -> None:
+            pass  # the real session is closed by the db_session fixture itself
+
+        def __getattr__(self, name):
+            return getattr(db_session, name)
+
+    monkeypatch.setattr(notifications, "SessionLocal", lambda: _SharedSessionProxy())
+
+
 @pytest.fixture(autouse=True)
 def _fresh_rate_limit_windows():
     """FR-51: every test starts with empty sliding windows, so the suite's own volume of public calls

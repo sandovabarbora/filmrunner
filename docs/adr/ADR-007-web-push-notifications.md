@@ -173,6 +173,23 @@ before relying on push for a live shoot day.
     treated as the "noticeable" branch of the trigger: **FR-78** files the
     follow-up (deliver notifications from a background task after the
     publish response returns) rather than redesigning now.
+  - **Closed 2026-09-24 (FR-78):** `create_call_sheet_endpoint`,
+    `publish_revision_endpoint` and `cancel_call_sheet`
+    (`app/routers/call_sheets.py`) now queue delivery on a FastAPI
+    `BackgroundTasks` job (`app/services/notifications.py`'s
+    `notify_subscribers_in_background` / `notify_day_cancelled_in_background`,
+    each opening its own DB session since a background task can outlive the
+    request's own) instead of awaiting it — no new queue infrastructure, as
+    anticipated above. The delivery summary no longer rides the publish/cancel
+    response (nothing is known yet at that point); the AD reads it off the
+    FR-50 history panel once the background task has committed
+    (`build_history`'s `notifications` field, backed by the same
+    `DistributionLog` rows). Proven directly in
+    `backend/tests/test_push_scale.py::test_endpoint_returns_before_the_background_task_runs`
+    by calling the router function with a real `BackgroundTasks()` and
+    inspecting it, unexecuted, right after the function returns — `TestClient`
+    itself cannot show this, since it drives the whole ASGI request,
+    background task included, to completion inside one blocking call.
 - `link_url` trusts the client to report its own URL truthfully at
   subscribe time; this is the same trust boundary the personal-token
   link itself already carries (anyone with the link can already read the

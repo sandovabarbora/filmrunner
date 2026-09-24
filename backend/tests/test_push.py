@@ -20,6 +20,11 @@ from app.services.notifications import notify_subscribers
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
+# FR-78: delivery now happens in a background task with its own DB session;
+# see conftest.py's background_tasks_share_db for why tests need this to
+# observe what it wrote.
+pytestmark = pytest.mark.usefixtures("background_tasks_share_db")
+
 
 @pytest.fixture()
 def vapid_configured(monkeypatch):
@@ -39,6 +44,13 @@ def _setup(client: TestClient):
         headers=AUTH,
     ).json()
     return pid, member
+
+
+def _notifications(client: TestClient, call_sheet_id: str) -> dict | None:
+    """FR-78: the delivery summary moved from the publish response to the
+    history panel, backed by the same DistributionLog rows."""
+    history = client.get(f"/api/v1/call-sheets/{call_sheet_id}/history", headers=AUTH).json()
+    return history[-1]["notifications"]
 
 
 def _subscribe_payload(endpoint="https://push.example.com/ep1"):
@@ -105,7 +117,7 @@ class TestNotifySubscribers:
             json={"shoot_date": "2026-09-22", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
             headers=AUTH,
         ).json()
-        assert sheet["current_revision"]["notifications"] == {"attempted": 0, "delivered": 0, "failed": []}
+        assert _notifications(client, sheet["id"]) is None  # no subscribers: no DistributionLog row, not a zeroed summary
 
     def test_not_configured_is_a_silent_no_op_even_with_subscribers(self, client: TestClient) -> None:
         pid, member = _setup(client)
@@ -115,7 +127,7 @@ class TestNotifySubscribers:
             json={"shoot_date": "2026-09-22", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
             headers=AUTH,
         ).json()
-        assert sheet["current_revision"]["notifications"] == {"attempted": 0, "delivered": 0, "failed": []}
+        assert _notifications(client, sheet["id"]) is None
 
     def test_successful_delivery_is_logged(self, client: TestClient, db_session, vapid_configured) -> None:
         pid, member = _setup(client)
@@ -127,7 +139,7 @@ class TestNotifySubscribers:
                 json={"shoot_date": "2026-09-22", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
                 headers=AUTH,
             ).json()
-        assert sheet["current_revision"]["notifications"] == {"attempted": 1, "delivered": 1, "failed": []}
+        assert _notifications(client, sheet["id"]) == {"attempted": 1, "delivered": 1, "failed": []}
         assert mock_webpush.call_count == 1
         assert mock_webpush.call_args.kwargs["data"]
         assert "New call sheet: crew call 06:30" in mock_webpush.call_args.kwargs["data"]
@@ -168,7 +180,7 @@ class TestNotifySubscribers:
                 headers=AUTH,
             )
         assert resp.status_code == 201  # publish itself is not blocked by a notification failure
-        notifications = resp.json()["current_revision"]["notifications"]
+        notifications = _notifications(client, resp.json()["id"])
         assert notifications["delivered"] == 0
         assert notifications["failed"] == [{"crew_member_name": "Jana Novotná", "reason": "push service returned 500"}]
         logs = db_session.query(DistributionLog).filter(DistributionLog.channel == DistributionChannel.PUSH).all()

@@ -33,8 +33,16 @@ export interface CallSheetRevision {
   schedule_items: ScheduleItem[];
   crew_calls?: CrewCallEntry[];
   cast_calls?: CastCallEntry[];
-  /** Present on publish and cancel responses: how many subscribed phones were told (FR-16). */
-  notifications?: { attempted: number; delivered: number; failed: { crew_member_name: string; reason: string }[] } | null;
+}
+
+/** How many subscribed phones a notification attempt reached (FR-16). Since
+ * FR-78, delivery runs in a background task after publish/cancel responds,
+ * so this no longer rides that response — it shows up on a HistoryEntry once
+ * the background task commits. */
+export interface NotificationSummary {
+  attempted: number;
+  delivered: number;
+  failed: { crew_member_name: string; reason: string }[];
 }
 
 export interface ContactCard {
@@ -328,6 +336,8 @@ export interface HistoryEntry {
   created_by: string;
   changes: RevisionChange[];
   opened: number;
+  /** null: no delivery attempt on record yet for this revision (FR-78). */
+  notifications?: NotificationSummary | null;
 }
 
 /** FR-57: candidates out of an old call sheet PDF; the AD confirms in the crew preview. */

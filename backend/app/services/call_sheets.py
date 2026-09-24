@@ -17,8 +17,9 @@ from sqlalchemy.orm import Session
 from app.models.production import CastMember, CrewMember, Location
 from app.models.push import PushSubscription
 from app.models.seen import RevisionView
-from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
+from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, DistributionChannel, DistributionLog, ScheduleItem
 from app.schemas.call_sheet import CallSheetContacts, CastCallEntryCreate, CastCallRow, ContactCard, CrewCallEntryCreate, SheetLocation, CrewDayRef, CrewNextDay, HistoryEntry, PersonalCallRow, PersonalSheet, OpenedSummary, SeenEntry, SeenReport, CallSheetCreate, CallSheetRevisionCreate, RevisionChange, RevisionSummary
+from app.schemas.push import DeliveryFailureRead, NotificationSummaryRead
 from app.services import weather
 from app.services.astronomy import sunrise_sunset
 
@@ -525,8 +526,26 @@ def build_history(db: Session, call_sheet: CallSheet) -> list[HistoryEntry]:
             created_by=revision.created_by or "unknown",
             changes=revision_changes(before, revision),
             opened=opened,
+            notifications=_push_summary_for_revision(db, revision.id),
         ))
     return entries
+
+
+def _push_summary_for_revision(db: Session, revision_id: uuid.UUID) -> NotificationSummaryRead | None:
+    """FR-78: push delivery moved to a background task run after the publish
+    response is sent (app/services/notifications.py's *_in_background wrappers),
+    so the AD checks it here rather than in that response. Reads the same
+    DistributionLog rows the delivery loop itself writes; None means no attempt
+    is on record yet (still in flight, push not configured, or nobody subscribed)."""
+    rows = (
+        db.query(DistributionLog)
+        .filter(DistributionLog.revision_id == revision_id, DistributionLog.channel == DistributionChannel.PUSH)
+        .all()
+    )
+    if not rows:
+        return None
+    failed = [DeliveryFailureRead(crew_member_name=row.contact.name, reason=row.error) for row in rows if row.error is not None]
+    return NotificationSummaryRead(attempted=len(rows), delivered=len(rows) - len(failed), failed=failed)
 
 
 def build_opened_summary(db: Session, call_sheet: CallSheet) -> OpenedSummary | None:

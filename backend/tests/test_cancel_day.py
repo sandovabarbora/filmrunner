@@ -13,6 +13,10 @@ from app.services.call_sheets import next_day_for_token
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
+# FR-78: delivery now happens in a background task with its own DB session;
+# see conftest.py's background_tasks_share_db for why this test needs it.
+pytestmark = pytest.mark.usefixtures("background_tasks_share_db")
+
 
 @pytest.fixture()
 def vapid_configured(monkeypatch):
@@ -55,7 +59,11 @@ def test_cancel_tells_every_subscriber(client: TestClient, vapid_configured) -> 
         day = _day(client, pid, "2026-09-23", 1)
     with patch("app.services.push.webpush") as mock_webpush:
         r = client.post(f"/api/v1/call-sheets/{day['id']}/cancel", headers=AUTH)
-    assert r.json()["current_revision"]["notifications"] == {"attempted": 1, "delivered": 1, "failed": []}
+    # Cumulative for this revision (FR-78's own caveat): one attempt from
+    # publishing REV A, a second from cancelling it — cancelling never
+    # creates a new revision, so both land on the same history entry.
+    history = client.get(f"/api/v1/call-sheets/{day['id']}/history", headers=AUTH).json()
+    assert history[-1]["notifications"] == {"attempted": 2, "delivered": 2, "failed": []}
     assert "CANCELLED" in mock_webpush.call_args.kwargs["data"]
 
 

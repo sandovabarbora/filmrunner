@@ -284,10 +284,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!draft?.callSheetId) return;
     setBusy(true);
     try {
-      const sheet = await api.cancelCallSheet(conn, draft.callSheetId);
+      await api.cancelCallSheet(conn, draft.callSheetId);
       setDayStatus("cancelled"); setConfirmCancel(false);
-      const n = sheet.current_revision?.notifications;
-      setNotice({ kind: "ok", text: L("Day {n} cancelled.", { n: draft.day_number }) + (n ? L(" Told {delivered} of {attempted} subscribed phones.", { delivered: n.delivered, attempted: n.attempted }) : "") + L(" The sheet now says so; the link still works.") });
+      setNotice({ kind: "ok", text: L("Day {n} cancelled.", { n: draft.day_number }) + L(" The sheet now says so; the link still works.") });
     } catch (err) {
       setNotice(noticeFromError(err, L("Could not cancel the day")));
     } finally {
@@ -585,6 +584,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   {" · "}{new Date(h.created_at).toLocaleString()}
                   {" · "}{h.created_by}
                   {" · "}{L("{n} opened", { n: h.opened })}
+                  {h.notifications && (
+                    h.notifications.failed.length > 0
+                      ? <>{" · "}{L("{delivered} of {attempted} notified, {failed} failed", { delivered: h.notifications.delivered, attempted: h.notifications.attempted, failed: h.notifications.failed.length })}</>
+                      : <>{" · "}{L("{delivered} of {attempted} notified", { delivered: h.notifications.delivered, attempted: h.notifications.attempted })}</>
+                  )}
                   {h.changes.length > 0 && (
                     <ul className="history-changes">
                       {h.changes.map((c) => (
