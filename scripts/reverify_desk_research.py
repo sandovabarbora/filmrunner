@@ -87,6 +87,27 @@ CLAIMS = [
         "checks": ["annual", "$", "/year", "save"],
     },
     {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "yamdu-capterra-reviews",
+        "claim": "Yamdu: Capterra reviews describe re-entering cast/crew per production on lower tiers instead of carrying contacts forward",
+        "url": "https://www.capterra.com/p/186025/Yamdu/reviews/",
+        "checks": ["contact", "tier", "re-enter", "carry"],
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "sethero-export-data",
+        "claim": "SetHero: Exporting Data article names people/cast/crew/scenes/locations lists; call-sheet templates and revision history not named — unverified whether those export",
+        "url": "https://help.sethero.com/en/articles/1513672-exporting-data",
+        "checks": ["template", "revision", "export", "call sheet"],
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "movie-magic-file-docs",
+        "claim": "Movie Magic Scheduling's own file-format docs (neutral source, vs. the earlier competitor-page framing of 'locked in')",
+        "url": "https://mms-docs.ep.com/ScheduleFiles/MovieMagicSchedulingFiles.html",
+        "checks": ["MMSX", "MMS10", "proprietary", "format"],
+    },
+    {
         "doc": "docs/research/prague-market-sizing.md",
         "id": "czech-film-commission-stats",
         "claim": "Czech Film Commission's own statistics page — the single most likely authoritative source for a Prague production count",
