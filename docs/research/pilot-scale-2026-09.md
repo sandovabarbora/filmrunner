@@ -130,6 +130,55 @@ changed besides the one meta tag) rather than a regression from this fix, consis
 Failure case checked: the description is a single hardcoded generic line, never interpolated from a
 production or day, so no build touches or varies it per production.
 
+## FR-81 (13:00 shift, 2026-09-24): favicon 404 console error
+
+`errors-in-console` (best-practices audit) was failing (score 0) on one logged error:
+`Failed to load resource: 404 (File not found)` for `/favicon.ico`, on every load of the public sheet — none
+of `index.html`, `landing.html`, `editor.html`, `privacy.html` linked a favicon, confirmed by grep before the fix.
+
+Fix: added `<link rel="icon" href="/icon.svg" type="image/svg+xml" />` to all four top-level HTML entry points
+(the three named in the finding plus `privacy.html`, also a real build entry per `vite.config.ts`'s
+`rollupOptions.input`). Failure case (older Safari lacking SVG favicon support): a second
+`<link rel="icon" href="/icon.png" type="image/png" />` follows each SVG link — a browser that doesn't
+recognise the SVG `type` falls through to the PNG one, the standard two-link fallback pattern. `icon.png`
+generated from `icon.svg`'s own design (dark rounded square, "CS" in the same yellow, DejaVu Sans Mono) with
+Pillow, since no SVG rasteriser (`rsvg-convert`/`cairosvg`/ImageMagick) was available in this sandbox.
+
+Re-ran the identical script against the rebuilt `dist/`:
+
+| Category | Before | After |
+|---|---|---|
+| Performance | 90 | 89 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | **100** |
+| SEO | 100 | 100 |
+
+`errors-in-console` audit score 0 → 1, zero items (`docs/research/lighthouse-pilot-scale.json`, overwritten by
+this run). Performance moved 90 → 89, both within the same CI-machine-noise band FR-77/FR-80 already noted
+(the only red audits this run, `max-potential-fid` and two zero-weighted insights, are unrelated to a favicon
+link tag).
+
+## FR-81 merged (16:00 shift, 2026-09-24): combined score after resolving a stale PR
+
+PR #202 (FR-81) had sat open since 13:00 with auto-merge enabled but never fired — `docs/company/BACKLOG.md`
+had it marked `done`, but the merge itself never happened, so the fix was not actually on `main`. Its only
+real conflict was this file's own generated JSON report (`docs/research/lighthouse-pilot-scale.json`), rewritten
+independently by every later Lighthouse-running shift (FR-80, FR-82); the favicon HTML/PNG changes merged
+cleanly. Resolved in the branch (no force-push) and re-ran `lighthouse_pilot_scale.py` fresh against the
+merged tree (favicon links + FR-82's accessible-name fix + FR-86's unrelated backend enum fix, all together)
+rather than hand-resolving the generated JSON:
+
+| Category | Score |
+|---|---|
+| Performance | 92 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
+
+Every category from FR-71's original 69/100/96/90 baseline is now at or above the dod's 90 line. Remaining
+red audits (`max-potential-fid` 44, `forced-reflow-insight`, `network-dependency-tree-insight`) are informational/
+zero-weighted and pre-existing, not from this fix. Full report overwritten at `docs/research/lighthouse-pilot-scale.json`.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
