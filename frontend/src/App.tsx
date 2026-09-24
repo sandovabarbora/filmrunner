@@ -230,7 +230,9 @@ export function App() {
         </div>
       )}
       {(!result || result.kind === "error" || result.kind === "not_found") && <div id="sheet" className="sheet" />}
-      {mode.kind !== "dev" && <p className="privacy-line"><a href="privacy.html" id="privacyLink">{L("privacy")}</a></p>}
+      {/* FR-77: only appears once loading is settled (result, error, or not-found), so it never sits
+          pre-rendered above the ~10,000px sheet swap and gets pushed down as a layout shift. */}
+      {mode.kind !== "dev" && !loading && <p className="privacy-line"><a href="privacy.html" id="privacyLink">{L("privacy")}</a></p>}
       </main>
     </div>
   );
