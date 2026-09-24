@@ -138,7 +138,8 @@ export function App() {
       <header className="masthead">
         <h1>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
-        <button type="button" className="lang-toggle" id="langToggle" onClick={switchLang} aria-label={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{L("lang.toggle")}</button>
+        {/* FR-82: no aria-label — the printed target-language name (e.g. "Čeština") is the accessible name too, so it can never drift from what's on screen; `title` carries the same explanation as a hover tooltip. */}
+        <button type="button" className="lang-toggle" id="langToggle" onClick={switchLang} title={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{L("lang.toggle")}</button>
       </header>
       <p className="print-meta" aria-hidden="true">{L("print.meta", { when: new Date().toLocaleString() })}</p>
       <main id="main">

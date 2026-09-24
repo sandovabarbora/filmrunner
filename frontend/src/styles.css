@@ -216,6 +216,8 @@ tbody tr:last-child td { border-bottom: 1px solid var(--rule-strong); }
 .contact-btn.phone { font-family: var(--mono); }
 .contact-btn.wa { border-color: #25d366; color: #0d7a3a; }
 .contact-btn .btn-icon { font-size: 1rem; line-height: 1; }
+/* FR-82: generated content, not a text node — never part of the button's own accessible name computation. */
+.contact-btn.copy::before { content: "⧉"; font-size: 1rem; line-height: 1; }
 .contact .phone.none { color: var(--muted); font-family: var(--sans); font-size: 0.8125rem; }
 .hospital { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-2); }
 .hospital .k { color: var(--muted); }

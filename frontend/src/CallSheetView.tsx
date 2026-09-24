@@ -310,7 +310,12 @@ function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
   );
 }
 
-/** A contact's number, copyable without selecting text with a wet thumb; a brief "Copied" confirms it worked. */
+/**
+ * A contact's number, copyable without selecting text with a wet thumb; a brief "Copied" confirms it worked.
+ * FR-82: the ⧉ icon is a CSS `::before` (see `.contact-btn.copy`), never a text node — a glyph character
+ * inside the button's own visible text can never be reflected in `aria-label`, which is what caused axe's
+ * label-content-name-mismatch here in the first place.
+ */
 function ContactCopyButton({ phone, name, lang }: { phone: string; name: string; lang: Lang }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -324,7 +329,7 @@ function ContactCopyButton({ phone, name, lang }: { phone: string; name: string;
       }}
       aria-label={`${t(lang, "contacts.copy")} ${name}`}
     >
-      <span className="btn-icon" aria-hidden="true">⧉</span>{copied ? t(lang, "contacts.copied") : t(lang, "contacts.copy")}
+      {copied ? t(lang, "contacts.copied") : t(lang, "contacts.copy")}
     </button>
   );
 }
