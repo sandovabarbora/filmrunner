@@ -1,0 +1,34 @@
+# FR-83: re-verify FR-2/FR-20/FR-21 desk-research claims that are marked
+# "unverified" purely because this routine's own sandbox proxy blocks direct
+# fetches of vendor and public-data domains (confirmed again by every one of
+# those items' own shifts). GitHub's runners have open egress, the same
+# pattern FR-66/67/68 already used for the live stack and the astronomy
+# formula — this job points that same open egress at the research docs'
+# own cited-but-unreachable pages instead.
+#
+# workflow_dispatch only: the underlying vendor pages change rarely, no need
+# for a recurring schedule (unlike pilot-readiness.yml, which watches a live
+# service).
+name: desk research re-verify (FR-83)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reverify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch cited pages and report matches
+        run: python3 scripts/reverify_desk_research.py
+
+      - name: Upload the raw report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-research-reverify
+          path: docs/research/desk-research-reverify.json
