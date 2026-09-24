@@ -1,10 +1,10 @@
 # Status
 
-Updated: 2026-09-24 09:19 (09:00 shift)
+Updated: 2026-09-24 10:24 (10:00 shift)
 
 ## today
 
-Updated: 2026-09-24 08:00 (morning brief); 09:00 slot done, see below.
+Updated: 2026-09-24 08:00 (morning brief); 09:00 and 10:00 slots done, see below.
 
 Hackathon week goal (founder, 2026-09-21): pilot-ready by Friday. A Prague AD can run a real shoot day end to end: sign in with a code, crew with photos, day with locations, publish, crew gets a push, personal links, PDF; and a landing page from the FR-6 positioning. Shifts hourly 09 to 17, everything with green `ci` auto-merges (TEAM.md hackathon mode, through 2026-09-25).
 
@@ -12,7 +12,7 @@ The `ready`+`gated:no/partial` queue held only FR-77, FR-78, FR-79 at plan time 
 
 Plan (priority order = file order in BACKLOG.md):
 - 09:00 — FR-77 (frontend): give the public sheet's loading skeleton realistic height so it stops causing a 0.843 (poor) Cumulative Layout Shift at pilot scale, re-measuring with Lighthouse after. **Done** (PR #194, auto-merge enabled): CLS 0.843 → 0.014, Performance 69 → 94.
-- 10:00 — FR-78 (tech-lead): move push-notification sending onto a FastAPI background task so publishing a revision no longer waits ~7.7s (50 subscribers, conservative estimate) on delivery.
+- 10:00 — FR-78 (tech-lead): move push-notification sending onto a FastAPI background task so publishing a revision no longer waits ~7.7s (50 subscribers, conservative estimate) on delivery. **Done** (PR #196, auto-merge enabled).
 - 11:00 — FR-79 (tech-lead): `ON DELETE CASCADE` for `push_subscriptions.crew_member_id`, so removing a crew member with notifications on no longer 500s.
 - 12:00 — FR-80 (frontend): add the missing `<meta name="description">` to the public sheet page (`index.html`), closing Lighthouse's SEO gap.
 - 13:00 — FR-81 (frontend): stop the favicon 404 console error by linking the existing `icon.svg` from every HTML entry point.
@@ -21,7 +21,7 @@ Plan (priority order = file order in BACKLOG.md):
 - 16:00 — FR-84 (tech-lead): cut render-blocking CSS and the 38%-unused JS chunk Lighthouse flagged on the public sheet's initial load.
 - 17:00 — FR-85 (qa): confirm whether the real GitHub Pages deployment actually lacks cache headers on hashed assets, or if that was only a local-test-server artifact; always sends the day summary regardless of what else happened.
 
-Not scheduled today: FR-28 stays correctly `blocked` on the founder's own phone/SMTP steps (INBOX #3). FR-69 shows `state: in-progress` in BACKLOG.md but its own note and PR #176 (confirmed merged 2026-09-23 08:22 UTC) show the whole dod already delivered — stale bookkeeping, not remaining work; whichever shift notices first should just flip it to `done`, no separate slot needed. If a shift finds the queue already re-thinned by a parallel (non-routine) session, it acts as pm per TEAM.md §7 rather than sitting idle.
+Not scheduled today: FR-28 stays correctly `blocked` on the founder's own phone/SMTP steps (INBOX #3). FR-69's stale `in-progress` bookkeeping (PR #176 confirmed merged 2026-09-23 08:22 UTC, whole dod delivered) was flipped to `done` by the 10:00 shift. If a shift finds the queue already re-thinned by a parallel (non-routine) session, it acts as pm per TEAM.md §7 rather than sitting idle.
 
 ### Yesterday (2026-09-23), for reference
 
@@ -37,7 +37,9 @@ Full detail in `LOG.md`; condensed here to keep this file readable. The morning 
 
 ## engineering (tech-lead + frontend + qa)
 - summary: carried over from 2026-09-23 — FR-68/69/71/72/73/75/76 all `done` (full detail in `LOG.md`); FR-77/78/79 opened as findings from that day's work, planned into today. 09:00 shift 2026-09-24 (frontend) took FR-77 per today's plan: root cause traced in `frontend/src/App.tsx` — the `privacy-line` footer paragraph was already rendered directly below the ~100px `.skeleton` while loading, so when the API resolved and the ~10,000px `CallSheetView` swapped in for the skeleton in the same frame, that already-visible paragraph jumped ~10,000px down, matching FR-71's `main#main` culprit exactly. Fix: `privacy-line` now renders only once `!loading` (one line), so nothing pre-existing sits below the skeleton to be displaced. Re-ran `frontend/scripts/lighthouse_pilot_scale.py` before and after: Performance 69 → 94, Cumulative Layout Shift 0.843 → 0.014 (audit score 0.04 → 1.00); `cumulative-layout-shift`/`cls-culprits-insight` no longer red. Recorded in `docs/research/pilot-scale-2026-09.md` (before/after table), full report committed. Failure case checked: a nonexistent-id load still shows the not-found message with no shift reintroduced. PR #194 (`fix/fr-77-skeleton-layout-shift`), auto-merge enabled. FR-77 set to `done`.
+  10:00 shift (tech-lead) took FR-78 per today's plan: `app/routers/call_sheets.py`'s `create_call_sheet_endpoint`/`publish_revision_endpoint`/`cancel_call_sheet` now queue delivery via FastAPI `BackgroundTasks` instead of awaiting `notify_subscribers`/`notify_day_cancelled` (FR-72's own measured ~7.7s at 50 subscribers); `app/services/notifications.py` gains `notify_subscribers_in_background`/`notify_day_cancelled_in_background`, each opening its own DB session since a background task can outlive the request's own. Picked the dod's "drop the response field" option: the publish/cancel response no longer carries a `notifications` summary (nothing is known synchronously any more); it now shows up on the existing FR-50 history panel instead (`build_history` reads the same `DistributionLog` rows, no new table). Documented caveat: a cancellation logs against the *current* revision too (it never creates a new one), so the count is cumulative for that revision, not scoped to one publish. Proved the actual decoupling directly in `backend/tests/test_push_scale.py::test_endpoint_returns_before_the_background_task_runs` by calling the router function with a real `BackgroundTasks()` and inspecting it, unexecuted, right after return — `TestClient` itself can't show this (it drives the whole ASGI request, background task included, to completion inside one blocking call, confirmed by reading `httpx.ASGITransport`'s source). `backend/tests/conftest.py` gains a `background_tasks_share_db` fixture so tests can see what a background task committed. Closed ADR-007's own "revisit if publish latency becomes noticeable" trigger. PR #196 (`fix/fr-78-background-push-delivery`), auto-merge enabled. FR-78 set to `done`. Backend changed: deploy needed (no migration).
 - tests: FR-77 verified for real: built a local Postgres role/db and a combined frontend-test + backend venv from scratch (none existed this session); reproduced the 0.843 baseline on the unmodified build before changing any code, then re-measured after the fix with the identical script (not mocked). `npm run typecheck`/`npm test` (53/53) clean; `frontend/tests/test_smoke.py`+`test_a11y.py` 25/25 against a real build in a real headless Chromium (pinned revision 1134 absent, temporary `conftest.py` `browser_type_launch_args` override to `/opt/pw-browsers/chromium` with `--headless=new`, reverted before commit, not part of the diff); wider E2E suite 50/52, the 2 failures being the same pre-existing Nominatim-egress 403 every prior shift with this sandbox has hit, unrelated to this change. No backend change, no migration, no deploy needed.
+  FR-78 verified for real: backend suite 147/147 across three consecutive full runs (real local Postgres) — including the updated `test_push.py`/`test_cancel_day.py`/`test_push_scale.py`, all adjusted for the removed response field rather than weakened. `npm run typecheck`/`npm test` (53/53)/`npm run build` clean. Playwright E2E 75/77 against a real build and a real uvicorn+Postgres API (same temporary, reverted Chromium launch-args override as prior shifts; the 2 failures are the standing Nominatim-egress gap, unrelated).
 - blockers: none open right now beyond the standing egress-proxy limits on this sandbox (does not block CI, which runs with open egress).
 - needs_approval: yes — INBOX #6 (GitHub Actions secret `FILMRUNNER_CI_TOKEN`) still `pending`; no new item this shift.
 
