@@ -59,6 +59,45 @@ in one shot once the API responds, so the whole page height jumps in a single fr
 `ready` item, with this reproduction) rather than fixed here — this task was to measure and record, not to
 redesign the loading state.
 
+## Skeleton layout shift fixed (FR-77, run 2026-09-24)
+
+Reproduced the 0.843 CLS above first, on this same build (`frontend/scripts/lighthouse_pilot_scale.py` against
+the FR-52 production's day 5, before touching any code) — confirmed audit score 0.04 (red) and the report still
+named `main#main`, top:55 to bottom:10026, as the shifting node.
+
+Root cause, traced in `frontend/src/App.tsx`: while `loading` is true, the page already paints the masthead,
+the status line, and — below the skeleton — the `privacy-line` paragraph (a permanent footer link, rendered for
+every mode except `dev`). That paragraph is the one already-rendered, already-visible element sitting right
+after the ~100 px skeleton; when the API resolves and the ~10,000 px `CallSheetView` swaps in for the skeleton
+in the same frame, `privacy-line` jumps ~10,000 px down. Lighthouse's shift-region algorithm reports the change
+against the nearest common container it can name usefully, `main#main`, but the actual moving content is that
+one paragraph — nothing else already on screen sits below the skeleton.
+
+Fix: `privacy-line` now renders only once `!loading` (`mode.kind !== "dev" && !loading`), so during the loading
+window there is nothing already-painted below the skeleton to displace. It still appears in the same frame as
+the sheet, the error state, or the not-found state — it just never exists yet at a stale position beforehand.
+One line changed, no visual change once loaded, no change to `.skeleton`'s own size.
+
+Re-ran the identical script against the rebuilt `dist/`:
+
+| Category | Before | After |
+|---|---|---|
+| Performance | 69 | **94** |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | 96 |
+| SEO | 90 | 90 |
+
+Cumulative Layout Shift: **0.843 → 0.014** (audit score 0.04 → 1.00; Lighthouse's "good" line is under 0.1).
+`cumulative-layout-shift` and `cls-culprits-insight` no longer appear in the red-audit list at all. The
+remaining sub-90 metric is unrelated and pre-existing: Max Potential First Input Delay (audit score 0.6,
+220 ms) — a `forced-reflow-insight` note, not layout shift; not this item's dod. Full updated report:
+`docs/research/lighthouse-pilot-scale.json` (overwritten by this run, this table is the durable record of the
+before figure).
+
+Failure case checked: with the API pointed at a nonexistent id, the not-found message renders immediately once
+loading ends, `privacy-line` appears in the same frame at its final position, and no additional shift is
+introduced (same fix path — nothing pre-existing to move).
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
