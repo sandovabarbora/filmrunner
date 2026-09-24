@@ -865,3 +865,60 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a test creates a crew member with an active push subscription, deletes the crew member, and asserts both the delete succeeds (204) and the subscription row is gone — the same live reproduction this item's why cites, now green
   - `frontend/privacy.html`'s crew-removal paragraph (updated by FR-74 to note the bug) is updated again to drop the caveat once this ships
   - failure case: the migration must not silently drop existing orphaned rows beyond what the cascade implies; run it against a database that already has a subscription referencing a since-removed crew member (there shouldn't be one, given the current bug, but the migration itself must not error either way)
+
+## FR-80 · frontend · SEO: the public sheet page has no meta description
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run (2026-09-23, `docs/research/lighthouse-pilot-scale.json`) scored SEO 90/100; its one failing audit is `meta-description` ("Document does not have a meta description"). `frontend/index.html` (the public sheet — the page Lighthouse actually tested) has no `<meta name="description">` tag, confirmed by reading the file; `frontend/landing.html` already has one, `index.html` never got the equivalent. Distribution partly depends on word-of-mouth and search (BRIEF Q5), so a working search snippet is worth having.
+- dod:
+  - `frontend/index.html` gets a `<meta name="description">` summarising the app (a living, offline-honest call sheet), matching the tone of `landing.html`'s own description
+  - re-run `frontend/scripts/lighthouse_pilot_scale.py` and confirm the `meta-description` audit now passes; record the new SEO score in `docs/research/pilot-scale-2026-09.md`
+  - failure case: since the page is shared across every production, the description must stay generic rather than naming a specific production or day — a misleadingly specific snippet is worse than a plain one
+
+## FR-81 · frontend · Favicon 404 logs a console error on every page load
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run flagged `errors-in-console` (best-practices audit, binary fail): the one logged error is `Failed to load resource: 404 (File not found)` for `/favicon.ico`, confirmed in `docs/research/lighthouse-pilot-scale.json`. No HTML entry point (`index.html`, `landing.html`, `editor.html`) links a favicon, confirmed by grep; `frontend/public/icon.svg` already exists and is unused for this. Free to fix, and a real console error on every single page load.
+- dod:
+  - every top-level HTML entry point gets `<link rel="icon" href="/icon.svg">` (or the built equivalent path)
+  - re-run the Lighthouse script and confirm `errors-in-console` passes with no favicon 404
+  - failure case: if `icon.svg` doesn't render as a favicon in some browser (older Safari lacks SVG favicon support), also ship a `.ico`/`.png` fallback rather than leaving the error for those browsers
+
+## FR-82 · frontend · Accessible name doesn't match the visible label on icon-only Copy and language-toggle buttons
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run flagged `label-content-name-mismatch` (an axe rule) on `#langToggle` (visible text "Čeština", `aria-label="Přepnout do češtiny"`) and every `.contact-btn.copy` button (visible text "⧉ Copy", `aria-label="Copy <Name>"`), confirmed in `docs/research/lighthouse-pilot-scale.json`'s audit detail. A screen-reader user who has heard the visible label read out cannot reliably activate the same control by voice command using that label, since the accessible name differs from what's printed. The overall accessibility score stayed 100 (this rule isn't weighted into it), but FR-63/FR-73 have both treated axe findings on these screens as real, not cosmetic.
+- dod:
+  - the accessible name for each flagged control includes its visible text (fold the printed label into `aria-label`, or drop `aria-label` in favour of the visible text plus `title`/`aria-describedby` for the extra context)
+  - re-run the Lighthouse script (or `frontend/tests/test_a11y.py`'s axe pass) and confirm the finding is gone
+  - `docs/research/a11y-2026-09.md` gets a line recording the fix, the same convention FR-63/FR-73 used
+  - failure case: with many per-person Copy buttons, fix the shared component they render from so the rule can never regress per-instance, rather than patching each rendered instance
+
+## FR-83 · qa · Re-verify FR-2/FR-20/FR-21 desk-research claims marked "unverified" using GitHub Actions' open egress
+- state: ready
+- gated: no
+- why: FR-2 (competitive teardown), FR-20 (Prague market sizing) and FR-21 (switching-cost teardown) each carry many claims marked **unverified** purely because this routine's own sandbox proxy blocks `WebFetch`/`curl` to vendor and public-data domains — FR-2's own note asks for exactly this follow-up ("a follow-up re-verification pass is requested in the doc"). FR-66/FR-67/FR-68 (2026-09-22/23) already proved a GitHub Actions job has the open egress this sandbox lacks, and used it to close the same kind of gap for the live stack and the astronomy formula. Nobody has pointed that same open egress at the research docs' own unverified claims yet.
+- dod:
+  - a script, run as a GitHub Actions job (`workflow_dispatch` is enough — the underlying vendor pages change rarely, no need for a recurring schedule), fetches the specific URLs FR-2/FR-20/FR-21 already cite as blocked or as search-snippet-only, and records confirmed / contradicted / still-unreachable per claim, with the date checked
+  - `docs/research/competitive-teardown.md`, `docs/research/prague-market-sizing.md` and `docs/research/switching-cost-teardown.md` get their **unverified** markers updated in place: a real citation where the page now confirms the claim, left unverified with a note if the page still can't be reached, or corrected if the page contradicts the earlier search-snippet guess
+  - failure case: a claim the fetched page neither confirms nor denies (e.g. pricing behind a signup wall) stays marked unverified, named as such, never inferred from adjacent circumstantial content
+
+## FR-84 · tech-lead · Public sheet initial load: render-blocking CSS and unused JavaScript
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run recorded two performance opportunities beyond the CLS issue FR-77 already tracks: `render-blocking-insight` names `styles-*.css` as render-blocking (an estimated 150-300ms saving), and `unused-javascript` finds 38% (68 KB of 177 KB) of the main JS bundle unused on this page load — both in `docs/research/lighthouse-pilot-scale.json`. Performance is the one Lighthouse category still below the dod's 90-point bar (69/100) even after FR-77 fixes CLS, so these are worth investigating rather than leaving the score lower than it needs to be.
+- dod:
+  - confirm what's actually in the 38%-unused chunk (e.g. a bundle visualiser, or reading the built manifest) — code for a route the public sheet never needs (editor, landing) should not ship on the sheet's own load
+  - split or defer what's confirmed unnecessary for the public sheet route; do not guess-cut code that turns out to be needed
+  - re-run the Lighthouse script after the change and record the new Performance score and bundle sizes in `docs/research/pilot-scale-2026-09.md`
+  - failure case: if a chunk is unused only because this specific test scenario doesn't exercise every code path (rather than genuinely dead for this route), say so and leave it, rather than removing code a different real scenario needs
+
+## FR-85 · qa · Confirm whether the real GitHub Pages deployment sends cache headers for hashed static assets
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run flagged `cache-insight` (0ms cache lifetime on every hashed JS/CSS asset, ~221 KiB of estimated re-download savings), but the run served the build from a local static server inside this sandbox (`frontend/scripts/lighthouse_pilot_scale.py`), which likely just sets no cache headers at all — a test-harness artifact, not necessarily what the real `sandovabarbora.github.io` deployment sends. Filing a fix against the wrong target would waste effort; this item verifies the real behaviour first, the same discipline FR-71 itself used when it found the "no Lighthouse in the harness" line was stale and unverified.
+- dod:
+  - from a GitHub Actions job (open egress; this sandbox's proxy blocks the Pages domain, confirmed by every FR-8/FR-16/FR-40 attempt), fetch a couple of hashed asset URLs from the live `https://sandovabarbora.github.io/filmrunner/` build and record their `Cache-Control`/`ETag` response headers
+  - if GitHub Pages already sends long-lived caching for hashed filenames, record that in `docs/research/pilot-scale-2026-09.md` and close the finding as a local-test-server artifact, not a real gap
+  - if it genuinely does not cache well, file a follow-up `ready` item with the real numbers rather than fixing blind
+  - failure case: if the Pages response can't be distinguished from ordinary CDN edge-cache warm-up variance, fetch it a few times and report the range rather than one sample as if it were definitive
