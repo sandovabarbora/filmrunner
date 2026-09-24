@@ -156,10 +156,50 @@ as if it answered FR-3's question; it only narrows what to ask about (data
 portability, contact re-entry cost, format lock-in) once real interviews
 happen.
 
+## Re-verification pass (FR-83, 2026-09-24)
+
+`scripts/reverify_desk_research.py`, run as a GitHub Actions job with open
+egress (`.github/workflows/desk-research-reverify.yml`), fetched three pages:
+
+- **Yamdu Capterra reviews** (`capterra.com/p/186025/Yamdu/reviews/`): 403,
+  even from a GitHub Actions runner — the same pattern FR-2's re-verify pass
+  found for SetHero, consistent with Capterra/G2-style review sites blocking
+  non-browser requests generally, not this sandbox specifically. The
+  contact-retention lock-in signal is still sourced only from the earlier
+  `WebSearch` snippet; **still unverified** directly.
+- **SetHero's own Exporting Data article** (`help.sethero.com/en/articles/1513672-exporting-data`):
+  reachable (200, 70 KB) — not blocked — but it is an Intercom-hosted help
+  center that renders its article body client-side; the raw fetch's matches
+  were navigation/JSON-LD artifacts (a breadcrumb link, a template field),
+  not the article's actual prose. Whether call-sheet templates and revision
+  history are in SetHero's export list is **still unverified**; the next
+  attempt needs a headless-browser read, now that reachability itself is
+  confirmed rather than assumed blocked.
+- **Movie Magic Scheduling's own file-format documentation**
+  (`mms-docs.ep.com/ScheduleFiles/MovieMagicSchedulingFiles.html`): reachable
+  (200, 43 KB) and genuinely confirms, from Movie Magic's own docs rather
+  than a competitor's page: *"Movie Magic Scheduling files are saved as
+  .mmsx files."* This is real, neutral-source confirmation of the underlying
+  fact (proprietary format) this doc's "Working export function" bullet
+  already stated from `mms-docs.ep.com` — now cross-checked directly rather
+  than via SetHero's competing product page. The interpretive framing
+  ("locked in," "difficult to use... in other software") remains SetHero's
+  own language and is not independently confirmed by this neutral source;
+  only the format-proprietary fact itself is upgraded from
+  competitor-sourced to vendor-primary-sourced.
+
+Full raw output (status, byte length, every substring match with its
+excerpt) is in the job's own log and artifact.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run the searches that returned nothing (Reddit/forum threads on
   switching, StudioBinder/Croogloo contact and template export) with
   working `WebFetch` or a founder session that can browse directly.
-- Verify the Movie Magic "locked in" framing against a neutral source —
-  it currently rests on a competitor's (SetHero's) own page.
+- A headless-browser read of SetHero's Exporting Data article (confirmed
+  reachable 2026-09-24, but client-rendered) to settle whether call-sheet
+  templates/revision history export.
+- The Movie Magic proprietary-format *fact* now has a neutral citation
+  (2026-09-24); the "locked in" *framing* is still SetHero's own language
+  and would benefit from a neutral discussion (forum, review site) if one
+  becomes reachable.
