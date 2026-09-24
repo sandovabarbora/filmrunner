@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from app.models.push import PushSubscription
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
@@ -41,6 +42,26 @@ def test_removing_the_head_of_day_is_refused(client: TestClient) -> None:
     resp = client.delete(f"/api/v1/productions/{pid}/crew-members/{member['id']}", headers=AUTH)
     assert resp.status_code == 409
     assert "Day 3" in resp.json()["detail"]
+
+
+def test_removing_a_member_with_an_active_push_subscription_succeeds(client: TestClient, db_session) -> None:
+    """FR-79: push_subscriptions.crew_member_id had no ON DELETE clause, so
+    Postgres rejected the delete outright with a ForeignKeyViolation."""
+    pid, cid, member = _setup(client)
+    resp = client.post(
+        f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
+        json={
+            "endpoint": "https://push.example.com/ep1",
+            "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"},
+            "link_url": "https://filmrunner.example/?sheet=abc&api=https://api.example&me=tok",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 1
+
+    resp = client.delete(f"/api/v1/productions/{pid}/crew-members/{member['id']}", headers=AUTH)
+    assert resp.status_code == 204, resp.text
+    assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 0
 
 
 def test_member_from_another_production_is_404(client: TestClient) -> None:
