@@ -161,6 +161,62 @@ marked items directly against the vendor pages.
   sheet product needs at least read-receipt tracking to be taken seriously
   as a replacement, not just distribution.
 
+## Re-verification pass (FR-83, 2026-09-24)
+
+`scripts/reverify_desk_research.py`, run as a GitHub Actions job with open
+egress (`.github/workflows/desk-research-reverify.yml`, runs #1/#2), fetched
+the specific pages this doc names as blocked. None of it changes an
+**unverified** marker to confirmed outright — every hit needs the caveat
+below — but it narrows what the *next* re-verification pass needs to do:
+
+- **StudioBinder pricing** (`app.studiobinder.com/pricing`): reachable (200,
+  13 KB) for the first time — not vendor-blocked, just a client-rendered
+  React app, so the raw HTML has no readable pricing digits. The exact tier
+  figures are still **unverified**, but the next attempt needs a headless
+  browser (e.g. Playwright), not a plain fetch.
+- **StudioBinder mobile/offline**
+  (`support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available`,
+  the specific support article for this claim, not previously cited):
+  timed out on both runs. Still **unverified**, now for a different reason
+  (timeout, not a 403) — worth one more attempt with a longer timeout.
+- **Yamdu pricing** (`yamdu.com/en/pricing/`): reachable (200, 19 KB), but
+  the script's `Flex` match was a false positive — a Tailwind CSS class
+  (`flex flex-wrap`), not the Flex plan name. Also a client-rendered app.
+  Still **unverified**.
+- **SetHero pricing and FAQ** (`sethero.com/pricing/`, `sethero.com/faq/`):
+  403 on both, from a GitHub Actions runner with open egress, not just this
+  sandbox's own proxy — this looks like real bot protection (Cloudflare or
+  similar) rather than a proxy-specific block. Still **unverified**; a
+  future pass should try a browser-shaped request (real headers, JS
+  execution) rather than a bare fetch.
+- **Croogloo features** (`croogloo.com/features/`): now **404**, not merely
+  blocked. The URL cited throughout this doc (2026-09-14) may have moved or
+  been retired since. Flag this as a stale citation — a fresh `WebSearch`
+  for Croogloo's current features page is needed before this doc's Croogloo
+  claims can be re-sourced, rather than treating the 404 as "feature
+  removed."
+- **Movie Magic Scheduling pricing, monthly**
+  (`ep.com/ep-store/movie-magic-scheduling-monthly/`): reachable, and its
+  page JSON-LD names a price of **$29.99**, not the $42.99/month this doc
+  cites from `musicgateway.com`. This is a real discrepancy, not a
+  confirmation — the excerpt alone does not establish which specific
+  product/tier that $29.99 belongs to (`ep.com`'s store template covers
+  several Movie Magic products), so the original $42.99 figure is now
+  **contradicted-or-unclear** rather than simply unverified; resolve which
+  figure is current before citing either in positioning or pricing copy.
+- **Movie Magic Scheduling pricing, annual**
+  (`ep.com/ep-store/movie-magic-scheduling-annual/`): reachable, but its own
+  meta description names **Movie Magic Budgeting**, not Scheduling — a sign
+  this specific URL may be the wrong product page (or `ep.com` reuses one
+  template's meta tag sitewide). Not usable as confirmation either way;
+  still **unverified**, and the correct Scheduling-specific annual URL
+  still needs to be found.
+
+Full raw output (status, byte length, every substring match with its
+excerpt) is in the job's own log and artifact; `docs/research/desk-research-reverify.json`
+is regenerated on each run rather than committed, since it is a point-in-time
+fetch, not a stable research artifact.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
@@ -169,3 +225,7 @@ marked items directly against the vendor pages.
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
+- A headless-browser fetch (not a plain HTTP GET) for the client-rendered
+  pages the 2026-09-24 pass found reachable but unreadable (StudioBinder,
+  Yamdu); a fresh `WebSearch` for Croogloo's current features URL; and
+  resolving the Movie Magic pricing discrepancy above.

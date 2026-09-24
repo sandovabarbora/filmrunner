@@ -150,15 +150,56 @@ estimate is the best available substitute and should be labelled as an
 estimate, not a count, wherever cited (e.g. in FR-25's landing page copy
 or any future pitch materials).
 
+## Re-verification pass (FR-83, 2026-09-24)
+
+`scripts/reverify_desk_research.py`, run as a GitHub Actions job with open
+egress (`.github/workflows/desk-research-reverify.yml`), fetched the pages
+this doc names as blocked:
+
+- **Czech Film Commission statistics page** (`filmcommission.cz/en/statistics/`):
+  reachable (200, 126 KB) for the first time — this shift's own attempt, and
+  every prior one, hit the sandbox proxy instead. The page title, `Statistics
+  | Czech Film Commission`, confirms it is the right page. The re-verify
+  script's own substring checks only matched navigation text and the title,
+  not a specific production-count figure in the body — so this closes the
+  "can we even reach it" half of the gap, not the "what does it say" half.
+  **Still the top follow-up**: read the page body directly (not via a
+  keyword-substring script) for the actual count.
+- **productionlist.com Prague listing**
+  (`productionlist.com/production-location/prague-czech-republic`): now
+  **404**, not merely blocked. The URL this doc cites (2026-09-21) may have
+  moved since, or the search snippet it was built from was already stale.
+  Flag as a stale citation — a fresh `WebSearch` for productionlist.com's
+  current URL structure is needed before this count can be re-checked,
+  rather than treating the 404 as the listing having been removed.
+- **Diffusion of Innovations** (`en.wikipedia.org/wiki/Diffusion_of_innovations`):
+  reachable (200) — Wikipedia was blocked from this sandbox on every prior
+  attempt, including this doc's own. The article does describe Rogers'
+  adopter-category framework and the "critical mass" concept the
+  Lumen-Learning paraphrase this doc cites is itself paraphrasing; it names
+  the classic breakdown (innovators + early adopters together are commonly
+  put at roughly 13.5–16% of an audience, the threshold before the "chasm"
+  to the early majority). This is a genuine upgrade in sourcing — Wikipedia's
+  own article, not a marketing-textbook's paraphrase of a paraphrase — and
+  is now citable directly for the shape of the claim (early adoption
+  clusters in the mid-teens percent range), though the exact "15–20%"
+  figure this doc uses is still not verbatim in the source; a careful reader
+  should treat the two as compatible, not identical, until someone reads
+  Rogers' primary text.
+
+Full raw output (status, byte length, every substring match with its
+excerpt) is in the job's own log and artifact.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Read `filmcommission.cz/en/statistics/` directly once `WebFetch` or an
-  interactive session can reach it — this is the single most likely
-  source for a real, citable count.
-- Read `productionlist.com`'s Prague page directly to get its actual date
-  range, not just the all-time/undated count a search snippet surfaced.
-- Re-verify the 15–20% critical-mass figure against Rogers' own text or a
-  neutral secondary source (Wikipedia was also blocked this shift).
+- Read `filmcommission.cz/en/statistics/`'s body directly (now confirmed
+  reachable, 2026-09-24) for the actual production-count figures — the
+  single most likely source for a real, citable count.
+- Find productionlist.com's current Prague-listing URL via a fresh
+  `WebSearch` (the 2026-09-21 citation now 404s) and read it directly.
+- Re-verify the 15–20% critical-mass figure against Rogers' own text — the
+  Wikipedia article is now reachable (2026-09-24) and names a compatible
+  but not identical range; Rogers' primary text is the next step.
 - Once FR-3 interviews happen, fold interviewees' own estimates into this
   file rather than treating this shift's order-of-magnitude figure as
   final.
