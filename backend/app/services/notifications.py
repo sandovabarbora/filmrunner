@@ -8,11 +8,13 @@ send-a-message function. See docs/adr/ADR-007-web-push-notifications.md.
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.database import SessionLocal
 from app.models.call_sheet import CallSheet, CallSheetRevision, DistributionChannel, DistributionLog
 from app.models.production import CrewMember
 from app.models.push import PushSubscription
@@ -120,3 +122,36 @@ def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, tit
         summary.delivered, summary.attempted, revision.revision_letter, call_sheet.id,
     )
     return summary
+
+
+# FR-78: entry points for FastAPI `BackgroundTasks`, run after the HTTP response
+# is already on its way back to the AD. A request-scoped `Session` (the `db`
+# the router handlers use) belongs to that request and may already be closed,
+# or running in another thread, by the time a background task executes — so
+# each of these opens and closes its own `Session` rather than reusing one.
+# The router no longer reads a delivery summary off the response; the AD
+# checks the FR-50 history panel instead (app/services/call_sheets.py's
+# build_history, backed by the same DistributionLog rows written below).
+
+
+def notify_subscribers_in_background(call_sheet_id: uuid.UUID, revision_id: uuid.UUID) -> None:
+    db = SessionLocal()
+    try:
+        call_sheet = db.get(CallSheet, call_sheet_id)
+        revision = db.get(CallSheetRevision, revision_id)
+        if call_sheet is None or revision is None:
+            return
+        notify_subscribers(db, call_sheet, revision)
+    finally:
+        db.close()
+
+
+def notify_day_cancelled_in_background(call_sheet_id: uuid.UUID) -> None:
+    db = SessionLocal()
+    try:
+        call_sheet = db.get(CallSheet, call_sheet_id)
+        if call_sheet is None:
+            return
+        notify_day_cancelled(db, call_sheet)
+    finally:
+        db.close()

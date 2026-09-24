@@ -106,10 +106,6 @@ class CallSheetRevisionRead(BaseModel):
     schedule_items: list[ScheduleItemRead] = []
     cast_calls: list[CastCallEntryRead] = []
     crew_calls: list[CrewCallEntryRead] = []
-    # Not a stored field: set by the publish endpoint after sending (FR-16),
-    # so the AD sees delivery status without a second request. Absent on a
-    # plain GET of an existing revision.
-    notifications: NotificationSummaryRead | None = None
 
 
 class ContactCard(BaseModel):
@@ -223,6 +219,16 @@ class HistoryEntry(BaseModel):
     created_by: str
     changes: list[RevisionChange]
     opened: int
+    # FR-78: push delivery now happens in a background task after the publish
+    # (or cancel) response is already sent, so it can no longer ride that
+    # response (see CallSheetRevisionRead's history). None means no delivery
+    # attempt is on record yet for this revision — still in flight, push not
+    # configured, or nobody was subscribed; DistributionLog rows appear once
+    # the background task commits, typically a second or two later.
+    # Cumulative, not "who got told about this publish": a cancellation on
+    # the current revision (which does not create a new one) also logs
+    # against it, so cancelling right after publishing counts both attempts.
+    notifications: NotificationSummaryRead | None = None
 
 
 class CallSheetRead(BaseModel):
