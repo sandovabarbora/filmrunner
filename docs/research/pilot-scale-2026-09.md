@@ -158,6 +158,27 @@ this run). Performance moved 90 → 89, both within the same CI-machine-noise ba
 (the only red audits this run, `max-potential-fid` and two zero-weighted insights, are unrelated to a favicon
 link tag).
 
+## FR-81 merged (16:00 shift, 2026-09-24): combined score after resolving a stale PR
+
+PR #202 (FR-81) had sat open since 13:00 with auto-merge enabled but never fired — `docs/company/BACKLOG.md`
+had it marked `done`, but the merge itself never happened, so the fix was not actually on `main`. Its only
+real conflict was this file's own generated JSON report (`docs/research/lighthouse-pilot-scale.json`), rewritten
+independently by every later Lighthouse-running shift (FR-80, FR-82); the favicon HTML/PNG changes merged
+cleanly. Resolved in the branch (no force-push) and re-ran `lighthouse_pilot_scale.py` fresh against the
+merged tree (favicon links + FR-82's accessible-name fix + FR-86's unrelated backend enum fix, all together)
+rather than hand-resolving the generated JSON:
+
+| Category | Score |
+|---|---|
+| Performance | 92 |
+| Accessibility | 100 |
+| Best Practices | 100 |
+| SEO | 100 |
+
+Every category from FR-71's original 69/100/96/90 baseline is now at or above the dod's 90 line. Remaining
+red audits (`max-potential-fid` 44, `forced-reflow-insight`, `network-dependency-tree-insight`) are informational/
+zero-weighted and pre-existing, not from this fix. Full report overwritten at `docs/research/lighthouse-pilot-scale.json`.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.

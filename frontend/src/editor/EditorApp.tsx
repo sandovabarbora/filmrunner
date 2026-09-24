@@ -128,7 +128,8 @@ export function EditorApp() {
 
 function LangToggle() {
   const { lang, toggle } = useContext(LangContext);
-  return <button type="button" className="linklike" id="langToggle" onClick={toggle} aria-label={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{lang === "cs" ? "English" : "Čeština"}</button>;
+  // FR-82: no aria-label — the printed target-language name is the accessible name too, so it can't drift from what's on screen.
+  return <button type="button" className="linklike" id="langToggle" onClick={toggle} title={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{lang === "cs" ? "English" : "Čeština"}</button>;
 }
 
 function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: () => void }) {
