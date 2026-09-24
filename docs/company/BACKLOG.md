@@ -871,7 +871,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: the migration must not silently drop existing orphaned rows beyond what the cascade implies; run it against a database that already has a subscription referencing a since-removed crew member (there shouldn't be one, given the current bug, but the migration itself must not error either way)
 
 ## FR-80 · frontend · SEO: the public sheet page has no meta description
-- state: ready
+- state: done
+- note: 12:00 shift 2026-09-24 (PR #200, branch `feat/fr-80-meta-description`) delivered the whole dod: `frontend/index.html` gets a generic, production-agnostic `<meta name="description">` (English, matching the page's `lang="en"`, tone matched to `landing.html`'s own Czech one); re-ran `frontend/scripts/lighthouse_pilot_scale.py` against a rebuilt `dist/` — SEO 90 → 100, `meta-description` audit score 0 → 1 — recorded in `docs/research/pilot-scale-2026-09.md`. Verified for real: local Postgres + full migration chain built from scratch, `npm run build`/`typecheck` clean, `npm test` 53/53. No backend change, no deploy needed.
 - gated: no
 - why: FR-71's Lighthouse run (2026-09-23, `docs/research/lighthouse-pilot-scale.json`) scored SEO 90/100; its one failing audit is `meta-description` ("Document does not have a meta description"). `frontend/index.html` (the public sheet — the page Lighthouse actually tested) has no `<meta name="description">` tag, confirmed by reading the file; `frontend/landing.html` already has one, `index.html` never got the equivalent. Distribution partly depends on word-of-mouth and search (BRIEF Q5), so a working search snippet is worth having.
 - dod:
