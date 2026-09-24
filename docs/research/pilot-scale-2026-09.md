@@ -98,6 +98,38 @@ Failure case checked: with the API pointed at a nonexistent id, the not-found me
 loading ends, `privacy-line` appears in the same frame at its final position, and no additional shift is
 introduced (same fix path — nothing pre-existing to move).
 
+## Meta description added, SEO 90 → 100 (FR-80, run 2026-09-24)
+
+`frontend/index.html` (the public sheet — the page this Lighthouse run tests) had no
+`<meta name="description">`; `frontend/landing.html` already had one. Lighthouse's `seo` category was 90/100
+with `meta-description` ("Document does not have a meta description") as the one failing audit, confirmed in
+`docs/research/lighthouse-pilot-scale.json`.
+
+Fix: added a generic, production-agnostic description to `frontend/index.html` (English, matching the page's
+own `lang="en"`, same tone as `landing.html`'s Czech one) — no production or day name, since the page is shared
+across every production:
+
+    A living call sheet for the whole crew, offline-honest when signal drops. Publish a revision and
+    everyone's phone updates.
+
+Re-ran the identical script against the rebuilt `dist/`:
+
+| Category | Before | After |
+|---|---|---|
+| Performance | 94 | 90 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | 96 |
+| SEO | 90 | **100** |
+
+`meta-description` audit score 0 → 1 (`docs/research/lighthouse-pilot-scale.json`, overwritten by this run).
+Performance moved from 94 to 90 on this run — both above the FR-71 dod's 90 line, and the gap is CI-machine
+noise (Max Potential FID and two zero-weighted insights, unrelated to this change; no page weight or markup
+changed besides the one meta tag) rather than a regression from this fix, consistent with FR-77's own noted
+±var on a throttled profile.
+
+Failure case checked: the description is a single hardcoded generic line, never interpolated from a
+production or day, so no build touches or varies it per production.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
