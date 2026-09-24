@@ -35,6 +35,18 @@ jobs:
         if: always()
         run: PYTHONPATH=backend python3 scripts/check_astronomy_accuracy.py
 
+      - name: Check GitHub Pages cache headers on hashed assets
+        if: always()
+        run: python3 scripts/check_pages_cache_headers.py
+
+      - name: Upload the Pages cache-header report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-cache-headers
+          path: docs/research/pages-cache-headers.json
+          if-no-files-found: ignore
+
       # FR-68: create a production and publish real revisions on the live stack to exercise five
       # write-path features (delete a location, weather auto-fill, tomorrow/days-at-a-glance,
       # the personal calls picker) that the two read-only checks above cannot reach. Skipped, not
