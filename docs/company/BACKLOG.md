@@ -943,3 +943,77 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - verify live: build a fresh database, run the full migration chain start to finish, run the backend suite against it (not `create_all`) — 100% pass, specifically `test_push.py`, `test_push_scale.py`, `test_cancel_day.py`, `test_history.py`
   - failure case: if any other enum column has the same name-vs-value casing drift (check every `ALTER TYPE ... ADD VALUE` in `alembic/versions/` against its column's Python enum member names, not just this one), name it here even if out of scope to fix in this item, rather than declaring the class of bug closed after fixing only the one instance found
 - note: 14:00 shift 2026-09-24 already checked this for the whole migration chain (not just this one column): the only other `ALTER TYPE ... ADD VALUE` in `alembic/versions/` is `d1f6b4c8e3a5_call_sheet_status_cancelled.py`'s `ALTER TYPE call_sheet_status ADD VALUE IF NOT EXISTS 'CANCELLED'` — uppercase, correctly matching `CallSheetStatus.CANCELLED`'s member *name*, no drift. `distribution_channel` is the only affected column.
+
+## FR-87 · qa · Re-source FR-83's three stale citations (Croogloo features page, productionlist.com Prague listing) with live replacements
+- state: ready
+- gated: no
+- why: FR-83's re-verification pass (2026-09-24) found Croogloo's features page and productionlist.com's Prague listing both now 404 in `competitive-teardown.md`/`prague-market-sizing.md` — citations gone stale since they were written — and explicitly flagged them for "a fresh WebSearch rather than read as the page vanishing", not yet done.
+- dod:
+  - WebSearch for each of the two now-404 URLs to find either a current live replacement (a moved page, or an archived/cached equivalent) or confirm the underlying page is genuinely gone
+  - update the citing doc's claim with the new URL and date checked, or mark the citation itself as dead with the date it was found dead, not silently deleted
+  - failure case: a claim with no findable replacement stays marked unverified/stale with that reason stated, never guessed from a different page
+
+## FR-88 · marketing · Read the Czech Film Commission statistics page body for a real Prague production count (BRIEF Q5, FR-20/FR-83 follow-up)
+- state: ready
+- gated: no
+- why: FR-20's Prague market sizing (Q5) could only produce an order-of-magnitude estimate; FR-83's re-verification pass (2026-09-24) found the Commission's statistics page newly reachable from GitHub Actions' open egress for the first time since FR-20, but only substring-checked it, not read for its actual figures — the real count is still open.
+- dod:
+  - extend or reuse FR-83's `scripts/reverify_desk_research.py` / `.github/workflows/desk-research-reverify.yml` pattern (open egress; this sandbox's own proxy blocks the same domain, confirmed by every prior attempt) to fetch the Commission statistics page and record whatever production/permit counts it actually states, with the date checked
+  - `docs/research/prague-market-sizing.md` gets the real figure (or the closest breakdown the page gives) in place of the order-of-magnitude estimate, with Q5's "not obviously out of reach" conclusion revisited against it
+  - failure case: if the page's numbers don't map cleanly onto "active production issuing a call sheet in the last 30 days" (Q5's own definition), say exactly what the page counts instead rather than treating it as the same metric
+
+## FR-89 · pm · Resolve the contradicted Movie Magic Scheduling price ($29.99 vs $42.99) in competitive-teardown.md
+- state: ready
+- gated: no
+- why: FR-83's re-verification pass (2026-09-24) found ep.com's Movie Magic monthly pricing page states $29.99 in its own JSON-LD, contradicting the $42.99 `competitive-teardown.md` currently cites, and flagged it "contradicted-or-unclear" rather than swapping the figure in, since the excerpt didn't confirm which product or tier it matched.
+- dod:
+  - identify which Movie Magic product/tier each figure actually refers to (the JSON-LD's own product name, and a second source for the $42.99 figure) via WebSearch
+  - correct `competitive-teardown.md`'s pricing line to the verified figure with its source and date, or, if both figures are real but for different tiers or billing periods, state both explicitly rather than picking one
+  - failure case: if the discrepancy can't be resolved from public sources, the doc keeps both figures side by side marked unresolved, never silently picks one
+
+## FR-90 · tech-lead · Render client-rendered competitor pricing pages via headless browser to close FR-83's still-unverified claims
+- state: ready
+- gated: no
+- why: FR-83's re-verification pass (2026-09-24) found StudioBinder's and Yamdu's pricing pages and SetHero's Exporting Data article are all reachable but client-rendered (React/Intercom), so a plain fetch returns no readable digits — six claims stayed "reachable but unverified" for a reason a real browser would fix, and this repo already runs headless Chromium in CI for Lighthouse (FR-71).
+- dod:
+  - extend `scripts/reverify_desk_research.py` (or a sibling script) to render the specific StudioBinder/Yamdu/SetHero URLs FR-83 already names with Playwright headless Chromium from the GitHub Actions job, and extract the visible pricing/feature text
+  - update the three claims in `competitive-teardown.md` with what the rendered page actually shows, cited with the date checked
+  - failure case: a page that still doesn't expose the claim after rendering (behind a signup wall, or a price that needs interaction to reveal) stays marked unverified with that specific reason, not guessed from surrounding text
+
+## FR-91 · security · Dependency vulnerability scan for backend and frontend pinned versions
+- state: ready
+- gated: no
+- why: the pre-merge checklist (FR-5) checks that dependencies are exact-pinned but nothing in this repo checks whether a pinned version carries a known CVE; the pilot goal puts real crew phone numbers, emails and photos through this stack, so a basic vulnerability sweep belongs in the readiness bar before that happens.
+- dod:
+  - run a vulnerability scan against `backend/`'s pinned Python dependencies (`pip-audit` or equivalent, no account needed) and `frontend/`'s pinned npm dependencies (`npm audit`), from a GitHub Actions job if this sandbox's own registry access is insufficient
+  - record every finding in a new `docs/research/dependency-audit-2026-09.md` with severity, affected package/version, and whether a safe same-major pin bump fixes it
+  - a finding with a safe, non-breaking pin bump gets fixed in this item's own PR with tests still passing; a finding that needs a breaking upgrade is documented, not silently ignored or silently upgraded
+  - failure case: a scanner that can't reach its advisory database (blocked registry) says so explicitly rather than reporting a clean scan
+
+## FR-92 · qa · Lighthouse pass on landing.html, the page a prospective AD or founder sees first
+- state: ready
+- gated: no
+- why: FR-71's Lighthouse run (and every fix since, FR-77/80/81/82) only scored `index.html`, the public call-sheet page; `landing.html` (FR-25/62, the pitch built from FR-6's positioning) has never been scored on its own, so any performance, accessibility or SEO gap on the first page a real AD opens is unknown.
+- dod:
+  - run `frontend/scripts/lighthouse_pilot_scale.py` (or a small adaptation of it) against `landing.html`'s built output, the same way FR-71 did for the sheet
+  - record Performance/Accessibility/Best Practices/SEO scores in `docs/research/pilot-scale-2026-09.md`
+  - fix any finding as small and unambiguous as FR-80/81/82's own (a missing tag, a console error, a name mismatch); anything larger gets filed as its own `ready` item rather than attempted here
+  - failure case: a score below 90 with no small fix available is recorded as a known gap, not silently left unscored
+
+## FR-93 · frontend · PDF export (day and crew list) at the FR-52 pilot-scale fixture (40 crew, 30 days, 60 scenes)
+- state: ready
+- gated: no
+- why: FR-47 (day PDF) and FR-61 (crew list PDF) shipped against ordinary-sized demo data; FR-52 established the 40-crew/30-day/60-scene fixture as this repo's own pilot-scale regression baseline for everything else (the day screen, Lighthouse, push delivery), but neither PDF export has been generated against it, so a real pilot day's PDF is untested territory (page count, layout overflow, generation time).
+- dod:
+  - generate both the day PDF and the crew-list PDF against FR-52's pilot-scale fixture (the 60-scene day, the 40-person crew) and inspect the actual output: page count, whether the schedule table or personal-calls table breaks across pages sanely, generation time
+  - record what was found in `docs/research/pilot-scale-2026-09.md`; fix anything that renders unusably (e.g. a table cut mid-row) as part of this item if small, file separately if not
+  - failure case: if generation takes long enough to be a real wait on a phone, say so with the measured time rather than asserting "fast enough" without one
+
+## FR-94 · qa · 200%-zoom reflow check for the editor and landing/privacy pages (FR-73's own scope only covered the crew sheet and personal link)
+- state: ready
+- gated: no
+- why: FR-73 (2026-09-23) proved the 320px reflow check on the crew sheet and personal link and fixed a real clipping bug there; the editor's own screens (day screen, Crew tab) and the landing/privacy pages were never run through the same check, so a table or button that clips at mobile-zoom width there is still unknown.
+- dod:
+  - run FR-73's `frontend/tests/test_reflow.py` pattern (320px CSS width, the WCAG 1.4.10 proxy for 200% zoom) against the editor's day screen, Crew tab, `landing.html` and `privacy.html`
+  - fix any clipping or forced horizontal scroll found, the same class of fix FR-73 made for the mobile schedule table
+  - failure case: a long AD-plausible input (a long location name, a long crew note) is tried too, not just the built-in demo copy, since FR-73's own bug came from real content, not layout math
