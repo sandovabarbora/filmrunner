@@ -106,9 +106,18 @@ marked items directly against the vendor pages.
   version" behavior StudioBinder/SetHero advertise. This is the one
   incumbent where offline viewing is a side effect of being a dumb PDF,
   not a designed feature.
-- **Pricing**: $42.99/month per seat for Scheduling alone, roughly
-  $86/month per person bundled with Movie Magic Budgeting
-  ([musicgateway.com](https://www.musicgateway.com/blog/film-industry/movie-magic), checked 2026-09-14). Not confirmed on ep.com directly (blocked).
+- **Pricing** (corrected 2026-09-25, FR-89 — see the resolution below): the
+  vendor's own store pages price Scheduling alone (not bundled with
+  Budgeting) at **$39.99/month regular, $29.99/month as a "limited time
+  introductory price"**, and its annual subscription (12-month commitment)
+  at **$279.88/year regular, $199.88/year introductory**
+  ([ep.com monthly](https://www.ep.com/ep-store/movie-magic-scheduling-monthly/),
+  [ep.com annual](https://www.ep.com/ep-store/movie-magic-scheduling-annual/),
+  both JSON-LD product data plus visible page text, checked 2026-09-25). The
+  previously cited $42.99/month and ~$86/month-bundled figures
+  ([musicgateway.com](https://www.musicgateway.com/blog/film-industry/movie-magic), checked 2026-09-14) do not match either ep.com price and could not
+  be reproduced from the vendor's own pages; treat them as a stale or
+  incorrect third-party figure, not a second real tier.
 - **Buyer**: line producer / production coordinator role, licensed by
   Entertainment Partners per seat — a studio/production-company line item,
   historically the incumbent on larger union productions.
@@ -252,6 +261,55 @@ guessed from the help-center articles, which describe scripts/sides
 comparison, not a call-sheet revision UI specifically — per this item's own
 failure case. Checked 2026-09-25.
 
+## Resolution: Movie Magic Scheduling pricing discrepancy (FR-89, 2026-09-25)
+
+FR-83 (2026-09-24) found `ep.com`'s own Movie Magic Scheduling monthly page
+prices at $29.99, contradicting this doc's original $42.99/month citation
+(from `musicgateway.com`, a third-party aggregator), and flagged it
+**contradicted-or-unclear** without resolving which figure — or which
+product/tier — was current.
+
+This shift extended `scripts/fetch_page_text.py` to also extract a page's
+JSON-LD `Product`/`Offer` block (the general script-stripping the rest of
+that script does would otherwise discard it along with every other
+`<script>` tag), then re-dispatched `.github/workflows/desk-research-reverify.yml`
+from the feature branch with the two `ep.com` Scheduling pricing URLs plus
+the general `ep.com/movie-magic-scheduling/` marketing page added
+([run 36122876922](https://github.com/sandovabarbora/filmrunner/actions/runs/36122876922),
+open egress, not this sandbox's blocked proxy):
+
+- **Monthly** (`ep.com/ep-store/movie-magic-scheduling-monthly/`): JSON-LD
+  names the product plainly **"Movie Magic Scheduling"** (Scheduling alone,
+  not bundled with Budgeting — resolving FR-83's own open question about
+  which product the store template covers), `price: "29.99"`,
+  `priceCurrency: "USD"`. The page's visible text shows this as a
+  **"Limited time introductory price"** of $29.99/month, struck through
+  against a **regular price of $39.99/month**.
+- **Annual** (`ep.com/ep-store/movie-magic-scheduling-annual/`): JSON-LD
+  names the product **"Movie Magic Scheduling Annual Subscription"**,
+  `price: "199.88"`. Its visible text shows the same pattern: $199.88/year
+  introductory against a $279.88/year regular price, with a 12-month
+  commitment required. This also resolves FR-83's separate flag that the
+  annual page's meta description named Budgeting, not Scheduling — the
+  JSON-LD product name (the more specific and reliable signal) confirms
+  this page is genuinely the Scheduling annual subscription.
+- **General marketing page** (`ep.com/movie-magic-scheduling/`): no price
+  shown at all, only a "Get pricing" call-to-action — confirms the store
+  pages above are the only place ep.com states a figure.
+
+Neither ep.com page nor its JSON-LD ever states $42.99 or ~$86/month in any
+form, for any tier or billing period. The original $42.99/month figure
+(`musicgateway.com`, checked 2026-09-14) is therefore **not a different,
+real tier** — it does not match ep.com's introductory price ($29.99), its
+regular price ($39.99), or its bundled-with-Budgeting framing (ep.com's own
+pages price Scheduling and Budgeting as fully separate products, each with
+their own store page). Per this item's own failure case: the discrepancy is
+resolved by preferring the vendor's own page over a third-party aggregator,
+not by picking a number — the corrected pricing line above now cites
+`ep.com` directly with both the introductory and regular figures, and notes
+the earlier $42.99 citation as likely stale or incorrect rather than
+silently dropping it.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
@@ -262,5 +320,5 @@ failure case. Checked 2026-09-25.
   the vendor's own page.
 - A headless-browser fetch (not a plain HTTP GET) for the client-rendered
   pages the 2026-09-24 pass found reachable but unreadable (StudioBinder,
-  Yamdu); a fresh `WebSearch` for Croogloo's current features URL; and
-  resolving the Movie Magic pricing discrepancy above.
+  Yamdu); a fresh `WebSearch` for Croogloo's current features URL. The
+  Movie Magic pricing discrepancy is resolved (FR-89, above).
