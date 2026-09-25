@@ -46,3 +46,19 @@ jobs:
       # name next to each figure can be read directly.
       - name: Dump the Movie Magic Scheduling pricing pages text
         run: python3 scripts/fetch_page_text.py https://www.ep.com/ep-store/movie-magic-scheduling-monthly/ https://www.ep.com/ep-store/movie-magic-scheduling-annual/ https://www.ep.com/movie-magic-scheduling/
+
+      # FR-90: reverify_desk_research.py's plain fetch gets StudioBinder,
+      # Yamdu and SetHero's raw HTML before their own client-side JS has run,
+      # so no readable pricing/feature text ever shows up. This renders the
+      # same pages with real headless Chromium instead.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Playwright
+        run: |
+          pip install -r frontend/tests/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Render client-rendered pricing pages
+        run: python3 scripts/render_pricing_pages.py
