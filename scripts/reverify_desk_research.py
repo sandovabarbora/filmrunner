@@ -123,6 +123,20 @@ CLAIMS = [
     },
     {
         "doc": "docs/research/prague-market-sizing.md",
+        "id": "productionlist-prague-www",
+        "claim": "FR-87 probe: does the www-prefixed host (search results only ever show www.productionlist.com) resolve where the bare domain 404s?",
+        "url": "https://www.productionlist.com/production-location/prague-czech-republic",
+        "checks": ["Prague", "production", "20"],
+    },
+    {
+        "doc": "docs/research/competitive-teardown.md",
+        "id": "croogloo-features-www",
+        "claim": "FR-87 probe: does the www-prefixed host resolve where the bare croogloo.com/features/ 404s?",
+        "url": "https://www.croogloo.com/features/",
+        "checks": ["revision", "version", "history", "compare"],
+    },
+    {
+        "doc": "docs/research/prague-market-sizing.md",
         "id": "diffusion-of-innovations",
         "claim": "15-20% adoption reaches critical mass for word-of-mouth spread (Rogers, via a marketing-textbook paraphrase, not the primary text)",
         "url": "https://en.wikipedia.org/wiki/Diffusion_of_innovations",
