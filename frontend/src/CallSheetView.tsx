@@ -193,8 +193,8 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             <tbody>
               {callSheet.cast_calls!.map((r) => (
                 <tr key={r.cast_member_id} data-cast={r.cast_member_id}>
-                  <td className="set">{r.name}</td><td>{r.character_name}</td><td className="ie">{r.status_code}</td>
-                  <td className="scene">{r.pickup_time ?? ""}</td><td className="scene">{r.call_time ?? ""}</td><td className="scene">{r.makeup_hair_time ?? ""}</td><td className="scene">{r.on_set_time ?? ""}</td>
+                  <td className="set">{r.name}</td><td className="character">{r.character_name}</td><td className="ie">{r.status_code}</td>
+                  <td className="time" data-k={L("th.pickup")}>{r.pickup_time ?? ""}</td><td className="time" data-k={L("th.call")}>{r.call_time ?? ""}</td><td className="time" data-k={L("th.mh")}>{r.makeup_hair_time ?? ""}</td><td className="time" data-k={L("th.onSet")}>{r.on_set_time ?? ""}</td>
                 </tr>
               ))}
             </tbody>
