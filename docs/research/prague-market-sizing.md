@@ -190,6 +190,43 @@ this doc names as blocked:
 Full raw output (status, byte length, every substring match with its
 excerpt) is in the job's own log and artifact.
 
+## Re-source attempt for the productionlist.com stale citation (FR-87, 2026-09-25)
+
+FR-83 flagged `productionlist.com/production-location/prague-czech-republic`
+as newly 404 and asked for "a fresh `WebSearch` for productionlist.com's
+current URL structure… before this count can be re-checked." That search
+was run this shift several ways (a direct query, a `site:productionlist.com
+Prague` query, and a query for other cities' listing pages to learn the
+site's current URL pattern) — every one returns the exact same dead URL as
+a top result ("Film & TV Productions Filming in Prague, Czech Republic |
+Production List"), and the site clearly is live: `site:productionlist.com`
+results show working production pages (e.g. `/production/blade-runner-2099`,
+`/production/interview-vampire-season-3`) and a working sibling listing at
+`/production-location/los-angeles-ca`, confirming the `/production-location/
+<slug>` pattern is still current for other cities. To rule out the
+non-www/www split before concluding the page is actually gone, the re-verify
+job (`scripts/reverify_desk_research.py` via
+`.github/workflows/desk-research-reverify.yml`, open egress) was re-run
+today against the bare host and, on a throwaway branch (not merged),
+temporarily extended to also probe `https://www.productionlist.com/
+production-location/prague-czech-republic`. Both came back **404** from the
+open-egress runner (run [36111762139](https://github.com/sandovabarbora/filmrunner/actions/runs/36111762139)
+for the bare host, [36111869883](https://github.com/sandovabarbora/filmrunner/actions/runs/36111869883)
+for the www probe).
+
+**Conclusion: genuinely gone, not a fetch/proxy artifact or a www/non-www
+mismatch** — the Prague-specific slug 404s on both hosts while the same
+`/production-location/<slug>` pattern works for other cities, so this reads
+as Prague's listing being removed or renamed to a slug this shift could not
+guess (`prague-czechia`, `prague-cz` and the plain `prague-czech-republic`
+already tried all point nowhere), not as the URL scheme having changed
+sitewide. As with the Croogloo citation above, the search index still
+serves the dead URL's cached title as if it resolves — flagged so a future
+pass fetches before trusting a `WebSearch` snippet on this exact URL. No
+live replacement was found; the "20 productions" figure stays **unverified**
+and the order-of-magnitude estimate in this doc is unchanged (it never
+depended on this single proxy count alone). Checked 2026-09-25.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Read `filmcommission.cz/en/statistics/`'s body directly (now confirmed
