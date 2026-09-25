@@ -2,6 +2,27 @@
 
 Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
+## FR-95 · pm · Run the first real pilot: one production, at least three shoot days
+- state: blocked
+- gated: yes
+- why: 85 items are done but no AD outside the company has used the product; the BRIEF kill criteria and every positioning claim wait on a real shoot, not on more features (plan: `docs/pilot/pilot-plan.md`)
+- dod:
+  - week 0 done: INBOX #3 SMTP live, FR-78/FR-86 deployed, FR-28 phone protocol run, FR-91 scan clean
+  - five FR-3 conversations held (INBOX #1), kill criteria applied as written in BRIEF.md
+  - one production publishes at least three shoot days in FilmRunner; the founder's day-1 log of workarounds is committed under `docs/pilot/`
+  - the three metrics in `docs/pilot/pilot-plan.md` reported per shoot day (FR-96)
+  - failure case: if the kill criteria trigger after week 1, no pilot is run and BRIEF.md is re-framed instead; if a pilot day breaks (sign-in, push, offline), the AD falls back to their usual PDF that same day and the break becomes the top backlog item
+
+## FR-96 · tech-lead · Read-only pilot metrics report per shoot day
+- state: ready
+- gated: no
+- why: the pilot's success is read from `revision_views` (FR-36); a script makes the three numbers in `docs/pilot/pilot-plan.md` one command instead of hand-written SQL on set day
+- dod:
+  - `backend/scripts/pilot_metrics.py <production_id>` prints per shoot day: crew with a personal link, how many opened the current revision before their own call (personal call, else crew call), and per revision after A the share opened within 30 minutes of publishing
+  - read-only: SELECTs only, no writes, same pattern as `backend/scripts/retention_report.py`
+  - pytest against a real local Postgres with seeded views (before call, after call, never opened, REV B within and outside 30 minutes)
+  - failure case: a day with no personal links or no views prints "no data" for that day rather than 0% or a division error
+
 ## FR-66 · qa · CI check of the live Fly + Pages stack, unblocked by this environment's egress proxy
 - state: done
 - note: delivered 2026-09-22 (feat/fr-66-live-check-workflow): `.github/workflows/pilot-readiness.yml` (daily 05:10 UTC + workflow_dispatch) runs `scripts/check_live_stack.py` — eleven public checks: API health, the deployed build carries this week's routes (FR-32/36/57/65), unknown token and unknown sheet refused, VAPID key configured, CORS allows the Pages origin, all four pages serve their own content, a handful of requests is not rate-limited. Pass/fail table into the job summary; any unreachable host or unexpected status fails the job with the error text (verified by pointing it at an invalid host). No tokens in the workflow. The readiness file now points at the workflow instead of a blocked curl
