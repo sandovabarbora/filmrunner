@@ -218,6 +218,74 @@ headers), costs at most one revalidation round-trip every 10 minutes per asset p
 600s already prevents the concern this item was raised to check (assets re-fetched from scratch on
 every load). Not worth a `ready` item on its own.
 
+## FR-84 (09:00 shift, 2026-09-25): confirmed the unused-JS chunk, deferred the print-only QR library
+
+FR-71's original run flagged two opportunities beyond the CLS issue FR-77 already fixed:
+`render-blocking-insight` on `styles-*.css` (~150–300ms) and `unused-javascript` finding 38%
+(68 KiB of 177 KiB) unused in the main JS bundle. The item's own premise — "Performance is still
+below 90 (69/100)" — was already stale by the time this shift ran: FR-77's CLS fix alone had moved
+it to 94, and FR-80/81/82 stayed in the 90–95 band since. This shift re-confirmed that (94/95 across
+two runs today) rather than assuming the 69 figure was still current, and treated the unused-JS
+finding as worth closing on its own merits regardless.
+
+**What's actually in the flagged chunk.** The `why` assumed the 38%-unused code was misplaced
+editor/landing code shipping on the sheet route (the framing the dod bullet itself repeats). That
+assumption does not hold: built a one-off Vite plugin (not committed) to print each chunk's real
+module list with sizes. `styles-PlsSX0ha.js` (176,891 bytes, matching Lighthouse's own reported
+byte count exactly) breaks down as: `react-dom` 133,289 B, `qrcode-generator` 51,765 B, `i18n.ts`
+9,534 B, `react` 7,656 B, `editor/shareText.ts` 5,171 B, `scheduler` 4,364 B, `editor/screens/
+QrCode.tsx` 795 B, `Avatar.tsx` 557 B (pre-minification renderedLength). React/react-dom/scheduler
+are needed by both the viewer and the editor entries — genuinely shared, not dead weight.
+`shareText.ts` (`whatsappNumber`/`whatsappUrl`) and `QrCode`/`qrcode-generator` are not orphaned
+editor code either: `CallSheetView.tsx` imports both directly and uses them on every public sheet
+view — `whatsappUrl` for each contact's WhatsApp button in "Who to call", `QrCode` for the QR in
+the print-only footer bar. Both are real, exercised features of the sheet route itself, matching the
+dod's own failure case: this is not code a different scenario needs, it's code *this* scenario needs
+too, just not for the initial paint.
+
+**What changed.** `qrcode-generator` (52 KB, the single largest non-React contributor) backs a
+feature — the crew-link QR in the print footer — that is never seen until an AD or crew member
+actually prints the sheet, well after first paint. `whatsappUrl`/`whatsappNumber` stay eager: contact
+rows with a WhatsApp button are part of the sheet's primary, always-visible content, not deferrable
+without delaying real functionality. `CallSheetView.tsx` now imports `QrCode` via `React.lazy()` +
+`Suspense` (`fallback={null}`, the wrapping div is `aria-hidden` and print-only already) instead of a
+static import, so Rollup code-splits `qrcode-generator` into its own chunk (`QrCode-*.js`) that the
+viewer only fetches when the print footer actually mounts, and — since nothing in `index.html` static-
+imports it — is no longer part of the `<link rel="modulepreload">` the browser eagerly fetches and
+parses on every sheet load. The editor still statically imports the same component for its own
+post-publish QR (`DayEditor.tsx`), so that route's own preload list picks it up unaffected.
+
+**Measured.** Before (`docs/research/lighthouse-pilot-scale.json`, committed baseline): shared chunk
+176,891 B, `unused-javascript` wastedBytes 68,499 (38.7%). After, same FR-52 pilot-scale production
+(60 crew, 60 scenes), same script, two consecutive runs:
+
+| Run | Shared chunk (`styles-*.js`) | `unused-javascript` wasted | Performance |
+|---|---|---|---|
+| Before | 176,891 B | 68,499 B (38.7%) | 92 (this run's own baseline; FR-71's original 69 pre-dates FR-77's CLS fix) |
+| After, run 1 | 155,214 B | 51,674 B (33.3%) | 94 |
+| After, run 2 | 155,214 B | 51,674 B (33.3%) | 95 |
+
+A real, verified 21,677-byte (12.3%) cut to the chunk every sheet view eagerly preloads, and a
+24.6% cut to Lighthouse's own wasted-bytes estimate on it — not a full elimination, because what's
+left (React/ReactDOM/scheduler runtime code paths this specific page doesn't exercise, plus
+`i18n.ts` translation keys the loaded sheet doesn't use) is genuine framework and app code the route
+needs, just not byte-for-byte on this one page — consistent with the dod's failure case, so left
+alone rather than guess-cut further. `render-blocking-insight` (the CSS half of the item's title) is
+unchanged this shift: `styles-Bx2Md7ZZ.css` (15.6 KB) is a single blocking stylesheet import; a real
+fix (critical-CSS extraction + async swap) carries a flash-of-unstyled-content risk for a page whose
+whole thesis is being trustworthy on set, and the dod's own bullets only ask about the JS chunk — not
+attempted this shift, left for a future item if the CSS opportunity (~150ms) is still worth it once
+a real interview or pilot surfaces a load-time complaint.
+
+Verified for real: `npm run typecheck` clean; `npm test` 53/53; full Playwright E2E suite 73/75 (the
+2 failures are the standing, previously-documented Nominatim-egress-403 gap in `test_locations_e2e.py`,
+unrelated — confirmed unrelated by running with this diff, same as every prior shift's finding) plus
+one instance of the pre-existing `test_landing_flow_video_...` flake (also previously documented,
+unrelated to `landing.html`; re-ran in isolation and it passed). `tests/test_pdf_e2e.py`'s own
+`#printFooterBar svg` assertion (count == 1) passed, confirming the QR still renders correctly once
+lazy-loaded. Backend suite 149/149 (untouched by this change, run for confidence). No backend change,
+no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.

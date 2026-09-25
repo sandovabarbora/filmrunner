@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Avatar } from "./Avatar";
-import { QrCode } from "./editor/screens/QrCode";
 import { whatsappNumber, whatsappUrl } from "./editor/shareText";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
 import { fmtDate, t, type Lang } from "./i18n";
+
+// FR-84: qrcode-generator (~52 KB minified) is only needed for the print-only
+// footer, never for the on-screen sheet crew actually read. Code-split so it
+// loads on its own instead of shipping in the shared chunk every sheet view preloads.
+const QrCode = lazy(() => import("./editor/screens/QrCode").then((m) => ({ default: m.QrCode })));
 
 /** "06:12" in the phone's own time zone; the raw value if it does not parse. */
 function issuedAt(iso: string): string {
@@ -260,7 +264,9 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {shareUrl && (
         <div className="print-footer-bar" id="printFooterBar" aria-hidden="true">
-          <QrCode value={shareUrl} size={64} />
+          <Suspense fallback={null}>
+            <QrCode value={shareUrl} size={64} />
+          </Suspense>
           <span className="url">{shareUrl}</span>
         </div>
       )}
