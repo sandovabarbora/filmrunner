@@ -14,7 +14,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if the kill criteria trigger after week 1, no pilot is run and BRIEF.md is re-framed instead; if a pilot day breaks (sign-in, push, offline), the AD falls back to their usual PDF that same day and the break becomes the top backlog item
 
 ## FR-96 · tech-lead · Read-only pilot metrics report per shoot day
-- state: ready
+- state: done
+- note: delivered 2026-09-25 (feat/fr-96-pilot-metrics): `python -m scripts.pilot_metrics <production_id>`; call times are Prague wall clock converted to UTC to match `now()`-stored timestamps; draft days skipped, cancelled days listed with their status; 4 tests in `backend/tests/test_pilot_metrics.py` (real Postgres), full backend suite 153/153
 - gated: no
 - why: the pilot's success is read from `revision_views` (FR-36); a script makes the three numbers in `docs/pilot/pilot-plan.md` one command instead of hand-written SQL on set day
 - dod:
