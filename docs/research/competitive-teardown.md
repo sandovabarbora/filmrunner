@@ -217,6 +217,41 @@ excerpt) is in the job's own log and artifact; `docs/research/desk-research-reve
 is regenerated on each run rather than committed, since it is a point-in-time
 fetch, not a stable research artifact.
 
+## Re-source attempt for the Croogloo stale citation (FR-87, 2026-09-25)
+
+FR-83 flagged `croogloo.com/features/` as newly 404 and asked for "a fresh
+`WebSearch` for Croogloo's current features page… before treating the 404
+as feature removed." That search was run this shift, several ways
+("croogloo.com features call sheet distribution", a site-structure query,
+a navigation-focused query) — every one of them returns the exact same
+dead URL as a top result, plus `croogloo.com/pricing/`,
+`croogloo.com/compare-pricing/`, `croogloo.com/` (home) and several
+`support.croogloo.com` help articles, all as live-looking snippets. This
+looked at first like the page might genuinely still be there and only
+blocked from this sandbox, so the re-verify job
+(`scripts/reverify_desk_research.py` via `.github/workflows/desk-research-reverify.yml`,
+open egress) was re-run today and, separately, temporarily extended to also
+probe `https://www.croogloo.com/features/` (the www-prefixed host) in case
+the bare domain was the actual problem. Both came back **404** from the
+open-egress runner (run [36111762139](https://github.com/sandovabarbora/filmrunner/actions/runs/36111762139)
+for the bare host, [36111869883](https://github.com/sandovabarbora/filmrunner/actions/runs/36111869883)
+for the www probe on a throwaway branch, not merged). No other URL under
+`croogloo.com/*` in any search result names a marketing "features" page —
+the closest live pages are `/pricing/`, `/compare-pricing/`, and the
+help-center collections (Scripts & Sides, Distribution), which document
+individual actions, not a features overview.
+
+**Conclusion: genuinely gone, not a fetch/proxy artifact** — Google's own
+search index still surfaces the dead URL's cached title ("Features –
+Croogloo") as if it were live, which is itself worth flagging: a future
+re-verification pass should not treat a `WebSearch` hit on this exact URL
+as confirmation it resolves, without an independent fetch. No live
+replacement page was found. The call-sheet-specific revision-history claim
+this citation supported (line ~123-125 above) stays **unverified** — not
+guessed from the help-center articles, which describe scripts/sides
+comparison, not a call-sheet revision UI specifically — per this item's own
+failure case. Checked 2026-09-25.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
