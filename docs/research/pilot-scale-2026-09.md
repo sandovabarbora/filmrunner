@@ -286,6 +286,81 @@ unrelated to `landing.html`; re-ran in isolation and it passed). `tests/test_pdf
 lazy-loaded. Backend suite 149/149 (untouched by this change, run for confidence). No backend change,
 no deploy needed.
 
+## FR-92 (16:00 shift, 2026-09-25): Lighthouse pass on landing.html
+
+FR-71/77/80/81/82/84's Lighthouse work only ever scored `index.html`, the public call-sheet page.
+`landing.html` (FR-25/62, the pitch built from FR-6's positioning, the page a prospective AD or the
+founder actually opens first) had never been run through Lighthouse on its own. Unlike the sheet,
+`landing.html` is fully static — no API, no database — so `frontend/scripts/lighthouse_landing.py`
+(new, same pattern as `lighthouse_pilot_scale.py` minus the seeding) only builds and serves `dist/`.
+Full report: `docs/research/lighthouse-landing.json`.
+
+**First run** (mobile, headless `/opt/pw-browsers/chromium`, `npx lighthouse`):
+
+| Category | Score |
+|---|---|
+| Performance | 97 |
+| Accessibility | 100 |
+| Best Practices | 92 |
+| SEO | 100 |
+
+All four already at or above the dod's 90 line, but Lighthouse's `cumulative-layout-shift` audit was
+orange (score 0.89, actual CLS 0.100) and its `cls-culprits-insight` diagnostic named the three
+`.shots` screenshot `<img>` elements as the shifting culprits — a real, fixable bug, not noise.
+
+**Root cause.** Every one of the six landing screenshots (`public/landing/*.jpg`, taken by
+`frontend/scripts/take_landing_screenshots.py`) is a crop of a real DOM region at whatever height
+that region actually rendered — the header-through-sunrise clip and the `#locations`/`#contacts`
+element screenshots are each a different real size. `landing.html`'s `<img>` tags all hardcoded a
+single guessed `width="390" height="220"` regardless. Checking the actual files: `call-sheet-top.*`
+is ~390×388–391 (near-square, not 390×220's 1.77:1), `locations.*` is ~335–350×376–417, and
+`contacts.*` is ~335–350×881–882 (a tall list, over 2.5× the declared height). `.shots img { width:
+100%; height: auto }` in `landing.css` derives its aspect-ratio box from these attributes per the
+HTML intrinsic-size-mapping spec, so the browser reserved a landscape-shaped box, then reflowed the
+whole page once each real (very different) image loaded — exactly Lighthouse's `main > section.shots`
+culprit trace.
+
+**Fix.** `take_landing_screenshots.py` now records each screenshot's actual captured CSS-pixel size
+(from the same `bounding_box()`/clip values already used to take the shot) and rewrites the matching
+`<img>`'s `width`/`height` attributes in `landing.html` after every run, so a future re-run (a new
+screenshot after any visual change to the sheet, per the script's own usage note) can't drift back
+into this bug — the previous hardcoded 390×220 was a one-time guess with nothing keeping it honest.
+Regenerated all six screenshots and rebuilt; real sizes are now: `call-sheet-top.{cs,en}` 390×388,
+`locations.cs` 335×417, `locations.en` 335×376, `contacts.{cs,en}` 335×881.
+
+**Also tried and reverted:** bumping the screenshot capture's `device_scale_factor` to 2 closed a
+separate, minor `image-size-responsive` "low resolution" Best Practices finding (96 → 100, the one
+remaining <100 audit after the CLS fix) — but roughly doubled every screenshot's file size, which
+pushed Performance from 97 to 88 (LCP moved from a passing 90 to a failing 59). A one-category, single
+percentage-point Best Practices gain is not worth taking Performance below the dod's 90 line, so this
+was reverted; the low-resolution finding is left as a known, accepted gap rather than fixed.
+
+**Re-run after the width/height fix** (device_scale_factor back at 1):
+
+| Category | Score |
+|---|---|
+| Performance | 97 |
+| Accessibility | 100 |
+| Best Practices | 96 |
+| SEO | 100 |
+
+`cumulative-layout-shift` is no longer orange (score 0.91, CLS 0.094 — small residual shift from
+content above the fold, not the screenshot bug). The two remaining "red" items in Lighthouse's own
+output (`lcp-discovery-insight`, `network-dependency-tree-insight`) are `weight: 0` diagnostic
+insights (Lighthouse 13's new Insights panel), not scored audits — confirmed by reading their
+`auditRefs` weight directly in the JSON report; they do not affect the category score and are not a
+"below 90 with no fix" gap under the dod's own failure case.
+
+Verified for real: `npm run build`/`typecheck` clean, `npm test` 53/53. Set up a local Postgres
+role/db and both a backend venv and a combined frontend-test+backend venv from scratch (none existed
+this session) to run the E2E suite: `test_smoke.py`+`test_a11y.py` 24/25 (the one failure,
+`test_landing_flow_video_...`, is the same pre-existing flake every prior shift touching
+`landing.html` has documented — re-ran in isolation and it passed); full Playwright suite 75/77 (the
+2 failures are the standing, previously-documented Nominatim-egress-403 gap in
+`test_locations_e2e.py`, unrelated). Backend suite 153/153, untouched by this change, run for
+confidence. No backend/frontend runtime change beyond `landing.html`'s six `width`/`height`
+attributes and the regenerated JPEGs; no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
