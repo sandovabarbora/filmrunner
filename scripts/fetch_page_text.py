@@ -38,6 +38,14 @@ _BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
 _DIGIT_LINE_RE = re.compile(r"\d")
+# FR-89: a page's visible price is sometimes marketing copy while the
+# machine-readable JSON-LD `Product`/`Offer` block names the real product and
+# figure — pull those out separately since the general script-stripping above
+# would otherwise discard them along with every other <script> tag.
+_JSON_LD_RE = re.compile(
+    r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _fetch(url: str) -> tuple[int, str, str]:
@@ -79,6 +87,18 @@ def main(argv: list[str]) -> int:
         report_parts.append(f"## {url}")
         report_parts.append(f"- status: {status or 'unreachable'}{' — ' + err if err else ''} ({len(body)} bytes)")
         if status == 200:
+            json_ld_blocks = _JSON_LD_RE.findall(body)
+            if json_ld_blocks:
+                report_parts.append(f"- {len(json_ld_blocks)} JSON-LD script block(s) found")
+                report_parts.append("")
+                report_parts.append("### JSON-LD blocks (raw)")
+                report_parts.append("")
+                for i, block in enumerate(json_ld_blocks):
+                    report_parts.append(f"block {i}:")
+                    report_parts.append("```json")
+                    report_parts.append(html.unescape(block.strip())[:5000])
+                    report_parts.append("```")
+                report_parts.append("")
             lines = _to_lines(body)
             digit_lines = [l for l in lines if _DIGIT_LINE_RE.search(l)]
             report_parts.append(f"- {len(lines)} text lines, {len(digit_lines)} contain a digit")

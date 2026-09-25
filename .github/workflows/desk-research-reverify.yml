@@ -38,3 +38,11 @@ jobs:
       # This dumps its actual text so a real figure can be read off it.
       - name: Dump the Czech Film Commission statistics page text
         run: python3 scripts/fetch_page_text.py https://filmcommission.cz/en/statistics/
+
+      # FR-89: reverify_desk_research.py's substring check only proved the
+      # two ep.com Movie Magic Scheduling pages are reachable and contain a
+      # dollar sign; it did not say which product/tier each price belongs to.
+      # This dumps the full text (including JSON-LD) so the actual product
+      # name next to each figure can be read directly.
+      - name: Dump the Movie Magic Scheduling pricing pages text
+        run: python3 scripts/fetch_page_text.py https://www.ep.com/ep-store/movie-magic-scheduling-monthly/ https://www.ep.com/ep-store/movie-magic-scheduling-annual/ https://www.ep.com/movie-magic-scheduling/
