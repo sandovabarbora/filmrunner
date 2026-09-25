@@ -66,7 +66,12 @@ item's own failure case — the same convention FR-2 used.
   ([help.sethero.com: Exporting Data](http://help.sethero.com/en/articles/1513672-exporting-data),
   [help.sethero.com: Importing/Exporting Data collection](https://help.sethero.com/en/collections/845885-importing-exporting-data), checked
   2026-09-18). Call-sheet templates and revision history specifically are
-  not named in the export list; **unverified** whether those export.
+  not named in the export list — **confirmed** (FR-90, 2026-09-25, see the
+  resolution below), not merely unverified: a headless-rendered read of the
+  article's actual body text lists exactly "People List, Cast List, Crew
+  List, Scenes List, Locations List" and nothing else exportable. An AD or
+  office leaving SetHero keeps their contact and scene data but would need
+  to rebuild call-sheet templates and lose revision history entirely.
 - **Working export function**: yes, and the most explicitly documented of
   the five — confirmed directly from SetHero's own help center, not a
   third party.
@@ -191,15 +196,32 @@ egress (`.github/workflows/desk-research-reverify.yml`), fetched three pages:
 Full raw output (status, byte length, every substring match with its
 excerpt) is in the job's own log and artifact.
 
+## Resolution: SetHero's Exporting Data article (FR-90, 2026-09-25)
+
+FR-83 found `help.sethero.com/en/articles/1513672-exporting-data`
+reachable but client-rendered (an Intercom help-center article), so its
+actual prose was invisible to a plain fetch. `scripts/render_pricing_pages.py`,
+run as a GitHub Actions job with open egress (extending
+`.github/workflows/desk-research-reverify.yml`, [run 36128372771](https://github.com/sandovabarbora/filmrunner/actions/runs/36128372771)),
+rendered the page with headless Chromium and read the article's real body
+text directly: "You can export any of the following data from SetHero:
+People List, Cast List, Crew List, Scenes List, Locations List" — five
+items, verbatim, nothing else. Call-sheet templates and revision history
+are absent from that list, not merely un-mentioned in a snippet — this is
+the article's own complete, exhaustive statement of what exports. The
+claim above is upgraded from **unverified** to **confirmed**.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run the searches that returned nothing (Reddit/forum threads on
   switching, StudioBinder/Croogloo contact and template export) with
   working `WebFetch` or a founder session that can browse directly.
-- A headless-browser read of SetHero's Exporting Data article (confirmed
-  reachable 2026-09-24, but client-rendered) to settle whether call-sheet
-  templates/revision history export.
 - The Movie Magic proprietary-format *fact* now has a neutral citation
   (2026-09-24); the "locked in" *framing* is still SetHero's own language
   and would benefit from a neutral discussion (forum, review site) if one
   becomes reachable.
+- The Yamdu Capterra-reviews 403 (contact-retention lock-in signal) is
+  still unresolved; `competitive-teardown.md`'s FR-90 pass found the same
+  bot-protection pattern on SetHero's own pricing/FAQ pages, so a browser
+  fingerprint or session-cookie approach beyond a bare headless render
+  would be needed for any of these review-site sources.

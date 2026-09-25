@@ -34,12 +34,20 @@ marked items directly against the vendor pages.
   web page/PDF that assumes connectivity. **Unverified** directly against
   StudioBinder's own docs (page blocked); treat this as a hint, not
   confirmed fact, until re-checked.
-- **Pricing**: seat-based, from roughly $29/seat/month as of July 2026
-  per a third-party comparison ([sethero.com comparison guide](https://sethero.com/blog/best-call-sheet-software-comparison/), checked 2026-09-14); StudioBinder's own
-  marketing says core call-sheet access is free on every tier including
-  Free, with paid tiers adding features/content
-  ([studiobinder.com/call-sheet-app](https://www.studiobinder.com/call-sheet-app/), checked 2026-09-14). Exact current tier prices are
-  **unverified** — the pricing page itself was blocked.
+- **Pricing** (confirmed 2026-09-25, FR-90 — see the resolution below):
+  headless-rendered directly from `app.studiobinder.com/pricing` itself, not
+  a third-party comparison. The "For Small Teams" tab: Free ($0, "covering
+  all of pre-production from scripting to call sheets" — free tier does
+  include call sheets, confirming the earlier claim), **Starter $29/mo**
+  (1 user, 50 GB), **Indie $49/mo** (2 users, 75 GB, marked "Most Popular"),
+  **Professional $99/mo** (4 users, 100 GB) — all billed monthly, an annual
+  toggle offers "SAVE 15%". The "For Organizations" tab adds Agency, Studio
+  (20 users, 400 GB), and a custom-quote Enterprise tier. Every paid tier's
+  feature list includes "Call Sheets" (Starter) or "Advanced Call Sheets"
+  (Indie/Pro and up). The original $29/seat/month figure (a third-party
+  comparison, checked 2026-09-14) is now confirmed directly against the
+  vendor's own page — it is exactly the Starter tier's price, not a rough
+  estimate.
 - **Buyer**: implied production-company/production-office seat licensing
   (per-seat pricing, Teams/Enterprise tiers) rather than an individual AD
   buying alone. **Unverified** in detail.
@@ -58,8 +66,15 @@ marked items directly against the vendor pages.
   Notifier app shows but not whether it caches data for offline viewing.
 - **Pricing**: a Flex tier starting at $45/month plus $22/additional user,
   and a Core tier at $265/month for up to 20 users with unlimited projects
-  ([g2.com pricing summary via search](https://g2.com/products/yamdu/pricing), checked 2026-09-14). Not confirmed against Yamdu's own site
-  (blocked).
+  ([g2.com pricing summary via search](https://g2.com/products/yamdu/pricing), checked 2026-09-14). Not confirmed against Yamdu's own site — a
+  headless-rendered read of `yamdu.com/en/pricing/` (FR-90, 2026-09-25, see
+  the re-verification pass below) shows nothing to confirm or contradict
+  this figure with: the page fully loads (26 rendered text lines) but
+  contains zero pricing content, not even plan names — only navigation,
+  a language switcher, and the footer. **Still unverified**, now for a
+  different reason: the pricing page as currently built shows no prices at
+  all to a plain page load, not that the content was hidden behind
+  client-side rendering.
 - **Buyer**: pitched at producers, directors, and production managers
   running projects with many moving parts, i.e. the production office, not
   an individual crew member ([capterra.com](https://www.capterra.com/p/186025/Yamdu/), checked 2026-09-14).
@@ -310,15 +325,53 @@ not by picking a number — the corrected pricing line above now cites
 the earlier $42.99 citation as likely stale or incorrect rather than
 silently dropping it.
 
+## Rendered-page re-verification (FR-90, 2026-09-25)
+
+FR-83 found StudioBinder's and Yamdu's pricing pages reachable but
+client-rendered, so a plain `urllib` fetch (`reverify_desk_research.py`)
+never saw their actual text. `scripts/render_pricing_pages.py`, run as a
+GitHub Actions job with open egress (extending
+`.github/workflows/desk-research-reverify.yml`, [run 36128372771](https://github.com/sandovabarbora/filmrunner/actions/runs/36128372771)),
+drives real headless Chromium (Playwright) against each page instead and
+extracts the rendered visible text — resolving FR-83's own "needs a headless
+browser" flag for both.
+
+- **StudioBinder pricing**: confirmed directly; see the corrected pricing
+  bullet above. One methodological note worth recording: the page's *top*
+  pricing cards render their dollar figures through an animated digit
+  widget whose DOM exposes many stray single-digit lines under plain text
+  extraction (e.g. `0 1 2 0 0 9 9` for a `$29`+something amount) — not
+  usable at all. The real, clean figures came from a *second*, plainer
+  "Compare Features" pricing table further down the same page, which
+  renders `$29`/`$49`/`$99` as ordinary single text nodes. A future
+  headless-render pass on a similarly-styled page should look past the
+  first price display it finds if the digits don't parse cleanly, rather
+  than conclude the page has no readable price.
+- **Yamdu pricing**: rendered fully (not blocked, not timing out) but
+  genuinely contains no pricing content — see the corrected bullet above.
+  **Still unverified**, cause narrowed from "client-rendered" to "no
+  pricing text present on this page at all as currently built".
+- **SetHero pricing** (`sethero.com/pricing/`) and **FAQ**
+  (`sethero.com/faq/`): both returned HTTP 202 with only 3 rendered text
+  lines each (a holding/interstitial response, not the real page) — a
+  different status than FR-83's 403s but the same real-bot-protection
+  pattern (this is a GitHub Actions runner with open egress, not this
+  sandbox's proxy). **Still unverified**; a future attempt would need a
+  browser fingerprint or wait strategy this script's default 30s
+  `networkidle` wait didn't clear.
+- **SetHero's Exporting Data article**: see the resolution in
+  `switching-cost-teardown.md` — confirmed, not just rendered.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
-  item marked **unverified** above.
+  item still marked **unverified** above (Yamdu pricing, SetHero
+  pricing/FAQ, StudioBinder mobile/offline, Croogloo revision-history UI).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
-- A headless-browser fetch (not a plain HTTP GET) for the client-rendered
-  pages the 2026-09-24 pass found reachable but unreadable (StudioBinder,
-  Yamdu); a fresh `WebSearch` for Croogloo's current features URL. The
-  Movie Magic pricing discrepancy is resolved (FR-89, above).
+- A fresh `WebSearch` for Croogloo's current features URL (confirmed
+  genuinely gone, FR-87, not just blocked). The Movie Magic pricing
+  discrepancy is resolved (FR-89), and the StudioBinder/SetHero-export
+  client-rendering gap is resolved (FR-90), both above.
