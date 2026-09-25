@@ -227,13 +227,64 @@ live replacement was found; the "20 productions" figure stays **unverified**
 and the order-of-magnitude estimate in this doc is unchanged (it never
 depended on this single proxy count alone). Checked 2026-09-25.
 
+## The Czech Film Commission statistics page read in full (FR-88, 2026-09-25)
+
+FR-83 (2026-09-24) confirmed `filmcommission.cz/en/statistics/` is reachable
+from GitHub Actions' open egress but only substring-matched it ("production",
+"2025", "statistic" all matched navigation text and the page title, not a
+production-count figure). This shift extended the same open-egress pattern
+(`scripts/fetch_page_text.py`, a new step in
+`.github/workflows/desk-research-reverify.yml`, dispatched from a branch
+before merge, [run 36117265800](https://github.com/sandovabarbora/filmrunner/actions/runs/36117265800))
+to strip the page to plain text and read every line, rather than guessing at
+substrings for a page nobody here had actually read.
+
+**Finding: the page does not count productions at all.** Its own subtitle
+states exactly what it measures: "Information on the revenues of projects
+filmed in recent years." The page is a single table, "Audiovisual production
+turnover (in millions of CZK)", with one row per year from 2002 to 2024 and
+three columns — Czech Films and TV Series, Foreign Films and TV Series, and
+Advertising Spots — each a turnover figure in millions of CZK, sourced to
+the Audiovisual Producers' Association. The most recent rows:
+
+| Year | Czech Films & TV Series | Foreign Films & TV Series | Advertising Spots |
+|---|---|---|---|
+| 2022 | 1,732 | 11,256 | 2,451 |
+| 2023 | 2,145 | 9,226 | 2,140 |
+| 2024 | 1,871 | 5,505 | 2,498 |
+
+(all figures million CZK; period-as-thousands-separator in the source
+converted to commas here for clarity)
+
+This is genuinely useful as an order-of-magnitude signal for the size of the
+whole Czech audiovisual industry (foreign productions alone turned over
+roughly 5.5 billion CZK, ~$235M at a rough 2026 rate, in 2024) and confirms
+the industry is not shrinking. But per this item's own failure case: **it
+does not map onto Q5's "active production issuing a call sheet in the last
+30 days" metric at all** — turnover says nothing about how many distinct
+productions generated it, since one large production and one hundred small
+ones could produce the same total. No production count, permit count, or
+shoot-day count appears anywhere on this page. The Commission's statistics
+section has no other sub-page beyond this one table (checked via the site's
+own nav, reproduced in the full text dump).
+
+**Conclusion**: this closes the "what does the page say" half of FR-83's
+open follow-up, but does not move the Q5 order-of-magnitude estimate above —
+there was no production-count figure to fold in. The Commission's own
+"Filmography" section (`filmography` in the site nav, a database of films
+and series shot in the Czech Republic) is a more plausible candidate for a
+future count-oriented follow-up, but that is a different page than the one
+FR-20/FR-83 named, not read this shift, and not assumed to contain a 30-day
+figure either — proposed as its own follow-up below rather than assumed.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Read `filmcommission.cz/en/statistics/`'s body directly (now confirmed
-  reachable, 2026-09-24) for the actual production-count figures — the
-  single most likely source for a real, citable count.
-- Find productionlist.com's current Prague-listing URL via a fresh
-  `WebSearch` (the 2026-09-21 citation now 404s) and read it directly.
+- Read the Czech Film Commission's separate Filmography/database page (not
+  the statistics page, now closed above) for a possible production or
+  title count, if BRIEF.md Q5 is revisited before FR-3 interview data
+  exists.
+- productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
+  2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - Re-verify the 15–20% critical-mass figure against Rogers' own text — the
   Wikipedia article is now reachable (2026-09-24) and names a compatible
   but not identical range; Rogers' primary text is the next step.
