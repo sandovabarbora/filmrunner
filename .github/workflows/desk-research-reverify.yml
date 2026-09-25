@@ -32,3 +32,9 @@ jobs:
         with:
           name: desk-research-reverify
           path: docs/research/desk-research-reverify.json
+
+      # FR-88: the substring-match step above only proves the Czech Film
+      # Commission statistics page is reachable, not what number it states.
+      # This dumps its actual text so a real figure can be read off it.
+      - name: Dump the Czech Film Commission statistics page text
+        run: python3 scripts/fetch_page_text.py https://filmcommission.cz/en/statistics/
