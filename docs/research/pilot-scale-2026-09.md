@@ -361,6 +361,76 @@ this session) to run the E2E suite: `test_smoke.py`+`test_a11y.py` 24/25 (the on
 confidence. No backend/frontend runtime change beyond `landing.html`'s six `width`/`height`
 attributes and the regenerated JPEGs; no deploy needed.
 
+## FR-93 (17:00 shift, 2026-09-25): both PDF exports generated at FR-52 pilot scale
+
+FR-47's E2E suite (`test_pdf_e2e.py`) proved the day PDF at its own 40-scene/30-crew
+fixture; FR-61's own Playwright test (`test_crew_filter_narrows_the_list_and_the_print_view_has_everyone`)
+proved the crew-list PDF's content at 5 hand-typed people, checking grouping and phone
+fallback but never a real page count. Neither had been generated against FR-52's actual
+pilot-scale production (60 crew, 8 cast, 6 locations, day 5 has 60 scenes) — the scale
+this repo's own pilot-readiness plan is built around. New script,
+`frontend/scripts/pdf_pilot_scale.py` (same pattern as `lighthouse_pilot_scale.py`):
+seeds/reuses that production, drives the real print pipeline for both exports through
+headless Chromium, and reads the resulting PDF back with `pypdf`.
+
+**Day PDF, day 5 (60 scenes):** loads in 0.28 s, generates in 0.13 s, **6 pages**,
+133.7 KB. Every one of the 60 scene rows is present with no row split across a page
+break (checked the same way FR-47's own test does — two letter-only tokens from each
+row's set-description text must co-occur on the same page). FR-47's own "<4 pages"
+dod line was set for its own smaller 40-scene/30-crew fixture; at 60 scenes 6 pages is
+a new data point at a bigger scale, not a failure of that line, and nothing about it
+reads as unusable (no cut content, generation time is trivial). Not changed.
+
+One methodological pitfall found and worth recording for whoever re-runs this: the
+first attempt at the split-row check reused FR-47's own two tokens ("Set " / "slugline")
+literally, and it looked like every one of pages 2–4 had a split row (63 "Set " matches
+for only 60 rows). Read the raw per-page text before concluding that — the schedule
+table's own header cell (`th.set` = "Set", CSS-uppercased and repeated on every content
+page by `thead { display: table-header-group }`) renders as "SET" too, and this repo's
+own FR-52/FR-93 seed convention uses an all-caps "SET {n} — ..." prefix (unlike FR-47's
+own title-case "Set {n} — ..." fixture), so the repeating header collided with the row
+prefix at this specific fixture's casing. The script now counts two tokens from inside
+the set-description sentence itself ("wrap on a phone" / "slugline") instead of the row
+prefix, which does not collide with anything in the header or elsewhere on the page —
+confirmed against the raw PDF text before trusting the count.
+
+**Crew-list PDF, 60 crew + 8 cast:** first run, unmodified `crewPrint.ts`: loads in well
+under a second, generates in 0.15–0.17 s, but **3 pages** — FR-61's own dod line is
+"page count under 3 for 60 people", so this is a real miss at real pilot scale, not
+previously caught because no committed test generates a real PDF from more than 5
+people. Inspected the raw PDF text before changing anything: no row was cut or split
+(every department's members are intact, `tr, tr.dept { break-inside: avoid }` is
+working), it is simply that 60 people across 12 department headers plus 8 cast members
+does not fit two A4 pages at the original 11pt/1.35-line-height, 3pt/4pt-padding
+layout. Fixed in `frontend/src/editor/crewPrint.ts`: tightened to 10.5pt/1.25 line
+height and 2pt/4pt cell padding, and trimmed a few points off the heading margins.
+Re-measured: **2 pages**, 40.9 KB, all 60 crew and all 8 cast rows still present, no
+row cut or split. `frontend/tests/__tests__/crewPrint.test.ts` (content-only, no layout
+assertions) and `test_crew_filter_narrows_the_list_and_the_print_view_has_everyone`
+still pass unmodified.
+
+One secondary, non-blocking observation left as-is: a department can still span a page
+break without its header repeating on the new page (e.g. Grip's last two people landed
+on page 2 with no "GRIP" label there, only on page 1 where the group started) — no data
+is lost or unreadable, every person's row is intact and grouping is still recoverable
+from position, and FR-61's own dod does not ask for headers to repeat per department.
+Forcing whole-department break-avoidance was tried mentally and rejected: with 12
+same-sized departments, a whole-group break-avoid would push entire 5-row groups to
+the next page rather than filling the page, which could easily raise the page count
+back above the "under 3" line this fix was made for. Not filed as its own item —
+noted here in case a future pilot day's real (uneven) department sizes make it worth
+revisiting.
+
+Verified for real: `npm run typecheck`/`npm run build` clean, `npm test` 53/53.
+`frontend/tests/test_pdf_e2e.py` (3/3) and the FR-61 print test re-run clean against
+the rebuilt `dist/`. Full Playwright E2E suite 75/77 (the 2 failures are the standing,
+previously-documented Nominatim-egress-403 gap in `test_locations_e2e.py`, unrelated —
+reproduced identically on unmodified `main` before this change). Backend suite 153/153
+(untouched by this change, run for confidence; needed `ALTER ROLE ... CREATEDB` on this
+session's own freshly-created local role for `test_migration_enum_casing.py`'s
+own throwaway database, an environment-setup gap in this sandbox, not a product bug).
+No backend change, no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
