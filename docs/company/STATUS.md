@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-25 10:20 (10:00 shift)
+Updated: 2026-09-25 11:20 (11:00 shift)
 
 ## today
 
@@ -13,7 +13,7 @@ The `ready`+`gated:no/partial` queue held only FR-84 at plan time (fewer than si
 Plan (priority order = file order in BACKLOG.md):
 - 09:00 — FR-84 (tech-lead): find what's actually in the public sheet's 38%-unused JS chunk and cut render-blocking CSS, closing Lighthouse's last sub-90 category. **Done — PR #217, auto-merge enabled.**
 - 10:00 — FR-87 (qa): re-source FR-83's two now-404 citations (Croogloo features page, productionlist.com Prague listing) with live replacements or a dated dead-link note. **Done — PR #219, auto-merge enabled.**
-- 11:00 — FR-88 (marketing): read the Czech Film Commission statistics page body for a real Prague production count, closing FR-20/FR-83's open Q5 follow-up.
+- 11:00 — FR-88 (marketing): read the Czech Film Commission statistics page body for a real Prague production count, closing FR-20/FR-83's open Q5 follow-up. **Done — PR #223, auto-merge enabled.**
 - 12:00 — FR-89 (pm): resolve FR-83's contradicted Movie Magic price citation ($29.99 vs $42.99) with a second source.
 - 13:00 — FR-90 (tech-lead): render FR-83's still-unverified client-rendered pricing pages (StudioBinder, Yamdu, SetHero) via headless Chromium in CI.
 - 14:00 — FR-91 (security): run a dependency vulnerability scan (pip-audit/npm audit) against backend and frontend pinned versions, before real crew data goes through this stack.
@@ -22,6 +22,8 @@ Plan (priority order = file order in BACKLOG.md):
 - 17:00 — FR-94 (qa): extend FR-73's 200%-zoom reflow check to the editor screens and landing/privacy pages; day summary follows (17:00 always sends it).
 
 `list_pull_requests --state open` was empty before this brief opened PR #215 — nothing waited a working day, so nothing else to flag in "waiting on you" beyond PR #215 itself (opened this morning). FR-28 stays correctly `blocked` on the founder's own phone/SMTP steps (INBOX #3). If a shift finds the queue already re-thinned by a parallel (non-routine) session, it acts as pm per TEAM.md §7 rather than sitting idle.
+
+Between the 10:00 and 11:00 shifts, a parallel (non-routine, founder-side) session merged two more commits directly to `main`: a UI fix (control sizing/card frame, cast times and crew tab on phones) and `docs(pm): first pilot plan` adding **FR-95** (pm, blocked, gated: yes — the first real pilot, week-0 checklist including INBOX #3/SMTP and FR-91/28) and **FR-96** (tech-lead, ready, gated: no — a read-only per-shoot-day pilot metrics script). Neither changes today's hourly plan: FR-95 is correctly `blocked` on founder-only steps, and FR-96 sits below today's already-planned FR-87–FR-94 in file order, so it is not this shift's item; a future shift (or tomorrow's brief) picks it up next.
 
 ### Yesterday (2026-09-24), for reference
 
@@ -71,6 +73,7 @@ Full detail in `LOG.md`; condensed here to keep this file readable. The morning 
 
 ## marketing
 - summary: 11:00 shift took FR-70 per today's plan: `docs/marketing/positioning.md`'s "Local" alternative rewritten citing FR-20's actual finding (order-of-magnitude estimate, "low tens to low hundreds" active Prague productions, largest uncertainty in the untracked student/ad/micro-budget category) and FR-20's own conclusion ("does not confirm Prague is dense enough... not obviously out of reach"). Decision: this does not move "Local" to the lead position — the estimate is too uncertain to carry a locality headline; it continues to support only the distribution angle (H3 Prague-first go-to-market, film-school free tier). Named what would move it: FR-20's own follow-ups or FR-3 interview data (still blocked on INBOX #1). Chosen position (live+offline-honest) separately re-confirmed unrevised. PR #178 (`docs/fr-70-positioning-local-revisit`), doc-only, auto-merge enabled. FR-70 set to `done`. Sending FR-41's outreach drafts and FR-3's own invitation (INBOX #1) both still wait on the founder.
-- tests: n/a — doc-only change; `python scripts/check_company_docs.py docs/company` clean.
+  11:00 shift 2026-09-25 took FR-88 per today's plan. `list_pull_requests --state open` was empty at shift start, nothing skipped. FR-83's own substring-match approach only proved `filmcommission.cz/en/statistics/` was reachable, not what it said, so this shift extended the pattern instead of guessing a keyword checklist for a page nobody had read: `scripts/fetch_page_text.py` (new, stdlib-only) strips a page to plain, line-broken text and surfaces every line with a digit, wired as a new step in `.github/workflows/desk-research-reverify.yml`, dispatched from the feature branch before merge ([run 36117265800](https://github.com/sandovabarbora/filmrunner/actions/runs/36117265800)). Read in full: the page's own subtitle states it measures "the revenues of projects filmed in recent years" — its whole content is one table, "Audiovisual production turnover (in millions of CZK)", one row per year 2002–2024 across three columns (Czech films/TV, foreign films/TV, advertising spots), sourced to the Audiovisual Producers' Association. No production, permit, or shoot-day count appears anywhere on the page. Handled the dod's own failure case directly rather than forcing a fit: turnover does not map onto Q5's "active production in the last 30 days" metric (one large production and a hundred small ones could produce the same total), so `docs/research/prague-market-sizing.md` records the real table and states plainly what the page counts instead; the order-of-magnitude estimate is left unchanged since there was no count to fold in. Also closed FR-87's already-resolved productionlist.com follow-up line and named the Commission's separate Filmography page as a more plausible future count source (not read this shift). `python scripts/check_company_docs.py docs/company` clean. PR #223 (`feat/fr-88-prague-stats-page-text`), auto-merge enabled. FR-88 set to `done`. No backend/frontend change, no deploy needed.
+- tests: n/a — doc-only change; `python scripts/check_company_docs.py docs/company` clean. FR-88's own verification was the dispatched GitHub Actions run itself (real HTTP fetch against open egress, not mocked) plus a local unit check of `fetch_page_text.py`'s HTML-stripping helper against a synthetic sample before pointing it at the live page.
 - blockers: none.
-- needs_approval: no new items this shift.
+- needs_approval: no new items this shift. INBOX #1, #3, #6 all still `pending`, all founder-only.
