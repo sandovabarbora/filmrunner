@@ -54,12 +54,12 @@ export function crewPrintHtml(crew: CrewMember[], cast: CastMember[], production
   return `<!doctype html><html lang="cs"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
   :root { color-scheme: light }
-  body { font: 11pt/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #17150f; margin: 16pt; }
+  body { font: 10.5pt/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #17150f; margin: 16pt; }
   h1 { font-size: 14pt; margin: 0 0 2pt; }
-  .meta { color: #55504a; font-size: 9pt; margin: 0 0 12pt; }
-  h2 { font-size: 9pt; letter-spacing: .1em; text-transform: uppercase; color: #55504a; margin: 16pt 0 4pt; }
+  .meta { color: #55504a; font-size: 9pt; margin: 0 0 10pt; }
+  h2 { font-size: 9pt; letter-spacing: .1em; text-transform: uppercase; color: #55504a; margin: 10pt 0 3pt; }
   table { width: 100%; border-collapse: collapse; }
-  td, th { text-align: left; padding: 3pt 4pt; border-bottom: .5pt solid #d8d1c4; vertical-align: top; }
+  td, th { text-align: left; padding: 2pt 4pt; border-bottom: .5pt solid #d8d1c4; vertical-align: top; }
   tr.dept th { background: #efeae1; font-size: 9pt; letter-spacing: .08em; text-transform: uppercase; border-bottom: .8pt solid #17150f; }
   tr, tr.dept { break-inside: avoid; }
   .hod { font-size: 8pt; border: .5pt solid #17150f; border-radius: 2pt; padding: 0 3pt; }
