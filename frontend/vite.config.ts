@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon.png", "apple-touch-icon.png", "demo/call-sheet.json"],
       manifest: {
-        name: "FilmRunner Call Sheets",
-        short_name: "Call Sheet",
+        name: "FilmRunner",
+        short_name: "FilmRunner",
         description: "Offline-capable shoot-day call sheet viewer",
         start_url: ".",
         display: "standalone",
