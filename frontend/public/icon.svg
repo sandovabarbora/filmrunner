@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="16" fill="#0b0b0c"/>
-  <text x="50" y="64" font-family="monospace" font-size="46" fill="#f4c542" text-anchor="middle">CS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#17150f"/>
+  <path d="M136 100H294L376 182V412H136Z" fill="#f7f4ee"/>
+  <path d="M294 100V182H376Z" fill="#cfe3f7"/>
+  <rect x="170" y="142" width="92" height="18" rx="4" fill="#17150f"/>
+  <g fill="#17150f">
+    <rect x="170" y="196" width="36" height="72" rx="7"/>
+    <rect x="214" y="196" width="36" height="72" rx="7"/>
+    <circle cx="263" cy="214" r="7"/>
+    <circle cx="263" cy="250" r="7"/>
+    <rect x="276" y="196" width="36" height="72" rx="7"/>
+    <rect x="320" y="196" width="36" height="72" rx="7"/>
+  </g>
+  <rect x="170" y="300" width="186" height="13" rx="6.5" fill="#6e685f"/>
+  <rect x="170" y="334" width="186" height="13" rx="6.5" fill="#6e685f"/>
+  <rect x="170" y="368" width="120" height="13" rx="6.5" fill="#6e685f"/>
 </svg>

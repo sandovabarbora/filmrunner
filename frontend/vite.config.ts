@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "demo/call-sheet.json"],
+      includeAssets: ["icon.svg", "icon.png", "apple-touch-icon.png", "demo/call-sheet.json"],
       manifest: {
         name: "FilmRunner Call Sheets",
         short_name: "Call Sheet",
@@ -19,7 +19,13 @@ export default defineConfig({
         display: "standalone",
         background_color: "#f7f4ee",
         theme_color: "#f7f4ee",
-        icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+        // PNGs from scripts/make_icons.py: Android needs 192/512 and a full-bleed "maskable" it can cut to its own shape.
+        icons: [
+          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+          { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
       },
       workbox: {
         // App shell and the bundled demo are precached; API reads are
