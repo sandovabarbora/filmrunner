@@ -79,7 +79,8 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .checklist li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; font-size: 0.9375rem; color: var(--muted); }
 .checklist li.done { text-decoration: line-through; }
 .checklist li.next { color: var(--ink); font-weight: 600; }
-.checklist .mark { font-family: var(--mono); width: 1.2em; }
+.checklist .mark { display: inline-flex; align-self: center; }
+.checklist li.done .mark, .checklist li.next .mark { color: var(--ink); }
 .checklist a { color: inherit; }
 .pcall-who { margin-bottom: 6px; }
 .pcall-row { display: grid; grid-template-columns: 6ch 6ch 1fr; gap: 8px; }

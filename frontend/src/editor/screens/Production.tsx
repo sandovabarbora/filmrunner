@@ -13,6 +13,7 @@ import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
 import { useL } from "../lang";
+import { Icon } from "../../Icon";
 
 /** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
 async function reuseOrCreateContact(conn: Connection, contactId: string | null, name: string, phone: string | null) {
@@ -61,7 +62,7 @@ function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connecti
       <ol>
         {steps.map((st) => (
           <li key={st.text} className={st.done ? "done" : st === next ? "next" : ""}>
-            <span className="mark" aria-hidden="true">{st.done ? "✓" : "○"}</span>
+            <span className="mark"><Icon name={st.done ? "check" : "todo"} /></span>
             {st.href && !st.done ? <a href={st.href}>{st.text}</a> : <span>{st.text}</span>}
           </li>
         ))}
@@ -192,8 +193,8 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
                 <span className="rev-badge small" data-rev={d.current_revision?.revision_letter ?? "A"}>REV {d.current_revision?.revision_letter ?? "–"}</span>
               </a>
               <div className="row-actions">
-                <a className="quiet-link" href={crewLink(conn.apiBase, d.id)} target="_blank" rel="noreferrer">{L("Crew link")}</a>
-                <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, d.id))}>{L("Copy")}</button>
+                <a className="quiet-link" href={crewLink(conn.apiBase, d.id)} target="_blank" rel="noreferrer"><Icon name="link" />{L("Crew link")}</a>
+                <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, d.id))}><Icon name="copy" />{L("Copy")}</button>
               </div>
             </li>
           ))}
@@ -201,7 +202,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       )}
       {canPublish
         ? <div className="inline day-actions">
-            <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}>{L("+ New day")}</a>
+            <a className="button" id="newDay" href={href({ screen: "day", productionId, callSheetId: null })}><Icon name="plus" />{L("New day")}</a>
             {days && days.some((d) => d.actuals && (d.actuals.first_shot || d.actuals.wrap)) && (
               <button type="button" className="quiet-link" id="exportActuals" onClick={() => {
                 // FR-65: day, date, planned call, first shot, lunch, wrap, note — what the office asks for at the end of the week.
@@ -579,7 +580,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
             aria-label={L("Filter by name, department, position or number")} onChange={(e) => setFilter(e.target.value)} />
           {filter.trim() !== "" && <button type="button" className="quiet" id="clearCrewFilter" onClick={() => setFilter("")}>{L("Clear")}</button>}
           <span className="hint" id="crewCount">{filter.trim() === "" ? L("{n} people", { n: allCrew.length }) : L("{n} of {total}", { n: visibleCrew!.length, total: allCrew.length })}</span>
-          <button type="button" className="quiet" id="printCrew" onClick={() => crewPrintWindow(allCrew, cast, productionName ?? "", L)}>{L("Print crew list")}</button>
+          <button type="button" className="quiet" id="printCrew" onClick={() => crewPrintWindow(allCrew, cast, productionName ?? "", L)}><Icon name="print" />{L("Print crew list")}</button>
         </div>
       )}
       {allCrew && allCrew.length > 0 && visibleCrew && visibleCrew.length === 0 && (
@@ -604,10 +605,10 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
                   {pending.has(m.id) && (
                     <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={L("Sync {name}", { name: m.contact.name })}>{L("Sync")}</button>
                   )}
-                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: L("{name}'s link copied. One link for the whole shoot; it always opens their next day.", { name: m.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: m.contact.name })}>{L("Link")}</button>
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: L("{name}'s link copied. One link for the whole shoot; it always opens their next day.", { name: m.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: m.contact.name })}><Icon name="link" />{L("Link")}</button>
                   {whatsappNumber(m.contact.phone) && (
                     <a className="quiet-link whatsapp" href={whatsappUrl(whatsappNumber(m.contact.phone), onboardingMessageText(productionName, m, personalLink(conn.apiBase, m.personal_token)))}
-                      target="_blank" rel="noreferrer" aria-label={L("Send link to {name} on WhatsApp", { name: m.contact.name })}>{L("WhatsApp")}</a>
+                      target="_blank" rel="noreferrer" aria-label={L("Send link to {name} on WhatsApp", { name: m.contact.name })}><Icon name="chat" />{L("WhatsApp")}</a>
                   )}
                   <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={L("Edit {name}", { name: m.contact.name })}>{L("Edit")}</button>
                   <button type="button" className="quiet danger" onClick={() => void remove(m)} aria-label={L("Remove {name}", { name: m.contact.name })}>{L("Remove")}</button>
@@ -622,7 +623,7 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
           <button type="button" className="quiet" id="copyAllLinks" onClick={() => {
             void navigator.clipboard?.writeText(allLinksText(allCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
             setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: allCrew.length }) });
-          }}>{L("Copy all links")}</button>
+          }}><Icon name="copy" />{L("Copy all links")}</button>
           <span className="hint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</span>
         </div>
       )}

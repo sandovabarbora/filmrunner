@@ -79,6 +79,11 @@ button:disabled { opacity: 0.45; cursor: default; }
 .row-actions button, .row-actions .quiet-link, .chip .quiet-link, .item-actions button {
   min-height: var(--control-sm); padding: 0 10px; font-size: var(--fs-small);
 }
+/* Icons (Icon.tsx): sized by the text they sit next to, so one set fits every control. */
+.icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
+button:has(> .icon:only-child) { padding: 0; min-width: var(--control); }
+.row-actions button:has(> .icon:only-child), .item-actions button:has(> .icon:only-child) { min-width: var(--control-sm); }
+
 /* Text links that sit inside a sentence stay text. */
 button.linklike { all: unset; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: inherit; }
 
@@ -145,7 +150,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 
 /* FR-16: opt in to push notifications from a personal link. */
 .notify { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
-.notify-on { font-size: 0.875rem; color: var(--ink-2); }
+.notify-on { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--ink-2); }
 .notify button.quiet { min-height: 0; border: 0; background: none; color: var(--muted); font-size: var(--fs-small); font-weight: 400; text-decoration: underline; padding: 0; }
 
 /* Personal block: the one number this person wakes up for. */
@@ -250,12 +255,13 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 /* On a phone the three actions get their own full-width line: number, WhatsApp, copy — no icons, no wrapping. */
 @media (max-width: 559px) {
   .contact-actions { flex: 1 1 100%; display: grid; grid-template-columns: 1fr auto auto; }
-  .contact-actions .btn-icon, .contact-btn.copy::before { display: none; }
+  .contact-btn.copy .btn-label { display: none; }
 }
 /* 320px / 200% zoom: the number takes the whole line, the other two share the next. */
 @media (max-width: 379px) {
   .contact-actions { grid-template-columns: 1fr 1fr; }
   .contact-actions .phone { grid-column: 1 / -1; }
+  .contact-btn.copy .btn-label { display: inline; }
 }
 .contact-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
@@ -267,15 +273,13 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 }
 .contact-btn.phone { font-family: var(--mono); }
 .contact-btn.wa { color: #0d7a3a; }
-.contact-btn .btn-icon { font-size: 1rem; line-height: 1; }
-/* FR-82: generated content, not a text node — never part of the button's own accessible name computation. */
-.contact-btn.copy::before { content: "⧉"; font-size: 1rem; line-height: 1; }
 .contact .phone.none { color: var(--muted); font-family: var(--sans); font-size: 0.8125rem; }
 .hospital { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-2); }
 .hospital .k { color: var(--muted); }
 
 .cached-at { margin-top: 12px; font-size: 0.8125rem; color: var(--muted); }
 .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+.actions button { flex: none; }
 .hint { font-size: 0.8125rem; color: var(--muted); }
 
 /* Entry page: two doors, no marketing. */
@@ -347,7 +351,7 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   .contact { padding: 3pt 0; }
   .contact-actions { gap: 0; }
   .contact-btn.wa, .contact-btn.copy { display: none !important; }
-  .contact-btn .btn-icon { display: none; }
+  .contact-btn .icon, .actions .icon { display: none; }
   .contact-btn.phone { border: none; background: none; min-height: 0; min-width: 0; padding: 0 0 0 8pt; font-size: 9.5pt; }
   .others { display: block; }
   .others[open] > summary, .others > summary { display: none !important; }
