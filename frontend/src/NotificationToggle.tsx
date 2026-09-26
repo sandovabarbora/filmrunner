@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, subscribe, unsubscribe } from "./push";
 import { t, type Lang } from "./i18n";
+import { Icon } from "./Icon";
 
 type State =
   | { kind: "checking" }
@@ -54,13 +55,13 @@ export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: s
     <div className="notify" id="notifyToggle">
       {state.kind === "on" && (
         <>
-          <span className="notify-on">{t(lang, "notify.on")}</span>
+          <span className="notify-on"><Icon name="bell" />{t(lang, "notify.on")}</span>
           <button type="button" className="quiet" onClick={() => void disable()}>{t(lang, "notify.off")}</button>
         </>
       )}
       {state.kind === "off" && (
         <button type="button" className="secondary" onClick={() => void enable(state.vapidPublicKey)}>
-          {t(lang, "notify.enable")}
+          <Icon name="bell" />{t(lang, "notify.enable")}
         </button>
       )}
       {state.kind === "busy" && <span className="hint">{t(lang, "notify.busy")}</span>}

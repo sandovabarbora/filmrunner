@@ -9,6 +9,7 @@ import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whats
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
+import { Icon } from "../../Icon";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -491,8 +492,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               </select>
               {!dis && (
                 <div className="item-actions">
-                  <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}>↑</button>
-                  <button type="button" className="quiet" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}>↓</button>
+                  <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}><Icon name="up" /></button>
+                  <button type="button" className="quiet" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}><Icon name="down" /></button>
                   <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>{L("Remove")}</button>
                 </div>
               )}
@@ -501,7 +502,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         </ol>
         {!dis && (
           <button type="button" id="addScene" className="secondary" onClick={() => setDraft((d) => d ? { ...d, items: [...d.items, { order_index: d.items.length + 1, scene_number: "", int_ext: "EXT", day_night: "DAY", set_description: "", location_id: null, page_count_eighths: 8 }] } : d)}>
-            {L("+ Add scene")}
+            <Icon name="plus" />{L("Add scene")}
           </button>
         )}
       </section>
@@ -542,7 +543,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                     return (
                       <li key={e.crew_member_id} className="chip">
                         <span>{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
-                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}>{L("nudge")}</a>}
+                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />{L("nudge")}</a>}
                       </li>
                     );
                   })}
@@ -630,15 +631,15 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           <div className="share">
             <div className="label">{L("Crew link")}</div>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
-            <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}>{L("Copy")}</button>
-            <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer">{L("PDF")}</a>
+            <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}><Icon name="copy" />{L("Copy")}</button>
+            <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer"><Icon name="print" />{L("PDF")}</a>
             <div className="inline share-text-actions">
               <button type="button" id="sendDayAsText" className="secondary" disabled={!shareable}
                 onClick={() => void shareAsText(`Day ${draft.day_number}`, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))}>
-                {L("Send day as text")}
+                <Icon name="send" />{L("Send day as text")}
               </button>
               {shareable
-                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))} target="_blank" rel="noreferrer">{L("Open in WhatsApp")}</a>
+                ? <a className="quiet-link" id="dayWhatsapp" href={whatsappUrl(null, daySummaryText(draft, locations, crewLink(conn.apiBase, draft.callSheetId!), cast))} target="_blank" rel="noreferrer"><Icon name="chat" />{L("Open in WhatsApp")}</a>
                 : <span className="hint" id="shareTextHint">{L("Publish first so the text matches the link.")}</span>}
             </div>
             {shareText !== null && (
@@ -666,10 +667,10 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <li key={m.id} className="row static">
                     <span className="name">{m.contact.name}<span className="meta"> · {m.department}</span></span>
                     <span className="row-actions">
-                      <a className="quiet-link" href={link} target="_blank" rel="noreferrer">{L("Open")}</a>
-                      <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={L("Copy link for {name}", { name: m.contact.name })}>{L("Copy")}</button>
+                      <a className="quiet-link" href={link} target="_blank" rel="noreferrer"><Icon name="link" />{L("Open")}</a>
+                      <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(link)} aria-label={L("Copy link for {name}", { name: m.contact.name })}><Icon name="copy" />{L("Copy")}</button>
                       {number && shareable
-                        ? <a className="quiet-link whatsapp" href={whatsappUrl(number, message())} target="_blank" rel="noreferrer" aria-label={L("WhatsApp {name}", { name: m.contact.name })} data-number={number}>{L("WhatsApp")}</a>
+                        ? <a className="quiet-link whatsapp" href={whatsappUrl(number, message())} target="_blank" rel="noreferrer" aria-label={L("WhatsApp {name}", { name: m.contact.name })} data-number={number}><Icon name="chat" />{L("WhatsApp")}</a>
                         : <button type="button" className="quiet" disabled={!shareable} onClick={() => void shareAsText(`Day ${draft.day_number} · ${m.contact.name}`, message())} aria-label={L("Send message to {name}", { name: m.contact.name })}>{L("Message")}</button>}
                     </span>
                   </li>

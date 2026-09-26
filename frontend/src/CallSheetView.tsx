@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Avatar } from "./Avatar";
+import { Icon } from "./Icon";
 import { whatsappNumber, whatsappUrl } from "./editor/shareText";
 import type { CallSheet, ContactCard, PersonalSheet, ScheduleItem, SheetLocation } from "./types";
 import { fmtDate, t, type Lang } from "./i18n";
@@ -272,7 +273,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       <div className="actions">
-        <button onClick={() => window.print()}>{L("print")}</button>
+        <button onClick={() => window.print()}><Icon name="print" />{L("print")}</button>
         <span className="hint">{L("print.hint")}</span>
       </div>
     </article>
@@ -294,7 +295,7 @@ function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
       {tel ? (
         <div className="contact-actions">
           <a className="phone contact-btn" href={tel} aria-label={`${t(lang, "contacts.call")} ${c.name}, ${c.phone}`}>
-            <span className="btn-icon" aria-hidden="true">☎</span>{c.phone}
+            <Icon name="phone" />{c.phone}
           </a>
           {wa && (
             <a
@@ -304,7 +305,7 @@ function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
               rel="noreferrer"
               aria-label={`WhatsApp ${c.name}`}
             >
-              <span className="btn-icon" aria-hidden="true">💬</span>{t(lang, "contacts.whatsapp")}
+              <Icon name="chat" />{t(lang, "contacts.whatsapp")}
             </a>
           )}
           <ContactCopyButton phone={c.phone!} name={c.name} lang={lang} />
@@ -318,9 +319,9 @@ function ContactRow({ c, lang = "en" }: { c: ContactCard; lang?: Lang }) {
 
 /**
  * A contact's number, copyable without selecting text with a wet thumb; a brief "Copied" confirms it worked.
- * FR-82: the ⧉ icon is a CSS `::before` (see `.contact-btn.copy`), never a text node — a glyph character
- * inside the button's own visible text can never be reflected in `aria-label`, which is what caused axe's
- * label-content-name-mismatch here in the first place.
+ * FR-82: the icon is an aria-hidden SVG, never a text node — a glyph character inside the button's own
+ * visible text can never be reflected in `aria-label`, which is what caused axe's label-content-name-mismatch
+ * here in the first place. On a phone the word is hidden and the icon alone carries it (see styles.css).
  */
 function ContactCopyButton({ phone, name, lang }: { phone: string; name: string; lang: Lang }) {
   const [copied, setCopied] = useState(false);
@@ -335,7 +336,7 @@ function ContactCopyButton({ phone, name, lang }: { phone: string; name: string;
       }}
       aria-label={`${t(lang, "contacts.copy")} ${name}`}
     >
-      {copied ? t(lang, "contacts.copied") : t(lang, "contacts.copy")}
+      <Icon name={copied ? "check" : "copy"} /><span className="btn-label">{copied ? t(lang, "contacts.copied") : t(lang, "contacts.copy")}</span>
     </button>
   );
 }
