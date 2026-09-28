@@ -1078,13 +1078,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a real "Add to Home Screen" on an iPhone/Android device can't be driven from this sandbox, so that boundary is stated plainly rather than claimed as verified — the founder's own real-device check (same pattern as FR-28's push protocol) stays a separate future step, not silently assumed to pass
 
 ## FR-100 · security · Coordinated fastapi/starlette upgrade to close the CVE FR-91 left blocked
-- state: ready
+- state: done
 - gated: no
 - why: FR-91's dependency audit (2026-09-25) found `starlette` 0.38.6 (transitive, pinned by `fastapi==0.115.0`'s own `starlette<0.39.0`) vulnerable, and documented it as blocked on a coordinated `fastapi` upgrade to 0.141.1 rather than attempted; that upgrade itself has never been tried.
 - dod:
   - bump `fastapi` to latest (0.141.1 per FR-91's own note, or whatever is current at the time) and let `starlette` float to its resolved minimum ≥0.40.0; re-run `pip-audit` to confirm the finding is actually closed, not just the version bumped
   - full backend suite green against the bumped versions (real local Postgres, full Alembic chain); if anything in `app/` breaks, fix it, or if the break is deep, revert and document exactly what blocks the upgrade — the same honest-block pattern FR-91 used for `pytest`
   - failure case: a bump that passes the backend's own unit tests but changes response/error behavior the PWA depends on is caught by also running the frontend Playwright E2E suite against the bumped backend, not by trusting the backend suite alone
+- note: ~14:00 shift 2026-09-28 (security) delivered the whole dod on branch `fix/fr-100-fastapi-starlette-upgrade`, PR #249 (awaits founder merge, touches `backend/`): `fastapi` 0.115.0 → 0.141.1, `starlette` floats to 1.7.0 (past every advisory's 0.40.0 floor). `pip-audit` after the bump: zero `starlette` findings; only the already-documented, out-of-scope `pytest` finding remains. Full backend suite 153/153 (real local Postgres, full Alembic chain, twice — before and after the bump). The exact combined CI install (`backend/requirements.txt` + `frontend/tests/requirements.txt`) installs clean. Per the dod's own failure case, also ran the full frontend Playwright E2E suite against the bumped backend: 75/77 pass, the 2 failures being the standing, already-documented Nominatim-egress-403 gap (`test_locations_e2e.py`), confirmed unrelated to this bump by the HTTP 403 itself. Full write-up: `docs/research/dependency-audit-2026-09.md` ("FR-100 resolution" section, on PR #249's branch). Backend changed: deploy needed (pins only, no code or migration).
 
 ## FR-101 · frontend · Confirm the new inline-SVG icons still render in the day and crew-list PDF exports
 - state: ready
