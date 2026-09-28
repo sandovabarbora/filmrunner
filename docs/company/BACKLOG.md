@@ -1047,3 +1047,48 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - run FR-73's `frontend/tests/test_reflow.py` pattern (320px CSS width, the WCAG 1.4.10 proxy for 200% zoom) against the editor's day screen, Crew tab, `landing.html` and `privacy.html`
   - fix any clipping or forced horizontal scroll found, the same class of fix FR-73 made for the mobile schedule table
   - failure case: a long AD-plausible input (a long location name, a long crew note) is tried too, not just the built-in demo copy, since FR-73's own bug came from real content, not layout math
+
+## FR-97 · qa · Re-run pilot-scale and landing Lighthouse after the weekend's icon-set and PWA-icon changes
+- state: ready
+- gated: no
+- why: three commits landed directly to `main` over the weekend (PR #236 own icon set replacing emoji/text glyphs, #237 PWA app icons — apple-touch-icon, icon-192/512, maskable — and #238 the "FilmRunner" home-screen name), outside the routine, so none of it has been measured against the pilot-scale Lighthouse harness FR-77/FR-84/FR-92 spent real effort tuning (CLS 0.843→0.014, Performance 69→94/95, landing CLS 0.89→0.094). New SVGs, PNGs and a changed manifest are exactly the kind of change that can silently regress those numbers.
+- dod:
+  - re-run `frontend/scripts/lighthouse_pilot_scale.py` (public sheet) and `frontend/scripts/lighthouse_landing.py` (landing) against the current build and compare every category and the CLS/LCP metrics to the last recorded numbers in `docs/research/pilot-scale-2026-09.md`
+  - if anything dropped below its last recorded value, fix the regression the same small, targeted way FR-77/84/92 did; if nothing regressed, record the new numbers as the current baseline
+  - failure case: a regression traced to a specific new asset (e.g. an unsized icon `<img>`/`<link>` reintroducing layout shift, per FR-92's own root cause) is fixed at the source, not by only patching the reported number
+
+## FR-98 · qa · Test coverage for the shared `Icon.tsx` component (zero tests today, 13+ render sites)
+- state: ready
+- gated: no
+- why: `frontend/src/Icon.tsx` (added 2026-09-26, PR #236) replaced emoji/text glyphs across the viewer and editor and is now the single source for every icon in the app, but has no test of its own — a broken `IconName` or a future glyph added without `aria-hidden`/`focusable="false"` would only be caught by chance in an unrelated test. Its own code comment cites FR-82's accessible-name fix as the reason it must always stay decorative.
+- dod:
+  - a unit or component test renders every key in `IconName` and asserts the SVG mounts with `aria-hidden="true"` and no visible text node (guarding the exact FR-82 regression class)
+  - the existing `frontend/tests/test_a11y.py` pass is re-confirmed clean after the test is added (no new accessible-name mismatch introduced by the icon swap)
+  - failure case: a future icon added to `PATHS` without touching this test file should fail it — verify by temporarily adding a broken entry locally and confirming the new test catches it, then removing the throwaway before committing
+
+## FR-99 · tech-lead · Confirm the new PWA icons and manifest pass an installability check
+- state: ready
+- gated: no
+- why: PR #237/#238 added `icon-192.png`/`icon-512.png`/`icon-maskable-512.png`/`apple-touch-icon.png` and the "FilmRunner" `short_name`/`name`, but nothing has verified the manifest itself is valid or that Lighthouse's installable/PWA checks pass — a malformed manifest or a wrong `purpose`/`sizes` pairing fails silently until someone actually tries "Add to Home Screen".
+- dod:
+  - Lighthouse's PWA/installable audit (already run by `lighthouse_pilot_scale.py`) passes clean against the built manifest; if this Lighthouse version has dropped that audit, validate the manifest directly against the W3C manifest schema instead and say plainly which check was actually used
+  - confirm all four icon files referenced in `vite.config.ts`'s manifest exist in the built `dist/` output at the sizes declared (a mismatched `sizes` value is a common silent bug)
+  - failure case: a real "Add to Home Screen" on an iPhone/Android device can't be driven from this sandbox, so that boundary is stated plainly rather than claimed as verified — the founder's own real-device check (same pattern as FR-28's push protocol) stays a separate future step, not silently assumed to pass
+
+## FR-100 · security · Coordinated fastapi/starlette upgrade to close the CVE FR-91 left blocked
+- state: ready
+- gated: no
+- why: FR-91's dependency audit (2026-09-25) found `starlette` 0.38.6 (transitive, pinned by `fastapi==0.115.0`'s own `starlette<0.39.0`) vulnerable, and documented it as blocked on a coordinated `fastapi` upgrade to 0.141.1 rather than attempted; that upgrade itself has never been tried.
+- dod:
+  - bump `fastapi` to latest (0.141.1 per FR-91's own note, or whatever is current at the time) and let `starlette` float to its resolved minimum ≥0.40.0; re-run `pip-audit` to confirm the finding is actually closed, not just the version bumped
+  - full backend suite green against the bumped versions (real local Postgres, full Alembic chain); if anything in `app/` breaks, fix it, or if the break is deep, revert and document exactly what blocks the upgrade — the same honest-block pattern FR-91 used for `pytest`
+  - failure case: a bump that passes the backend's own unit tests but changes response/error behavior the PWA depends on is caught by also running the frontend Playwright E2E suite against the bumped backend, not by trusting the backend suite alone
+
+## FR-101 · frontend · Confirm the new inline-SVG icons still render in the day and crew-list PDF exports
+- state: ready
+- gated: no
+- why: PR #236 replaced emoji/text glyphs with inline SVG icons across the same components (`CallSheetView.tsx`, contact rows) that FR-47/FR-61/FR-93 measured and print-tuned — but FR-93's own pilot-scale PDF re-run (2026-09-25) predates the icon swap (2026-09-26), so nobody has confirmed the new icons still appear (rather than a blank box or a missing glyph) in a printed PDF, a known risk with inline SVG under headless-Chromium print rendering.
+- dod:
+  - re-run `frontend/scripts/pdf_pilot_scale.py` (FR-93's own script) against the current build and confirm every `Icon` used in a printed context (contact rows, print footer) actually appears in the generated PDF, not just on screen
+  - compare page count against FR-93's own recorded pilot-scale numbers (6 pages day, 2 pages crew list); any change is a regression to investigate, not accepted silently
+  - failure case: an icon that renders on screen but not in the PDF is fixed in the shared print CSS, the same scope FR-93 already touches, not worked around by reverting to a glyph
