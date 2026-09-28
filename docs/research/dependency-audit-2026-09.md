@@ -100,3 +100,58 @@ future run finds either blocked, `pip-audit`/`npm audit` fail loudly
 (non-zero exit, no report) rather than returning an empty result that
 could be misread as "clean" — confirm the exit code, not just the
 absence of findings, before recording a scan as clean.
+
+## FR-100 resolution, 2026-09-28: fastapi/starlette upgrade closes the `starlette` CVEs
+
+`fastapi` bumped `0.115.0` → `0.141.1` (latest on PyPI as of this date).
+`starlette` was not pinned directly — it floats to whatever `fastapi`'s
+own `METADATA` allows — and resolved to `1.7.0`, past the `0.40.0` floor
+every open advisory needed (`starlette` itself renumbered its versioning
+scheme somewhere in that range; the actual jump is roughly 26 `fastapi`
+minors, as FR-91 estimated, not a small point release).
+
+`pip-audit -r backend/requirements.txt` after the bump: `starlette`
+carries zero findings (all of FR-91's listed advisories —
+PYSEC-2026-1943, 1941, 161, 248, 2281, 2280, 249 — are gone). Only the
+already-documented, out-of-scope `pytest` finding (PYSEC-2026-1845,
+blocked on a coordinated `pytest-playwright`/`playwright` upgrade per
+FR-91) remains.
+
+Verification, real not assumed:
+
+- Full backend suite: **153/153**, twice — once against a fresh local
+  Postgres role/db with the full Alembic migration chain run from empty
+  (neither existed this session), once more after re-applying the chain
+  post-bump. No test changed; nothing in `app/` broke.
+- The exact combined install CI uses (`pip install -r
+  backend/requirements.txt -r frontend/tests/requirements.txt`) succeeds
+  cleanly in a fresh venv — no resolver conflict, unlike FR-91's `pytest`
+  attempt.
+- Per this item's own failure-case bullet (a bump that passes backend
+  unit tests but changes response/error behaviour the PWA depends on):
+  ran the full frontend Playwright E2E suite (`frontend/tests`, 77 tests)
+  against a real build and the bumped backend (uvicorn spawned from the
+  same bumped venv, `sys.executable`) — **75/77 pass**; the 2 failures
+  are `test_locations_e2e.py`'s real-Nominatim geocoding tests, both
+  failing on the same `403 Forbidden` from this sandbox's egress proxy
+  that every prior shift touching that file has documented (FR-18/19/74
+  notes above) — a standing sandbox network gap, not a response-shape
+  change from this bump; confirmed by the error itself (an HTTP 403 from
+  `nominatim.openstreetmap.org`, not an assertion about the app's own
+  API response).
+
+New deprecation warnings surfaced (not failures, no dod bullet requires
+fixing them, noted so a future shift doesn't re-discover them from
+scratch): `status.HTTP_422_UNPROCESSABLE_ENTITY` and
+`HTTP_413_REQUEST_ENTITY_TOO_LARGE` (used in
+`app/routers/call_sheets.py`, `app/routers/productions.py`) are renamed
+in this starlette version to `..._CONTENT`; both old names still resolve
+to the same numeric status code and still pass every test, so left
+as-is. `starlette.testclient` warns that using it with `httpx` directly
+is deprecated in favour of a separate `httpx2` package — the test suite
+uses FastAPI's own `TestClient` wrapper, not `starlette.testclient`
+directly, so no code change follows from this warning either; flagged
+for whoever eventually revisits test tooling.
+
+No migration, no API contract change, no `app/` code change — this PR is
+the version bump alone. Backend changed: deploy needed (pins only).
