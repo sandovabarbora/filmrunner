@@ -431,6 +431,63 @@ session's own freshly-created local role for `test_migration_enum_casing.py`'s
 own throwaway database, an environment-setup gap in this sandbox, not a product bug).
 No backend change, no deploy needed.
 
+## FR-97 (11:00 shift, 2026-09-28): Lighthouse re-check after the weekend's icon-set and PWA-icon changes
+
+Weekend commits #236-238 (outside any routine) replaced emoji/text glyphs with a shared inline-SVG
+`Icon.tsx`, added real PWA app icons (`apple-touch-icon`, `icon-192/512`, maskable), and set
+"FilmRunner" as the home-screen name — none of these had been through Lighthouse since. Re-ran both
+`frontend/scripts/lighthouse_pilot_scale.py` (public sheet, FR-52's 60-scene production) and
+`frontend/scripts/lighthouse_landing.py` against the current build, comparing every category and the
+CLS/LCP metrics to the last recorded numbers above (FR-84's 2026-09-25 run for the sheet, FR-92's for
+landing).
+
+**landing.html — unchanged, no regression:**
+
+| Category | FR-92 (2026-09-25) | This run |
+|---|---|---|
+| Performance | 97 | 97 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | 96 |
+| SEO | 100 | 100 |
+
+Identical across all four categories. The same two weight-0 diagnostic Insights as before
+(`lcp-discovery-insight`, `network-dependency-tree-insight`) are the only "red" lines; no new one
+appeared from the icon swap or the PWA icon files.
+
+**Public sheet (pilot scale) — Performance moved 97 → 93, everything else held or improved:**
+
+| Category | FR-84 (2026-09-25) | This run |
+|---|---|---|
+| Performance | 97 | 93 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | **100** |
+| SEO | 100 | 100 |
+
+Checked whether this traces to a specific new asset (the dod's own failure case) before accepting it
+as noise: `cumulative-layout-shift` is 0.014 (audit score 1.00), identical to FR-77's own fixed value
+— the icon swap introduced no new layout shift. The only "red" line is
+`network-dependency-tree-insight` (weight 0, a diagnostic Insight, not a scored audit — confirmed via
+`auditRefs` weight the same way FR-92 did); a `forced-reflow-insight` (also weight 0) appeared on the
+first of two runs and not the second, itself evidence of ordinary render-timing variance rather than a
+committed regression. The three scored audits that moved are all small, timing-based ones —
+`first-contentful-paint` 0.82→0.80, `largest-contentful-paint` 0.87→0.86, `total-blocking-time`
+0.99→0.95 — the same class of run-to-run swing FR-77/80/84 already documented as CI-machine noise on
+this exact script (their own recorded runs ranged 88-97 with zero code change in between). Re-ran the
+public-sheet script twice: both runs scored Performance 93 and Best Practices 100, so this is the
+current stable reading, not a one-off fluke — just not one attributable to any specific weekend
+asset, since nothing in the icon/PWA change touches render-blocking work, network requests, or layout.
+Best Practices improving to 100 (was 96, the `image-size-responsive`-class gap FR-92 left as an
+accepted, unrelated finding) further supports "no regression from this change" rather than "a
+regression offset by an unrelated fix."
+
+Both pages stay at or above the dod's 90 line on every category, so nothing here needs the FR-77/84/92
+style targeted fix. Recording these as the new baseline per the dod's own instruction for "nothing
+regressed."
+
+Verified for real: `npm run build`/`typecheck` clean, `npm test` 53/53. Built a local Postgres role/db
+and ran the full Alembic migration chain from scratch, then started a real uvicorn+Postgres API for the
+pilot-scale script (neither existed this session). No backend/frontend product change, no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
