@@ -1040,13 +1040,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if generation takes long enough to be a real wait on a phone, say so with the measured time rather than asserting "fast enough" without one
 
 ## FR-94 · qa · 200%-zoom reflow check for the editor and landing/privacy pages (FR-73's own scope only covered the crew sheet and personal link)
-- state: ready
+- state: done
 - gated: no
 - why: FR-73 (2026-09-23) proved the 320px reflow check on the crew sheet and personal link and fixed a real clipping bug there; the editor's own screens (day screen, Crew tab) and the landing/privacy pages were never run through the same check, so a table or button that clips at mobile-zoom width there is still unknown.
 - dod:
   - run FR-73's `frontend/tests/test_reflow.py` pattern (320px CSS width, the WCAG 1.4.10 proxy for 200% zoom) against the editor's day screen, Crew tab, `landing.html` and `privacy.html`
   - fix any clipping or forced horizontal scroll found, the same class of fix FR-73 made for the mobile schedule table
   - failure case: a long AD-plausible input (a long location name, a long crew note) is tried too, not just the built-in demo copy, since FR-73's own bug came from real content, not layout math
+- note: 09:00 shift 2026-09-28 (branch `test/fr-94-320px-reflow-editor-landing`) added four new `frontend/tests/test_reflow.py` cases at 320px: the editor day screen (a long unbroken safety note and set name), the editor Crew tab (a long unbroken department and position title), and `landing.html`/`privacy.html` in both CS and EN. No clipping or forced horizontal scroll found on any of the four with this AD-plausible content, so no product code change. One real gap found and fixed in the shared `find_clipped_elements` helper itself: it flagged every `<input>`/`<textarea>` whose value is wider than its box, which is native keyboard/screen-reader-accessible browser behaviour, not the page-level reflow clipping WCAG 1.4.10 (and this check) is about — the day-screen test's `Set` field tripped it for that reason alone, unrelated to actual layout. Excluded form controls from the check, documented why in its docstring. Verified for real: `frontend/tests/test_reflow.py` 10/10 (all 4 original + 6 new) against a real build, a real uvicorn+Postgres API and a real headless Chromium (pinned Playwright revision absent in this sandbox, same known gap prior shifts noted — temporary `conftest.py` browser-path override, reverted before commit, not part of the diff); `npm run typecheck`/`npm test` (53/53) clean; backend suite 153/153 (untouched, run for confidence); wider Playwright E2E suite 80/83, the 3 failures being the standing Nominatim-egress-403 gap in `test_locations_e2e.py` and the already-documented `test_landing_flow_video_...` flake (re-ran in isolation, passed clean) — both pre-existing and unrelated. PR #241, test-only (`frontend/tests/`), so per TEAM.md this needs the founder's own merge, no auto-merge. No backend/frontend product change, no deploy needed.
 
 ## FR-97 · qa · Re-run pilot-scale and landing Lighthouse after the weekend's icon-set and PWA-icon changes
 - state: ready
