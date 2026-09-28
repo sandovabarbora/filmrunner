@@ -1040,7 +1040,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if generation takes long enough to be a real wait on a phone, say so with the measured time rather than asserting "fast enough" without one
 
 ## FR-94 · qa · 200%-zoom reflow check for the editor and landing/privacy pages (FR-73's own scope only covered the crew sheet and personal link)
-- state: ready
+- state: done
+- note: 16:00-ish shift 2026-09-28 (pm, bookkeeping correction) — this item's dod was actually delivered by the 09:00 shift 2026-09-28 (PR #241, branch `test/fr-94-320px-reflow-editor-landing`, full detail in `STATUS.md`'s `## engineering` log and `LOG.md`), but this line was left `ready` by mistake; corrected to match. PR #241 touches `frontend/tests/`, so per `TEAM.md`'s normal-mode path rules it still awaits the founder's own merge, no auto-merge — this correction only fixes the backlog's own bookkeeping so a future shift does not redo already-finished work.
 - gated: no
 - why: FR-73 (2026-09-23) proved the 320px reflow check on the crew sheet and personal link and fixed a real clipping bug there; the editor's own screens (day screen, Crew tab) and the landing/privacy pages were never run through the same check, so a table or button that clips at mobile-zoom width there is still unknown.
 - dod:
@@ -1069,7 +1070,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a future icon added to `PATHS` without touching this test file should fail it — verify by temporarily adding a broken entry locally and confirming the new test catches it, then removing the throwaway before committing
 
 ## FR-99 · tech-lead · Confirm the new PWA icons and manifest pass an installability check
-- state: ready
+- state: done
+- note: 16:00-ish shift 2026-09-28 (pm, bookkeeping correction) — this item's dod was actually delivered by the ~13:00 shift 2026-09-28 (PR #247, branch `feat/fr-99-pwa-manifest-check`, full detail in `STATUS.md`'s `## engineering` log and `LOG.md`), but this line was left `ready` by mistake; corrected to match. PR #247 touches `frontend/`, so per `TEAM.md`'s normal-mode path rules it still awaits the founder's own merge, no auto-merge — this correction only fixes the backlog's own bookkeeping so a future shift does not redo already-finished work.
 - gated: no
 - why: PR #237/#238 added `icon-192.png`/`icon-512.png`/`icon-maskable-512.png`/`apple-touch-icon.png` and the "FilmRunner" `short_name`/`name`, but nothing has verified the manifest itself is valid or that Lighthouse's installable/PWA checks pass — a malformed manifest or a wrong `purpose`/`sizes` pairing fails silently until someone actually tries "Add to Home Screen".
 - dod:
