@@ -43,6 +43,7 @@ body {
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
 button { font: inherit; }
+a { color: var(--ink); }
 
 /* Section labels: one style everywhere a block names itself. */
 .eyebrow, .block h2, .schedule h2, .contacts h2, .locations h2, .checklist h2,
