@@ -41,7 +41,7 @@ export function ProductionsScreen({ conn, productions, onCreated, setNotice }: {
             <li key={p.id}>
               <a className="row" href={href({ screen: "production", productionId: p.id, tab: "days" })}>
                 <span className="name">{p.name}</span>
-                <span className="meta">{p.status}</span>
+                <span className="meta">{L(p.status)}</span>
               </a>
             </li>
           ))}

@@ -43,6 +43,7 @@ body {
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
 button { font: inherit; }
+a { color: var(--ink); }
 
 /* Section labels: one style everywhere a block names itself. */
 .eyebrow, .block h2, .schedule h2, .contacts h2, .locations h2, .checklist h2,
@@ -81,8 +82,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 }
 /* Icons (Icon.tsx): sized by the text they sit next to, so one set fits every control. */
 .icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
-button:has(> .icon:only-child) { padding: 0; min-width: var(--control); }
-.row-actions button:has(> .icon:only-child), .item-actions button:has(> .icon:only-child) { min-width: var(--control-sm); }
+/* Icon-only buttons say so with a class — :only-child ignores text nodes, so it would also match icon + text. */
+button.icon-only { padding: 0; min-width: var(--control); }
+.row-actions button.icon-only, .item-actions button.icon-only { min-width: var(--control-sm); }
 
 /* Text links that sit inside a sentence stay text. */
 button.linklike { all: unset; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: inherit; }
