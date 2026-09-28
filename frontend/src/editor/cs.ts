@@ -183,7 +183,7 @@ export const CS: Record<string, string> = {
   "Parking notes": "Parkování",
   "Nearest hospital": "Nejbližší nemocnice",
   "not resolved, check the address": "adresa nenalezena, zkontroluj ji",
-  "on the map: {place}": "na mapě: {place}",
+  "resolved: {place}": "na mapě: {place}",
   "hospital: {name}": "nemocnice: {name}",
   "Add location": "Přidat lokaci",
   "Add a location": "Přidat lokaci",

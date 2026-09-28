@@ -1005,7 +1005,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
                 <span className="meta">
                   {l.address ? ` · ${l.address}` : ""}
                   {l.address && !l.geocoded_display_name ? ` · ${L("not resolved, check the address")}` : ""}
-                  {l.geocoded_display_name ? ` · ${L("on the map: {place}", { place: l.geocoded_display_name })}` : ""}
+                  {l.geocoded_display_name ? ` · ${L("resolved: {place}", { place: l.geocoded_display_name })}` : ""}
                   {l.nearest_hospital ? ` · ${L("hospital: {name}", { name: l.nearest_hospital })}` : ""}
                 </span>
               </span>
