@@ -1116,3 +1116,39 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a CI job (new step in `ci.yml` or a new workflow) builds `frontend/dist` and runs `lighthouse_pilot_scale.py`, `lighthouse_landing.py`, and `pdf_pilot_scale.py` against it on every PR
   - each script's pass/fail compares against the last recorded baseline in `docs/research/pilot-scale-2026-09.md` (Lighthouse categories/CLS, PDF page counts), read from that committed doc (or one small checked-in JSON it also updates), not duplicated as a second hardcoded copy
   - failure case: a PR that drops any Lighthouse category/CLS below its last recorded value or changes a PDF page count fails CI with the specific number that moved, not a generic red X — and a PR that legitimately moves the baseline updates the recorded baseline in the same PR rather than being silently allowed to regress
+
+## FR-104 · pm · Fix the stale "hackathon mode" assumption baked into the routine prompt files
+- state: ready
+- gated: no
+- why: `docs/company/routine-brief-prompt.md` and `routine-shift-prompt.md` still open with "this week (hackathon mode, TEAM.md) the shifts run hourly from 09 to 17" / "Hackathon mode (TEAM.md, until 2026-09-25)", unchanged text from 2026-09-21. `TEAM.md`'s own table and `DECISIONS.md`'s 2026-09-21 entry both state the window was 2026-09-21 to 2026-09-25 and "the reversibility rule returns automatically unless extended" — no extension is recorded anywhere. The 2026-09-28 morning brief already had to re-derive this by hand to avoid mis-planning nine hourly shifts and wrongly auto-merging code; this morning's brief (2026-09-29) hit the identical stale text a second time. Left as-is, every future morning brief re-does the same cross-check from scratch instead of the prompt reflecting current mode.
+- dod:
+  - `routine-brief-prompt.md` and `routine-shift-prompt.md` state cadence and merge rules by pointing at `TEAM.md`'s own "Working hours" table and reversibility rule, not by repeating a dated "this week hackathon mode" clause that silently goes stale after its own named end date
+  - a note in each file tells the firing routine to check `DECISIONS.md` for a currently-dated hackathon entry before assuming normal mode, so a genuinely re-declared hackathon week is still picked up
+  - failure case: if hackathon mode is ever redeclared, a routine firing during that window must still learn it from `TEAM.md`/`DECISIONS.md`, not lose the hackathon behaviour just because the prompt text no longer hardcodes dates
+
+## FR-105 · marketing · Read the Czech Film Commission's Filmography page for a real Prague/CZ production count (BRIEF Q5 follow-up)
+- state: ready
+- gated: no
+- why: BRIEF.md Q5 asks whether Prague is dense enough for word-of-mouth distribution; FR-20/FR-70/FR-88 only reached an order-of-magnitude estimate ("low tens to low hundreds" active productions) because the one Commission page FR-88 actually read (`/en/statistics/`) turned out to measure annual audiovisual-sector revenue, not a production count. FR-88's own note names the Commission's separate Filmography page as a more plausible count source but leaves it unread.
+- dod:
+  - dispatch the existing open-egress GitHub Actions pattern (`scripts/fetch_page_text.py` / `.github/workflows/desk-research-reverify.yml`) against the Czech Film Commission's Filmography page, read the body for a countable list of productions with dates, and record exactly what unit it counts (e.g. per-year total, currently-shooting, since-founding)
+  - `docs/research/prague-market-sizing.md` gets a dated section citing the URL and date checked, stating the real count found (or why the page doesn't offer one) and whether it changes the existing order-of-magnitude estimate
+  - failure case: if the list can't be mapped to Q5's "active production in the last 30 days" definition (e.g. it is a dateless lifetime archive), the doc says so explicitly and states what the list actually measures instead, rather than forcing a stale metric onto data that doesn't support it
+
+## FR-106 · qa · Mock Nominatim in the geocoding E2E tests so the standing sandbox egress-403 gap stops costing verification time every shift
+- state: ready
+- gated: no
+- why: at least ten shift notes (FR-18, FR-19, FR-74, FR-80, FR-81, FR-82, FR-84, FR-92, FR-93, FR-97, FR-98, FR-99, FR-100, FR-101) each independently re-confirm the same two `test_locations_e2e.py` failures — this sandbox's egress proxy blocking live Nominatim — as a known, unrelated gap rather than a regression. That is real, repeated verification time spent re-diagnosing a non-issue instead of catching real bugs.
+- dod:
+  - the two geocoding E2E tests that need live Nominatim get a mocked-response variant that runs in any sandbox (this one and CI alike) and asserts the same UI behaviour (resolved place name shown, or "not resolved" on a miss) without live network access
+  - the existing live-network test is kept and marked so it only runs where egress allows (CI already has open egress per FR-66/FR-83), so real integration is still checked somewhere
+  - failure case: the mocked test must still fail if the geocoding response-parsing logic breaks — verified by deliberately corrupting the mocked payload shape and confirming the test catches it, not just always passing because it never talks to a real geocoder
+
+## FR-107 · qa · Fix the sandbox's missing pinned-Chromium-revision gap once, instead of a manual revert-before-commit override every shift
+- state: ready
+- gated: no
+- why: more than a dozen shift notes (FR-9, FR-18, FR-19, FR-74, FR-80, FR-81, FR-82, FR-84, FR-90, FR-92, FR-93, FR-94, FR-98, FR-99, FR-100, FR-101) document the identical workaround — a temporary `conftest.py` `browser_type_launch_args` override to this sandbox's pre-installed Chromium, "reverted before commit, not part of the diff" — because the Playwright-pinned browser revision `frontend/tests/requirements.txt` expects isn't present here. Redoing and reverting the same override by hand every shift is avoidable overhead and risks a shift forgetting to revert it before pushing.
+- dod:
+  - `frontend/tests/conftest.py` (or the shared Playwright fixture) detects when the pinned browser revision is missing locally and falls back to `PLAYWRIGHT_BROWSERS_PATH`/a system Chromium automatically, committed once rather than hand-patched and reverted every shift
+  - CI, which does have the pinned revision, is confirmed unaffected — the fallback only triggers when the pinned path is actually absent, never preferred over it
+  - failure case: if both the pinned revision and a fallback Chromium are unavailable, the tests fail with a clear message naming the missing browser, not a generic timeout
