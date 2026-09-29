@@ -62,3 +62,10 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-105 probe (throwaway, not merged): the Filmography page FR-88
+      # named but never read. Dispatched from this branch only to get a
+      # real read of the page body; this step is not part of the
+      # deliverable PR.
+      - name: Dump the Czech Film Commission filmography page text
+        run: python3 scripts/fetch_page_text.py https://www.filmcommission.cz/en/filmography/
