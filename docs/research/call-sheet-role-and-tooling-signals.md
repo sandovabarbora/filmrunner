@@ -163,12 +163,89 @@ This document does not infer a link between the two — it states the gap
 above rather than guessing that any Czech production uses StudioBinder,
 Yamdu, or any other named tool.
 
+## Re-verification pass (FR-108, 2026-09-29)
+
+Method: same open-egress GitHub Actions pattern FR-83/87/88/89/90/105 used
+(`scripts/fetch_page_text.py`, dispatched from a throwaway branch so the
+deliverable stays doc-only — `desk-research-reverify.yml` on `main` is
+unchanged). Run:
+[actions/runs/36573828643](https://github.com/sandovabarbora/filmrunner/actions/runs/36573828643),
+dispatched and read 2026-09-29. All four pages this doc's original shift
+could only reach as a `WebSearch` snippet, or not at all, returned HTTP 200
+from the runner.
+
+- **FAMU's production-regulations page is reachable, but its body is a
+  document index, not prose.** The full page text (678 lines) is almost
+  entirely FAMU's own site navigation, followed by one real content block
+  titled "PRODUCTION REGULATIONS" that lists four downloadable files and
+  their last-updated dates: `1_RULES FOR PRODUCING EXERCISES.doc` (2 June
+  2021), `2_Production Regulations_Radiosrental.docx` (21 October 2025),
+  `3_Barrandov_Studio_Props and Costumes Rules.pdf` (10 March 2025), and
+  `4_ARRI_Guideline_Students&Independent.pdf` (11 May 2026). No further
+  text appears — whatever the regulations actually say (which could
+  plausibly name who assembles a shoot-day schedule for a student
+  production, the short/<15-crew tier this doc's table has no signal for)
+  is inside those binary `.doc`/`.docx`/`.pdf` files, which a plain HTML
+  text fetch does not open. **Per this item's own failure case**: the page
+  is reachable and not bot-protected, but has no call-sheet-specific
+  content in its HTML body — stated plainly rather than guessed at from
+  the filenames. Attempted and inconclusive, not left unattempted; opening
+  the two most plausible files (`1_RULES FOR PRODUCING EXERCISES.doc`,
+  `2_Production Regulations_Radiosrental.docx`) needs a document-fetching
+  step this pattern doesn't have, named as a further follow-up below.
+- **nsp.cz's "První asistent režie" (1st AD) page is now read in full**,
+  not a snippet. The complete "Pracovní činnosti" (work activities) list
+  confirms this doc's original paraphrase and adds detail the snippet
+  didn't carry: organisational-artistic cooperation in directing;
+  *preparing the shoot based on the approved script*; *defining what the
+  production needs, materially and in personnel*; **creating the basis for
+  the film's budget**; coordinating and directing the crew's work per the
+  director's needs; conveying information from the director to other
+  departments; and participating in post-production tasks. **Still no
+  line names a call sheet or "rozpis natáčení" as a specific deliverable**
+  — the original "consistent context, not direct confirmation" verdict
+  holds, now against the full text rather than a snippet. Bonus data point
+  for a possible future BRIEF Q4 angle (not this item's own scope): the
+  page states a qualification level of NSP 6, a salary band of 30,000–56,000
+  Kč, and the 2025 national wage survey figure for "Asistenti režie"
+  (CZ-ISCO 34351) at a median 41,844 Kč/month (range 33,168–54,356 Kč).
+- **prace.cz's "produkční" page contradicts this doc's own citation** — a
+  finding the same class as FR-89's Movie Magic price correction. The
+  current live page (read in full, not a snippet) describes the produkční
+  as specialising in organising and managing media projects (film, TV,
+  ads, theatre), ensuring coordination between teams, and planning budget,
+  schedule and shoot logistics, recommending a university degree in film
+  production or media studies — **it does not contain** the "snaží se, aby
+  se všichni sešli ve stejnou chvíli na stejném místě" line this doc
+  quoted from its 2026-09-21 `WebSearch` snippet. Neither version mentions
+  a call sheet by name. This doc cannot determine whether the page changed
+  since 2026-09-21 or the original snippet was misattributed; per this
+  item's own convention (state what's actually there, don't guess why),
+  the original quote is flagged **stale/unconfirmed** and the paragraph in
+  "Who assembles, approves, and distributes" above should be read
+  alongside this correction rather than trusted on its own.
+- **jobs.cz's "produkční" page, read in full**, describes a generic
+  event/media production role: complete financial planning and budget
+  prep, checking the production team has enough capacity, overseeing the
+  event running smoothly, and post-event cleanup. Consistent with the
+  original citation's framing (event-production generalist, not film- or
+  call-sheet-specific); no new call-sheet signal.
+
+Net effect on the production-size coding table: unchanged. FAMU's page
+gave no usable short-production-tier signal (document index, not prose);
+nothing else fetched this pass names a production size. The table below
+still needs FR-3's real interviews, or a future shift actually opening the
+two FAMU documents, to fill its short (<15 crew) row.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Read `www.famu.cz/en/faculty/studio-famu/production-regulations/`
-  directly with working `WebFetch` or a founder session's browser — the
-  most on-topic, Czech, short-production-tier source found this shift,
-  and the only one this shift could not actually read.
+- Open `1_RULES FOR PRODUCING EXERCISES.doc` and `2_Production
+  Regulations_Radiosrental.docx` from FAMU's production-regulations page
+  (both confirmed live and dated 2021/2025 by the FR-108 pass above) — a
+  plain HTML text fetch cannot read binary Office documents; a future
+  shift needs a fetch-and-convert step (or a founder session's browser)
+  to see whether either names who assembles a student production's daily
+  schedule.
 - Re-run the Czech tool-naming searches (StudioBinder/Yamdu/Movie Magic
   + Czech production names) with a search index that indexes Facebook
   groups and closed industry forums, which `WebSearch` does not appear
