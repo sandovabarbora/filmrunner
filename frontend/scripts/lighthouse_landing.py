@@ -13,9 +13,14 @@ Usage: run `npm run build` in frontend/ first, then:
 
 Prints the four category scores and any audit Lighthouse itself flags red
 (score < 0.5) or orange (< 0.9), and writes
-`docs/research/lighthouse-landing.json` (the full report). Chrome is the
-sandbox's own pre-installed Chromium (CHROME_PATH), same pattern
+`docs/research/lighthouse-landing.json` (the full report). Chrome is this dev
+sandbox's own pre-installed Chromium when present, else whatever
+`playwright install chromium` put on the machine — same pattern
 `lighthouse_pilot_scale.py` uses.
+
+FR-103 (2026-09-29): wired into `.github/workflows/ci.yml` on every PR, same
+baseline-check contract as `lighthouse_pilot_scale.py` against
+`docs/research/ci-baseline.json`.
 """
 
 import http.server
@@ -33,7 +38,24 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = ROOT / "dist"
 RESEARCH_DIR = ROOT.parent / "docs" / "research"
 REPORT_PATH = RESEARCH_DIR / "lighthouse-landing.json"
-CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+BASELINE_PATH = RESEARCH_DIR / "ci-baseline.json"
+BASELINE_KEY = "lighthouse_landing"
+SANDBOX_CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+# landing.html is fully static (no API timing involved), so its historical runs show far
+# less Performance noise than the public sheet's — still, keep a tolerance band rather than
+# an exact match, since it is still a Lighthouse timing metric on a shared CI machine.
+PERFORMANCE_NOISE_TOLERANCE = 10
+# Same "good" line FR-92/FR-97 already cite for this page's own screenshot-driven CLS fix.
+CLS_GOOD_THRESHOLD = 0.1
+
+
+def _chromium_path() -> str:
+    if os.path.exists(SANDBOX_CHROMIUM_PATH):
+        return SANDBOX_CHROMIUM_PATH
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        return pw.chromium.executable_path
 
 
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -58,7 +80,7 @@ def _start_static_server() -> tuple[socketserver.TCPServer, int]:
 
 
 def _run_lighthouse(url: str) -> dict:
-    env = {**os.environ, "CHROME_PATH": CHROMIUM_PATH}
+    env = {**os.environ, "CHROME_PATH": _chromium_path()}
     RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
         [
@@ -76,9 +98,51 @@ def _run_lighthouse(url: str) -> dict:
     return json.loads(REPORT_PATH.read_text())
 
 
+def _check_baseline(scores: dict, cls: float | None) -> list[str]:
+    """Same contract as lighthouse_pilot_scale.py's own check, against this script's
+    own key in the shared docs/research/ci-baseline.json."""
+    all_baselines = json.loads(BASELINE_PATH.read_text()) if BASELINE_PATH.exists() else {}
+    baseline = all_baselines.get(BASELINE_KEY)
+    failures = []
+
+    if baseline is None:
+        print(f"no baseline recorded yet for {BASELINE_KEY}; recording this run as the new baseline")
+    else:
+        for cat in ("accessibility", "best_practices", "seo"):
+            key = cat.replace("_", "-")
+            if scores[key] < baseline[cat]:
+                failures.append(f"{cat} dropped from {baseline[cat]} to {scores[key]}")
+        perf_floor = baseline["performance"] - PERFORMANCE_NOISE_TOLERANCE
+        if scores["performance"] < perf_floor:
+            failures.append(
+                f"performance dropped from {baseline['performance']} to {scores['performance']}, "
+                f"more than the {PERFORMANCE_NOISE_TOLERANCE}-point documented CI-noise band"
+            )
+
+    if cls is not None and cls > CLS_GOOD_THRESHOLD:
+        failures.append(f"cumulative layout shift {cls} is above Lighthouse's own 'good' line of {CLS_GOOD_THRESHOLD}")
+
+    if failures:
+        return failures
+
+    new_entry = {
+        "performance": max(scores["performance"], baseline["performance"]) if baseline else scores["performance"],
+        "accessibility": max(scores["accessibility"], baseline["accessibility"]) if baseline else scores["accessibility"],
+        "best_practices": max(scores["best-practices"], baseline["best_practices"]) if baseline else scores["best-practices"],
+        "seo": max(scores["seo"], baseline["seo"]) if baseline else scores["seo"],
+    }
+    if baseline != new_entry:
+        all_baselines[BASELINE_KEY] = new_entry
+        BASELINE_PATH.write_text(json.dumps(all_baselines, indent=2, sort_keys=True) + "\n")
+        print(f"raised baseline for {BASELINE_KEY}: {new_entry}")
+    return []
+
+
 def main() -> int:
-    if not os.path.exists(CHROMIUM_PATH):
-        print(f"no Chromium at {CHROMIUM_PATH}; cannot run Lighthouse in this environment", file=sys.stderr)
+    try:
+        _chromium_path()
+    except Exception as exc:  # noqa: BLE001 - report and exit cleanly either way
+        print(f"no usable Chromium in this environment: {exc}", file=sys.stderr)
         return 1
 
     static_server, static_port = _start_static_server()
@@ -89,6 +153,7 @@ def main() -> int:
         static_server.shutdown()
 
     scores = {cat: round(data["score"] * 100) for cat, data in report["categories"].items()}
+    cls = report["audits"].get("cumulative-layout-shift", {}).get("numericValue")
     red_audits = [
         (aid, a["title"], a["score"]) for aid, a in report["audits"].items()
         if a.get("score") is not None and a["scoreDisplayMode"] == "numeric" and a["score"] < 0.5
@@ -101,6 +166,8 @@ def main() -> int:
     print("--- Lighthouse, mobile, landing.html ---")
     for cat, score in scores.items():
         print(f"  {cat:<16} {score}")
+    if cls is not None:
+        print(f"  {'cls':<16} {cls}")
     if red_audits:
         print("  red audits (score < 0.5):")
         for aid, title, score in red_audits:
@@ -113,6 +180,13 @@ def main() -> int:
             print(f"    {aid:<40} {title:<50} {round(score * 100)}")
 
     print(f"\nwrote {REPORT_PATH}")
+
+    failures = _check_baseline(scores, cls)
+    if failures:
+        print("\nFAILED baseline check (docs/research/ci-baseline.json):", file=sys.stderr)
+        for f in failures:
+            print(f"  - {f}", file=sys.stderr)
+        return 1
     return 0
 
 

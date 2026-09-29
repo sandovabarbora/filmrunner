@@ -15,10 +15,17 @@ Playwright E2E suite uses):
 
 Prints the performance score and any audit Lighthouse itself flags red
 (score < 0.5) or orange (< 0.9), and writes `docs/research/lighthouse-pilot-scale.json`
-(the full report) plus a summary appended to
-`docs/research/pilot-scale-2026-09.md`. Chrome is the sandbox's own pre-installed
-Chromium (CHROME_PATH), never a fresh download — the same pattern the E2E suite
-uses for its own browser fixture.
+(the full report). Chrome is this dev sandbox's own pre-installed Chromium when
+present (`/opt/pw-browsers/chromium`); on a real CI runner (no such path) it falls
+back to whatever `playwright install chromium` put on that machine.
+
+FR-103 (2026-09-29): wired into `.github/workflows/ci.yml` on every PR. Exits 1
+if Accessibility/Best Practices/SEO drop below `docs/research/ci-baseline.json`'s
+recorded values, Performance drops more than the documented ~10-point CI-noise
+band, or Cumulative Layout Shift exceeds Lighthouse's own 0.1 "good" line — with
+the specific number that moved. A run that passes and improves on a category
+raises that baseline in the same file; a real, accepted regression needs a human
+to edit `ci-baseline.json` in the same PR, per the item's own dod.
 """
 
 import http.server
@@ -39,7 +46,30 @@ BACKEND_DIR = ROOT.parent / "backend"
 DIST_DIR = ROOT / "dist"
 RESEARCH_DIR = ROOT.parent / "docs" / "research"
 REPORT_PATH = RESEARCH_DIR / "lighthouse-pilot-scale.json"
-CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+BASELINE_PATH = RESEARCH_DIR / "ci-baseline.json"
+BASELINE_KEY = "lighthouse_pilot_scale"
+SANDBOX_CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+# Documented CI-machine run-to-run variance for this exact script (not a real regression):
+# pilot-scale-2026-09.md's own FR-77/80/84/97 notes record Performance swinging 88-97 with
+# zero code change in between (timing/rendering noise), while Accessibility/Best Practices/
+# SEO have never moved without a real code change. So Performance gets a tolerance band;
+# the other three categories fail on any drop below the recorded baseline.
+PERFORMANCE_NOISE_TOLERANCE = 10
+# Lighthouse's own "good" CLS line (cited throughout this doc since FR-77, which fixed a
+# real 0.843 regression); gated on the raw metric, not just the category score it feeds into.
+CLS_GOOD_THRESHOLD = 0.1
+
+
+def _chromium_path() -> str:
+    if os.path.exists(SANDBOX_CHROMIUM_PATH):
+        return SANDBOX_CHROMIUM_PATH
+    # A real CI runner has no /opt/pw-browsers (that path is this dev sandbox's own
+    # pre-installed Chromium); ci.yml already runs `playwright install --with-deps
+    # chromium` first, so ask Playwright itself where that landed.
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        return pw.chromium.executable_path
 
 TOKEN = "lighthouse-pilot-scale"
 NAME = "Scale test (FR-52) v2"
@@ -167,7 +197,7 @@ def _seed(api_url: str) -> str:
 
 
 def _run_lighthouse(url: str) -> dict:
-    env = {**os.environ, "CHROME_PATH": CHROMIUM_PATH}
+    env = {**os.environ, "CHROME_PATH": _chromium_path()}
     RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
         [
@@ -185,9 +215,53 @@ def _run_lighthouse(url: str) -> dict:
     return json.loads(REPORT_PATH.read_text())
 
 
+def _check_baseline(scores: dict, cls: float | None) -> list[str]:
+    """Compare against docs/research/ci-baseline.json (FR-103). Returns a list of
+    failure messages (empty means pass). On a pass, silently raises the recorded
+    baseline to this run's scores where they improved — never lowers it, so a noisy
+    dip within tolerance can't ratchet the floor down over time."""
+    all_baselines = json.loads(BASELINE_PATH.read_text()) if BASELINE_PATH.exists() else {}
+    baseline = all_baselines.get(BASELINE_KEY)
+    failures = []
+
+    if baseline is None:
+        print(f"no baseline recorded yet for {BASELINE_KEY}; recording this run as the new baseline")
+    else:
+        for cat in ("accessibility", "best_practices", "seo"):
+            key = cat.replace("_", "-")
+            if scores[key] < baseline[cat]:
+                failures.append(f"{cat} dropped from {baseline[cat]} to {scores[key]}")
+        perf_floor = baseline["performance"] - PERFORMANCE_NOISE_TOLERANCE
+        if scores["performance"] < perf_floor:
+            failures.append(
+                f"performance dropped from {baseline['performance']} to {scores['performance']}, "
+                f"more than the {PERFORMANCE_NOISE_TOLERANCE}-point documented CI-noise band"
+            )
+
+    if cls is not None and cls > CLS_GOOD_THRESHOLD:
+        failures.append(f"cumulative layout shift {cls} is above Lighthouse's own 'good' line of {CLS_GOOD_THRESHOLD} (see FR-77)")
+
+    if failures:
+        return failures
+
+    new_entry = {
+        "performance": max(scores["performance"], baseline["performance"]) if baseline else scores["performance"],
+        "accessibility": max(scores["accessibility"], baseline["accessibility"]) if baseline else scores["accessibility"],
+        "best_practices": max(scores["best-practices"], baseline["best_practices"]) if baseline else scores["best-practices"],
+        "seo": max(scores["seo"], baseline["seo"]) if baseline else scores["seo"],
+    }
+    if baseline != new_entry:
+        all_baselines[BASELINE_KEY] = new_entry
+        BASELINE_PATH.write_text(json.dumps(all_baselines, indent=2, sort_keys=True) + "\n")
+        print(f"raised baseline for {BASELINE_KEY}: {new_entry}")
+    return []
+
+
 def main() -> int:
-    if not os.path.exists(CHROMIUM_PATH):
-        print(f"no Chromium at {CHROMIUM_PATH}; cannot run Lighthouse in this environment", file=sys.stderr)
+    try:
+        _chromium_path()
+    except Exception as exc:  # noqa: BLE001 - report and exit cleanly either way
+        print(f"no usable Chromium in this environment: {exc}", file=sys.stderr)
         return 1
 
     static_server, static_port = _start_static_server()
@@ -203,6 +277,7 @@ def main() -> int:
         api_proc.wait(timeout=10)
 
     scores = {cat: round(data["score"] * 100) for cat, data in report["categories"].items()}
+    cls = report["audits"].get("cumulative-layout-shift", {}).get("numericValue")
     red_audits = [
         (aid, a["title"], a["score"]) for aid, a in report["audits"].items()
         if a.get("score") is not None and a["scoreDisplayMode"] == "numeric" and a["score"] < 0.5
@@ -211,6 +286,8 @@ def main() -> int:
     print("--- Lighthouse, mobile, public sheet, FR-52 pilot-scale production (60 scenes) ---")
     for cat, score in scores.items():
         print(f"  {cat:<16} {score}")
+    if cls is not None:
+        print(f"  {'cls':<16} {cls}")
     if red_audits:
         print("  red audits (score < 0.5):")
         for aid, title, score in red_audits:
@@ -219,6 +296,13 @@ def main() -> int:
         print("  no red audits")
 
     print(f"\nwrote {REPORT_PATH}")
+
+    failures = _check_baseline(scores, cls)
+    if failures:
+        print("\nFAILED baseline check (docs/research/ci-baseline.json):", file=sys.stderr)
+        for f in failures:
+            print(f"  - {f}", file=sys.stderr)
+        return 1
     return 0
 
 

@@ -62,3 +62,9 @@ jobs:
         run: python -m pytest tests -q
       - name: Frontend smoke
         run: python -m pytest frontend/tests -q
+      - name: Pilot-scale Lighthouse and PDF regression gate (FR-103)
+        working-directory: frontend
+        run: |
+          python3 scripts/lighthouse_pilot_scale.py
+          python3 scripts/lighthouse_landing.py
+          python3 scripts/pdf_pilot_scale.py
