@@ -62,3 +62,12 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-108 throwaway dispatch step: fetches FAMU's production-regulations
+      # page (FR-22's own unread, on-topic short-production-tier source) and
+      # re-attempts nsp.cz/prace.cz/jobs.cz's role pages, all egress-blocked
+      # from this routine's own sandbox but reachable from this runner. Not
+      # meant to land on main — the deliverable PR is doc-only per this
+      # item's own dod, same pattern FR-87/FR-105 used.
+      - name: FR-108 dump FAMU/NSP/prace.cz/jobs.cz page text
+        run: python3 scripts/fetch_page_text.py https://www.famu.cz/en/faculty/studio-famu/production-regulations/ https://nsp.cz/jednotka-prace/prvni-asistent-rezie https://www.prace.cz/encyklopedie-profesi/p/produkcni/ https://www.jobs.cz/poradna/profese/p/produkcni/
