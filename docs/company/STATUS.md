@@ -1,6 +1,6 @@
 # Status
 
-Updated: 2026-09-29 08:15 (morning brief)
+Updated: 2026-09-29 10:12 (shift)
 
 ## today
 
@@ -12,20 +12,21 @@ The `ready`+`gated:no` queue held only FR-102 and FR-103 at plan time (below the
 
 Plan (priority order = file order in BACKLOG.md; FR-102 skipped — dod depends on still-open PRs #247/#251):
 - 09:00 — FR-103 (qa): wire `lighthouse_pilot_scale.py`, `lighthouse_landing.py`, and `pdf_pilot_scale.py` into CI against their last recorded baseline, so the next silent regression fails a PR instead of waiting on a shift to notice. **Done** — PR #260, see the engineering section below.
-- 11:00 — FR-104 (pm): fix `routine-brief-prompt.md`/`routine-shift-prompt.md` to state cadence and merge rules by reference to `TEAM.md`'s own table instead of a hardcoded, now-stale "hackathon mode this week" clause.
+- 11:00 — FR-104 (pm): fix `routine-brief-prompt.md`/`routine-shift-prompt.md` to state cadence and merge rules by reference to `TEAM.md`'s own table instead of a hardcoded, now-stale "hackathon mode this week" clause. **Done** — PR #262, see the pm section below (this shift fired ahead of its nominal 11:00 slot).
 - 13:00 — FR-105 (marketing): read the Czech Film Commission's Filmography page via the existing open-egress GitHub Actions pattern for a real Prague/CZ production count, closing BRIEF Q5's remaining gap.
 - 15:00 — FR-106 (qa): give the two Nominatim-dependent geocoding E2E tests a mocked-response variant so this sandbox's standing egress-403 stops costing re-diagnosis time every shift.
 - 17:00 — FR-107 (qa): make the Playwright browser-path fallback (missing pinned Chromium revision) automatic in `conftest.py` instead of a hand-applied, reverted-before-commit override every shift.
 
-**Waiting on you** — six code PRs, all still open, five from yesterday now over a working day old:
+**Waiting on you** — seven PRs open, six from yesterday or earlier today now over a working day old (or close to it):
 - #241 (FR-94, opened 2026-09-28 07:24 UTC) — 320px reflow coverage for editor/landing/privacy, no product change.
 - #245 (FR-98, opened 2026-09-28 10:19 UTC) — test coverage for the shared `Icon.tsx` component.
 - #247 (FR-99, opened 2026-09-28 11:17 UTC) — PWA manifest/icon installability check; blocks FR-102's manifest half.
 - #249 (FR-100, opened 2026-09-28 12:21 UTC) — fastapi/starlette bump closing the CVE FR-91 left blocked; **backend changed, deploy needed** once merged.
 - #251 (FR-101, opened 2026-09-28 13:26 UTC) — confirms print icons survive PDF export; blocks FR-102's icon-check half.
 - #260 (FR-103, opened 2026-09-29, 09:00 shift) — wires the Lighthouse/PDF pilot-scale scripts into CI; touches `.github/workflows/ci.yml`, so it needs your merge, not auto-merge. Flagged one thing worth a look before merging: the scripts' hardcoded sandbox-only Chromium path is replaced with a Playwright-resolved fallback for a real GitHub Actions runner, verified locally but not yet against this PR's own live CI run — check that the new "Pilot-scale Lighthouse and PDF regression gate" step is actually green on the PR before merging, not just assumed from the other steps.
+- #262 (FR-104, opened 2026-09-29, shift firing ahead of its nominal 11:00 slot) — fixes the stale hackathon-mode text in `routine-brief-prompt.md`/`routine-shift-prompt.md`. Doc-only, but not on `TEAM.md`'s explicit auto-merge allowlist (state files, backlog proposals, `docs/research/**`/`docs/marketing/**`, `docs/gates/**`, the PR template) — these prompt files control the routine's own future behaviour, so treated as a founder-merge doc like an ADR rather than assumed reversible; no auto-merge enabled.
 
-None of the first five need a decision beyond merging — CI was green on each per their own shift notes. Pending INBOX approvals, unchanged: #1 (recruit/invite five Prague interviews), #3 (custom SMTP — ~5 minutes with a Gmail App Password, the one thing blocking any new sign-in), #6 (`FILMRUNNER_CI_TOKEN` secret for FR-68's live write-path check). FR-95 (first real pilot) and FR-28 stay correctly `blocked` on those same founder-only steps.
+None of the seven need a decision beyond merging — CI was green on each per their own shift notes (verify #262's `ci` check is green before merging, same as any other). Pending INBOX approvals, unchanged: #1 (recruit/invite five Prague interviews), #3 (custom SMTP — ~5 minutes with a Gmail App Password, the one thing blocking any new sign-in), #6 (`FILMRUNNER_CI_TOKEN` secret for FR-68's live write-path check). FR-95 (first real pilot) and FR-28 stay correctly `blocked` on those same founder-only steps.
 
 ### Monday (2026-09-28), for reference
 
@@ -122,3 +123,6 @@ Full detail in `LOG.md`. Friday was hackathon mode's last day: nine hourly shift
 - tests: n/a — doc-only change; `python scripts/check_company_docs.py docs/company` clean. FR-88's own verification was the dispatched GitHub Actions run itself (real HTTP fetch against open egress, not mocked) plus a local unit check of `fetch_page_text.py`'s HTML-stripping helper against a synthetic sample before pointing it at the live page.
 - blockers: none.
 - needs_approval: no new items this shift. INBOX #1, #3, #6 all still `pending`, all founder-only.
+  ~10:00 shift 2026-09-29 (pm) took FR-104 per today's plan (its nominal slot was 11:00; this shift fired ahead of schedule, same pattern several prior shifts used). No `approved` INBOX item to execute (#1/#3/#6 still `pending`, #2/#4/#5 already `done`). `gh pr list --state open` showed five code PRs (#241, #245, #247, #249, #251), all other shifts' items awaiting founder merge, none blocking FR-104. Rewrote `docs/company/routine-brief-prompt.md` and `routine-shift-prompt.md`: both now read `TEAM.md`'s "Working hours" table for shift cadence and check `DECISIONS.md`/`TEAM.md` at run time for a currently-dated hackathon window before choosing merge behaviour, instead of repeating the dated "hourly 09-17, hackathon mode until 2026-09-25" clause written 2026-09-21 that two morning briefs in a row (09-28, 09-29) already had to manually cross-check and correct for. `routine-shift-prompt.md`'s merge-mode rule now spells out both branches explicitly (hackathon: auto-merge everything except a TEAM.md-touching PR; normal: only the TEAM.md allowlist paths) so a shift doesn't re-derive it by hand. `python scripts/check_company_docs.py docs/company` clean. PR #262 (`docs/fr-104-fix-stale-hackathon-prompt-text`), subscribed. **Not auto-merged**: though doc-only, these two files aren't on `TEAM.md`'s explicit auto-merge allowlist (state files, backlog proposals, `docs/research/**`/`docs/marketing/**`, `docs/gates/**`, the PR template) — they govern the routine's own future behaviour, closer in kind to a decision doc, so left for your own merge rather than assumed reversible. FR-104 set to `done` — the PR is the whole deliverable.
+- tests (~10:00, 2026-09-29): doc-only change; no test suite applies. `python scripts/check_company_docs.py docs/company` clean; verified by reading both prompt files back after editing to confirm no stale date/mode text remained.
+- needs_approval (~10:00, 2026-09-29): unchanged — no new INBOX item; INBOX #1, #3, #6 all still `pending`, all founder-only. PR #262 needs your merge (not auto-merge, see above), same as the other six open PRs.
