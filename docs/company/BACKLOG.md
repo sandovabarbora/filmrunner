@@ -1109,7 +1109,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a PR that drops any Lighthouse category/CLS below its last recorded value, changes a PDF page count, or fails the manifest check fails CI with the specific number that moved, not a generic red X — and a PR that legitimately moves the baseline (e.g. a new, heavier feature) updates the recorded baseline in the same PR rather than being silently allowed to regress
 
 ## FR-103 · qa · Wire the already-merged Lighthouse and PDF checks into CI now; the PWA-manifest half follows once FR-99 lands
-- state: ready
+- state: done
+- note: bookkeeping fix, 14:00 shift 2026-09-29 — delivered 09:00 shift 2026-09-29 (PR #260, `ci/fr-103-wire-pilot-scale-checks`, still awaiting founder merge, touches `.github/workflows/ci.yml`); STATUS.md/LOG.md already recorded it done, this `state:` line was left at `ready`. No new work, just correcting the record.
 - gated: no
 - why: FR-102 (proposed 16:12 today) wires four regression scripts into CI so the next silent weekend-style regression fails a PR instead of waiting on a shift to notice; skipped this shift (17:00) because one of the four, `check_pwa_manifest.py`, exists only on PR #247 (FR-99), still open and awaiting the founder's own merge — the shift contract's own rule is to never start an item whose dod depends on a still-open PR. `lighthouse_pilot_scale.py`, `lighthouse_landing.py`, and `pdf_pilot_scale.py` are all already on `main` today, so the three-quarters of FR-102's value that don't depend on #247 (or on #251, FR-101's `check_print_icons.py`) can ship now rather than wait; FR-102 itself is left as-is for whoever adds the manifest check once #247 merges, rather than being duplicated
 - dod:
@@ -1118,7 +1119,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a PR that drops any Lighthouse category/CLS below its last recorded value or changes a PDF page count fails CI with the specific number that moved, not a generic red X — and a PR that legitimately moves the baseline updates the recorded baseline in the same PR rather than being silently allowed to regress
 
 ## FR-104 · pm · Fix the stale "hackathon mode" assumption baked into the routine prompt files
-- state: ready
+- state: done
+- note: bookkeeping fix, 14:00 shift 2026-09-29 — delivered ~10:00 shift 2026-09-29 (PR #262, `docs/fr-104-fix-stale-hackathon-prompt-text`, still awaiting founder merge — not on TEAM.md's auto-merge allowlist); STATUS.md/LOG.md already recorded it done, this `state:` line was left at `ready`. No new work, just correcting the record.
 - gated: no
 - why: `docs/company/routine-brief-prompt.md` and `routine-shift-prompt.md` still open with "this week (hackathon mode, TEAM.md) the shifts run hourly from 09 to 17" / "Hackathon mode (TEAM.md, until 2026-09-25)", unchanged text from 2026-09-21. `TEAM.md`'s own table and `DECISIONS.md`'s 2026-09-21 entry both state the window was 2026-09-21 to 2026-09-25 and "the reversibility rule returns automatically unless extended" — no extension is recorded anywhere. The 2026-09-28 morning brief already had to re-derive this by hand to avoid mis-planning nine hourly shifts and wrongly auto-merging code; this morning's brief (2026-09-29) hit the identical stale text a second time. Left as-is, every future morning brief re-does the same cross-check from scratch instead of the prompt reflecting current mode.
 - dod:
@@ -1155,3 +1157,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - `frontend/tests/conftest.py` (or the shared Playwright fixture) detects when the pinned browser revision is missing locally and falls back to `PLAYWRIGHT_BROWSERS_PATH`/a system Chromium automatically, committed once rather than hand-patched and reverted every shift
   - CI, which does have the pinned revision, is confirmed unaffected — the fallback only triggers when the pinned path is actually absent, never preferred over it
   - failure case: if both the pinned revision and a fallback Chromium are unavailable, the tests fail with a clear message naming the missing browser, not a generic timeout
+
+## FR-108 · pm · Read FAMU's production-regulations page and re-check NSP/Prace.cz/Jobs.cz via the open-egress runner (BRIEF Q1 follow-up)
+- state: ready
+- gated: no
+- why: FR-22's `docs/research/call-sheet-role-and-tooling-signals.md` (BRIEF Q1/Q2 desk-research proxy) names `www.famu.cz/en/faculty/studio-famu/production-regulations/` as the most on-topic, Czech, short-production-tier (<15 crew) source it found and the only one it could not read — this sandbox's own egress proxy blocks it, so the doc's role/tooling signals for the short-production tier stay entirely empty. FR-83/87/88/89/90/105 already proved a GitHub Actions runner dispatched from this repo has open egress and can fetch pages like this for real, closing exactly this class of "WebSearch snippet only" gap for other research docs; FR-22's own doc has not had that treatment yet.
+- dod:
+  - dispatch the existing open-egress pattern (`scripts/fetch_page_text.py` via `.github/workflows/desk-research-reverify.yml`, or a throwaway branch dispatch the same way FR-87/FR-105 used to keep the deliverable PR doc-only) against FAMU's production-regulations page, and re-attempt nsp.cz's "První asistent režie" entry and prace.cz/jobs.cz's "produkční" entries that FR-22 could only read as `WebSearch` snippets
+  - `docs/research/call-sheet-role-and-tooling-signals.md` gets a dated "Re-verification pass (FR-108)" section recording what each page's actual body says, and updates the size-coding table if FAMU's page gives the short-production tier (<15 crew) its first real signal
+  - failure case: if FAMU's page is itself unreachable or bot-protected even from the open-egress runner, or has no call-sheet-specific content once read, the doc states that plainly and the "follow-up needed" line is closed as attempted-and-inconclusive, not left open indefinitely without a recorded attempt
