@@ -135,7 +135,17 @@ def main(argv: list[str]) -> int:
             any_failure = True
             continue
 
-        suffix = ".docx" if url.lower().endswith(".docx") else ".doc"
+        # FR-115: FAMU serves both files from a SharePoint download endpoint
+        # with no file extension in the URL itself, so the format can't be
+        # guessed from the URL — sniff the actual bytes instead. A .docx is
+        # a ZIP archive ("PK\x03\x04" magic); a legacy .doc is OLE
+        # Compound File Binary Format ("\xD0\xCF\x11\xE0..." magic).
+        if fbody[:4] == b"PK\x03\x04":
+            suffix = ".docx"
+        elif fbody[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+            suffix = ".doc"
+        else:
+            suffix = ".docx" if url.lower().endswith(".docx") else ".doc"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(fbody)
             tmp_path = tmp.name
