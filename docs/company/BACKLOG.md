@@ -1208,3 +1208,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - each dimension is defined precisely enough that filling it in later is a lookup, not a fresh judgment call (e.g. what counts as "data the crew must already have" for each candidate, referencing what this repo's own data model already stores)
   - failure case: no dimension is pre-filled with assumed or guessed interview data; the doc states plainly that scoring is pending FR-3, not attempted early
 
+## FR-114 · tech-lead · Merge-readiness report for the growing open-PR queue
+- state: ready
+- gated: no
+- why: fourteen PRs are open as of this shift (STATUS.md's own "waiting on you" list), the oldest since Monday morning; each shift's own notes already say by hand whether a PR's `ci` is green and which TEAM.md merge-rule path it falls under (auto-mergeable doc path vs. founder-must-merge code/decision path), copied fresh into STATUS.md every run. That per-shift, per-PR manual check is exactly the kind of repeated hand-verification this backlog has already automated elsewhere (FR-66, FR-96, FR-102/103) — nothing today lets the founder run one command and see, across all open PRs at once, which are safe to merge as-is, which are red, and which have gone stale (conflicting with a `main` that moved under them).
+- dod:
+  - a script (`scripts/pr_merge_report.py` or similar, shelling out to `gh pr list --json` the same way the routine itself already uses `gh`) lists every open PR: number, title, `ci` check conclusion, `mergeable_state`, and which TEAM.md merge-rule bucket it falls in (state/reversible-doc auto-merge paths vs. founder-merge paths), read from the PR's own changed files, not guessed from its title
+  - output is one glance-able table (terminal or a committed doc the report regenerates), sorted oldest-first to match how STATUS.md already orders them
+  - failure case: a PR whose `mergeable_state` is `dirty`/`conflicting` or whose `ci` is failing is flagged distinctly from one that's simply waiting on a merge click, so the founder never discovers a conflict only after already clicking merge
+
+
