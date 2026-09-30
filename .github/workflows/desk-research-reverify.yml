@@ -62,3 +62,17 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-115 (throwaway dispatch, not merged to main): FR-108 found FAMU's
+      # production-regulations page is reachable but its body is only a
+      # document index — the two actual files are binary .doc/.docx a plain
+      # text fetch can't read. This installs a converter per format and dumps
+      # both files' real text.
+      - name: Install Office document converters
+        run: |
+          pip install python-docx
+          sudo apt-get update -y
+          sudo apt-get install -y antiword catdoc
+
+      - name: Fetch and convert FAMU's production-regulations documents
+        run: python3 scripts/fetch_office_docs.py
