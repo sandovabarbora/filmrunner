@@ -1169,7 +1169,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if FAMU's page is itself unreachable or bot-protected even from the open-egress runner, or has no call-sheet-specific content once read, the doc states that plainly and the "follow-up needed" line is closed as attempted-and-inconclusive, not left open indefinitely without a recorded attempt
 
 ## FR-110 · security · Coordinated pytest + pytest-playwright upgrade, blocked by FR-91
-- state: ready
+- state: done
+- note: 09:00 shift 2026-09-30 — `pytest-playwright` 0.9.0 now supports `pytest<10.0.0`; bumped `pytest` 8.3.3→9.1.1 and `pytest-playwright` 0.5.2→0.9.0 in both requirements files. Combined install verified clean, full backend/scripts/E2E suites compared before/after with identical results (backend 153/153, E2E 74/77 same 3 pre-existing failures). Closes PYSEC-2026-1845. PR #278 (`fix/fr-110-pytest-playwright-upgrade`); touches `backend/`+`frontend/`, so per TEAM.md (hackathon mode ended 2026-09-25) this needs the founder's own merge, no auto-merge.
 - gated: no
 - why: FR-91's dependency audit found `pytest` 8.3.3→9.0.3 passes the backend suite alone but CI's combined install fails because `pytest-playwright==0.5.2` pins `pytest<9.0.0`; the pin was left unresolved with only a "needs a coordinated upgrade" note, so the backend stays one version behind for no reason once a compatible pair exists
 - dod:
