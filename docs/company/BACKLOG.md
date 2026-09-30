@@ -1218,4 +1218,11 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - output is one glance-able table (terminal or a committed doc the report regenerates), sorted oldest-first to match how STATUS.md already orders them
   - failure case: a PR whose `mergeable_state` is `dirty`/`conflicting` or whose `ci` is failing is flagged distinctly from one that's simply waiting on a merge click, so the founder never discovers a conflict only after already clicking merge
 
-
+## FR-115 · pm · Fetch and read FAMU's two production-regulations Office documents via the open-egress runner (BRIEF Q1 follow-up)
+- state: ready
+- gated: no
+- why: FR-108 (done, 2026-09-29) found FAMU's production-regulations page live but could only reach a document index — the two actual files (`1_RULES FOR PRODUCING EXERCISES.doc`, `2_Production Regulations_Radiosrental.docx`) are binary Office documents a plain HTML text fetch cannot read, and FR-108's own doc names opening them as the one thing that could give BRIEF Q1's short-production (<15 crew) tier its first real signal from any source, still empty after FR-22/FR-108
+- dod:
+  - extend the existing open-egress dispatch pattern (throwaway branch plus `.github/workflows/desk-research-reverify.yml`, the same one FR-83/87/88/89/90/105/108/112 used) to download both named files from FAMU's production-regulations page and convert each to plain text with a tool the runner can install with no account or payment (e.g. `python-docx` for the `.docx`, `antiword` or `libreoffice --headless` for the legacy `.doc`), then read the converted text in the job log
+  - `docs/research/call-sheet-role-and-tooling-signals.md` gets a dated section recording what each document actually says, if anything, about who drafts, approves, or distributes a student production's daily schedule — closing FR-108's own named follow-up either way, not left open a second time
+  - failure case: if one or both formats genuinely won't convert in the runner (no installable tool succeeds), the doc names exactly which file and why the conversion failed, instead of silently dropping the follow-up again
