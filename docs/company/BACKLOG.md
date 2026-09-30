@@ -1167,3 +1167,41 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - dispatch the existing open-egress pattern (`scripts/fetch_page_text.py` via `.github/workflows/desk-research-reverify.yml`, or a throwaway branch dispatch the same way FR-87/FR-105 used to keep the deliverable PR doc-only) against FAMU's production-regulations page, and re-attempt nsp.cz's "První asistent režie" entry and prace.cz/jobs.cz's "produkční" entries that FR-22 could only read as `WebSearch` snippets
   - `docs/research/call-sheet-role-and-tooling-signals.md` gets a dated "Re-verification pass (FR-108)" section recording what each page's actual body says, and updates the size-coding table if FAMU's page gives the short-production tier (<15 crew) its first real signal
   - failure case: if FAMU's page is itself unreachable or bot-protected even from the open-egress runner, or has no call-sheet-specific content once read, the doc states that plainly and the "follow-up needed" line is closed as attempted-and-inconclusive, not left open indefinitely without a recorded attempt
+
+## FR-110 · security · Coordinated pytest + pytest-playwright upgrade, blocked by FR-91
+- state: ready
+- gated: no
+- why: FR-91's dependency audit found `pytest` 8.3.3→9.0.3 passes the backend suite alone but CI's combined install fails because `pytest-playwright==0.5.2` pins `pytest<9.0.0`; the pin was left unresolved with only a "needs a coordinated upgrade" note, so the backend stays one version behind for no reason once a compatible pair exists
+- dod:
+  - check for a `pytest-playwright` release that supports `pytest` 9.x; if one exists, bump both together on a branch and verify the exact combined install (`backend/requirements.txt` + `frontend/tests/requirements.txt`) plus the full backend and E2E suites are green
+  - if no compatible `pytest-playwright` version exists yet, record the exact blocking versions and a dated revisit trigger in `docs/research/dependency-audit-2026-09.md` instead of leaving the finding to go stale silently
+  - failure case: an upgrade attempt that breaks any test is never merged; the branch is discarded and what broke is written into the audit doc rather than forced through
+
+## FR-111 · qa · Attempt the breaking npm-audit fixes FR-91 left undone (vite/vitest/xlsx)
+- state: ready
+- gated: no
+- why: FR-91 found 6 frontend vulnerabilities (vite/vitest/xlsx chain) and fixed none of them because every one needs a breaking upgrade or, for `xlsx`, has no npm-tracked fix at all; "documented, not fixed" has sat unattempted since 2026-09-25 with no branch ever tried
+- dod:
+  - on a throwaway branch, attempt the vite/vitest major-version bump `npm audit` recommends; run the full frontend suite, `npm run typecheck`, and `npm run build` against the result
+  - if green, open it as a real PR; if it breaks the build or tests, discard the branch and record exactly what broke in `docs/research/dependency-audit-2026-09.md`
+  - for `xlsx`, confirm via `npm audit`/the advisory database whether a patched version now exists; if still none, record the accepted risk with a dated re-check trigger rather than a silent "no fix" left unrevisited
+  - failure case: a broken upgrade is never merged just to close the item; the finding is what gets recorded, not a red build
+
+## FR-112 · tech-lead · Verify FR-19's sunrise/sunset formula against a live source (open-egress runner)
+- state: ready
+- gated: no
+- why: `docs/adr/ADR-006-location-services.md` flags the in-process NOAA sunrise-equation formula as unverified against a live source because `timeanddate.com` and `api.sunrise-sunset.org` were egress-blocked in the sandbox that built it; FR-83/87/88/89/90/105/108 already established the pattern of dispatching a GitHub Actions step with open egress to close exactly this class of "can't reach it from here" gap
+- dod:
+  - dispatch a step (the same throwaway-branch pattern FR-108 used, workflow file on `main` left unchanged) that fetches sunrise/sunset for a known Prague date from a public API and compares it minute-by-minute against this repo's own formula output for the same date
+  - record the delta in `docs/adr/ADR-006-location-services.md`, closing its own "unverified" flag with a real number
+  - failure case: if the delta exceeds a few minutes, the ADR names it as a real accuracy problem needing a fix, not silently accepted as close enough
+
+## FR-113 · pm · Draft the BRIEF Q7 MVP-shape scoring template ahead of real interview data
+- state: ready
+- gated: no
+- why: BRIEF.md Q7 asks which of three MVP shapes (viewer only, distribution only, generation from an existing schedule) best proves the wedge, scored against "data the crew must already have" and "rough build time" — but explicitly says to decide only once real FR-3 interview data exists, still blocked on INBOX #1. The scoring rubric itself does not need interview data to exist and can be ready in advance instead of drafted from scratch the day FR-3 finally unblocks
+- dod:
+  - a doc under `docs/research/` names the three candidates from Q7 and the exact scoring dimensions Q7 states, with an empty column per dimension per candidate ready to fill in
+  - each dimension is defined precisely enough that filling it in later is a lookup, not a fresh judgment call (e.g. what counts as "data the crew must already have" for each candidate, referencing what this repo's own data model already stores)
+  - failure case: no dimension is pre-filled with assumed or guessed interview data; the doc states plainly that scoring is pending FR-3, not attempted early
+
