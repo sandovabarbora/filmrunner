@@ -1199,8 +1199,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if the delta exceeds a few minutes, the ADR names it as a real accuracy problem needing a fix, not silently accepted as close enough
 
 ## FR-113 · pm · Draft the BRIEF Q7 MVP-shape scoring template ahead of real interview data
-- state: ready
+- state: done
 - gated: no
+- note: `docs/research/mvp-shape-scoring-template.md` (PR, this shift). Names the three Q7 candidates and both scoring dimensions against this repo's own data model and shipped features, with every scoring cell left empty pending FR-3 (INBOX #1, still pending). The PR is the whole deliverable.
 - why: BRIEF.md Q7 asks which of three MVP shapes (viewer only, distribution only, generation from an existing schedule) best proves the wedge, scored against "data the crew must already have" and "rough build time" — but explicitly says to decide only once real FR-3 interview data exists, still blocked on INBOX #1. The scoring rubric itself does not need interview data to exist and can be ready in advance instead of drafted from scratch the day FR-3 finally unblocks
 - dod:
   - a doc under `docs/research/` names the three candidates from Q7 and the exact scoring dimensions Q7 states, with an empty column per dimension per candidate ready to fill in
