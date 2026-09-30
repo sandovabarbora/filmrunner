@@ -1179,8 +1179,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: an upgrade attempt that breaks any test is never merged; the branch is discarded and what broke is written into the audit doc rather than forced through
 
 ## FR-111 · qa · Attempt the breaking npm-audit fixes FR-91 left undone (vite/vitest/xlsx)
-- state: ready
+- state: done
 - gated: no
+- note: 2026-09-30 10:00 shift — vite 5→8/vitest 2→5 bump (plus peer-required vite-plugin-pwa/@vitejs/plugin-react bumps) attempted on a real branch, green: typecheck/build clean, unit 53/53, full E2E 75/77 (2 pre-existing unrelated Nominatim-egress failures). Closes 7 of 8 npm-audit findings. PR #280 (`fix/fr-111-vite-vitest-upgrade`), touches `frontend/`, awaits founder merge (normal mode, hackathon ended 2026-09-25). xlsx confirmed still unfixed on the npm registry (0.18.5 is newest published); accepted-risk re-check trigger recorded in `docs/research/dependency-audit-2026-09.md`. No backend change, no deploy needed.
 - why: FR-91 found 6 frontend vulnerabilities (vite/vitest/xlsx chain) and fixed none of them because every one needs a breaking upgrade or, for `xlsx`, has no npm-tracked fix at all; "documented, not fixed" has sat unattempted since 2026-09-25 with no branch ever tried
 - dod:
   - on a throwaway branch, attempt the vite/vitest major-version bump `npm audit` recommends; run the full frontend suite, `npm run typecheck`, and `npm run build` against the result
