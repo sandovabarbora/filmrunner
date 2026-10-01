@@ -62,9 +62,13 @@ for (const img of document.querySelectorAll<HTMLImageElement>("[data-screenshot]
 // convention as the screenshots above.
 const flowVideo = document.querySelector<HTMLVideoElement>("[data-flow-video]");
 if (flowVideo) {
-  flowVideo.addEventListener("error", () => {
+  const dropFlowVideo = () => {
     flowVideo.closest("section.flow")?.remove();
-  });
+  };
+  // Same deferred-script race as the screenshots above: the video can already
+  // have failed before this listener exists.
+  if (flowVideo.error) dropFlowVideo();
+  else flowVideo.addEventListener("error", dropFlowVideo);
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   if (reducedMotion) {
     flowVideo.controls = true;

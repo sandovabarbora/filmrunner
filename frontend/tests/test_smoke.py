@@ -359,8 +359,7 @@ def test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missi
     missing = ctx2.new_page()
     missing.route("**/landing/landing-flow.webm", lambda route: route.fulfill(status=404, body="not found"))
     missing.goto(f"{frontend_url}/landing.html")
-    missing.wait_for_timeout(2_000)
-    assert missing.locator("section.flow").count() == 0
+    expect(missing.locator("section.flow")).to_have_count(0, timeout=10_000)
     ctx2.close()
 
 
