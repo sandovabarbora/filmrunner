@@ -1236,3 +1236,22 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - replace the fixed `missing.wait_for_timeout(2_000)` before the `section.flow` assertion with an explicit, retrying wait for the element to detach (e.g. Playwright's `expect(locator).to_have_count(0, timeout=...)` or an equivalent poll), removing the race between the mocked 404 firing the video's `error` event and the assertion running
   - reproduce the original flake first (e.g. run the test many times back-to-back, or under the same parallel load CI uses) to confirm it fails intermittently before the fix and passes reliably after, not just "looks more correct"
   - failure case: temporarily break the `error`-listener behaviour in `landing.ts` (or otherwise force `section.flow` to stay present) and confirm the fixed test still fails loudly — the new wait must not have loosened the assertion into a false pass
+
+## FR-117 · security · Investigate and patch the 10 new pyjwt CVEs flagged by FR-110's pip-audit re-run
+- state: ready
+- gated: no
+- why: FR-110's 2026-09-30 09:00 shift (PR #278, still open) re-ran `pip-audit` against the post-upgrade backend install and found 10 new `pyjwt` CVEs beyond the already-tracked `starlette` findings (LOG.md 2026-09-30 09:00) — flagged in the shift note but never turned into a tracked backlog item or written into `docs/research/dependency-audit-2026-09.md` on `main`. FR-91 already bumped `PyJWT` 2.9.0→2.13.0 (closing 12 older advisories), so these are newly-disclosed findings against the version already on `main`, reproducible without PR #278 merging first.
+- dod:
+  - re-run `pip-audit` against `backend/requirements.txt` on `main` and list the 10 CVEs by ID with the fixed version each needs
+  - on a throwaway branch, attempt the upgrade(s) the advisories recommend and run the full backend suite; if green, open a real PR the same way FR-100/FR-110 did
+  - `docs/research/dependency-audit-2026-09.md` gets a dated section recording the 10 findings either way
+  - failure case: an upgrade that breaks the backend suite is never merged; the exact blocking version and a dated revisit trigger are recorded instead, per FR-110's and FR-111's own precedent for an unfixable finding
+
+## FR-118 · tech-lead · Flag when a new backlog proposal's dod is already delivered by a still-open PR, before it's written
+- state: ready
+- gated: no
+- why: three separate times this week a shift's cycle went to discovering, after proposing or starting work, that it duplicated something already done: FR-112 duplicated FR-67's already-shipped astronomy-accuracy check (caught 2026-09-30 11:00, after being proposed the day before); FR-114's own remaining dod step turned out to be gated on its own unmerged PR #288 (caught twice, 2026-09-30 13:00 and 15:00); and FR-103/FR-104/FR-105's `state:` lines sat stale at `ready` after their own work had already shipped (bookkeeping fixes, LOG.md 2026-09-29 14:15 and 2026-09-30 13:00). Each of these cost part of a shift's one-item budget on discovery rather than delivery.
+- dod:
+  - a script (e.g. `scripts/check_backlog_duplicates.py`) takes a candidate item's title and `why` text and checks it against `BACKLOG.md`'s own `done`/`in-progress` notes and open PRs' titles/bodies (the same `gh pr list --json title,body` shape `scripts/pr_merge_report.py` already uses) for keyword overlap, printing any likely match instead of staying silent
+  - `routine-shift-prompt.md`'s and `routine-brief-prompt.md`'s pm-fallback step (TEAM.md §7) is told to run it before writing a new proposal or taking a `ready` item
+  - failure case: a genuinely new, non-duplicate proposal is never blocked by the check — it only prints a warning for the author to read and decide on, it never auto-rejects a proposal
