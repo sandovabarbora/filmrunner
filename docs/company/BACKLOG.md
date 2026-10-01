@@ -1239,7 +1239,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: temporarily break the `error`-listener behaviour in `landing.ts` (or otherwise force `section.flow` to stay present) and confirm the fixed test still fails loudly — the new wait must not have loosened the assertion into a false pass
 
 ## FR-117 · security · Investigate and patch the 10 new pyjwt CVEs flagged by FR-110's pip-audit re-run
-- state: ready
+- state: done
+- note: bookkeeping fix, 11:00 shift 2026-10-01 (tech-lead) — the 10:00 shift's own LOG.md entry already records "FR-117 set to done" (PR #301, the whole deliverable, founder-merge pending) but its state-only PR (#302) touched only LOG.md/STATUS.md, not this line, so it never actually flipped. Corrected here rather than left stale for a future shift to re-discover, the same class of gap FR-94/FR-99/FR-103/FR-104 hit earlier this week.
 - gated: no
 - why: FR-110's 2026-09-30 09:00 shift (PR #278, still open) re-ran `pip-audit` against the post-upgrade backend install and found 10 new `pyjwt` CVEs beyond the already-tracked `starlette` findings (LOG.md 2026-09-30 09:00) — flagged in the shift note but never turned into a tracked backlog item or written into `docs/research/dependency-audit-2026-09.md` on `main`. FR-91 already bumped `PyJWT` 2.9.0→2.13.0 (closing 12 older advisories), so these are newly-disclosed findings against the version already on `main`, reproducible without PR #278 merging first.
 - dod:
