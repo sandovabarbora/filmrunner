@@ -1267,3 +1267,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - write a dated finding as a new `DECISIONS.md` entry (append-only — never edit the 2026-09-14 entry itself) stating plainly whether the trigger is met, with the evidence and the confound checked above
   - file an INBOX item proposing the founder either confirm dropping a shift (the trigger's own named remedy) or explicitly keep the current cadence despite the trigger, so this doesn't sit undecided the way INBOX #7 sat for six days
   - failure case: if the PR growth is adequately explained by the hourly-cadence confound alone (not by review pace), the finding states that explicitly and does not recommend a cadence change on a confounded signal — it instead names FR-104/PR #262 (reverting to the correct two-hour cadence) as the more direct fix
+
+## FR-120 · qa · Fix the recurring intermittent `transaction already deassociated` backend test flake on push/cancel tests
+- state: ready
+- gated: no
+- why: STATUS.md's own 2026-09-23 15:00 (FR-74) and 17:00 (FR-76) shift notes both independently hit "the pre-existing intermittent `transaction already deassociated` flake on push/cancel tests" during a full backend-suite run, each time dismissed as unrelated noise with a clean rerun and never turned into a tracked item — the same class of gap FR-116 just fixed for the frontend landing-video flake, whose own `why` named the hackathon goal directly: "stalls any otherwise-mergeable PR that happens to land on this flake, working against the hackathon goal of merges not sitting on CI noise." `backend/tests/test_push.py`, `test_push_scale.py`, and `test_cancel_day.py` are the named suspects from those two notes; no backlog item tracks this flake today (checked `BACKLOG.md` for "deassociated"/"push" + "flake" — no match).
+- dod:
+  - reproduce the flake (repeated full-suite runs, or the push/cancel test files alone under the same parallel/contention conditions CI uses) and capture the real SQLAlchemy error and the specific failing test(s), not guessed from the two prior shift notes alone
+  - root-cause it (e.g. a session/transaction/connection scope shared or torn down incorrectly between tests) and fix it at the source — following FR-116's own precedent: fix the real race, don't paper over it with a blind retry or a loosened assertion
+  - failure case: temporarily reintroduce the broken scope/teardown behavior and confirm the fix's regression check (or many repeated runs of the affected test) fails loudly without the fix, the same way FR-116 verified its own fix was real
