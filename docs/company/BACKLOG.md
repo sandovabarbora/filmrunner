@@ -1250,7 +1250,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: an upgrade that breaks the backend suite is never merged; the exact blocking version and a dated revisit trigger are recorded instead, per FR-110's and FR-111's own precedent for an unfixable finding
 
 ## FR-118 · tech-lead · Flag when a new backlog proposal's dod is already delivered by a still-open PR, before it's written
-- state: ready
+- state: done
 - gated: no
 - why: three separate times this week a shift's cycle went to discovering, after proposing or starting work, that it duplicated something already done: FR-112 duplicated FR-67's already-shipped astronomy-accuracy check (caught 2026-09-30 11:00, after being proposed the day before); FR-114's own remaining dod step turned out to be gated on its own unmerged PR #288 (caught twice, 2026-09-30 13:00 and 15:00); and FR-103/FR-104/FR-105's `state:` lines sat stale at `ready` after their own work had already shipped (bookkeeping fixes, LOG.md 2026-09-29 14:15 and 2026-09-30 13:00). Each of these cost part of a shift's one-item budget on discovery rather than delivery.
 - dod:
