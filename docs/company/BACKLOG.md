@@ -1324,8 +1324,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a suspected defect that doesn't reproduce on a second attempt is written down as "not reproduced, needs a third look" rather than filed as a bug on a single flaky observation
 
 ## FR-124 · security · Fresh `pip-audit`/`npm audit` baseline re-run against `main`'s current HEAD
-- state: ready
+- state: done
 - gated: no
+- note: 2026-10-02 11:00 shift — fresh re-run against `main`@`c81a9f2`. Backend: 0 findings (FR-100/110/117 all merged by the founder this same morning, 08:34-08:45 UTC — confirmed clean together). Frontend: unchanged, the one already-accepted `xlsx` finding (FR-111), `npm view xlsx versions` confirms no new registry version exists. Nothing new, nothing attempted; full detail in `docs/research/dependency-audit-2026-09.md`'s own dated section.
 - why: FR-91/100/110/111/117 each re-ran these scanners against the advisory databases of their own day and found the count had grown since the prior pass (FR-110 found 10 new `pyjwt` CVEs beyond FR-91's baseline; FR-117 found 13, not 10, by the next day) — the advisory databases move daily, independent of anything this repo changes, so a baseline is only ever as current as its last re-run, due now (nothing from FR-110/111/117 has run since 2026-10-01 10:00). This is a fresh scan against `main`, not a repeat of an existing finding.
 - dod:
   - re-run `pip-audit` against `backend/requirements.txt` and `npm audit` against `frontend/package-lock.json` on current `main`, both fresh, not copied from a prior shift's note
