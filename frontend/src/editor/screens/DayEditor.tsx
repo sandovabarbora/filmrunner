@@ -492,8 +492,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               </select>
               {!dis && (
                 <div className="item-actions">
-                  <button type="button" className="quiet" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}><Icon name="up" /></button>
-                  <button type="button" className="quiet" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}><Icon name="down" /></button>
+                  <button type="button" className="quiet icon-only" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}><Icon name="up" /></button>
+                  <button type="button" className="quiet icon-only" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}><Icon name="down" /></button>
                   <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>{L("Remove")}</button>
                 </div>
               )}

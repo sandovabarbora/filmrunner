@@ -431,6 +431,109 @@ session's own freshly-created local role for `test_migration_enum_casing.py`'s
 own throwaway database, an environment-setup gap in this sandbox, not a product bug).
 No backend change, no deploy needed.
 
+## FR-97 (11:00 shift, 2026-09-28): Lighthouse re-check after the weekend's icon-set and PWA-icon changes
+
+Weekend commits #236-238 (outside any routine) replaced emoji/text glyphs with a shared inline-SVG
+`Icon.tsx`, added real PWA app icons (`apple-touch-icon`, `icon-192/512`, maskable), and set
+"FilmRunner" as the home-screen name — none of these had been through Lighthouse since. Re-ran both
+`frontend/scripts/lighthouse_pilot_scale.py` (public sheet, FR-52's 60-scene production) and
+`frontend/scripts/lighthouse_landing.py` against the current build, comparing every category and the
+CLS/LCP metrics to the last recorded numbers above (FR-84's 2026-09-25 run for the sheet, FR-92's for
+landing).
+
+**landing.html — unchanged, no regression:**
+
+| Category | FR-92 (2026-09-25) | This run |
+|---|---|---|
+| Performance | 97 | 97 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | 96 |
+| SEO | 100 | 100 |
+
+Identical across all four categories. The same two weight-0 diagnostic Insights as before
+(`lcp-discovery-insight`, `network-dependency-tree-insight`) are the only "red" lines; no new one
+appeared from the icon swap or the PWA icon files.
+
+**Public sheet (pilot scale) — Performance moved 97 → 93, everything else held or improved:**
+
+| Category | FR-84 (2026-09-25) | This run |
+|---|---|---|
+| Performance | 97 | 93 |
+| Accessibility | 100 | 100 |
+| Best Practices | 96 | **100** |
+| SEO | 100 | 100 |
+
+Checked whether this traces to a specific new asset (the dod's own failure case) before accepting it
+as noise: `cumulative-layout-shift` is 0.014 (audit score 1.00), identical to FR-77's own fixed value
+— the icon swap introduced no new layout shift. The only "red" line is
+`network-dependency-tree-insight` (weight 0, a diagnostic Insight, not a scored audit — confirmed via
+`auditRefs` weight the same way FR-92 did); a `forced-reflow-insight` (also weight 0) appeared on the
+first of two runs and not the second, itself evidence of ordinary render-timing variance rather than a
+committed regression. The three scored audits that moved are all small, timing-based ones —
+`first-contentful-paint` 0.82→0.80, `largest-contentful-paint` 0.87→0.86, `total-blocking-time`
+0.99→0.95 — the same class of run-to-run swing FR-77/80/84 already documented as CI-machine noise on
+this exact script (their own recorded runs ranged 88-97 with zero code change in between). Re-ran the
+public-sheet script twice: both runs scored Performance 93 and Best Practices 100, so this is the
+current stable reading, not a one-off fluke — just not one attributable to any specific weekend
+asset, since nothing in the icon/PWA change touches render-blocking work, network requests, or layout.
+Best Practices improving to 100 (was 96, the `image-size-responsive`-class gap FR-92 left as an
+accepted, unrelated finding) further supports "no regression from this change" rather than "a
+regression offset by an unrelated fix."
+
+Both pages stay at or above the dod's 90 line on every category, so nothing here needs the FR-77/84/92
+style targeted fix. Recording these as the new baseline per the dod's own instruction for "nothing
+regressed."
+
+Verified for real: `npm run build`/`typecheck` clean, `npm test` 53/53. Built a local Postgres role/db
+and ran the full Alembic migration chain from scratch, then started a real uvicorn+Postgres API for the
+pilot-scale script (neither existed this session). No backend/frontend product change, no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
+
+## FR-93 (2026-09-28): both PDF exports re-measured at FR-52 pilot scale
+
+Re-run of `frontend/scripts/pdf_pilot_scale.py` (headless Chromium at
+`/opt/pw-browsers/chromium`, a real build, a real uvicorn+Postgres API) against the
+same seeded "Scale test (FR-52) v2" production every other pilot-scale script in this repo reuses.
+
+| Export | Load | Generate | Pages | Size | Rows found |
+|---|---|---|---|---|---|
+| Day PDF (60 scenes) | 0.99 s | 0.57 s | 6 | 133.1 KB | 60/60 scenes, no scene row is split across a page break (confirmed) |
+| Crew-list PDF (60 crew + 8 cast) | 1.02 s | 0.31 s | 2 | 40.9 KB | 60/60 crew, 8/8 cast |
+
+Generation time is Chromium's own print-to-PDF pass on an already-rendered page
+(0.57 s and 0.31 s) — not a real wait on a phone at this scale.
+FR-47's own "<4 pages" line was set for its own 40-scene/30-crew fixture, a smaller
+scale than this one, so a higher page count here is a new data point, not a failure
+of that line. FR-61's "under 3 pages for 60 people" line applies directly at this
+scale: 2 pages satisfies it.
+
+## FR-101 (2026-09-28): confirmed real print-media rendering of Icon.tsx icons
+
+Ran `frontend/scripts/check_print_icons.py` (headless Chromium at
+`/opt/pw-browsers/chromium`, print media emulated, a real build, a real
+uvicorn+Postgres API) against the same seeded "Scale test (FR-52) v2" production FR-93 uses.
+
+Day sheet has 40 `svg.icon` element(s) on screen (the print/phone/WhatsApp/copy
+icons in `CallSheetView.tsx`); all 40 stay in the DOM once print media is
+emulated, but 0 of them actually render (non-zero visible box).
+The crew-list print popup has 0 `svg.icon` elements — `crewPrint.ts`
+does not import `Icon.tsx` at all, so this print export was never in scope for the SVG
+swap. The `print-footer-bar` QR code (`{'isIconClass': False, 'w': 49.125, 'h': 49.125}`) is a separate `qrcode-generator`
+SVG, not an `Icon.tsx` icon, and correctly stays visible in both exports (already
+verified by FR-11/FR-93).
+
+Verdict: **no Icon.tsx icon renders in either PDF export**. Checked why, not just that: `.contact-btn .icon, .actions
+.icon { display: none; }` and `.contact-btn.wa, .contact-btn.copy {
+display: none !important; }` in `styles.css`'s `@media print` block hide every one
+of the four `Icon` usages in `CallSheetView.tsx` (the print button, the phone icon, the
+WhatsApp icon, the copy/check icon). `git log -S` on that selector shows this predates
+PR #236 by renaming only (`.contact-btn .btn-icon` → `.contact-btn .icon`, same
+`display: none` behaviour) — before the emoji-to-SVG swap, the emoji glyphs were
+already hidden from print the same way, so this is not a regression introduced by the
+icon swap; it is unchanged, pre-existing print behaviour. The printed sheet only ever
+showed the phone number as plain text (`.contact-btn.phone` gets its own print-specific
+style with no icon), never an icon of any kind, in either the emoji era or the SVG era.
+No fix was needed; nothing in `styles.css` or `CallSheetView.tsx` changed for this item.

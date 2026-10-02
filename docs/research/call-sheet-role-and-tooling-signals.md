@@ -128,6 +128,11 @@ FR-2 and FR-21 used.
 
 ## Production-size coding (per FR-3's own convention)
 
+**Superseded by the updated table in "FAMU Office document pass (FR-115,
+2026-09-30)" below**, which gives the short (<15 crew) row its first real
+signal; kept here only for the original shift's own record of what it
+found (FAMU page inaccessible at the time, only a `WebSearch` snippet).
+
 | Size tier | Role signal | Tool/workflow signal |
 |---|---|---|
 | short (<15 crew) | none found this shift (FAMU page inaccessible; Valkova's short-film credits don't confirm the call-sheet task specifically) | none found |
@@ -163,16 +168,166 @@ This document does not infer a link between the two — it states the gap
 above rather than guessing that any Czech production uses StudioBinder,
 Yamdu, or any other named tool.
 
+## Re-verification pass (FR-108, 2026-09-29)
+
+Method: same open-egress GitHub Actions pattern FR-83/87/88/89/90/105 used
+(`scripts/fetch_page_text.py`, dispatched from a throwaway branch so the
+deliverable stays doc-only — `desk-research-reverify.yml` on `main` is
+unchanged). Run:
+[actions/runs/36573828643](https://github.com/sandovabarbora/filmrunner/actions/runs/36573828643),
+dispatched and read 2026-09-29. All four pages this doc's original shift
+could only reach as a `WebSearch` snippet, or not at all, returned HTTP 200
+from the runner.
+
+- **FAMU's production-regulations page is reachable, but its body is a
+  document index, not prose.** The full page text (678 lines) is almost
+  entirely FAMU's own site navigation, followed by one real content block
+  titled "PRODUCTION REGULATIONS" that lists four downloadable files and
+  their last-updated dates: `1_RULES FOR PRODUCING EXERCISES.doc` (2 June
+  2021), `2_Production Regulations_Radiosrental.docx` (21 October 2025),
+  `3_Barrandov_Studio_Props and Costumes Rules.pdf` (10 March 2025), and
+  `4_ARRI_Guideline_Students&Independent.pdf` (11 May 2026). No further
+  text appears — whatever the regulations actually say (which could
+  plausibly name who assembles a shoot-day schedule for a student
+  production, the short/<15-crew tier this doc's table has no signal for)
+  is inside those binary `.doc`/`.docx`/`.pdf` files, which a plain HTML
+  text fetch does not open. **Per this item's own failure case**: the page
+  is reachable and not bot-protected, but has no call-sheet-specific
+  content in its HTML body — stated plainly rather than guessed at from
+  the filenames. Attempted and inconclusive, not left unattempted; opening
+  the two most plausible files (`1_RULES FOR PRODUCING EXERCISES.doc`,
+  `2_Production Regulations_Radiosrental.docx`) needs a document-fetching
+  step this pattern doesn't have, named as a further follow-up below.
+- **nsp.cz's "První asistent režie" (1st AD) page is now read in full**,
+  not a snippet. The complete "Pracovní činnosti" (work activities) list
+  confirms this doc's original paraphrase and adds detail the snippet
+  didn't carry: organisational-artistic cooperation in directing;
+  *preparing the shoot based on the approved script*; *defining what the
+  production needs, materially and in personnel*; **creating the basis for
+  the film's budget**; coordinating and directing the crew's work per the
+  director's needs; conveying information from the director to other
+  departments; and participating in post-production tasks. **Still no
+  line names a call sheet or "rozpis natáčení" as a specific deliverable**
+  — the original "consistent context, not direct confirmation" verdict
+  holds, now against the full text rather than a snippet. Bonus data point
+  for a possible future BRIEF Q4 angle (not this item's own scope): the
+  page states a qualification level of NSP 6, a salary band of 30,000–56,000
+  Kč, and the 2025 national wage survey figure for "Asistenti režie"
+  (CZ-ISCO 34351) at a median 41,844 Kč/month (range 33,168–54,356 Kč).
+- **prace.cz's "produkční" page contradicts this doc's own citation** — a
+  finding the same class as FR-89's Movie Magic price correction. The
+  current live page (read in full, not a snippet) describes the produkční
+  as specialising in organising and managing media projects (film, TV,
+  ads, theatre), ensuring coordination between teams, and planning budget,
+  schedule and shoot logistics, recommending a university degree in film
+  production or media studies — **it does not contain** the "snaží se, aby
+  se všichni sešli ve stejnou chvíli na stejném místě" line this doc
+  quoted from its 2026-09-21 `WebSearch` snippet. Neither version mentions
+  a call sheet by name. This doc cannot determine whether the page changed
+  since 2026-09-21 or the original snippet was misattributed; per this
+  item's own convention (state what's actually there, don't guess why),
+  the original quote is flagged **stale/unconfirmed** and the paragraph in
+  "Who assembles, approves, and distributes" above should be read
+  alongside this correction rather than trusted on its own.
+- **jobs.cz's "produkční" page, read in full**, describes a generic
+  event/media production role: complete financial planning and budget
+  prep, checking the production team has enough capacity, overseeing the
+  event running smoothly, and post-event cleanup. Consistent with the
+  original citation's framing (event-production generalist, not film- or
+  call-sheet-specific); no new call-sheet signal.
+
+Net effect on the production-size coding table: unchanged by this pass
+alone (superseded by the FR-115 pass directly below, which opened both
+files this pass could only list).
+
+## FAMU Office document pass (FR-115, 2026-09-30)
+
+Method: extended `scripts/fetch_page_text.py`'s pattern with a new
+`scripts/fetch_office_docs.py` (throwaway branch
+`pm/fr-115-famu-office-docs-throwaway`, `desk-research-reverify.yml`
+unchanged on `main`) — fetches FAMU's production-regulations page, finds
+the `<a href>` for each of the two files FR-108 named, downloads it, and
+converts to plain text: `python-docx` for a real `.docx`, `antiword`/
+`catdoc` for a legacy binary `.doc`. Runs:
+[36727602681](https://github.com/sandovabarbora/filmrunner/actions/runs/36727602681)
+(first attempt — the second file failed to convert because FAMU serves
+both files from a SharePoint download URL with no file extension, so the
+script's original URL-suffix guess misclassified it; fixed to sniff the
+actual file bytes — `PK\x03\x04` for a `.docx` ZIP, the OLE header for a
+`.doc` — and re-run) and
+[36728363801](https://github.com/sandovabarbora/filmrunner/actions/runs/36728363801)
+(both files converted cleanly). Both links resolve to
+`famu.cz/sharepoint-file/download/...` URLs, dated 2 June 2021 and 21
+October 2025 respectively per FR-108's own read of the page.
+
+- **`1_RULES FOR PRODUCING EXERCISES.doc` (21,332 characters) is FAMU
+  Studio's general production-and-accounting rulebook for student
+  exercises, not a call-sheet document, but it does name the role and
+  the document closest to one.** Role: a **named "student of the
+  Department of Production"** organises the shoot for a "shared
+  exercise" — calls and takes minutes of the pre-shoot production
+  meeting, books internal studio/equipment facilities via the
+  "Dispatching" system, and is the one point of contact the rules
+  describe for schedule logistics — supervised throughout by **named
+  "FS producers"** (paid Studio FAMU staff: Lenka Medová, Alena
+  Prokopová, Aneta Nádvorníková, per the second document's contact
+  list) who alone may generate contracts/orders. This is a real, if
+  academic-context, parallel to Q1's professional finding (a
+  produkční/coordinator owns scheduling; a supervisor/producer owns
+  contracts and money) at the smallest production scale this doc has
+  any signal for. **Document: the rulebook's own "Mandatory production
+  documents for exercises" checklist lists "Production schedule
+  including post-production" and, separately, "Filming plan (may
+  include daily schedules)" as two of thirteen required items** — the
+  second is the closest analog to a call sheet in the entire document.
+  **Neither the English term "call sheet" nor a Czech equivalent
+  ("rozpis natáčení", "klapka") appears anywhere in the text.** No line
+  says who distributes the filming plan/daily schedule to the crew, or
+  how (paper, email, an app) — the document governs money, equipment,
+  and facility booking almost exclusively, not day-to-day crew
+  communication.
+- **`2_Production Regulations_Radiosrental.docx` (1,463 characters) is
+  not a second production-regulations document at all — it is a
+  three-year-old wireless-radio rental company's terms and conditions**,
+  addressed to film students: how to order walkie-talkie sets from
+  Radiosrental.cz through the same named FS producers, pickup/return
+  windows, and loan limits (8 radios, 4 batteries, 3 chargers, 6 days
+  max), signed by the vendor's own owner and dated Prague, 7 May 2018.
+  Nothing in it concerns scheduling, call sheets, or any of BRIEF Q1/Q2.
+  **The filename FAMU's own page gives this file
+  ("Production Regulations_Radiosrental") is misleading** — stated
+  plainly here rather than silently treated as more production-rules
+  content, per this document's own "state what's actually there"
+  convention.
+- **Closing FR-108's own follow-up, both ways**: the two files are now
+  read in full, not just listed. One (the rulebook) gives the short
+  (<15 crew) tier its first real role signal — a student in the
+  Production Department role, supervised by paid producers — but still
+  no call-sheet-specific artifact or distribution method. The other
+  (Radiosrental) turned out to be unrelated to production regulations
+  at all. No further FAMU document remains unopened on this page.
+
+Net effect on the production-size coding table: the short (<15 crew) row
+gets its first real role signal (a Production Department student,
+supervised by named FS producers) — not confirmation of a call sheet
+specifically, since the rulebook names a "filming plan" and a
+"production schedule" as separate required documents and never uses the
+term. Coded below as a partial signal, not left blank.
+
+| Size tier | Role signal | Tool/workflow signal |
+|---|---|---|
+| short (<15 crew) | FAMU Studio exercises: a "student of the Department of Production" organises the shoot (production meeting, facility booking) under named paid "FS producers"; the rulebook requires a "filming plan (may include daily schedules)" and a separate "production schedule" among 13 mandatory documents, but never names a call sheet or its distribution method (FR-115, 2026-09-30) | none found (FAMU's rulebook covers money/equipment/facility booking, not day-to-day crew communication) |
+| feature (<50 crew) | Valkova's role plausible for this tier by production type named, task unconfirmed | none found |
+| feature/TV (>50 crew) | Chalupova confirms call sheets as an explicit skill, credited on Stillking Films-scale productions | none found (no tool named even for this tier) |
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Read `www.famu.cz/en/faculty/studio-famu/production-regulations/`
-  directly with working `WebFetch` or a founder session's browser — the
-  most on-topic, Czech, short-production-tier source found this shift,
-  and the only one this shift could not actually read.
 - Re-run the Czech tool-naming searches (StudioBinder/Yamdu/Movie Magic
   + Czech production names) with a search index that indexes Facebook
   groups and closed industry forums, which `WebSearch` does not appear
   to reach for Czech-language content.
 - FR-3's real interviews remain the primary source for both Q1 and Q2;
   this document should be revisited once even one interview exists, to
-  check whether its thin size-coding table needs correcting.
+  check whether its thin size-coding table needs correcting — including
+  whether FAMU's own "filming plan"/"production schedule" split maps to
+  anything a real short-production crew member would call a call sheet.

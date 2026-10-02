@@ -24,6 +24,10 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+// Runtime mirror of PATHS' keys, for tests that must cover every icon that actually
+// exists rather than a list someone has to remember to update by hand.
+export const ICON_NAMES = Object.keys(PATHS) as IconName[];
+
 export function Icon({ name }: { name: IconName }) {
   return (
     <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}

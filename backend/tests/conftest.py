@@ -11,7 +11,7 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 os.environ.setdefault(
@@ -44,22 +44,32 @@ def _create_schema():
 @pytest.fixture()
 def db_session():
     """A session whose outer transaction is always rolled back, even though
-    application code under test calls session.commit(). Uses the SAVEPOINT
-    pattern from the SQLAlchemy docs: app-level commits close the current
-    SAVEPOINT, and a new one is opened immediately so the outer, real
-    transaction never actually commits.
+    application code under test calls session.commit(). Uses SQLAlchemy
+    2.0's own `join_transaction_mode="create_savepoint"` (the engine's
+    built-in replacement for the older hand-rolled "begin_nested() plus an
+    after_transaction_end listener that restarts it" recipe): the Session
+    always issues its commits/rollbacks against a SAVEPOINT riding on top
+    of the outer `transaction` below, re-opening one automatically on every
+    transaction boundary — including the one a failed flush ends — so the
+    outer transaction is never touched by application code and always gets
+    rolled back here, clean, no matter what the test above did.
+
+    The hand-rolled listener this replaced (FR-120) only restarted a
+    SAVEPOINT on a *plain* commit; a flush that fails (e.g. an expected
+    IntegrityError) ends more than one transaction level in one go, which
+    the listener's own restart logic didn't fully account for and could
+    leave the connection's nested-transaction bookkeeping one level off —
+    reproduced deterministically by
+    tests/test_call_sheets.py::TestRevisionSupersession::test_current_revision_uniqueness_is_enforced_by_the_database
+    in isolation, not only as a cross-test ordering flake. `create_savepoint`
+    mode's own restart logic is maintained by SQLAlchemy itself and handles
+    this case correctly.
 
     Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites
     """
     connection = _engine.connect()
     transaction = connection.begin()
-    session = _TestingSessionLocal(bind=connection)
-    session.begin_nested()
-
-    @event.listens_for(session, "after_transaction_end")
-    def _restart_savepoint(sess, trans):
-        if trans.nested and not trans._parent.nested:
-            sess.begin_nested()
+    session = _TestingSessionLocal(bind=connection, join_transaction_mode="create_savepoint")
 
     try:
         yield session

@@ -7,16 +7,48 @@ a real Postgres. Where CI has open egress, a real address genuinely
 resolves; a nonsense one genuinely doesn't. Both branches are exercised
 for real rather than through a mock — the dod's own failure case (a miss
 must stay visible, never silently trusted) included.
+
+FR-106: the two tests above need live Nominatim, which this sandbox's own
+egress proxy blocks (a dozen-plus shift notes each re-diagnosed the same
+known gap). They are skipped here when Nominatim is unreachable rather
+than left to fail, and a mocked-response variant of each (further below,
+against `mocked_geocoding_api_url`) exercises the same UI behaviour with
+no live network needed, so real integration is still checked wherever
+egress allows (CI) and the request/response contract is still checked
+everywhere else.
 """
 
 import re
+import urllib.request
 import uuid
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from test_editor_e2e import _connect, _create_production
 
 
+def _nominatim_reachable() -> bool:
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request(
+                "https://nominatim.openstreetmap.org/search?q=Prague&format=jsonv2&limit=1",
+                headers={"User-Agent": "FilmRunner/1.0 (contact: sandovabarb@gmail.com)"},
+            ),
+            timeout=3,
+        )
+        return True
+    except Exception:
+        return False
+
+
+_NEEDS_LIVE_NOMINATIM = pytest.mark.skipif(
+    not _nominatim_reachable(),
+    reason="Nominatim unreachable from this sandbox (egress-blocked); see the mocked variant below",
+)
+
+
+@_NEEDS_LIVE_NOMINATIM
 def test_add_location_with_real_address_shows_resolved_place_name(page: Page, frontend_url: str, api_url: str) -> None:
     """dod: "the editor shows the resolved place name next to the address
     so the AD can catch it" — a Czech street name can resolve to the wrong
@@ -50,6 +82,7 @@ def test_add_location_with_real_address_shows_resolved_place_name(page: Page, fr
     v.close()
 
 
+@_NEEDS_LIVE_NOMINATIM
 def test_add_location_with_unresolvable_address_stays_editable_and_visible(page: Page, frontend_url: str, api_url: str) -> None:
     """Failure case (dod): a geocoder miss never blocks saving the location,
     and the editor makes the miss visible rather than silent."""
@@ -62,6 +95,43 @@ def test_add_location_with_unresolvable_address_stays_editable_and_visible(page:
     page.fill("#locAddress", "zzqzzq nonexistent street 000000, nowhereville")
     page.click("#addLocation")
     expect(page.locator("#locations")).to_contain_text("Nowhere", timeout=15_000)
+    expect(page.locator("#locations")).to_contain_text("not resolved")
+
+
+def test_add_location_with_mocked_geocoder_match_shows_resolved_place_name(
+    page: Page, frontend_url: str, mocked_geocoding_api_url: str
+) -> None:
+    """FR-106: mocked variant of the real-Nominatim test above — same UI
+    assertion (a resolved place name appears next to the address), against
+    a local stub server instead of live Nominatim, so it runs with no
+    network access at all."""
+    _connect(page, frontend_url, mocked_geocoding_api_url)
+    _create_production(page, f"E2E loc-mock {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Mock Resolved")
+    page.fill("#locAddress", "Trojská 1, Praha 7")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Mock Resolved", timeout=15_000)
+    expect(page.locator("#locations")).to_contain_text("resolved:")
+
+
+def test_add_location_with_mocked_geocoder_miss_stays_editable_and_visible(
+    page: Page, frontend_url: str, mocked_geocoding_api_url: str
+) -> None:
+    """FR-106: mocked variant of the real-Nominatim miss test above — the
+    stub server returns an empty result list for any address containing
+    "nowhereville", the same fixture address the live test uses."""
+    _connect(page, frontend_url, mocked_geocoding_api_url)
+    _create_production(page, f"E2E loc-mock-miss {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Mock Nowhere")
+    page.fill("#locAddress", "zzqzzq nonexistent street 000000, nowhereville")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Mock Nowhere", timeout=15_000)
     expect(page.locator("#locations")).to_contain_text("not resolved")
 
 
@@ -157,9 +227,18 @@ def test_suggest_weather_provider_failure_shows_a_distinct_message(page: Page, f
     expect(page.locator("#notice")).not_to_contain_text("Too far ahead")
 
 
+@_NEEDS_LIVE_NOMINATIM
 def test_day_without_location_says_what_is_missing_and_picking_one_fills_sunrise(page: Page, frontend_url: str, api_url: str) -> None:
     """FR-27: the sunrise hint names what a location would give and links to Locations; once a
-    scene gets a resolved location, sunrise fills without a reload. Real Nominatim, as above."""
+    scene gets a resolved location, sunrise fills without a reload. Real Nominatim, as above.
+
+    FR-106: this is the third test that actually needs live Nominatim to pass
+    (not just the two the item named), found by running the suite in this
+    egress-blocked sandbox — its own resolved-location precondition fails
+    the same way `test_add_location_with_real_address_shows_resolved_place_name`
+    does. Skip-guarded for the same reason; FR-27's own sunrise-autofill
+    behaviour is a distinct feature from what this item's mocked variants
+    cover, so left live-only rather than building a third mock."""
     _connect(page, frontend_url, api_url)
     _create_production(page, f"E2E sun {uuid.uuid4().hex[:6]}")
 
