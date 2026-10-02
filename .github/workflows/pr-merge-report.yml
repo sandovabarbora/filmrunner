@@ -1,0 +1,24 @@
+# FR-114: `scripts/pr_merge_report.py` shells out to `gh pr list --json ...`, but this
+# session's own sandbox does not have `gh` installed (unlike GitHub-hosted runners, which
+# ship it preauthenticated via GH_TOKEN) -- the same class of tooling gap FR-66/67/68/83
+# worked around by dispatching the real check here instead of assuming it from source
+# reading alone.
+name: PR merge-readiness report (FR-114)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report every open PR's ci status, merge state, and TEAM.md merge-rule bucket
+        run: python3 scripts/pr_merge_report.py
