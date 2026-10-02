@@ -17,7 +17,14 @@ uses):
 
     python3 scripts/pdf_pilot_scale.py
 
-Prints a table and appends a dated section to docs/research/pilot-scale-2026-09.md.
+Prints a table and appends a dated section to docs/research/pilot-scale-2026-09.md
+(skipped on CI, which has nothing to commit the append to).
+
+FR-103 (2026-09-29): wired into `.github/workflows/ci.yml` on every PR. Exits 1 if
+either PDF's page count differs at all from `docs/research/ci-baseline.json`'s
+recorded value — page count is deterministic, not a noisy score, so any change
+(not just an increase) needs a human to look and, if it's legitimate, update the
+baseline in the same PR.
 """
 
 import http.server
@@ -41,7 +48,18 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT.parent / "backend"
 DIST_DIR = ROOT / "dist"
 RESEARCH_FILE = ROOT.parent / "docs" / "research" / "pilot-scale-2026-09.md"
-CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+BASELINE_PATH = ROOT.parent / "docs" / "research" / "ci-baseline.json"
+BASELINE_KEY = "pdf_pilot_scale"
+SANDBOX_CHROMIUM_PATH = "/opt/pw-browsers/chromium"
+
+
+def _chromium_launch_kwargs() -> dict:
+    if os.path.exists(SANDBOX_CHROMIUM_PATH):
+        return {"executable_path": SANDBOX_CHROMIUM_PATH}
+    # A real CI runner has no /opt/pw-browsers; ci.yml already runs `playwright
+    # install --with-deps chromium` first, so let Playwright launch its own install
+    # instead of pointing at a sandbox-only path.
+    return {}
 
 TOKEN = "pdf-pilot-scale"
 NAME = "Scale test (FR-52) v2"
@@ -175,7 +193,7 @@ def _day_pdf(frontend_url: str, api_url: str, big_id: str) -> dict:
     with sync_playwright() as pw:
         # This build removed "--headless=old" (what headless=True passes); the new mode
         # must be requested explicitly, same workaround as take_landing_screenshots.py.
-        browser = pw.chromium.launch(executable_path=CHROMIUM_PATH, headless=False, args=["--headless=new"])
+        browser = pw.chromium.launch(headless=False, args=["--headless=new"], **_chromium_launch_kwargs())
         page = browser.new_page(viewport={"width": 390, "height": 844})
         t0 = time.perf_counter()
         page.goto(f"{frontend_url}/?sheet={big_id}&api={api_url}")
@@ -213,7 +231,7 @@ def _day_pdf(frontend_url: str, api_url: str, big_id: str) -> dict:
 
 def _crew_pdf(frontend_url: str, api_url: str, pid: str, n_crew_expected: int) -> dict:
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=CHROMIUM_PATH, headless=False, args=["--headless=new"])
+        browser = pw.chromium.launch(headless=False, args=["--headless=new"], **_chromium_launch_kwargs())
         context = browser.new_context(viewport={"width": 390, "height": 844})
         context.add_init_script(
             "localStorage.setItem('filmrunner.editor.connection', JSON.stringify("
@@ -248,11 +266,26 @@ def _crew_pdf(frontend_url: str, api_url: str, pid: str, n_crew_expected: int) -
     }
 
 
-def main() -> int:
-    if not os.path.exists(CHROMIUM_PATH):
-        print(f"no Chromium at {CHROMIUM_PATH}; cannot run this script in this environment", file=sys.stderr)
-        return 1
+def _check_baseline(day_pages: int, crew_pages: int) -> list[str]:
+    """Unlike the Lighthouse scripts' score tolerance, a PDF page count is an exact,
+    deterministic assertion (no timing noise), so this fails on ANY change, not just
+    an increase, and never auto-updates the baseline — a legitimate change (e.g. a
+    denser crew layout, or trimming rows) needs a human to edit
+    docs/research/ci-baseline.json in the same PR, per FR-103's own dod."""
+    all_baselines = json.loads(BASELINE_PATH.read_text()) if BASELINE_PATH.exists() else {}
+    baseline = all_baselines.get(BASELINE_KEY)
+    if baseline is None:
+        print(f"no baseline recorded yet for {BASELINE_KEY}; add one to docs/research/ci-baseline.json to enable this gate")
+        return []
+    failures = []
+    if day_pages != baseline["day_pages"]:
+        failures.append(f"day PDF page count changed from {baseline['day_pages']} to {day_pages}")
+    if crew_pages != baseline["crew_pages"]:
+        failures.append(f"crew-list PDF page count changed from {baseline['crew_pages']} to {crew_pages}")
+    return failures
 
+
+def main() -> int:
     static_server, static_port = _start_static_server()
     frontend_url = f"http://127.0.0.1:{static_port}"
     api_proc, api_url = _start_api()
@@ -297,9 +330,21 @@ scale than this one, so a higher page count here is a new data point, not a fail
 of that line. FR-61's "under 3 pages for 60 people" line applies directly at this
 scale: {crew['n_pages']} pages {'satisfies' if crew['n_pages'] < 3 else 'does NOT satisfy'} it.
 """
-    with open(RESEARCH_FILE, "a", encoding="utf-8") as f:
-        f.write(section)
-    print(f"\nappended to {RESEARCH_FILE}")
+    if os.environ.get("CI") == "true":
+        # A CI run is a disposable checkout with nothing to commit the append to —
+        # skip it there so ci.yml's own run doesn't churn a file nobody will see.
+        print(f"\nCI run: not appending to {RESEARCH_FILE}")
+    else:
+        with open(RESEARCH_FILE, "a", encoding="utf-8") as f:
+            f.write(section)
+        print(f"\nappended to {RESEARCH_FILE}")
+
+    failures = _check_baseline(day["n_pages"], crew["n_pages"])
+    if failures:
+        print("\nFAILED baseline check (docs/research/ci-baseline.json):", file=sys.stderr)
+        for f in failures:
+            print(f"  - {f}", file=sys.stderr)
+        return 1
     return 0
 
 
