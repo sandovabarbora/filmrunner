@@ -488,6 +488,76 @@ Verified for real: `npm run build`/`typecheck` clean, `npm test` 53/53. Built a 
 and ran the full Alembic migration chain from scratch, then started a real uvicorn+Postgres API for the
 pilot-scale script (neither existed this session). No backend/frontend product change, no deploy needed.
 
+## FR-99 (~13:00 shift, 2026-09-28): PWA installability check on the new manifest and icons
+
+FR-97 confirmed the weekend's icon/PWA change didn't regress Lighthouse's scored categories; it never
+checked whether the manifest itself is actually installable. PR #237/#238 added
+`icon-192.png`/`icon-512.png`/`icon-maskable-512.png`/`apple-touch-icon.png` and the "FilmRunner"
+`short_name`/`name`, but nothing had verified the manifest was well-formed or that the referenced icon
+files exist at the sizes they claim — the dod's own concern: "a malformed manifest or a wrong
+`purpose`/`sizes` pairing fails silently until someone actually tries Add to Home Screen."
+
+**Lighthouse has no PWA/installability audit in this project's pinned version (13.5.0) — confirmed
+empirically, not assumed:**
+
+```
+$ npx lighthouse ... --only-categories=pwa
+Runtime error: unrecognized category in 'onlyCategories': pwa
+
+$ npx lighthouse ... --only-audits=installable-manifest,maskable-icon,service-worker,splash-screen,themed-omnibox
+(exits clean; output JSON has zero categories and zero audits)
+```
+
+`find node_modules/lighthouse -iname '*installable*' -o -iname '*maskable*'` under the resolved
+package returns nothing — the audit files themselves don't exist in this version. Google removed the
+PWA category and its audits from Lighthouse core starting in v12 (deprecated in v10), moving
+installability signals into Chrome DevTools' own Manifest panel instead. Per the dod's own fallback,
+this validates the manifest directly against Chrome's documented install criteria instead:
+
+> Your manifest must include: name, short_name, start_url, display set to standalone or fullscreen
+> (or minimal-ui), background_color, theme_color, and at least one icon at 512×512px... Chrome
+> requires both 192x192 and 512x512 icons with purpose "any" (or no purpose field, which defaults to
+> "any").
+> — [web.dev: What does it take to be installable?](https://web.dev/articles/install-criteria),
+>   via search snippet, checked 2026-09-28 (`WebFetch` against `web.dev` is egress-blocked in this
+>   sandbox, the same gap every prior desk-research shift has hit for vendor/doc domains — not
+>   independently read in full, cited as a snippet only)
+
+New script `frontend/scripts/check_pwa_manifest.py` checks the built `dist/manifest.webmanifest`
+against exactly that: required string fields (`name`, `short_name`, `start_url`), `display` is one of
+standalone/fullscreen/minimal-ui, `background_color`/`theme_color` both set, an icon with
+`sizes=192x192`+purpose any, an icon with `sizes=512x512`+purpose any, every `icons[].src` the
+manifest lists actually exists in `dist/`, and every PNG icon's real decoded pixel size (read from its
+own IHDR chunk, not trusted from the filename) matches its declared `sizes`. Result against the current
+build: **PASS** — `name`/`short_name`/`start_url`/`display: standalone`/`background_color`/
+`theme_color` all present; `icon-192.png` decodes to 192×192, `icon-512.png` and
+`icon-maskable-512.png` both decode to 512×512, all three match their declared `sizes`;
+`icon.svg` (`sizes: any`) and `apple-touch-icon.png` (180×180, not manifest-referenced but used by
+`<link rel="apple-touch-icon">` in the four HTML entry points) both exist in `dist/`; `dist/sw.js` is
+present (a registered service worker is the other half of Chrome's non-manifest criteria).
+
+Proved the check actually catches the failure classes it claims to, not just that it passes today:
+temporarily removed `dist/icon-512.png` — script reports both the missing file and the resulting
+"no 512x512 purpose any icon" failure, exit 1; restored it. Temporarily edited a copy of
+`manifest.webmanifest` so `icon-192.png`'s declared `sizes` read `999x999` — script reports the
+declared-vs-actual mismatch, exit 1; reverted. Both were real edits to the built output, run through
+the actual script, not asserted.
+
+**What this does not check, stated plainly per the dod's own failure case:** HTTPS on the deployed
+GitHub Pages URL (this script serves `dist/` locally over plain HTTP to check the manifest's shape
+only), and an actual "Add to Home Screen" prompt on a real Chrome/Android or Safari/iOS device — no
+browser in this sandbox can drive that install flow. That stays a real-device check for the founder,
+the same boundary `docs/research/manual-test-protocol-push-ios.md` already documents for FR-16's push
+notifications; a future shift or the founder can run it once a phone and the deployed URL are both
+available, and should record the outcome in a similarly-named protocol doc rather than assuming this
+static check stands in for it.
+
+Verified for real: `npm run build` clean against the current `main`, all four icon files confirmed
+present in the built `dist/` at their declared sizes (not just referenced in the manifest source).
+`frontend/scripts/check_pwa_manifest.py` is a new script (touches `frontend/`, so this PR is not
+doc-only and waits for the founder's own merge per TEAM.md, same as PR #241/#245 currently do). No
+backend or frontend product change, no deploy needed.
+
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
