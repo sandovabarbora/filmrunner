@@ -12,5 +12,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# FR-109: the deploy command (ADR-002) passes --build-arg FILMRUNNER_GIT_SHA
+# so /healthz can report which commit is actually serving traffic. Left empty
+# for a plain `docker build`/local dev; /healthz omits the field entirely then.
+ARG FILMRUNNER_GIT_SHA=""
+ENV FILMRUNNER_GIT_SHA=$FILMRUNNER_GIT_SHA
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

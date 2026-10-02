@@ -18,6 +18,7 @@ from typing import Callable
 
 API = os.environ.get("API", "https://filmrunner-api.fly.dev").rstrip("/")
 PAGES = os.environ.get("PAGES", "https://sandovabarbora.github.io/filmrunner").rstrip("/")
+GITHUB_API = os.environ.get("GITHUB_API", "https://api.github.com/repos/sandovabarbora/filmrunner")
 # The browser sends the origin (scheme + host), not the project path GitHub Pages serves us under.
 PAGES_ORIGIN = "://".join(PAGES.split("://")[:1] + [PAGES.split("://", 1)[1].split("/", 1)[0]])
 TIMEOUT = 20
@@ -25,13 +26,50 @@ TIMEOUT = 20
 Result = tuple[str, bool, str]
 
 
-def fetch(url: str) -> tuple[int, bytes, dict[str, str]]:
-    req = urllib.request.Request(url, headers={"User-Agent": "filmrunner-live-check"})
+def fetch(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes, dict[str, str]]:
+    req = urllib.request.Request(url, headers={"User-Agent": "filmrunner-live-check", **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             return r.status, r.read(), {k.lower(): v for k, v in r.headers.items()}
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read(), {k.lower(): v for k, v in exc.headers.items()}
+
+
+def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: dict) -> tuple[bool, str]:
+    """Pure formatting/decision logic, unit-tested without a network call.
+
+    `compare` is a GitHub "compare two commits" API response
+    (https://docs.github.com/en/rest/commits/commits#compare-two-commits) for
+    `deployed_sha...main_sha`: `ahead_by` counts commits on `main_sha` not yet
+    reachable from `deployed_sha`, and `commits[0]` is the oldest of those.
+    """
+    if deployed_sha is None:
+        return True, "cannot verify — deployed build predates commit reporting (FR-109)"
+    if deployed_sha == main_sha:
+        return True, f"up to date ({deployed_sha[:7]})"
+    ahead_by = compare.get("ahead_by", 0)
+    commits = compare.get("commits") or []
+    since = commits[0]["commit"]["committer"]["date"] if commits else "unknown"
+    return False, f"{ahead_by} commits behind main, since {since} (deployed {deployed_sha[:7]}, main {main_sha[:7]})"
+
+
+def deploy_matches_main() -> tuple[bool, str]:
+    status, body, _ = fetch(f"{API}/healthz")
+    deployed_sha = json.loads(body or b"{}").get("git_sha")
+    if status != 200:
+        return False, f"healthz returned {status}"
+    if deployed_sha is None:
+        return deploy_staleness_message(None, "", {})
+    gh_headers = {"Accept": "application/vnd.github+json"}
+    _, main_body, _ = fetch(f"{GITHUB_API}/commits/main", headers=gh_headers)
+    main_sha = json.loads(main_body or b"{}").get("sha", "")
+    if not main_sha:
+        return False, f"could not read main's HEAD sha from {GITHUB_API}/commits/main"
+    if deployed_sha == main_sha:
+        return deploy_staleness_message(deployed_sha, main_sha, {})
+    _, compare_body, _ = fetch(f"{GITHUB_API}/compare/{deployed_sha}...{main_sha}", headers=gh_headers)
+    compare = json.loads(compare_body or b"{}")
+    return deploy_staleness_message(deployed_sha, main_sha, compare)
 
 
 def check(name: str, fn: Callable[[], tuple[bool, str]]) -> Result:
@@ -121,6 +159,7 @@ CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
     ("Pages: landing", page_serves("landing.html", "FilmRunner")),
     ("Pages: privacy note", page_serves("privacy.html", "Supabase")),
     ("A handful of requests is not rate limited", rate_limit_headers_on_refusal),
+    ("Deploy matches main (FR-109)", deploy_matches_main),
 ]
 
 

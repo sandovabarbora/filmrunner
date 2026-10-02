@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     # egress proxy blocks it, same as every other vendor domain).
     nominatim_url: str = "https://nominatim.openstreetmap.org/search"
 
+    # FR-109: the commit this build was deployed from, baked in at `docker build`
+    # time via `--build-arg FILMRUNNER_GIT_SHA=$(git rev-parse HEAD)` (see the
+    # deploy command in ADR-002). Unset for a local dev server or an image built
+    # without the arg; /healthz omits the field entirely rather than reporting a
+    # placeholder, so a stale check can tell "unknown" apart from "matches main".
+    git_sha: str | None = None
+
     @model_validator(mode="after")
     def _refuse_dev_token_outside_development(self) -> "Settings":
         if self.environment != "development" and self.api_bearer_token == DEV_BEARER_TOKEN:

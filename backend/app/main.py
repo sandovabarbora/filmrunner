@@ -53,4 +53,9 @@ app.include_router(push.router, prefix="/api/v1", tags=["push"])
 
 @app.get("/healthz", tags=["ops"])
 def healthz() -> dict[str, str]:
-    return {"status": "ok", "environment": settings.environment}
+    body = {"status": "ok", "environment": settings.environment}
+    # FR-109: omitted (not null) when the image was built without the build-arg,
+    # so a staleness check can tell "predates commit reporting" apart from "unknown sha".
+    if settings.git_sha:
+        body["git_sha"] = settings.git_sha
+    return body
