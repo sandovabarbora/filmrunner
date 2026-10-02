@@ -334,3 +334,52 @@ for whoever eventually revisits test tooling.
 
 No migration, no API contract change, no `app/` code change — this PR is
 the version bump alone. Backend changed: deploy needed (pins only).
+
+## Re-run (FR-124, 2026-10-02 11:00 shift): clean baseline, nothing new
+
+Due since FR-110/FR-117's 2026-10-01 10:00 pass — the advisory databases
+move independent of this repo, so a baseline is only ever as current as
+its last re-run. This is a fresh scan against `main`'s current HEAD
+(`c81a9f2`), not copied from a prior shift's note.
+
+### Backend (`pip-audit`)
+
+Fresh venv (`/tmp/venv-fr124`, `pip-audit` 2.10.1, no caching, same method
+as every prior pass), `pip-audit -r backend/requirements.txt -f json`:
+**0 known vulnerabilities.** `main` had merged FR-100 (#249, fastapi/
+starlette), FR-110 (#278, pytest/pytest-playwright), and FR-117 (#301,
+PyJWT 2.15.1) earlier this same morning (2026-10-02, 08:34-08:45 UTC,
+founder merges) — this re-run confirms all three land clean together,
+not just individually: `starlette` (previously blocked on the `fastapi`
+pin), `pytest` 9.1.1, and `PyJWT` 2.15.1 all show zero findings now. No
+backend package carries an open advisory for the first time since this
+doc started (FR-91, 2026-09-25).
+
+### Frontend (`npm audit`)
+
+`npm audit --json` from `frontend/` against the committed
+`package-lock.json`: **1 finding**, unchanged from FR-111's 2026-09-30
+result — `xlsx`, high, `fixAvailable: false`, same two advisories
+(`GHSA-4r6h-8v6p-xvw6` prototype pollution, `GHSA-5pgg-2g8v-p4x9` ReDoS).
+
+Re-checked FR-111's own dated trigger directly: `npm view xlsx versions
+--json` against the live npm registry still lists `0.18.5` as the newest
+published version (`npm view xlsx time --json` confirms its publish date,
+2022-03-24, unchanged) — no `>=0.19.3` has appeared. The trigger is not
+met; nothing to bump.
+
+### Result
+
+Nothing new since FR-117's 2026-10-01 pass. Backend went from 13 pyjwt
+findings (FR-117's own count) to 0 — closed by PRs already merged this
+morning, not by this item. Frontend is unchanged at exactly the one
+accepted-risk `xlsx` finding FR-111 already documented. No fixable,
+previously-unseen finding exists, so per this item's own dod nothing is
+attempted on a throwaway branch this pass — recorded here instead of
+filing a redundant item.
+
+Failure case (per this item's own dod): both registries were reachable
+this run (`pip-audit`/`npm audit` both exited with their normal non-error
+status and returned real report bodies, not empty output coinciding with
+a silent network failure); `npm view` against the live registry succeeded
+directly rather than being assumed from a cached local value.
