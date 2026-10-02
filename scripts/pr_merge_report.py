@@ -111,7 +111,7 @@ def format_table(prs: list[PullRequest]) -> str:
 def fetch_open_prs() -> list[PullRequest]:
     """Shell out to `gh pr list --json ...` for every open PR's number, title, age, merge
     state, CI rollup, and changed files."""
-    raw = subprocess.run(
+    result = subprocess.run(
         [
             "gh",
             "pr",
@@ -125,8 +125,15 @@ def fetch_open_prs() -> list[PullRequest]:
         ],
         capture_output=True,
         text=True,
-        check=True,
-    ).stdout
+    )
+    if result.returncode != 0:
+        # `gh`'s own error (e.g. a token missing the `checks`/`statuses` permission
+        # `statusCheckRollup` needs) was otherwise silently swallowed by
+        # subprocess.run(check=True)'s bare CalledProcessError -- the exact gap that made
+        # this workflow's first real run fail with no diagnosable message in the log.
+        print(result.stderr, file=sys.stderr)
+        raise RuntimeError(f"gh pr list failed (exit {result.returncode}): {result.stderr.strip()}")
+    raw = result.stdout
     prs = []
     for item in json.loads(raw):
         prs.append(
