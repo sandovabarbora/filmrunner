@@ -277,12 +277,61 @@ future count-oriented follow-up, but that is a different page than the one
 FR-20/FR-83 named, not read this shift, and not assumed to contain a 30-day
 figure either — proposed as its own follow-up below rather than assumed.
 
+## The Filmography page read in full (FR-105, 2026-09-29)
+
+FR-88 (2026-09-25) found the Commission's statistics page measures revenue,
+not a production count, and named the Commission's separate Filmography page
+(`filmcommission.cz/en/filmography/`) as a more plausible count source —
+not read at the time. This shift extended the same open-egress pattern
+(`scripts/fetch_page_text.py`, dispatched via `.github/workflows/desk-research-reverify.yml`
+from a throwaway branch, not merged, since the step was needed once, not as
+a permanent addition) to read the page's actual body rather than guess.
+
+**Finding: it is a lifetime title archive, not a rolling production count,
+and does not map onto Q5's "active production in the last 30 days" metric.**
+The page (200, 184,484 bytes, checked 2026-09-29) is a filterable database of
+"Films, series and other audiovisual works shot in the Czech Republic" —
+its own nav description. Its format filter shows **506 total entries: 338
+movies, 164 series, 1 other** (a WebSearch snippet found earlier the same
+day had cached a stale 505/338/163/1 — the live page is the authoritative
+number, one entry ahead by the time this was fetched, illustrating exactly
+why a real fetch supersedes a cached snippet). A "Year of production" filter
+runs from 2026 back to 2003 individually, plus a single "1983–2003" bucket
+for everything older — so the archive spans at least 1983 to 2026, filtered
+by the year(s) a title was in production (several entries carry two years,
+e.g. "2024, 2025 production" for *Blade Runner 2099*), not a shoot-day or
+filming-permit date. Sample entries confirm this is a title-level record
+(named productions like *Nosferatu*, *One Life*, *Interview with the Vampire*
+season 2), each with a country and format, not a log of shoot days or call
+sheets. Results paginate 1–43 (roughly a dozen titles per page), consistent
+with the 506 total.
+
+Per this item's own failure case: the plain-HTML fetch does not surface a
+per-year count — the year filter's option labels are static text ("2026",
+"2025", …) with no visible counts next to them in the fetched markup, so
+whatever count each year-filter click would show is populated client-side
+(the same class of gap FR-90 found for StudioBinder/Yamdu/SetHero's
+JS-rendered pricing, not attempted here since the dod only asks to read the
+body, not build a per-year scraper). So this closes "what does the page
+count" (title-level works across four decades, not shoot days) but does not
+produce a new number for the order-of-magnitude estimate above: 506 titles
+over roughly 43 years is itself an annual-completion-volume proxy in the
+same family as FR-1/FR-88's Czech-films-released figures (88/year), not a
+30-day active-production count, and averaging 506 over 43 years (≈12/year)
+would undercount badly since the database is dominated by internationally-
+facing features/series the Commission tracks, the same skew FR-20 already
+flagged for productionlist.com's now-dead listing — it excludes the
+Czech-domestic, ad, and student productions this doc's estimate depends on
+most for the "low tens to low hundreds" range. **The order-of-magnitude
+estimate above is unchanged**; no defensible new count was extracted.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Read the Czech Film Commission's separate Filmography/database page (not
-  the statistics page, now closed above) for a possible production or
-  title count, if BRIEF.md Q5 is revisited before FR-3 interview data
-  exists.
+- If a per-year Filmography count becomes worth the cost, render the
+  filtered page with real headless Chromium (the FR-90 pattern) rather than
+  a plain fetch, since the year-filter counts appear to be client-rendered.
+  Even then, per the finding above, expect it to remain an annual-completion
+  proxy skewed toward larger/international titles, not a 30-day count.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - Re-verify the 15–20% critical-mass figure against Rogers' own text — the

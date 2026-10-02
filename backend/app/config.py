@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
 
+    # FR-106: overridable so E2E tests can point geocoding at a local stub
+    # server instead of the real Nominatim endpoint (this sandbox's own
+    # egress proxy blocks it, same as every other vendor domain).
+    nominatim_url: str = "https://nominatim.openstreetmap.org/search"
+
     @model_validator(mode="after")
     def _refuse_dev_token_outside_development(self) -> "Settings":
         if self.environment != "development" and self.api_bearer_token == DEV_BEARER_TOKEN:

@@ -561,3 +561,49 @@ backend or frontend product change, no deploy needed.
 ## Not measured here
 
 - A real phone on a real network: the founder's protocol (readiness file) covers that.
+
+## FR-93 (2026-09-28): both PDF exports re-measured at FR-52 pilot scale
+
+Re-run of `frontend/scripts/pdf_pilot_scale.py` (headless Chromium at
+`/opt/pw-browsers/chromium`, a real build, a real uvicorn+Postgres API) against the
+same seeded "Scale test (FR-52) v2" production every other pilot-scale script in this repo reuses.
+
+| Export | Load | Generate | Pages | Size | Rows found |
+|---|---|---|---|---|---|
+| Day PDF (60 scenes) | 0.99 s | 0.57 s | 6 | 133.1 KB | 60/60 scenes, no scene row is split across a page break (confirmed) |
+| Crew-list PDF (60 crew + 8 cast) | 1.02 s | 0.31 s | 2 | 40.9 KB | 60/60 crew, 8/8 cast |
+
+Generation time is Chromium's own print-to-PDF pass on an already-rendered page
+(0.57 s and 0.31 s) — not a real wait on a phone at this scale.
+FR-47's own "<4 pages" line was set for its own 40-scene/30-crew fixture, a smaller
+scale than this one, so a higher page count here is a new data point, not a failure
+of that line. FR-61's "under 3 pages for 60 people" line applies directly at this
+scale: 2 pages satisfies it.
+
+## FR-101 (2026-09-28): confirmed real print-media rendering of Icon.tsx icons
+
+Ran `frontend/scripts/check_print_icons.py` (headless Chromium at
+`/opt/pw-browsers/chromium`, print media emulated, a real build, a real
+uvicorn+Postgres API) against the same seeded "Scale test (FR-52) v2" production FR-93 uses.
+
+Day sheet has 40 `svg.icon` element(s) on screen (the print/phone/WhatsApp/copy
+icons in `CallSheetView.tsx`); all 40 stay in the DOM once print media is
+emulated, but 0 of them actually render (non-zero visible box).
+The crew-list print popup has 0 `svg.icon` elements — `crewPrint.ts`
+does not import `Icon.tsx` at all, so this print export was never in scope for the SVG
+swap. The `print-footer-bar` QR code (`{'isIconClass': False, 'w': 49.125, 'h': 49.125}`) is a separate `qrcode-generator`
+SVG, not an `Icon.tsx` icon, and correctly stays visible in both exports (already
+verified by FR-11/FR-93).
+
+Verdict: **no Icon.tsx icon renders in either PDF export**. Checked why, not just that: `.contact-btn .icon, .actions
+.icon { display: none; }` and `.contact-btn.wa, .contact-btn.copy {
+display: none !important; }` in `styles.css`'s `@media print` block hide every one
+of the four `Icon` usages in `CallSheetView.tsx` (the print button, the phone icon, the
+WhatsApp icon, the copy/check icon). `git log -S` on that selector shows this predates
+PR #236 by renaming only (`.contact-btn .btn-icon` → `.contact-btn .icon`, same
+`display: none` behaviour) — before the emoji-to-SVG swap, the emoji glyphs were
+already hidden from print the same way, so this is not a regression introduced by the
+icon swap; it is unchanged, pre-existing print behaviour. The printed sheet only ever
+showed the phone number as plain text (`.contact-btn.phone` gets its own print-specific
+style with no icon), never an icon of any kind, in either the emoji era or the SVG era.
+No fix was needed; nothing in `styles.css` or `CallSheetView.tsx` changed for this item.
