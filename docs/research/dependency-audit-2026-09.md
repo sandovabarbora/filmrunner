@@ -223,19 +223,23 @@ already-tracked-open advisories (unchanged from the table above) — noted
 here so they aren't lost, not fixed in this PR (one backlog item, scoped
 to `pytest`/`pytest-playwright`, per this shift's contract).
 ## FR-100 resolution, 2026-09-28: fastapi/starlette upgrade closes the `starlette` CVEs
+
 `fastapi` bumped `0.115.0` → `0.141.1` (latest on PyPI as of this date).
 `starlette` was not pinned directly — it floats to whatever `fastapi`'s
 own `METADATA` allows — and resolved to `1.7.0`, past the `0.40.0` floor
 every open advisory needed (`starlette` itself renumbered its versioning
 scheme somewhere in that range; the actual jump is roughly 26 `fastapi`
 minors, as FR-91 estimated, not a small point release).
+
 `pip-audit -r backend/requirements.txt` after the bump: `starlette`
 carries zero findings (all of FR-91's listed advisories —
 PYSEC-2026-1943, 1941, 161, 248, 2281, 2280, 249 — are gone). Only the
 already-documented, out-of-scope `pytest` finding (PYSEC-2026-1845,
 blocked on a coordinated `pytest-playwright`/`playwright` upgrade per
 FR-91) remains.
+
 Verification, real not assumed:
+
 - Full backend suite: **153/153**, twice — once against a fresh local
   Postgres role/db with the full Alembic migration chain run from empty
   (neither existed this session), once more after re-applying the chain
@@ -256,6 +260,7 @@ Verification, real not assumed:
   change from this bump; confirmed by the error itself (an HTTP 403 from
   `nominatim.openstreetmap.org`, not an assertion about the app's own
   API response).
+
 New deprecation warnings surfaced (not failures, no dod bullet requires
 fixing them, noted so a future shift doesn't re-discover them from
 scratch): `status.HTTP_422_UNPROCESSABLE_ENTITY` and
@@ -268,5 +273,6 @@ is deprecated in favour of a separate `httpx2` package — the test suite
 uses FastAPI's own `TestClient` wrapper, not `starlette.testclient`
 directly, so no code change follows from this warning either; flagged
 for whoever eventually revisits test tooling.
+
 No migration, no API contract change, no `app/` code change — this PR is
 the version bump alone. Backend changed: deploy needed (pins only).
