@@ -90,6 +90,70 @@ frontend finding needs a breaking upgrade or has no fix at all.
   alternative library, or accept the risk with a documented reason —
   needs the founder or tech-lead to pick, not silently patched here.
 
+## Re-verification and fix (FR-111, 2026-09-30)
+
+FR-91 documented every frontend finding as "not fixed" and none had been
+attempted since. This shift attempted the breaking `vite`/`vitest` bump
+`npm audit` recommends, on a throwaway branch, per this item's own dod.
+
+Before (`npm audit`, re-run this shift against the committed lock file —
+already two more transitive findings than FR-91's original 6, all still
+rooted in the same `vite`/`vitest`/`xlsx` chain): 8 vulnerabilities (4
+moderate, 3 high, 1 critical) across `@vitest/mocker`, `brace-expansion`,
+`esbuild`, `fast-uri`, `vite`, `vite-node`, `vitest`, `xlsx`.
+
+Bumped `vite` 5.4.11→**8.3.1**, `vitest` 2.1.9→**5.0.2**, `vite-plugin-pwa`
+0.21.1→**1.3.0** (peer-required for `vite` 8; confirmed on the npm registry
+its `peerDependencies` already lists `vite: "... || ^8.0.0"`), and
+`@vitejs/plugin-react` 4.3.4→**6.1.1** (same reason, peer-requires
+`vite: "^8.0.0"`) together — attempting `vite`/`vitest` alone left the
+existing plugin versions unable to resolve against the new `vite` major.
+
+Verified for real, not assumed from a clean `npm install` alone:
+
+- `npm run typecheck` — clean.
+- `npm run build` — succeeds; output is a working `dist/` (same four
+  entries, `PWA v1.3.0` precache manifest generated). One new advisory
+  notice, not an error: Vite's own `configLoader: 'native'` (a future
+  default) warns that `vite.config.ts`'s use of `__dirname` (line 86) will
+  need `import.meta.dirname` eventually — noted here as a follow-up, not
+  fixed in this PR, since the build is not broken today.
+- `npm test` (vitest unit suite) — **53/53 pass**, unchanged from the
+  pre-bump baseline (also re-confirmed 53/53 on the untouched `main`
+  branch immediately before this attempt, so this is a real before/after,
+  not an assumption).
+- Full Playwright E2E suite (`frontend/tests/`, real build, real
+  uvicorn+Postgres API, a fresh local Postgres role/db and the full
+  Alembic migration chain run from scratch since neither existed this
+  session) — **75/77 pass**. The 2 failures
+  (`test_locations_e2e.py::test_add_location_with_real_address_shows_resolved_place_name`,
+  `::test_day_without_location_says_what_is_missing_and_picking_one_fills_sunrise`)
+  are the same pre-existing Nominatim-egress 403 every prior shift on this
+  suite has hit (confirmed live in this run's own log: `Geocoding failed
+  for '...': 403 Forbidden`), not caused by this dependency bump.
+
+Result: `npm audit` after the bump reports **1 finding** (`xlsx`, high,
+`fixAvailable: false`) — the `vite`/`vitest` bump alone resolved
+`@vitest/mocker`, `brace-expansion`, `esbuild`, `fast-uri`, `vite`,
+`vite-node`, and `vitest` (7 of the 8 open findings), because the newer
+majors pull in already-patched versions of those transitive deps too.
+Opened as a real PR per this item's dod (green build/typecheck/tests, not
+a broken one forced through).
+
+`xlsx` re-checked against the npm registry and the advisory database
+(`GHSA-4r6h-8v6p-xvw6` prototype pollution, `GHSA-5pgg-2g8v-p4x9` ReDoS):
+the registry's newest published version is still **0.18.5** — unchanged
+since FR-91's 2026-09-25 pass and still the currently-installed version;
+both advisories' fixed ranges (`>=0.19.3`, `>=0.20.2`) were never
+published to npm. FR-91's own conclusion stands: SheetJS only ships the
+fix through their CDN-hosted build, not the npm registry, which would be a
+non-npm-registry install source (a build-tooling/supply-chain decision,
+not a dependency-pin bump) — still not attempted here, still needs the
+founder or tech-lead to pick an option from FR-91's own follow-up list.
+**Accepted risk, dated re-check trigger: re-run `npm view xlsx versions`
+at the next dependency-audit pass; if `>=0.19.3` ever appears on the
+registry, this becomes a same-shift bump like `vite`/`vitest` was here.**
+
 ## Failure case (per this item's own dod)
 
 Both scanners reached their advisory databases successfully this run —
