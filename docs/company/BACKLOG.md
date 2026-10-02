@@ -1286,3 +1286,23 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - `.github/workflows/ci.yml` computes the PR's changed files (e.g. `git diff --name-only` against the merge base, or `dorny/paths-filter`) and skips the `npm test`/`npm run build`, backend `pytest`, and `frontend/tests` Playwright steps when every changed file is under `docs/` (company, research, marketing, gates, pilot, adr) — `check_company_docs.py`, the Alembic-head check, and the checker-script tests still always run, since those are cheap and still meaningful for a docs change
   - verify both directions for real: a branch that changes only `docs/company/BACKLOG.md` skips the heavy steps and still goes green; a branch that changes one file under `docs/` and one file under `backend/` (or `frontend/`, `scripts/`) still runs the full suite unchanged
   - failure case: the skip condition is based only on the PR's actual changed-file set, never on its branch name, title, or author — a `docs/*` branch that sneaks in a code change (e.g. a stray edit saved in the same commit) must still run the full suite, not be waved through
+
+## FR-123 · qa · Fresh end-to-end exploratory pass of the real app, hunting for product bugs instead of re-verifying desk research
+- state: ready
+- gated: no
+- why: TEAM.md's product rule ("connect first, then add") asks every item to show the full flow working end to end, but no shift has actually walked that full flow (entry page → editor → production → day → crew link → viewer) against a freshly built app since FR-52/FR-63 (2026-09-22) — eleven days and roughly forty shipped items ago (FR-77 through FR-122). Meanwhile this week's backlog refills have leaned almost entirely on desk-research re-verification against already-settled sources (FR-83/87/89/90/105/108/112/115/121), the exact pattern `docs/pilot/pilot-plan.md` names as work "that cannot be checked against a user" (INBOX #7, still undecided). A real bug found by actually using the app is worth more right now than another re-fetch of a vendor's pricing page.
+- dod:
+  - build the full stack from scratch this shift (fresh Postgres role/db, full Alembic migration chain, fresh frontend build, `python -m app.seed_demo`) rather than reusing any cached state
+  - walk the connect-first path as a real person would: create a production, add crew and cast (including at least one import path, FR-31 or FR-55/56), create and publish a day, open the day's personal crew link and the plain viewer link, check the PDF export and a WhatsApp send text
+  - for every defect actually found, open it as its own new `FR-<n>` item in `BACKLOG.md` with exact repro steps and the real observed vs. expected behaviour — this item itself stays scoped to discovery, not fixing
+  - failure case: a suspected defect that doesn't reproduce on a second attempt is written down as "not reproduced, needs a third look" rather than filed as a bug on a single flaky observation
+
+## FR-124 · security · Fresh `pip-audit`/`npm audit` baseline re-run against `main`'s current HEAD
+- state: ready
+- gated: no
+- why: FR-91/100/110/111/117 each re-ran these scanners against the advisory databases of their own day and found the count had grown since the prior pass (FR-110 found 10 new `pyjwt` CVEs beyond FR-91's baseline; FR-117 found 13, not 10, by the next day) — the advisory databases move daily, independent of anything this repo changes, so a baseline is only ever as current as its last re-run, due now (nothing from FR-110/111/117 has run since 2026-10-01 10:00). This is a fresh scan against `main`, not a repeat of an existing finding.
+- dod:
+  - re-run `pip-audit` against `backend/requirements.txt` and `npm audit` against `frontend/package-lock.json` on current `main`, both fresh, not copied from a prior shift's note
+  - diff the results against the latest dated section already in `docs/research/dependency-audit-2026-09.md`; if nothing new, record that plainly (a clean re-run is itself worth dating) rather than filing a redundant item
+  - if a new, fixable-without-breaking-tests finding turns up, attempt it on a throwaway branch exactly as FR-100/110/111/117 did and open a real PR if the full suite stays green
+  - failure case: a breaking upgrade is never merged just to close a finding; the exact blocking version and a dated revisit trigger are recorded instead, same as FR-111's own xlsx precedent
