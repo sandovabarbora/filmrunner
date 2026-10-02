@@ -105,8 +105,17 @@ the address field the moment it changes.
 - Nominatim's 1 req/s limit means geocoding many locations in a batch
   import would need throttling; out of scope while locations are
   created one at a time in the editor.
-- Astronomical accuracy is not independently verified this shift (see
-  above) — revisit once egress allows fetching a reference source.
+- Astronomical accuracy **is** independently verified, daily and on
+  demand, by the CI check named in the Decision section above (FR-67,
+  `.github/workflows/pilot-readiness.yml`) — this bullet said otherwise
+  and was left stale after FR-67 landed 2026-09-22; caught and fixed
+  2026-09-30 (FR-112) when it turned out to contradict the Decision
+  section directly above it. Re-read the check's most recent scheduled
+  run rather than re-dispatching a duplicate one: [run
+  36560857147](https://github.com/sandovabarbora/filmrunner/actions/runs/36560857147)
+  (2026-09-29 11:18 UTC, `main`@`640352a`) — all 8 values still within
+  1-3 minutes of sunrise-sunset.org, matching the 2026-09-22 measurement
+  above.
 
 ## Out of scope
 
