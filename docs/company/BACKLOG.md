@@ -1339,7 +1339,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a breaking upgrade is never merged just to close a finding; the exact blocking version and a dated revisit trigger are recorded instead, same as FR-111's own xlsx precedent
 
 ## FR-125 · security · Full git-history secret scan, not just the current snapshot
-- state: ready
+- state: done
 - gated: no
 - why: FR-91/100/110/117/124 repeatedly re-run `pip-audit`/`npm audit` against the current dependency tree, and `docs/pilot/pilot-plan.md`'s own Week 0 list names "FR-91 (dependency scan) before real crew phone numbers go in" as the one check worth keeping — but every pass checks known-vulnerable packages, never whether a real credential (API key, DB connection string, service-role key, bearer token) was ever committed anywhere in this repo's git history, even in a commit later "fixed" by removal. INBOX #2/#4/#5/#6's own secrets (`FILMRUNNER_DATABASE_URL`, `FILMRUNNER_API_BEARER_TOKEN`, the Supabase service-role key, VAPID private key, the proposed `FILMRUNNER_CI_TOKEN`) all live only in Fly secrets or GitHub Actions secrets per TEAM.md's approval contract, but no shift has ever checked that the contract was actually followed in every commit, not just the current `HEAD`. This is the gap INBOX #7's pilot plan would put real crew PII behind if left unchecked, and `grep`/`pip-audit`/`npm audit` cannot find it — they only ever see the current tree, not history.
 - dod:
