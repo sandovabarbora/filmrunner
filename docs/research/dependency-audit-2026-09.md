@@ -90,6 +90,64 @@ frontend finding needs a breaking upgrade or has no fix at all.
   alternative library, or accept the risk with a documented reason —
   needs the founder or tech-lead to pick, not silently patched here.
 
+## Resolution: the 10 `pyjwt` CVEs (FR-117, 2026-10-01)
+
+FR-110's 2026-09-30 09:00 shift (PR #278, still open at the time) flagged
+"10 new unrelated `pyjwt` CVEs" in its own pip-audit re-run but never
+filed or recorded them — this section closes that gap.
+
+### Re-run against `main` (`PyJWT[crypto]==2.13.0`, unchanged since FR-91)
+
+`pip-audit -r backend/requirements.txt` from a fresh venv now reports
+**13** `pyjwt` CVE IDs, not 10 — the advisory database grew between
+2026-09-30 and 2026-10-01 (not a re-count error; same method as FR-91/
+FR-110, a fresh venv, no caching). Listed here by ID so a future diff
+against this list is possible:
+
+| CVE | Fix version |
+|---|---|
+| CVE-2026-102274 | 2.14.0 |
+| CVE-2026-101917 | 2.14.0 |
+| CVE-2026-102273 | 2.14.0 |
+| CVE-2026-102269 | 2.14.0 |
+| CVE-2026-102267 | 2.14.0 |
+| CVE-2026-102268 | 2.14.0 |
+| CVE-2026-102272 | 2.14.0 |
+| CVE-2026-102271 | 2.14.0 |
+| CVE-2026-102265 | 2.14.0 |
+| CVE-2026-102266 | 2.14.0 |
+| CVE-2026-102270 | 2.14.0 |
+| CVE-2026-101918 | 2.15.0 |
+| CVE-2026-103001 | *(none listed — `options` dict mutated in place when `verify_signature` is falsy)* |
+
+None of this app's own code calls `jwt.decode`/`jwt.decode_complete` with
+`verify_signature` falsy (`app/auth.py:66` is the only call site, always
+full verification against the JWKS signing key), so CVE-2026-103001 does
+not reach this app's own attack surface even before any fix — checked by
+reading the call site directly, not assumed from the advisory's title.
+
+### Fix
+
+Bumped `PyJWT[crypto]` 2.13.0 → **2.15.1** (latest on PyPI as of this
+run, one patch release past 2.15.0, the newest version either advisory
+above names) on a throwaway branch. Re-ran `pip-audit`: **0** `pyjwt`
+findings afterward, including CVE-2026-103001, which has no `fix_versions`
+listed in the advisory data but is gone from the post-bump scan — the
+live scan is the source of truth here, not the advisory's own (incomplete)
+metadata.
+
+Verified safe to ship: built a fresh local Postgres role/db, ran the full
+Alembic migration chain from scratch, then the full backend suite —
+**153/153 pass**, same count as FR-91/FR-110's baseline, so the bump is
+behaviour-neutral for this repo's own JWT usage (`app/auth.py`'s single
+`jwt.decode` call site, HS256/RS256 verification against Supabase's
+JWKS). No other backend package touched.
+
+`starlette` (0.38.6, still blocked on a `fastapi` upgrade, FR-91/FR-100's
+open PR #249) and `pytest` (now 9.1.1 per FR-110's PR #278, still open —
+once merged this row should re-check clean) are unchanged by this item
+and remain tracked in their own rows above; this item scoped to `pyjwt`
+only, per its own dod.
 ## Re-verification and fix (FR-111, 2026-09-30)
 
 FR-91 documented every frontend finding as "not fixed" and none had been

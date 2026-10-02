@@ -6,7 +6,7 @@ psycopg[binary]==3.2.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-dotenv==1.2.2
-PyJWT[crypto]==2.13.0
+PyJWT[crypto]==2.15.1
 python-multipart==0.0.31
 pywebpush==2.5.0
 
