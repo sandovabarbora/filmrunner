@@ -27,6 +27,17 @@ deploy`), on purpose: no deploy-capable token is stored in GitHub. The
 backend refuses to start outside `development` with the dev bearer token
 (config validator, tested).
 
+**Addendum 2026-10-02 (FR-109): report the deployed commit.** The deploy
+command is now `cd backend && fly deploy --build-arg
+FILMRUNNER_GIT_SHA=$(git rev-parse HEAD)` — one added flag, run from the
+repo root so `git rev-parse` resolves, same single step. It bakes the
+commit the image was built from into `/healthz`'s response
+(`git_sha`), which `scripts/check_live_stack.py` compares against
+`main`'s current HEAD (public GitHub API, no token) in the daily "pilot
+readiness (live)" run, flagging how many commits the live deploy is
+behind. A deploy run with the old command (no flag) simply omits
+`git_sha`; the check reports that as unverified, not as a failure.
+
 Guardrail: the data model stays plain Postgres. No row-level security as
 business logic, no edge functions, no Supabase storage in the schema, so
 the database can move to any Postgres host.
