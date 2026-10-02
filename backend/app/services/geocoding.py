@@ -15,9 +15,10 @@ from dataclasses import dataclass
 
 import httpx
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
-_NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 _USER_AGENT = "FilmRunner/1.0 (contact: sandovabarb@gmail.com)"
 _TIMEOUT = 5.0
 
@@ -36,7 +37,7 @@ def geocode(address: str) -> GeocodeResult | None:
         return None
     try:
         response = httpx.get(
-            _NOMINATIM_URL,
+            get_settings().nominatim_url,
             params={"q": address, "format": "jsonv2", "limit": 1},
             headers={"User-Agent": _USER_AGENT},
             timeout=_TIMEOUT,
