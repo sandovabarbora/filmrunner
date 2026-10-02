@@ -94,6 +94,7 @@ jobs:
         if: env.RUN_HEAVY == 'true'
         run: python -m pytest frontend/tests -q
       - name: Pilot-scale Lighthouse and PDF regression gate (FR-103)
+        if: env.RUN_HEAVY == 'true'
         working-directory: frontend
         run: |
           python3 scripts/lighthouse_pilot_scale.py
