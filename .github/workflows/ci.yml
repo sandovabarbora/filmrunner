@@ -100,3 +100,7 @@ jobs:
           python3 scripts/lighthouse_pilot_scale.py
           python3 scripts/lighthouse_landing.py
           python3 scripts/pdf_pilot_scale.py
+      - name: PWA manifest/installability gate (FR-102)
+        if: env.RUN_HEAVY == 'true'
+        working-directory: frontend
+        run: python3 scripts/check_pwa_manifest.py
