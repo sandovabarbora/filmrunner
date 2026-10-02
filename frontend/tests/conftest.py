@@ -17,6 +17,7 @@ from functools import partial
 from pathlib import Path
 
 import pytest
+from playwright.sync_api import BrowserType
 
 DIST_DIR = Path(__file__).resolve().parents[1] / "dist"
 BACKEND_DIR = Path(__file__).resolve().parents[2] / "backend"
@@ -30,6 +31,68 @@ E2E_TOKEN = "e2e-token"
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args: object) -> None:  # noqa: D102
         pass
+
+
+def find_fallback_chromium(pinned_executable: Path) -> Path | None:
+    """Look for any other installed Chromium build next to a missing pinned one.
+
+    `pinned_executable` is playwright's own resolved path, e.g.
+    `<browsers_root>/chromium-1134/chrome-linux/chrome`. Only used once that
+    exact path is confirmed absent (FR-107) — a runner that has the pinned
+    revision must never be redirected elsewhere.
+    """
+    browsers_root = pinned_executable.parents[2]
+    if not browsers_root.is_dir():
+        return None
+    for candidate in sorted(browsers_root.glob("chromium-*/chrome-linux/chrome"), reverse=True):
+        if candidate.is_file():
+            return candidate
+    alias = browsers_root / "chromium"  # some environments ship a plain convenience symlink
+    if alias.exists():
+        return alias
+    return None
+
+
+def resolve_chromium_launch_args(base_args: dict, pinned_executable: Path) -> dict:
+    """Add a fallback `executable_path` to `base_args` when `pinned_executable` is missing.
+
+    Raises `RuntimeError` naming the missing browser when no fallback exists either
+    (FR-107's own failure case), instead of leaving Playwright to fail the launch with
+    a generic timeout.
+    """
+    if pinned_executable.exists():
+        return base_args
+    fallback = find_fallback_chromium(pinned_executable)
+    if fallback is None:
+        raise RuntimeError(
+            f"No Chromium build found for the E2E suite: the pinned revision is missing "
+            f"at {pinned_executable}, and no fallback build exists under "
+            f"{pinned_executable.parents[2]}. Run `playwright install chromium`, or set "
+            "PLAYWRIGHT_BROWSERS_PATH to a directory that has one."
+        )
+    args = {**base_args, "executable_path": str(fallback)}
+    if args.get("headless", True):
+        # A fallback build newer than the pinned revision may have dropped "old" headless
+        # mode (this playwright version still launches with --headless=old by default);
+        # "new" headless works on every Chromium this fallback could plausibly find.
+        args["args"] = [*args.get("args", []), "--headless=new"]
+    return args
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict, browser_type: BrowserType) -> dict:
+    """Fall back to any installed Chromium when the pinned revision is missing.
+
+    `playwright==1.47.0` (pinned in requirements.txt) expects chromium-1134;
+    this sandbox pre-installs a newer revision instead, so every prior shift
+    hand-patched this exact fixture and reverted it before committing rather
+    than fix it once (FR-107). A CI runner with the pinned revision installed
+    is unaffected: the fallback only triggers once that revision is confirmed
+    absent, never preferred over it.
+    """
+    if browser_type.name != "chromium":
+        return browser_type_launch_args
+    return resolve_chromium_launch_args(browser_type_launch_args, Path(browser_type.executable_path))
 
 
 @pytest.fixture(scope="session")
