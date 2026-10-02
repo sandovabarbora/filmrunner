@@ -105,19 +105,63 @@ should be labelled as such wherever it is cited.
 
 ## Comparison against a word-of-mouth sample-size threshold
 
-Diffusion-of-innovations research (Everett Rogers) is commonly summarised
-as: an innovation adopted by roughly 15–20% of an audience reaches
-critical mass and spreads on its own via word of mouth, without needing
-further push ("Reading: Diffusion of Innovation", *Principles of
-Marketing*, Lumen Learning OER,
+**Superseded 2026-10-02 (FR-121) — see "Rogers' own adopter-category
+percentages" below for the current figure.** The paragraph below is kept
+for the record, not as the live claim: diffusion-of-innovations research
+(Everett Rogers) was originally summarised here as "an innovation adopted
+by roughly 15–20% of an audience reaches critical mass and spreads on its
+own via word of mouth, without needing further push" ("Reading: Diffusion
+of Innovation", *Principles of Marketing*, Lumen Learning OER,
 `courses.lumenlearning.com/clinton-marketing/chapter/reading-diffusion-of-innovation/`,
 checked 2026-09-21, via `WebSearch` snippet, itself citing Rogers'
-*Diffusion of Innovations*). This is a paraphrase from a marketing
-textbook, not Rogers' primary text or Wikipedia's summary of it — both
-were unreachable this shift (`WebFetch` blocked for `en.wikipedia.org`
-too) — so treat the exact 15–20% figure as a widely-repeated
-approximation, not a precisely sourced number, and re-verify against
-Rogers' own text when egress allows.
+*Diffusion of Innovations*). That was a paraphrase from a marketing
+textbook, not Rogers' primary text — flagged at the time as "a
+widely-repeated approximation, not a precisely sourced number, re-verify
+against Rogers' own text when egress allows."
+
+### Rogers' own adopter-category percentages (FR-121, 2026-10-02)
+
+Rogers' primary framework splits adopters into five categories by
+standard deviations from the mean adoption time, with a fixed percentage
+per category: innovators 2.5%, early adopters 13.5%, early majority 34%,
+late majority 34%, laggards 16%. "Critical mass" in Rogers' own model is
+the point where the innovators-plus-early-adopters segment has adopted —
+**2.5% + 13.5% = 16%** — after which the early majority follows. This
+is a single, internally consistent number, not a range, and it is more
+precise than the "15–20%" marketing-OER paraphrase this doc previously
+cited (the old range was in the right neighbourhood but not sourced to
+Rogers' own figures).
+
+Sourced via `WebSearch` (`WebFetch`/direct fetch of every URL below was
+tried and blocked by this sandbox's egress proxy, consistent with every
+prior item in this doc; no GitHub Actions open-egress dispatch was run
+this shift since the dod accepts `WebSearch`-only sourcing and the figure
+below already converges across independent sources without it) on
+2026-10-02, three independent secondary sources, none citing each other,
+all stating the same 2.5%/13.5% breakdown:
+
+- Umbrex, "Diffusion of Innovations Curve (Rogers)" —
+  `umbrex.com/resources/frameworks/marketing-frameworks/diffusion-of-innovations-curve-rogers/`
+  — states the five categories as 2.5% / 13.5% / 34% / 34% / 16% and notes
+  the split comes from standard deviations on a normal distribution of
+  time-to-adopt (matches Rogers' own stated method).
+- Educational Technology (Dr. Serhat Kurt), "Diffusion of Innovations
+  Theory" — `educationaltechnology.net/diffusion-of-innovations-theory/`
+  — independent academic-resource site, states the same five-category
+  breakdown with the same percentages.
+- Yu-kai Chou, "Diffusion of Innovations: The 5 Adopter Types & the
+  Chasm" — `yukaichou.com/gamification-analysis/diffusion-of-innovations-rogers-adoption-curve/`
+  — independent author/site, same percentages, explicitly names
+  "innovators (2.5%)" and "early adopters (13.5%)" as the two segments
+  before the "chasm" to the early majority.
+
+All three were reached only as `WebSearch` snippets, not full page reads
+(every one of the above domains returned `EGRESS_BLOCKED` on a direct
+`WebFetch` attempt this shift) — same caveat this doc already applies to
+every other `WebSearch`-only citation. Three independent sources
+converging on an identical, specific number (not a rounded range) is
+stronger sourcing than the single OER paraphrase the old "15–20%" line
+rested on, even without a full-text read of Rogers' own book.
 
 Applying it: the relevant "audience" for word-of-mouth spread is not the
 general public but the people who actually assemble call sheets (BRIEF.md
@@ -125,14 +169,21 @@ Q1's own target: 1st ADs, 2nd ADs, production coordinators) — one to a
 few per active production. If the order-of-magnitude estimate above (low
 tens to low hundreds of active Prague productions) holds, the addressable
 audience of call-sheet-assemblers is itself only on the order of dozens
-to a few hundred people at any time. A 15–20% critical mass of that
-audience is a small absolute number — plausibly single digits to a few
-dozen people — which is compatible with FR-3's plan (five interviews,
-sourced first from the founder's network, then FAMU and other fallback
-channels) as a realistic path to meaningful word-of-mouth density,
-*if* the order-of-magnitude estimate above is roughly right. It does not
-confirm Prague is dense enough; it shows the threshold is not obviously
-out of reach for a market this size, which is a weaker claim.
+to a few hundred people at any time. A 16% critical mass of that
+audience (Rogers' own innovators+early-adopters figure, above) is a small
+absolute number — plausibly single digits to a few dozen people, not
+meaningfully different from what the old 15–20% range implied — which is
+compatible with FR-3's plan (five interviews, sourced first from the
+founder's network, then FAMU and other fallback channels) as a realistic
+path to meaningful word-of-mouth density, *if* the order-of-magnitude
+estimate above is roughly right. **What this re-sourcing changes:** the
+threshold is now a specific, Rogers-sourced number (16%) instead of a
+textbook's rounded range; **what it does not change:** the order-of-
+magnitude estimate of the addressable audience, the conclusion that
+Prague's density is plausible-but-unconfirmed, or the next step (FR-3
+interviews) — 16% and "15–20%" land on the same small-absolute-number
+conclusion for this doc's purposes, so this is a precision correction,
+not a changed finding.
 
 ## Failure case: no public source establishes the count
 
@@ -334,9 +385,15 @@ estimate above is unchanged**; no defensible new count was extracted.
   proxy skewed toward larger/international titles, not a 30-day count.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
-- Re-verify the 15–20% critical-mass figure against Rogers' own text — the
-  Wikipedia article is now reachable (2026-09-24) and names a compatible
-  but not identical range; Rogers' primary text is the next step.
+- **Closed (FR-121, 2026-10-02)**: the 15–20% critical-mass figure is
+  replaced with Rogers' own innovators+early-adopters breakdown (16%,
+  three converging `WebSearch`-sourced secondary citations — see "Rogers'
+  own adopter-category percentages" above). A full read of Rogers'
+  primary text itself is still untried (every source above was reached as
+  a `WebSearch` snippet, not a full page fetch — this sandbox's egress
+  proxy blocks all three cited domains directly) but three independent,
+  mutually-corroborating secondary sources meet this item's own dod bar;
+  not treated as a further open follow-up.
 - Once FR-3 interviews happen, fold interviewees' own estimates into this
   file rather than treating this shift's order-of-magnitude figure as
   final.
