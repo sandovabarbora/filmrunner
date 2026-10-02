@@ -1348,3 +1348,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - any real finding is never "fixed" by deleting the line in a new commit alone (the old commit and the secret stay in history and in every clone) — treated as compromised: file an INBOX item proposing the founder rotate that credential at its source (Fly, Supabase, GitHub), since the routine cannot hold or rotate secrets (TEAM.md)
   - failure case: a scanner false-positive (e.g. a test fixture's obviously-fake token, or this item's own doc quoting a redacted example) is recorded as reviewed-and-dismissed with the reason, never silently ignored and never silently added to a tool-wide ignore rule without saying why in the same doc
 
+## FR-126 · qa · Automated keyboard-only navigation test (tab order, visible focus, no keyboard trap)
+- state: ready
+- gated: no
+- why: hackathon goal (pilot-ready) — FR-63's axe-core pass and FR-73/94's 320px reflow checks cover names, roles, contrast and layout, but axe-core's own documented limitation is that it cannot verify actual keyboard operability (WCAG 2.1.1 Keyboard, 2.1.2 No Keyboard Trap); nothing in this repo has ever driven the crew sheet, a personal link, or the editor using only a keyboard, so a pilot crew member who cannot use touch or a mouse has never actually been tested, and FR-63's own "Not covered here" section only named screen readers, not this.
+- dod:
+  - a Playwright test drives each of the crew sheet (demo, CS and EN), a personal link, the editor's day screen, and the editor's Crew tab using only keyboard events (Tab, Shift+Tab, Enter, Escape — no click/tap) and asserts: every interactive control is reachable in a sane order, every focused element has a visible focus indicator (a real computed outline or box-shadow, not `outline: none` with nothing replacing it), and tabbing through the whole screen and once more never raises an error or gets stuck repeating one element
+  - any control found unreachable by keyboard or missing a visible focus indicator is fixed the same small, targeted way FR-63/82 fixed their own findings; record what was found and fixed in a new dated `docs/research/keyboard-nav-2026-10.md`
+  - failure case: a control that intentionally holds focus while open (e.g. a crew-import dialog) is not reported as a bug for doing that — the test instead confirms Escape or a visible close control returns focus to where it was before the dialog opened
+
