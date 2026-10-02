@@ -1289,6 +1289,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - root-cause it (e.g. a session/transaction/connection scope shared or torn down incorrectly between tests) and fix it at the source — following FR-116's own precedent: fix the real race, don't paper over it with a blind retry or a loosened assertion
   - failure case: temporarily reintroduce the broken scope/teardown behavior and confirm the fix's regression check (or many repeated runs of the affected test) fails loudly without the fix, the same way FR-116 verified its own fix was real
 
+## FR-121 · marketing · Replace the vague "15–20%" word-of-mouth critical-mass figure with Rogers' own adopter-category percentages (BRIEF Q5 follow-up)
+- state: ready
+- gated: no
+- why: `docs/research/prague-market-sizing.md`'s "Comparison against a word-of-mouth sample-size threshold" section (BRIEF Q5) currently cites "15–20%" sourced from a marketing-OER paraphrase of Everett Rogers' diffusion-of-innovations research, not Rogers' own text — flagged in the doc itself as "a widely-repeated approximation, not a precisely sourced number, re-verify against Rogers' own text when egress allows." FR-83's 2026-09-24 re-verification pass got `en.wikipedia.org`'s Diffusion of Innovations article reachable for the first time and names the classic adopter-category breakdown (innovators + early adopters together "commonly put at roughly 13.5–16%") as a closer, better-sourced figure than the OER's rounder range, but stops short of citing Rogers' own innovators (2.5%) + early-adopters (13.5%) percentages directly, leaving the doc's own named follow-up open.
+- dod:
+  - `WebSearch` (works in this sandbox; `WebFetch` is egress-blocked for most domains here but open on the GitHub Actions runner the FR-83/87/88/89/90/105/108/112/115 pattern already established, so use whichever actually reaches a source) for at least two independent, citable secondary sources (academic or course pages, publisher excerpts, or reputable summaries — not another marketing blog repeating the same unsourced "15-20%") that state Rogers' own innovators+early-adopters percentage breakdown; record each URL and the date checked
+  - update `docs/research/prague-market-sizing.md`'s critical-mass comparison with the more precise figure the sources converge on (or state plainly that they disagree, and by how much), marking the current "15–20%, marketing-OER" line superseded rather than silently overwritten, and note what this does or does not change about the doc's own Q5 order-of-magnitude estimate
+  - failure case: if no citable secondary source states Rogers' own percentage breakdown precisely (only further paraphrases of a paraphrase), the doc keeps the current "15–20%" range, says so explicitly, and leaves the follow-up open rather than guessing a number
 ## FR-122 · qa · Skip the frontend/backend test suites in CI for PRs that touch only docs/ content
 - state: done
 - gated: no
