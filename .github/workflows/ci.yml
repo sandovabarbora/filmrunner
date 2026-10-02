@@ -6,7 +6,33 @@ on:
   pull_request:
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      docs_only: ${{ steps.check.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine if this PR touches only docs/
+        id: check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          echo "Changed files:"
+          echo "$CHANGED"
+          if [ -n "$(echo "$CHANGED" | grep -v '^docs/' || true)" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+
   ci:
+    needs: [changes]
+    if: always()
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -25,6 +51,7 @@ jobs:
     env:
       FILMRUNNER_DATABASE_URL: postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test
       FILMRUNNER_API_BEARER_TOKEN: ci-only-token
+      RUN_HEAVY: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_only != 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,15 +63,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Frontend build (typecheck + vite)
+        if: env.RUN_HEAVY == 'true'
         working-directory: frontend
         run: |
           npm ci
           npm test
           npm run build
-      - name: Install
-        run: |
-          pip install -r backend/requirements.txt -r frontend/tests/requirements.txt
-          python -m playwright install --with-deps chromium
+      - name: Install Python test deps
+        run: pip install -r backend/requirements.txt -r frontend/tests/requirements.txt
+      - name: Install Playwright browser
+        if: env.RUN_HEAVY == 'true'
+        run: python -m playwright install --with-deps chromium
       - name: Branch and PR title conventions
         if: github.event_name == 'pull_request'
         env:
@@ -58,9 +87,11 @@ jobs:
       - name: Checker tests
         run: python -m pytest scripts/tests -q
       - name: Backend tests
+        if: env.RUN_HEAVY == 'true'
         working-directory: backend
         run: python -m pytest tests -q
       - name: Frontend smoke
+        if: env.RUN_HEAVY == 'true'
         run: python -m pytest frontend/tests -q
       - name: Pilot-scale Lighthouse and PDF regression gate (FR-103)
         working-directory: frontend
