@@ -165,6 +165,63 @@ future run finds either blocked, `pip-audit`/`npm audit` fail loudly
 could be misread as "clean" — confirm the exit code, not just the
 absence of findings, before recording a scan as clean.
 
+## Resolution (FR-110, 2026-09-30): `pytest` + `pytest-playwright` bump
+
+The coordinated upgrade this doc's own follow-up named above turned out
+to be available: `pytest-playwright` `0.9.0` (PyPI, checked directly via
+`https://pypi.org/pypi/pytest-playwright/json`) now declares
+`pytest<10.0.0,>=6.2.4` in its `requires_dist`, no longer the
+`pytest<9.0.0` pin that blocked the original attempt. `playwright` itself
+did not need a bump — `pytest-playwright==0.9.0` only requires
+`playwright>=1.18`, and this repo's pinned `1.47.0` already satisfies
+that.
+
+Bumped `backend/requirements.txt`'s `pytest` `8.3.3` → `9.1.1` (PyPI
+latest) and `frontend/tests/requirements.txt`'s `pytest` the same, plus
+`pytest-playwright` `0.5.2` → `0.9.0`. Verified the exact failure mode
+from the original attempt is gone: `pip install -r
+backend/requirements.txt -r frontend/tests/requirements.txt` (the same
+combined install `.github/workflows/ci.yml` runs) resolves cleanly into
+one fresh venv with no conflict, where it previously errored outright.
+
+Full suites green against the bumped combined install, each compared
+against an identical run on the pre-bump pin as a baseline (same
+machine, same local Postgres, same Chromium binary) rather than assumed
+green from a changelog read:
+
+- `backend`: `python -m pytest tests` — 153/153 before and after, no
+  change.
+- `scripts/tests` (the third suite CI's own `ci` job runs): 32/32.
+- `frontend/tests` (Playwright E2E, real build + real uvicorn+Postgres
+  API): 74/77 before and after, byte-identical set of 3 failures both
+  times — `test_add_location_with_real_address_shows_resolved_place_name`
+  and `test_day_without_location_says_what_is_missing_and_picking_one_fills_sunrise`
+  (this sandbox's standing Nominatim-egress 403, unrelated to this
+  change, noted by every prior shift that ran this suite) and
+  `test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missing`
+  (the pre-existing flake FR-77's shift already documented). No new
+  failure and no previously-failing test newly passed, so the bump is
+  confirmed behaviour-neutral for this suite, not just "still mostly
+  green." (This sandbox's own missing pinned Chromium revision needed
+  the same temporary, reverted-before-commit `conftest.py`
+  `browser_type_launch_args` override — `executable_path` to
+  `/opt/pw-browsers/chromium` plus `--headless=new` — prior shifts have
+  used for E2E runs here; not part of this PR's diff.)
+- `npm run typecheck` / `npm test` / `npm run build`: unaffected, no
+  frontend JS/TS dependency changed.
+
+Closes PYSEC-2026-1845 (`pytest`'s own `/tmp/pytest-of-{user}`
+directory-name issue, the finding this doc's audit table above left
+open): re-running `pip-audit -r backend/requirements.txt` on the bumped
+file no longer lists `pytest` or `pytest-playwright` at all, and
+introduces no new advisory for either. That same re-run surfaces new,
+unrelated findings not caused by this bump and out of this item's
+scope — 10 fresh `pyjwt` CVEs (`2.13.0`, this doc's own audit table
+above already had `pyjwt` at `2.13.0` as "fixed"; these are dated 2026
+and evidently post-date that pass, fixed in `2.14.0`) and `starlette`'s
+already-tracked-open advisories (unchanged from the table above) — noted
+here so they aren't lost, not fixed in this PR (one backlog item, scoped
+to `pytest`/`pytest-playwright`, per this shift's contract).
 ## FR-100 resolution, 2026-09-28: fastapi/starlette upgrade closes the `starlette` CVEs
 
 `fastapi` bumped `0.115.0` → `0.141.1` (latest on PyPI as of this date).
