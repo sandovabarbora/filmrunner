@@ -149,21 +149,26 @@ once merged this row should re-check clean) are unchanged by this item
 and remain tracked in their own rows above; this item scoped to `pyjwt`
 only, per its own dod.
 ## Re-verification and fix (FR-111, 2026-09-30)
+
 FR-91 documented every frontend finding as "not fixed" and none had been
 attempted since. This shift attempted the breaking `vite`/`vitest` bump
 `npm audit` recommends, on a throwaway branch, per this item's own dod.
+
 Before (`npm audit`, re-run this shift against the committed lock file —
 already two more transitive findings than FR-91's original 6, all still
 rooted in the same `vite`/`vitest`/`xlsx` chain): 8 vulnerabilities (4
 moderate, 3 high, 1 critical) across `@vitest/mocker`, `brace-expansion`,
 `esbuild`, `fast-uri`, `vite`, `vite-node`, `vitest`, `xlsx`.
+
 Bumped `vite` 5.4.11→**8.3.1**, `vitest` 2.1.9→**5.0.2**, `vite-plugin-pwa`
 0.21.1→**1.3.0** (peer-required for `vite` 8; confirmed on the npm registry
 its `peerDependencies` already lists `vite: "... || ^8.0.0"`), and
 `@vitejs/plugin-react` 4.3.4→**6.1.1** (same reason, peer-requires
 `vite: "^8.0.0"`) together — attempting `vite`/`vitest` alone left the
 existing plugin versions unable to resolve against the new `vite` major.
+
 Verified for real, not assumed from a clean `npm install` alone:
+
 - `npm run typecheck` — clean.
 - `npm run build` — succeeds; output is a working `dist/` (same four
   entries, `PWA v1.3.0` precache manifest generated). One new advisory
@@ -184,6 +189,7 @@ Verified for real, not assumed from a clean `npm install` alone:
   are the same pre-existing Nominatim-egress 403 every prior shift on this
   suite has hit (confirmed live in this run's own log: `Geocoding failed
   for '...': 403 Forbidden`), not caused by this dependency bump.
+
 Result: `npm audit` after the bump reports **1 finding** (`xlsx`, high,
 `fixAvailable: false`) — the `vite`/`vitest` bump alone resolved
 `@vitest/mocker`, `brace-expansion`, `esbuild`, `fast-uri`, `vite`,
@@ -191,6 +197,7 @@ Result: `npm audit` after the bump reports **1 finding** (`xlsx`, high,
 majors pull in already-patched versions of those transitive deps too.
 Opened as a real PR per this item's dod (green build/typecheck/tests, not
 a broken one forced through).
+
 `xlsx` re-checked against the npm registry and the advisory database
 (`GHSA-4r6h-8v6p-xvw6` prototype pollution, `GHSA-5pgg-2g8v-p4x9` ReDoS):
 the registry's newest published version is still **0.18.5** — unchanged
