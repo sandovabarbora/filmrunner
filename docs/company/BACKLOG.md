@@ -1406,3 +1406,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a test that fails in exactly one of the three runs is not waved off as "probably a fluke" — it is named and filed, even if a fix isn't attempted this shift
 - note (2026-10-05, 14:11 shift, qa): three fresh runs against `main`@`1fed456`, all byte-identical (backend 153/153, vitest 66/66, Playwright E2E 90 passed/3 skipped — the 3 skips are the known, documented live-Nominatim-egress gap, not a flake). No test varied across runs, so no new backlog item filed per the dod's own failure case. Full detail: `docs/research/fr-131-flake-baseline-2026-10-05.md`. Doc-only, no backend/frontend code changed, no deploy needed.
 
+## FR-132 · qa · Catch a backlog item left reading `state: ready` after its own PR and STATUS.md already call it delivered
+- state: ready
+- gated: no
+- why: hackathon goal (pilot-ready) — a stale `state:` line is a false "still to do" signal that costs a future shift's one-item-per-run budget twice: once re-reading work that is already finished, and again if it is actually re-started. Found live by this shift (15:11, 2026-10-05): `FR-127` here still reads `state: ready` though PR #348 (`test/fr-127-axe-ci-gate`, open, awaiting founder merge) and `STATUS.md`'s own "FR-127 detail (qa, 10:11 shift)" paragraph both already describe it as finished ("FR-127 set to done — the PR is the whole deliverable"). This shift did not fix FR-127's line directly — only the `state:` line of the item a shift itself worked belongs in that shift's state-only PR (`TEAM.md` shift contract) — so the drift is filed here for the next shift that works this item, rather than hand-edited by a shift that didn't.
+- dod:
+  - correct FR-127's own `state:` line above to `done`, matching PR #348 and STATUS.md
+  - add a check (extend `scripts/check_company_docs.py`, or a small sibling script) that scans `BACKLOG.md` for any other item whose own `note:` text contains an exact completion phrase (e.g. "set to done", "the PR is the whole deliverable") while its `state:` field is not `done`, and prints each one found (warning only, same non-blocking pattern as `check_backlog_duplicates.py` — a human or a future shift still decides)
+  - run the new check against the current `BACKLOG.md` once merged and confirm it finds no further drift beyond what this item already fixed
+  - failure case: an item genuinely still `in-progress` whose `note:` merely mentions "done" in passing about a sub-task (not the item itself) must not be flagged — the check only matches the item's own completion phrasing about itself, not any occurrence of the word "done" in its text
+
+
