@@ -1378,8 +1378,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: at the current limit, simulate exactly 40 crew members opening their link within the same 60 seconds and confirm none gets a 429 that a real AD's crew would read as "the app is down"
 
 ## FR-129 · security · CORS and auth-header regression test after the framework version bumps
-- state: ready
+- state: done
 - gated: no
+- note: PR #352 (`test/fr-129-cors-auth-regression`) — the PR is the whole deliverable, awaiting founder merge (`backend/` is a founder-merge path under TEAM.md's reversibility rule). Backend suite 159/159.
 - why: FR-100/FR-110/FR-117 bumped fastapi/starlette/pyjwt across three separate PRs this month to close CVEs; none of their dod re-checked the CORS middleware or auth-header handling for a behaviour change, and a crew member's personal link token is the only thing standing between a leaked URL and a stranger's phone.
 - dod:
   - add or confirm a backend test asserting a request from an origin not in `FILMRUNNER_CORS_ORIGINS` is rejected, and that no wildcard (`*`) origin is ever accepted when credentials/bearer auth is in play
