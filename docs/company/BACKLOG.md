@@ -1357,3 +1357,48 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - any control found unreachable by keyboard or missing a visible focus indicator is fixed the same small, targeted way FR-63/82 fixed their own findings; record what was found and fixed in a new dated `docs/research/keyboard-nav-2026-10.md`
   - failure case: a control that intentionally holds focus while open (e.g. a crew-import dialog) is not reported as a bug for doing that — the test instead confirms Escape or a visible close control returns focus to where it was before the dialog opened
 
+## FR-127 · qa · Automated axe-core accessibility scan wired into CI
+- state: ready
+- gated: no
+- why: FR-63/73/82/94/126 have each found and hand-fixed accessibility defects on a schedule of manual re-audits; BRIEF.md's wedge is a tool every crew member uses on a phone, so a regression here is a real-user failure, not a style nit, and nothing today catches one before merge.
+- dod:
+  - add an automated axe-core (or equivalent) accessibility check to the Playwright E2E suite, asserting zero "serious"/"critical" violations on the public sheet, the personal crew link, and the crew-list PDF-source page
+  - wire it into `ci.yml` as a gating step (not just a report), using the existing `RUN_HEAVY`/docs-only path-filter pattern FR-102/FR-122 established
+  - failure case: deliberately reintroduce one of FR-82's fixed issues (icon-only button with no accessible name) locally and confirm the new CI step fails loudly on it, then revert
+
+## FR-128 · tech-lead · Rate-limit regression test for public endpoints against current HEAD
+- state: ready
+- gated: no
+- why: ADR-008 set the public-endpoint rate limit before FR-51 (abuse guard) and FR-78 (push moved to a background task) landed; nobody has re-confirmed the configured threshold still clears FR-52's own pilot-scale number (40 crew hitting a published link within the same minute) at today's HEAD.
+- dod:
+  - script a burst of concurrent requests against the public sheet/personal-link endpoints on a local stack and record the actual threshold and response (429 vs success) hit
+  - confirm the configured limit comfortably exceeds FR-52's 40-crew/05:00-rush scale; if it does not, raise it and say why in the PR
+  - failure case: at the current limit, simulate exactly 40 crew members opening their link within the same 60 seconds and confirm none gets a 429 that a real AD's crew would read as "the app is down"
+
+## FR-129 · security · CORS and auth-header regression test after the framework version bumps
+- state: ready
+- gated: no
+- why: FR-100/FR-110/FR-117 bumped fastapi/starlette/pyjwt across three separate PRs this month to close CVEs; none of their dod re-checked the CORS middleware or auth-header handling for a behaviour change, and a crew member's personal link token is the only thing standing between a leaked URL and a stranger's phone.
+- dod:
+  - add or confirm a backend test asserting a request from an origin not in `FILMRUNNER_CORS_ORIGINS` is rejected, and that no wildcard (`*`) origin is ever accepted when credentials/bearer auth is in play
+  - read `app/config.py`'s CORS and auth-dependency wiring against the now-bumped framework versions for any changed default (e.g. a stricter or looser default `allow_credentials`)
+  - failure case: temporarily widen the allowed-origins config to `*` locally, confirm the new test fails, then revert
+
+## FR-130 · frontend · Service-worker update detection: a published revision must reach an already-open tab
+- state: ready
+- gated: no
+- why: FR-9 made the offline/cached state honest when a crew member is already offline, but nothing in BACKLOG.md verifies the opposite real case: a crew member has the sheet open from last night, the AD publishes REV B at 05:30, and the service worker may keep serving REV A from cache until a manual refresh — exactly the "wrong call time" failure BRIEF.md's own Q3 interview script names as a top-3 candidate pain.
+- dod:
+  - confirm, with a test rather than just a read of the code, whether an open tab on the public sheet or personal link detects a new service-worker version after a publish and either auto-updates or shows a visible "new revision available, reload" prompt within a bounded time
+  - if it does not, add the smallest fix that makes it true (e.g. a periodic `registration.update()` check or `skipWaiting` plus a visible banner), consistent with FR-23's existing "REV B replaces A" UI
+  - failure case: publish REV B while a Playwright-driven tab is already open on REV A's personal link; the test fails if the tab still renders REV A's call time after the bounded wait
+
+## FR-131 · qa · Three consecutive fresh full-suite runs as a post-merge-spree flake baseline
+- state: ready
+- gated: no
+- why: the founder merged twenty PRs in one roughly eleven-minute window on 2026-10-02 (STATUS.md); no shift has since run the full backend+frontend+E2E suite fresh, back-to-back, to rule out an order-dependent or merge-combination regression that no single PR's own CI run (each tested against a different base) could have caught.
+- dod:
+  - fresh Postgres role/db, `alembic upgrade head` from empty, `npm install && npm run build`, then the full backend pytest suite, `npm run typecheck`, `vitest run`, and the Playwright E2E suite — three consecutive times, recording pass/fail counts for each run in a new dated `docs/research/` file
+  - any test that fails inconsistently across the three runs is filed as its own backlog item with the observed failure, following FR-116/FR-120's own precedent (reproduce, root-cause, fix)
+  - failure case: a test that fails in exactly one of the three runs is not waved off as "probably a fluke" — it is named and filed, even if a fix isn't attempted this shift
+
