@@ -11,6 +11,18 @@ Sized for the 05:00 rush: a whole crew opening the sheet from one production
 office Wi-Fi is one IP making ~5 requests per person (sheet, personal block,
 seen, next, vapid key) — 40 people × 5 = 200 in a minute, under the 300
 default with room to reload. The per-token limit only ever hits one person.
+
+FR-128: that count leaves out crew photos. `GET /public/contacts/{id}/photo`
+(FR-18) is an `<img src>` on every contact row the sheet renders — the
+sheet's own department plus "others" — so one device load can fetch a photo
+per other crew member, not per person; 40 crew all with a photo can mean up
+to ~40 photo requests per device, ~1,600 from one IP, which would blow past
+even a generous functional budget and 429 the next functional call behind
+it. The photo route is unauthenticated but not a probing or write-abuse
+vector (ADR-008's threat model) and is `Cache-Control: max-age=86400`, so it
+gets its own, more generous per-IP window instead of sharing the functional
+one — a photo burst can no longer starve the next real `/seen` or `/me` call
+on the same Wi-Fi.
 """
 
 from __future__ import annotations
@@ -29,6 +41,7 @@ TOKEN_ROUTES = [
     re.compile(r"^/api/v1/public/crew/([^/]+)/"),
     re.compile(r"^/api/v1/public/call-sheets/[^/]+/(?:me|seen)/([^/]+)$"),
 ]
+PHOTO_ROUTE = re.compile(r"^/api/v1/public/contacts/[^/]+/photo$")
 WINDOW_SECONDS = 60
 
 
@@ -84,14 +97,15 @@ INSTANCES: list["RateLimitMiddleware"] = []  # so tests (and an admin reset, if 
 
 
 class RateLimitMiddleware:
-    def __init__(self, app: ASGIApp, per_ip: int, per_token: int) -> None:
+    def __init__(self, app: ASGIApp, per_ip: int, per_token: int, per_ip_photos: int = 0) -> None:
         self.app = app
         self.per_ip = SlidingWindow(per_ip) if per_ip > 0 else None
         self.per_token = SlidingWindow(per_token) if per_token > 0 else None
+        self.per_ip_photos = SlidingWindow(per_ip_photos) if per_ip_photos > 0 else None
         INSTANCES.append(self)
 
     def reset(self) -> None:
-        for w in (self.per_ip, self.per_token):
+        for w in (self.per_ip, self.per_token, self.per_ip_photos):
             if w:
                 w.reset()
 
@@ -101,11 +115,16 @@ class RateLimitMiddleware:
             return
         request = Request(scope)
         checks: list[tuple[SlidingWindow, str]] = []
-        if self.per_ip:
-            checks.append((self.per_ip, f"ip:{client_ip(request)}"))
-        token = token_of(scope["path"])
-        if token and self.per_token:
-            checks.append((self.per_token, f"token:{token}"))
+        # FR-128: a photo load has its own budget and never counts against the functional one,
+        # so a burst of avatar fetches can't 429 the next real /seen or /me call on the same Wi-Fi.
+        if self.per_ip_photos and PHOTO_ROUTE.match(scope["path"]):
+            checks.append((self.per_ip_photos, f"photo-ip:{client_ip(request)}"))
+        else:
+            if self.per_ip:
+                checks.append((self.per_ip, f"ip:{client_ip(request)}"))
+            token = token_of(scope["path"])
+            if token and self.per_token:
+                checks.append((self.per_token, f"token:{token}"))
         for window, key in checks:
             allowed, retry_after = window.hit(key)
             if not allowed:
