@@ -1397,11 +1397,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: publish REV B while a Playwright-driven tab is already open on REV A's personal link; the test fails if the tab still renders REV A's call time after the bounded wait
 
 ## FR-131 · qa · Three consecutive fresh full-suite runs as a post-merge-spree flake baseline
-- state: ready
+- state: done
 - gated: no
 - why: the founder merged twenty PRs in one roughly eleven-minute window on 2026-10-02 (STATUS.md); no shift has since run the full backend+frontend+E2E suite fresh, back-to-back, to rule out an order-dependent or merge-combination regression that no single PR's own CI run (each tested against a different base) could have caught.
 - dod:
   - fresh Postgres role/db, `alembic upgrade head` from empty, `npm install && npm run build`, then the full backend pytest suite, `npm run typecheck`, `vitest run`, and the Playwright E2E suite — three consecutive times, recording pass/fail counts for each run in a new dated `docs/research/` file
   - any test that fails inconsistently across the three runs is filed as its own backlog item with the observed failure, following FR-116/FR-120's own precedent (reproduce, root-cause, fix)
   - failure case: a test that fails in exactly one of the three runs is not waved off as "probably a fluke" — it is named and filed, even if a fix isn't attempted this shift
+- note (2026-10-05, 14:11 shift, qa): three fresh runs against `main`@`1fed456`, all byte-identical (backend 153/153, vitest 66/66, Playwright E2E 90 passed/3 skipped — the 3 skips are the known, documented live-Nominatim-egress gap, not a flake). No test varied across runs, so no new backlog item filed per the dod's own failure case. Full detail: `docs/research/fr-131-flake-baseline-2026-10-05.md`. Doc-only, no backend/frontend code changed, no deploy needed.
 
