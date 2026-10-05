@@ -200,3 +200,52 @@ def test_rev_replaces_note_only_appears_from_the_second_revision(page: Page, fro
     page.goto(share)
     page.wait_for_selector("#sheet.visible", timeout=15_000)
     expect(page.locator("#revReplaces")).to_contain_text("REV B replaces A")
+
+
+def test_open_personal_link_tab_picks_up_a_published_revision_without_a_manual_reload(
+    page: Page, frontend_url: str, api_url: str
+) -> None:
+    """FR-130 failure case: a crew member has the sheet open from before the AD
+    publishes a correction. Backgrounding the tab (picking up another app) and
+    foregrounding it again (checking the phone) must show REV B, not require a
+    manual reload — the exact "wrong call time" pain BRIEF.md's Q3 names."""
+    editor = page.context.new_page()
+    editor.add_init_script(
+        "localStorage.setItem('filmrunner.editor.connection', JSON.stringify("
+        + f"{{apiBase: {api_url!r}, token: {E2E_TOKEN!r}}}))"
+    )
+    editor.goto(f"{frontend_url}/editor.html")
+    editor.wait_for_selector("#newProduction", timeout=10_000)
+    editor.fill("#newProduction", f"E2E refresh {uuid.uuid4().hex[:6]}")
+    editor.click("#createProduction")
+    editor.wait_for_selector("#newDay", timeout=10_000)
+    editor.click("#newDay")
+    editor.wait_for_selector("#general_crew_call", timeout=10_000)
+    editor.fill("#general_crew_call", "06:00")
+    editor.click("#publish")
+    expect(editor.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    share = editor.locator("#shareLink").get_attribute("href")
+    assert share
+
+    page.goto(share)
+    page.wait_for_selector("#sheet.visible", timeout=15_000)
+    expect(page.locator("#crewCall")).to_have_text("06:00")
+
+    # Publish REV B while the viewer tab sits untouched, exactly like an AD's late-night fix.
+    editor.fill("#general_crew_call", "07:15")
+    editor.click("#publish")
+    expect(editor.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
+    editor.close()
+
+    # Still REV A: nothing has re-fetched yet (this is the regression FR-130 guards).
+    expect(page.locator("#crewCall")).to_have_text("06:00")
+
+    # The moment a crew member picks their phone back up, the OS fires a real
+    # visibilitychange event as the tab goes from hidden to visible. Headless
+    # Chromium does not reliably reproduce the cross-tab "hidden" half of that
+    # in this sandbox (bring_to_front() does not flip document.visibilityState
+    # here), so this dispatches the same event App.tsx's listener reacts to —
+    # exercising the exact fix, not the OS behaviour around it.
+    page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    expect(page.locator("#crewCall")).to_have_text("07:15", timeout=10_000)
+    expect(page.locator("#revReplaces")).to_contain_text("REV B replaces A")
