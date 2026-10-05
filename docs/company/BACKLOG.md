@@ -1388,7 +1388,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: temporarily widen the allowed-origins config to `*` locally, confirm the new test fails, then revert
 
 ## FR-130 · frontend · Service-worker update detection: a published revision must reach an already-open tab
-- state: ready
+- state: done
 - gated: no
 - why: FR-9 made the offline/cached state honest when a crew member is already offline, but nothing in BACKLOG.md verifies the opposite real case: a crew member has the sheet open from last night, the AD publishes REV B at 05:30, and the service worker may keep serving REV A from cache until a manual refresh — exactly the "wrong call time" failure BRIEF.md's own Q3 interview script names as a top-3 candidate pain.
 - dod:
