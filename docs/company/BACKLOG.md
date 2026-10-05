@@ -1359,8 +1359,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a control that intentionally holds focus while open (e.g. a crew-import dialog) is not reported as a bug for doing that — the test instead confirms Escape or a visible close control returns focus to where it was before the dialog opened
 
 ## FR-127 · qa · Automated axe-core accessibility scan wired into CI
-- state: ready
+- state: done
 - gated: no
+- note: bookkeeping correction, 15:11 shift 2026-10-05 (pm fallback). This line still read `ready` though the work was already delivered — `STATUS.md`'s own "FR-127 detail (qa, 10:11 shift)" paragraph and PR #348 (`test/fr-127-axe-ci-gate`, open, awaiting founder merge, `backend`/`frontend` test paths, founder-merge under TEAM.md's reversibility rule) both already describe it as finished ("FR-127 set to done — the PR is the whole deliverable"). No new work done here, same bookkeeping-only pattern as the 2026-09-28 16:00 shift's FR-94/FR-99 correction.
 - why: FR-63/73/82/94/126 have each found and hand-fixed accessibility defects on a schedule of manual re-audits; BRIEF.md's wedge is a tool every crew member uses on a phone, so a regression here is a real-user failure, not a style nit, and nothing today catches one before merge.
 - dod:
   - add an automated axe-core (or equivalent) accessibility check to the Playwright E2E suite, asserting zero "serious"/"critical" violations on the public sheet, the personal crew link, and the crew-list PDF-source page
@@ -1409,11 +1410,10 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 ## FR-132 · qa · Catch a backlog item left reading `state: ready` after its own PR and STATUS.md already call it delivered
 - state: ready
 - gated: no
-- why: hackathon goal (pilot-ready) — a stale `state:` line is a false "still to do" signal that costs a future shift's one-item-per-run budget twice: once re-reading work that is already finished, and again if it is actually re-started. Found live by this shift (15:11, 2026-10-05): `FR-127` here still reads `state: ready` though PR #348 (`test/fr-127-axe-ci-gate`, open, awaiting founder merge) and `STATUS.md`'s own "FR-127 detail (qa, 10:11 shift)" paragraph both already describe it as finished ("FR-127 set to done — the PR is the whole deliverable"). This shift did not fix FR-127's line directly — only the `state:` line of the item a shift itself worked belongs in that shift's state-only PR (`TEAM.md` shift contract) — so the drift is filed here for the next shift that works this item, rather than hand-edited by a shift that didn't.
+- why: hackathon goal (pilot-ready) — a stale `state:` line is a false "still to do" signal that costs a future shift's one-item-per-run budget twice: once re-reading work that is already finished, and again if it is actually re-started. Found live by this shift (15:11, 2026-10-05): `FR-127` above still read `state: ready` though PR #348 (`test/fr-127-axe-ci-gate`, open, awaiting founder merge) and `STATUS.md`'s own "FR-127 detail (qa, 10:11 shift)" paragraph both already described it as finished ("FR-127 set to done — the PR is the whole deliverable") — fixed directly in this same PR as a bookkeeping-only correction (see FR-127's own `note:`, same pattern as the 2026-09-28 16:00 shift's FR-94/FR-99 fix). This item is the follow-up: catch the next occurrence automatically instead of relying on a shift noticing it by chance while skipping an item for an unrelated reason.
 - dod:
-  - correct FR-127's own `state:` line above to `done`, matching PR #348 and STATUS.md
-  - add a check (extend `scripts/check_company_docs.py`, or a small sibling script) that scans `BACKLOG.md` for any other item whose own `note:` text contains an exact completion phrase (e.g. "set to done", "the PR is the whole deliverable") while its `state:` field is not `done`, and prints each one found (warning only, same non-blocking pattern as `check_backlog_duplicates.py` — a human or a future shift still decides)
-  - run the new check against the current `BACKLOG.md` once merged and confirm it finds no further drift beyond what this item already fixed
+  - add a check (extend `scripts/check_company_docs.py`, or a small sibling script) that scans `BACKLOG.md` for any item whose own `note:` text contains an exact completion phrase (e.g. "set to done", "the PR is the whole deliverable") while its `state:` field is not `done`, and prints each one found (warning only, same non-blocking pattern as `check_backlog_duplicates.py` — a human or a future shift still decides)
+  - run the new check against the current `BACKLOG.md` once merged and confirm it finds no drift (FR-127's own instance is already fixed above)
   - failure case: an item genuinely still `in-progress` whose `note:` merely mentions "done" in passing about a sub-task (not the item itself) must not be flagged — the check only matches the item's own completion phrasing about itself, not any occurrence of the word "done" in its text
 
 
