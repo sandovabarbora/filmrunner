@@ -19,10 +19,20 @@ BLOCKING = {"serious", "critical"}
 
 
 def audit(page: Page, label: str) -> list[dict]:
-    """Run axe on the current page; returns every violation, prints a summary, asserts none blocking."""
+    """Run axe on the current page; returns every violation, prints a summary, asserts none blocking.
+
+    FR-127: axe-core ships `label-content-name-mismatch` (the exact rule behind FR-82's two
+    fixes — the langToggle aria-label and the Copy button's icon glyph) tagged "experimental"
+    and `enabled: false` by default, so a plain `axe.run(document)` silently skips it; confirmed
+    by reintroducing FR-82's own aria-label mismatch locally and watching the plain default run
+    report zero violations. Enabled explicitly so this class of regression fails CI again.
+    """
     assert AXE.exists(), "axe-core is a devDependency: run npm ci in frontend/"
     page.add_script_tag(path=str(AXE))
-    result = page.evaluate("async () => await axe.run(document, { resultTypes: ['violations'] })")
+    result = page.evaluate(
+        "async () => await axe.run(document, { resultTypes: ['violations'],"
+        " rules: { 'label-content-name-mismatch': { enabled: true } } })"
+    )
     violations = result["violations"]
     print(f"\n[a11y] {label}: {len(violations)} violation kinds")
     for v in violations:
@@ -80,6 +90,30 @@ def test_public_pages(browser, frontend_url: str, path: str, label: str) -> None
     page.wait_for_selector("h1", timeout=10_000)
     audit(page, label)
     ctx.close()
+
+
+def test_crew_list_print_view(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-127: the crew-list PDF source (frontend/src/editor/crewPrint.ts) opens in its
+    own window and is never covered by the screens above — it has its own markup, not the
+    app's, so a regression there would slip past every other audit in this file."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E a11y print {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#pasteCrew", timeout=10_000)
+    page.click("#pasteCrew")
+    page.fill("#pasteCrewText", "Camera:\nMarek Sýkora, DoP, 603 555 010, HoD\nTomáš Novák, Gaffer")
+    page.click("#importCrew")
+    expect(page.locator("#crew li")).to_have_count(2, timeout=20_000)
+    page.click("role=tab[name='Cast']"); page.wait_for_selector("#castName", timeout=10_000)
+    page.fill("#castName", "Anna Geislerová"); page.fill("#castCharacter", "MARTA"); page.click("#addCast")
+    expect(page.locator("#cast")).to_contain_text("MARTA", timeout=10_000)
+    page.click("role=tab[name='Crew']"); page.wait_for_selector("#printCrew", timeout=10_000)
+
+    with page.context.expect_page() as popup:
+        page.click("#printCrew")
+    printed = popup.value
+    printed.wait_for_load_state("domcontentloaded")
+    audit(printed, "crew-list print view")
+    printed.close()
 
 
 def test_a_report_of_the_non_blocking_findings_exists(page: Page, frontend_url: str) -> None:
