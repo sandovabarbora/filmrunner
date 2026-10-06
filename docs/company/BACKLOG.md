@@ -1449,13 +1449,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - check `scripts/check_backlog_duplicates.py` before starting (expect a high match against FR-83 by theme — this item is scoped to only the four names FR-83/87/89/90 left open, not a re-run of their already-closed claims)
 
 ## FR-136 · qa · Re-verify switching-cost-teardown's "Follow-up needed" section via the same open-egress dispatch pattern
-- state: ready
+- state: done
 - gated: no
 - why: BRIEF Q6 also depends on `switching-cost-teardown.md`, whose own "Follow-up needed" section names two specific unreached sources: Reddit/forum threads discussing real switching decisions, and StudioBinder/Croogloo's contact-export and template-export pages — both previously blocked only by `WebFetch`, not by the open-egress GitHub Actions pattern FR-83/105/108/112/115 already proved works for this class of gap
 - dod:
   - dispatch against exactly those named sources, read the job log directly
   - update the doc with a dated section citing what was found, or confirming still-unreachable with the reason, never silently left as the old guess
   - failure case: same as FR-135 — an unreachable source is stated plainly, not retried silently or guessed
+- note: 2026-10-06 (~12:00 shift) — the dispatch itself could not run: the two new vendor URLs needed aren't in `desk-research-reverify.yml`'s existing hardcoded targets (unlike FR-135's sources), and pushing a branch that edits that workflow file was refused by this session's own containment policy ("Containment Escape" on `git push`), a blocker distinct from the sandbox proxy's own 403 on both domains (re-confirmed directly). Per the item's own failure case, stated plainly in `switching-cost-teardown.md`'s new "Re-verification pass (FR-136, 2026-10-06)" section rather than retried silently: findings held at `WebSearch`-snippet tier (one real, new StudioBinder contact-export article found; three real Croogloo articles found, none naming an export; Reddit/forum search still empty after three more targeted queries), not escalated to the direct-fetch tier FR-90/108/135 reached. Re-run the dispatch once a workflow-touching push is possible again. PR is the whole deliverable.
 
 ## FR-137 · tech-lead · Detect a VAPID key rotation that leaves existing push subscriptions silently undeliverable
 - state: ready
