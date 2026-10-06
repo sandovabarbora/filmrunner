@@ -362,16 +362,75 @@ browser" flag for both.
 - **SetHero's Exporting Data article**: see the resolution in
   `switching-cost-teardown.md` — confirmed, not just rendered.
 
+## Re-verification pass (FR-135, 2026-10-06)
+
+This doc's own "Follow-up needed" list (below, as it read before this
+section) named four specific claims as the only ones left unresolved by
+FR-83/87/89/90. This shift re-dispatched
+`.github/workflows/desk-research-reverify.yml` unchanged on `main` (open
+egress, not this sandbox's blocked proxy) and read the job log directly
+([run 37441525900](https://github.com/sandovabarbora/filmrunner/actions/runs/37441525900)) —
+no `WebSearch` snippet substituted for any of the four:
+
+- **Yamdu pricing** (`yamdu.com/en/pricing/`): re-confirmed, no change
+  since FR-83/90. The plain fetch's `Flex` substring match is still the
+  Tailwind CSS class (`flex flex-wrap`), not the plan name; the headless
+  render (`render_pricing_pages.py`) still shows the page fully loads (26
+  rendered text lines) with zero pricing content, only navigation and a
+  footer. **Still unverified**, same reason as before — nothing on the
+  live page has changed in the eleven days since FR-90.
+- **SetHero pricing and FAQ** (`sethero.com/pricing/`, `sethero.com/faq/`):
+  re-confirmed, no change. Both the plain fetch (202, ~180 bytes) and the
+  headless render (202, 3 rendered text lines) still return the same
+  holding/interstitial response FR-83/90 found — real bot protection, not
+  a proxy artifact, persists unchanged. **Still unverified**.
+- **Croogloo features** (`croogloo.com/features/`): re-confirmed 404, no
+  change since FR-87's "genuinely gone" conclusion. No new `WebSearch`
+  re-run this shift (FR-87 already exhausted that angle on 2026-09-25 and
+  found only the same dead URL and help-center articles); the
+  call-sheet-specific revision-history UI claim stays **unverified**, per
+  this item's own failure case, not guessed from the help-center pages.
+- **StudioBinder mobile/offline** (the FAQ article FR-83 named,
+  `support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available`):
+  a genuine change — FR-83 (2026-09-24) found this URL timing out on both
+  attempts; today it is reachable (HTTP 200, 73,816 bytes). But the raw
+  HTML is a client-rendered Next.js page: the only substring matches are a
+  JSON-LD breadcrumb (`"name":"Is there a mobile or tablet app
+  available?"`) and an Intercom chat-widget string ("You're not signed in
+  on this browser..."), neither of which is the article's actual answer
+  text. This is the same class of gap FR-83 found and FR-90 then closed
+  for StudioBinder's pricing page (client-rendered, needs a headless
+  browser, not a plain fetch) — not closed here, since this item's dod is
+  to dispatch and record, not to extend the render script. **Still
+  unverified**, cause narrowed from "times out" to "reachable but
+  needs a headless render to read the real answer text" — a one-line
+  addition to `render_pricing_pages.py`'s target list (the FR-90 pattern,
+  not attempted this shift to keep this item's scope to its own dod) is
+  the concrete next step, not a repeat dispatch of the same unmodified
+  workflow.
+
+No claim in this pass flipped from unverified to confirmed; none needed a
+correction (the discipline FR-89 used for the Movie Magic price). Every
+one of the four is recorded above with its own current reason, not
+retried silently or guessed from memory, per this item's failure case.
+
 ## Follow-up needed (cannot be done by this routine)
 
+- Add the StudioBinder mobile/offline FAQ URL to `render_pricing_pages.py`'s
+  target list and re-dispatch (the FR-90 pattern) — the one concrete,
+  scoped next step the FR-135 pass above identified, now that a plain
+  fetch is confirmed reachable but insufficient for this specific page.
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
-  pricing/FAQ, StudioBinder mobile/offline, Croogloo revision-history UI).
+  pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
+  now has the more specific next step above instead).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
-- A fresh `WebSearch` for Croogloo's current features URL (confirmed
-  genuinely gone, FR-87, not just blocked). The Movie Magic pricing
-  discrepancy is resolved (FR-89), and the StudioBinder/SetHero-export
-  client-rendering gap is resolved (FR-90), both above.
+- A fresh `WebSearch` for Croogloo's current features URL, if a future
+  pass wants to re-check whether FR-87's "genuinely gone" conclusion
+  (2026-09-25, re-confirmed by FR-135 above on 2026-10-06) still holds.
+  The Movie Magic pricing discrepancy is resolved (FR-89), and the
+  StudioBinder/SetHero-export client-rendering gap is resolved (FR-90),
+  both above.
