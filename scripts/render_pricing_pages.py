@@ -55,6 +55,12 @@ TARGETS = [
     },
     {
         "doc": "docs/research/competitive-teardown.md",
+        "id": "studiobinder-offline-faq",
+        "claim": "StudioBinder: offline viewing described by a third-party review as \"in the pipeline\" — unverified against StudioBinder's own docs",
+        "url": "https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available",
+    },
+    {
+        "doc": "docs/research/competitive-teardown.md",
         "id": "yamdu-pricing",
         "claim": "Yamdu: Flex from $45/month + $22/additional user; Core $265/month for up to 20 users",
         "url": "https://yamdu.com/en/pricing/",
