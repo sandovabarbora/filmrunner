@@ -1427,3 +1427,40 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if any of the three call sites is found to assume a fixed UTC+1/+2 offset instead of using `ZoneInfo`'s own DST-aware conversion, the bug is fixed the same shift (not just documented) and the new test is the one that catches the regression if it's ever reintroduced
 - note: proposed 2026-10-05 17:11 shift (pm fallback, TEAM.md shift contract §7) — no `ready`+`gated: no` backlog item remained today (FR-126 through FR-132 all delivered ahead of the 17:00 slot) and no `INBOX.md` item is `approved`. Checked against `scripts/check_backlog_duplicates.py` first (no likely match) and against `BACKLOG.md`/`DECISIONS.md` directly (no existing DST-related item or decision).
 
+## FR-134 · security · Comprehensive authz sweep over every permission-gated production route
+- state: ready
+- gated: no
+- why: `test_role_matrix` (FR-15) spot-checks a handful of routes by hand; every production-scoped router (`productions.py`'s locations, cast-members, crew-members, members, contact-photo routes) relies on the same `Depends(require(...))` pattern in `app/authz.py`, so a future route that forgets that dependency would ship with no access control and nothing today would catch it — the same class of systemic gap FR-128 (rate limiting) and FR-129 (CORS) closed by testing the whole mechanism once instead of one spot
+- dod:
+  - a test enumerates every route in `app.routes` under `/api/v1/productions` (and `/api/v1/contacts/{id}/photo`) that declares a `require(...)` dependency — read from the route's own dependants, not a hand-maintained list — and for each one asserts a viewer-role caller is refused wherever the required permission is `crew:edit`, `day:publish`, or `production:manage_members`, and a non-member stranger is refused on every one of them
+  - failure case: temporarily remove the `Depends(require(CREW_EDIT))` from one route (e.g. crew-member delete), confirm the new test fails loudly naming that exact route path; revert
+
+## FR-135 · marketing · Re-verify competitive-teardown's four remaining "unverified" vendor claims via the open-egress dispatch pattern
+- state: ready
+- gated: no
+- why: BRIEF Q6 (what would make an AD leave a named incumbent mid-season) depends on `competitive-teardown.md`'s vendor facts being real; FR-83/87/89/90 already resolved several of its citations this same way, but the doc's own "Follow-up needed" section still names four specific claims as unresolved: Yamdu pricing, SetHero pricing/FAQ, StudioBinder mobile/offline behaviour, and Croogloo's revision-history UI
+- dod:
+  - dispatch `.github/workflows/desk-research-reverify.yml` (or a throwaway branch, the FR-89/105/108/112/115 pattern) against exactly those four vendor pages and read the job log directly, not a `WebSearch` snippet
+  - `competitive-teardown.md` gets a dated section: each of the four confirmed, corrected, or stated as still unreachable with the reason, same discipline FR-89 used for the Movie Magic price correction
+  - failure case: a page that 404s, times out, or renders client-side with no usable HTML is recorded as "still unreachable, reason X" rather than retried silently or guessed from memory
+  - check `scripts/check_backlog_duplicates.py` before starting (expect a high match against FR-83 by theme — this item is scoped to only the four names FR-83/87/89/90 left open, not a re-run of their already-closed claims)
+
+## FR-136 · qa · Re-verify switching-cost-teardown's "Follow-up needed" section via the same open-egress dispatch pattern
+- state: ready
+- gated: no
+- why: BRIEF Q6 also depends on `switching-cost-teardown.md`, whose own "Follow-up needed" section names two specific unreached sources: Reddit/forum threads discussing real switching decisions, and StudioBinder/Croogloo's contact-export and template-export pages — both previously blocked only by `WebFetch`, not by the open-egress GitHub Actions pattern FR-83/105/108/112/115 already proved works for this class of gap
+- dod:
+  - dispatch against exactly those named sources, read the job log directly
+  - update the doc with a dated section citing what was found, or confirming still-unreachable with the reason, never silently left as the old guess
+  - failure case: same as FR-135 — an unreachable source is stated plainly, not retried silently or guessed
+
+## FR-137 · tech-lead · Detect a VAPID key rotation that leaves existing push subscriptions silently undeliverable
+- state: ready
+- gated: no
+- why: INBOX #5's own risk note says rotating the VAPID key means "every existing browser subscription then needs to re-subscribe, since the old public key it was minted against no longer matches" — but `app/services/push.py`'s `PushDeliveryError.gone` only distinguishes a browser-revoked subscription (404/410); a VAPID-signature mismatch after a key rotation returns 403 from the push service, which today is only logged as a generic warning (`send()`'s broad `except WebPushException`) and silently retried forever on every future publish, never surfaced anywhere a human would see it
+- dod:
+  - a test sends against a mocked push service returning 403 and confirms what the current code actually does with it today (documented, not assumed) — `gone` stays `False` for a plain 403, confirmed by reading `push.py:77` directly
+  - if a repeated 403 from the same endpoint (not a one-off) is not already distinguishable from a transient failure in `notifications.py`'s existing delivery-failure log, add that distinction so a human reading the log can tell "this subscription needs the founder to notice VAPID rotated" from "one send glitched"
+  - failure case: a single transient 403 must not be misclassified as a key-rotation signal — only a reproducible, repeated 403 from the same endpoint should be flagged differently from a one-off
+- note: proposed 2026-10-06 08:xx morning brief (pm, backlog refill per TEAM.md step 2 — only FR-133 was `ready`+`gated:no`, below the six-item floor). Checked each against `scripts/check_backlog_duplicates.py` first; dropped a fifth candidate (reading FAMU's remaining production-regulations documents) after the checker's 83% match against FR-108 led to re-reading `call-sheet-role-and-tooling-signals.md` directly, which states plainly "no further FAMU document remains unopened on this page" (FR-115) — would have duplicated already-closed work.
+
