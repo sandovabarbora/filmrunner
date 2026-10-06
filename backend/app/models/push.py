@@ -35,5 +35,11 @@ class PushSubscription(Base):
     # frontend's deployed origin.
     link_url: Mapped[str] = mapped_column(String(2000), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # FR-137: consecutive 403s from this exact endpoint, reset on any
+    # successful send. A VAPID key rotation (INBOX #5's own risk note) makes
+    # every old subscription's signature permanently invalid, so it 403s on
+    # every future publish — distinct from one transient 403 that clears on
+    # the next attempt.
+    consecutive_403_count: Mapped[int] = mapped_column(default=0, server_default="0")
 
     crew_member: Mapped["CrewMember"] = relationship()  # noqa: F821
