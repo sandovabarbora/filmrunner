@@ -1497,12 +1497,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 
 ## FR-140 · security · Input-validation sweep over every POST/PATCH request body
-- state: ready
+- state: done
 - gated: no
 - why: FR-134 (authz) and FR-129 (CORS/auth) each closed a systemic gap by testing the whole mechanism once instead of one spot-check; the same class of gap exists for request validation — nothing today enumerates every POST/PATCH route's Pydantic model and confirms a request missing a required field is actually rejected rather than silently accepted with a server-side default or `None`.
 - dod:
   - a test discovers every POST/PATCH route under `/api/v1` (from the route's own request-model annotation, not a hand-maintained list) and, for each one, sends a request body missing one required field, asserting a 422 rather than a 2xx
   - failure case: temporarily make one required Pydantic field `Optional` with a default, confirm the new sweep test fails loudly naming that exact route and field; revert
+- note: done 2026-10-07 09:00 shift (security). Added `backend/tests/test_input_validation_sweep.py`: route discovery reads each route's own endpoint signature for a Pydantic `BaseModel` parameter (not a hand-maintained list) — a route with none (a file upload, or a body-less action route) has no required field and drops out by construction. Required fields are read from each model's own `model_fields`, recursing one level into a nested `BaseModel` field (`PushSubscriptionCreate.keys` yields `keys`, `keys.p256dh`, `keys.auth`). 8 routes have at least one required field; the rest (every PATCH's own `*Update` schema, plus publishing a revision) have none, asserted by a canary rather than silently skipped. Verified the dod's own failure case twice, both reverted before committing: making `ProductionCreate.name` (its only required field) `Optional` was caught by the route-discovery canary itself, naming the route; but making one field of a *multi*-field model (`CrewMemberCreate.department`, with `contact_id`/`position` still required) `Optional` was **not** caught by route/field discovery at all — the parametrized case for that field just silently vanished, nothing failed. Fixed by pinning each swept model's expected required-field set in a separate check, independent of discovery; re-verified live that this is what actually catches the multi-field case, naming the model and the missing field. Full backend suite 182/182; new file alone 29/29. PR is the whole deliverable: #386 (`test/fr-140-input-validation-sweep`), touches `backend/` so it waits for the founder's own merge (hackathon mode ended 2026-09-25, no extension on record) — not auto-merged. No migration, no new secret, no deploy needed.
 
 ## FR-141 · qa · Reachability sweep: every frontend route is reachable by following only visible links from the entry page
 - state: ready
