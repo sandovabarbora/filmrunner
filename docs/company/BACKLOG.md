@@ -1495,3 +1495,52 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: proposed 2026-10-06 ~16:00 shift (pm fallback, TEAM.md shift contract §7) — today's full plan (FR-133–FR-138) was already delivered by earlier shifts and zero items remained `ready`+`gated:no` (`grep -n "^- state:" BACKLOG.md` showed 136 `done`, 2 `blocked`, 0 `ready`/`in-progress`); no `INBOX.md` item is `approved`. Checked `scripts/check_backlog_duplicates.py` first (top matches: 60% FR-136, 53% FR-138 — both expected, since this item is the specific follow-up FR-136 named but could not execute, applying the exact pattern FR-138 already proved the same day, not a re-run of either).
 - note: 2026-10-06 (17:00 shift) — delivered. Added `studiobinder-contact-export` to `scripts/render_pricing_pages.py`'s `TARGETS` (workflow file itself unchanged, so FR-136's same-day containment-policy block on a workflow-touching push did not apply); dispatched `desk-research-reverify.yml` from this item's own branch ([run 37485674340](https://github.com/sandovabarbora/filmrunner/actions/runs/37485674340)), read the job log directly (GitHub MCP `get_job_logs`). The article rendered (HTTP 200, 36 text lines) and confirmed the `WebSearch` snippet verbatim: contact list exports as CSV via the contact-settings menu's "Export CSV" option, no caveat found. `switching-cost-teardown.md`'s claim is upgraded from partially confirmed to confirmed; "Follow-up needed" trimmed to the remaining Croogloo articles. PR #382 (`docs/fr-139-studiobinder-contact-export`) is the whole deliverable; touches `scripts/` and `docs/research/`, founder-merge path under TEAM.md's reversibility rule (hackathon mode ended 2026-09-25) — no auto-merge.
 
+
+## FR-140 · security · Input-validation sweep over every POST/PATCH request body
+- state: ready
+- gated: no
+- why: FR-134 (authz) and FR-129 (CORS/auth) each closed a systemic gap by testing the whole mechanism once instead of one spot-check; the same class of gap exists for request validation — nothing today enumerates every POST/PATCH route's Pydantic model and confirms a request missing a required field is actually rejected rather than silently accepted with a server-side default or `None`.
+- dod:
+  - a test discovers every POST/PATCH route under `/api/v1` (from the route's own request-model annotation, not a hand-maintained list) and, for each one, sends a request body missing one required field, asserting a 422 rather than a 2xx
+  - failure case: temporarily make one required Pydantic field `Optional` with a default, confirm the new sweep test fails loudly naming that exact route and field; revert
+
+## FR-141 · qa · Reachability sweep: every frontend route is reachable by following only visible links from the entry page
+- state: ready
+- gated: no
+- why: TEAM.md's product rule ("connect first, then add") says a feature reachable only by URL or curl is not done, and every PR's own description is expected to show that path — but nothing automatically checks it; a route could regress to orphaned (reachable only by typing its URL) with no PR noticing.
+- dod:
+  - a test starts at the entry page (demo call sheet / landing), follows only clickable links and buttons (no direct `goto()` to an inner route) across the sheet → editor → production → day → crew-link → viewer chain, and asserts every route declared in the frontend router is reached at least once
+  - failure case: temporarily add a throwaway route with no link pointing to it anywhere in the app, confirm the sweep fails naming that unreached route; revert
+
+## FR-142 · tech-lead · Idempotency check: publishing the same revision twice in quick succession never creates two distinct revisions or double-sends the push
+- state: ready
+- gated: no
+- why: a flaky-signal AD retrying a publish tap (the exact offline-honest scenario this product is built around) could double-submit; nothing today guards or tests that two near-simultaneous publish calls for the same day collapse into one revision and one push, not two.
+- dod:
+  - a test fires two publish calls for the same day in quick succession (threaded or close-interval, not strictly sequential) and asserts exactly one new revision persists and exactly one push send is attempted per subscriber, not two
+  - failure case: temporarily remove any lock/guard the fix adds, confirm the test fails by actually observing two revisions or two sends; revert
+
+## FR-143 · security · Cross-production token confusion: a personal crew link token must be rejected on a different production's routes
+- state: ready
+- gated: no
+- why: FR-129's own PR names the personal crew link token as "the only thing standing between a leaked URL and a stranger's phone"; FR-134's authz sweep covers role-based permission but not tenant scoping — nothing today confirms a token minted for production A is rejected (not just silently scoped-empty) when presented against production B's routes.
+- dod:
+  - a test creates two productions with their own crew tokens and, for each public token-based route, confirms production A's token gets 403/404 against production B's resource (and vice versa), not a 200 with another production's data or an empty-but-200 response
+  - failure case: temporarily drop the production-id scoping clause from one query, confirm the test fails loudly naming that exact route; revert
+
+## FR-144 · qa · Conflicting offline edits: two devices editing the same crew member offline, syncing one after another
+- state: ready
+- gated: no
+- why: FR-18's offline edit queue (`frontend/src/editor/crewEdits.ts`) was built and verified for one device queuing one edit; nothing defines or tests what happens when two devices each queue a conflicting edit to the same crew member offline and then sync one after the other — today's code may silently let the second sync overwrite the first with no trace either way.
+- dod:
+  - a test queues two different edits to the same crew member from two separate offline sessions, syncs the first, then the second, and asserts the documented behaviour (last-sync-wins) actually holds and is visible — if both edits changed the same field to different values, the result is the second value, not a silent partial merge, and no error is swallowed
+  - failure case: if the test instead finds data loss that isn't last-sync-wins (e.g. a field reverts to a stale value, or the sync silently fails), that is fixed or at minimum stated plainly as a known limitation in `crewEdits.ts`'s own comments, not left undiscovered
+
+## FR-145 · marketing · Re-check positioning.md against this week's resolved competitive facts (FR-135/FR-138/FR-139)
+- state: ready
+- gated: no
+- why: FR-6's positioning draft (`docs/marketing/positioning.md`) made competitor-ownership claims against vendor behaviour that FR-135/FR-138/FR-139 (2026-10-06) have since confirmed or corrected via direct rendered-page evidence (StudioBinder: no native app, confirmed CSV contact export) — positioning.md itself was never re-read against those updates and may still cite the older, less-certain claims.
+- dod:
+  - read positioning.md's competitor-ownership claims against competitive-teardown.md's and switching-cost-teardown.md's current (post FR-135/138/139) text line by line
+  - correct any claim positioning.md makes that the updated teardown docs now state differently, citing the specific resolved finding
+  - failure case: a claim found stale but not fixed in this pass is named explicitly as a follow-up in positioning.md itself, not silently left as-is
