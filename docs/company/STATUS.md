@@ -1,41 +1,44 @@
 # Status
 
-Updated: 2026-10-06 17:00 Prague (17:00 shift, tech-lead — last scheduled shift of the day)
+Updated: 2026-10-07 08:15 Prague (morning brief)
 
 ## today
 
-Updated: 2026-10-06 08:15 (morning brief).
+Updated: 2026-10-07 08:15 (morning brief).
 
-**Mode check, same gap flagged every brief since 2026-10-01:** today's fired prompt again reads "this week (hackathon mode, TEAM.md) the shifts run hourly from 09 to 17... choose up to nine items" — FR-104/PR #262 fixed the routine prompt *files* (merged 2026-10-01); only the registered cron trigger's own stored prompt text, founder-only to edit at the routines URL, still carries the stale wording, the exact gap INBOX #8 (now its second week unanswered) names. Planned against the documented 09/11/13/15/17 Prague cadence (five shifts), not nine, same reasoning every brief has used since 2026-10-01.
+**Mode check, same gap flagged every brief since 2026-10-01:** today's fired prompt again reads the stale hackathon-mode wording (hourly 09-17, up to nine items) — the exact gap INBOX #8 names, filed 2026-10-01 and still unanswered six days on. Planned against the documented 09/11/13/15/17 Prague cadence (five shifts), not nine, same reasoning every brief has used since 2026-10-01.
 
-**Open PRs, re-checked live:** `list_pull_requests --state open` shows six code/workflow PRs, all opened 2026-10-05, all founder-merge paths under TEAM.md's reversibility rule (hackathon mode ended 2026-09-25, no extension on record), none merged overnight — each has now waited more than one working day:
-- #346 (FR-126, keyboard-nav test) — `frontend/tests/`
-- #348 (FR-127, axe-core CI gate) — `frontend/tests/`
-- #350 (FR-128, rate-limit regression) — `backend/`
-- #352 (FR-129, CORS/auth regression) — `backend/`
-- #354 (FR-130, revision-refresh fix) — `frontend/src/`, `frontend/tests/`
-- #360 (FR-132, backlog-freshness check) — `scripts/`, `.github/workflows/ci.yml`
+**Open PRs, re-checked live:** `list_pull_requests --state open` shows eleven code/workflow PRs, all founder-merge paths under TEAM.md's reversibility rule (hackathon mode ended 2026-09-25, no extension on record), none merged since yesterday — the queue only grew:
+- #346 (FR-126, keyboard-nav test) — `frontend/tests/` — opened 2026-10-05
+- #348 (FR-127, axe-core CI gate) — `frontend/tests/` — opened 2026-10-05
+- #350 (FR-128, rate-limit regression) — `backend/` — opened 2026-10-05
+- #352 (FR-129, CORS/auth regression) — `backend/` — opened 2026-10-05
+- #354 (FR-130, revision-refresh fix) — `frontend/src/`, `frontend/tests/` — opened 2026-10-05
+- #360 (FR-132, backlog-freshness check) — `scripts/`, `.github/workflows/ci.yml` — opened 2026-10-05
+- #366 (FR-133, DST fall-back regression) — `backend/tests/` — opened 2026-10-06
+- #368 (FR-134, authz sweep) — `backend/` — opened 2026-10-06
+- #374 (FR-137, VAPID rotation detection) — `backend/` — opened 2026-10-06
+- #378 (FR-138, StudioBinder offline-FAQ) — `scripts/`, `docs/research/` — opened 2026-10-06
+- #382 (FR-139, StudioBinder contact-export) — `scripts/`, `docs/research/` — opened 2026-10-06
 
-A seventh, #366 (FR-133, this shift's own DST fall-back regression test), joined the queue at 09:00 — same founder-merge path (`backend/tests/`), no auto-merge. An eighth, #368 (FR-134, authz sweep), joined at ~10:30, same founder-merge path (`backend/`). #370 (FR-135) and #372 (FR-136), both doc-only and on TEAM.md's own auto-merge allowlist, auto-merged or are auto-merging on their own — not part of this founder-merge queue.
+The first six are now at least two working days old with zero founder merges; this is the fourth consecutive morning brief reporting a growing, unmerged founder-merge queue.
 
-**Backlog refill:** `grep -o 'state: [a-z-]*' BACKLOG.md | sort | uniq -c` showed 130 `done`, 2 `blocked` (FR-95/FR-28, correctly founder-gated), 1 `ready` (FR-133) — below the six-item floor. Refilled per step 2, acting as pm: proposed **FR-134** (security, authz sweep over every permission-gated route), **FR-135** (marketing, re-verify competitive-teardown's four remaining unverified vendor claims), **FR-136** (qa, re-verify switching-cost-teardown's Follow-up list), **FR-137** (tech-lead, detect a VAPID key rotation silently breaking push delivery) — each checked against `scripts/check_backlog_duplicates.py` first. A fifth candidate (reading FAMU's remaining production-regulations documents) was dropped after its 83% duplicate match against FR-108 led to re-reading `call-sheet-role-and-tooling-signals.md` directly, which already states "no further FAMU document remains unopened on this page" (FR-115) — would have duplicated closed work. Added directly to `BACKLOG.md` on this same state-change commit (doc-only, on TEAM.md's own auto-merge allowlist). `python scripts/check_company_docs.py docs/company` clean.
+**Backlog refill:** `grep -o 'state: [a-z-]*' docs/company/BACKLOG.md | sort | uniq -c` showed 137 `done`, 2 `blocked` (FR-95/FR-28, correctly founder-gated), 0 `ready`, 0 `in-progress` — the floor is fully drained for the first time this cycle (yesterday's FR-133–FR-139 all landed `done`). Refilled per step 2, acting as pm: proposed **FR-140** (security, input-validation sweep over every POST/PATCH route), **FR-141** (qa, frontend-reachability sweep per TEAM.md's "connect first, then add" rule), **FR-142** (tech-lead, publish-idempotency check against a double-tap), **FR-143** (security, cross-production token confusion on the crew link), **FR-144** (qa, conflicting offline edits to the same crew member from two devices), **FR-145** (marketing, re-check positioning.md against this week's resolved vendor facts) — each checked against `scripts/check_backlog_duplicates.py --skip-prs` first (all matches explainable: same systemic-sweep pattern applied to a new scope, not a re-run of closed work). PR #384 (`docs/backlog-proposals-2026-10-07`), auto-merge enabled (doc-only, on TEAM.md's own allowlist). `python scripts/check_company_docs.py docs/company` clean.
 
-Plan (priority order = file order in `BACKLOG.md`):
-- 09:00 — FR-133 (tech-lead): ship the Prague wall-clock-to-UTC regression test across the 2026-10-25 DST transition. **Done** (09:00 shift): PR #366, see `## engineering` below.
-- 11:00 — FR-134 (security): a comprehensive authz-sweep test over every `require(...)`-gated production route, so a future route missing its permission check fails CI instead of shipping silently. **Done** (~10:30 shift): PR #368, see `## security` below.
-- 13:00 — FR-135 (marketing): re-verify competitive-teardown.md's four remaining unverified vendor claims (Yamdu, SetHero, StudioBinder, Croogloo) via the open-egress GitHub Actions pattern. **Done** (~11:00 shift, taken early — see the note above the plan): PR #370, see `## marketing` below.
-- 15:00 — FR-136 (qa): the same re-verification pass for switching-cost-teardown.md's own Follow-up list. **Done** (~12:28 shift, taken early — see the note above the plan): PR #372, dispatch itself blocked this shift (containment policy on a workflow-touching push), findings held at WebSearch-snippet tier — see `## engineering` below.
-- 17:00 — FR-137 (tech-lead): make a VAPID-key-rotation failure (repeated 403s) distinguishable in the push delivery-failure log from a one-off transient error. **Done** (~13:22 shift, taken early — see the note above the plan): PR #374, see `## engineering` below.
+Plan (priority order = file order in `BACKLOG.md`; six items proposed for a five-item floor, one held as spare):
+- 09:00 — FR-140 (security): sweep every POST/PATCH route for a missing-required-field rejection, closing the validation half of the authz/CORS systemic-sweep pattern.
+- 11:00 — FR-141 (qa): confirm every frontend route is reachable by following only visible links from the entry page, per TEAM.md's product rule.
+- 13:00 — FR-142 (tech-lead): guard against a double-tap publish creating two revisions or sending two pushes.
+- 15:00 — FR-143 (security): confirm a crew link token from one production is rejected on a different production's routes.
+- 17:00 — FR-144 (qa): define and test the conflicting-offline-edit case for two devices editing the same crew member; last scheduled shift of the day, day summary follows per TEAM.md's 17:00 rule.
 
-No spare item this time — five `ready`+`gated:no` items for five documented slots, none held back for a §7 fallback. Most prior weekdays have also seen off-cadence shifts fire between the documented slots (the same stale-cron gap above), draining today's list well before 17:00; when that happens, the shift contract's own §7 fallback takes over (propose a fresh item or, if one of today's items already duplicated-by-check turns out to need a design decision instead of a fix, file an INBOX item) — same pattern as every weekday this cycle.
+FR-145 is `ready`+`gated: no` but unscheduled today; it is the first item for an off-cadence or §7-fallback shift if one fires early, same pattern as every prior weekday this cycle. Plan assumes PR #384 has auto-merged by the time each shift runs; if not, the shift's own read of `main` decides.
 
-**~14:11 update:** as predicted above, all five planned items (FR-133–FR-137) were delivered by the ~13:22 shift, ahead of the documented 17:00 close. This shift fired off-cadence (12:11 UTC, between the 13:00/15:00 Prague slots) with nothing left `ready`+`gated:no` — acted as pm per §7, proposing **FR-138** (see `## pm` below, PR #376). Nine founder-merge code/workflow PRs now queued (#346/#348/#350/#352/#354/#360/#366/#368/#374), none merged by the founder yet today.
+INBOX #1/#3/#6 still pending from early in the cycle (founder's network, SMTP, CI write-token — none actionable by the routine). INBOX #7 (adopt the pilot plan) and INBOX #8 (cron cadence) were both filed 2026-10-01 and are both still pending, unanswered six days on — INBOX #8 names the exact stale-prompt gap repeated above, and INBOX #7 is the more consequential one: it asks whether the team should stop refilling the backlog with desk-research/regression-test items (today's refill is exactly that pattern again) in favour of real interviews and a pilot. Both need the founder's own decision, not the routine's.
 
-**15:00 update:** the documented 15:00 slot landed on PR #376's own proposal, FR-138, with nothing else `ready`+`gated:no` on `main` — took it directly (see `## engineering` below). PR #378. Ten founder-merge code/workflow PRs now queued (#346/#348/#350/#352/#354/#360/#366/#368/#374/#378), still none merged by the founder today.
+### Tuesday (2026-10-06), for reference
 
-**16:00 update:** this shift fired off-cadence again (14:12 UTC, between the documented 15:00/17:00 Prague slots, the same stale-cron gap INBOX #8 names) and found FR-138 (the 15:00 slot's own item) already delivered — `grep -n "^- state:" BACKLOG.md` showed 136 `done`, 2 `blocked`, zero `ready`/`in-progress`; no `INBOX.md` item `approved`. Acted as pm per §7, proposing **FR-139** (see `## pm` below, PR #380, doc-only, auto-merging — not part of the founder-merge queue below). Ten founder-merge code/workflow PRs remain queued (#346/#348/#350/#352/#354/#360/#366/#368/#374/#378), still none merged by the founder today.
-
-**17:00 update (this shift, documented slot, on-cadence):** `date -u` confirmed 15:12 UTC = 17:12 Europe/Prague (summer time), the documented 17:00 slot. No `INBOX.md` item `approved` (step 1: nothing to execute). FR-139 (PR #380's own proposal) was the only `ready`+`gated:no` backlog item — took it directly, as tech-lead. See `## engineering` below for detail. PR #382 (`docs/fr-139-studiobinder-contact-export`), not auto-merged (touches `scripts/`, a founder-merge path). Eleven founder-merge code/workflow PRs now queued (#346/#348/#350/#352/#354/#360/#366/#368/#374/#378/#382), still none merged by the founder today, each at least one working day old except today's five (#366/#368/#374/#378/#382). Last scheduled shift of the day; day summary follows per TEAM.md's 17:00 rule.
+Full detail in `LOG.md`. The morning brief planned five items (FR-133–FR-137) against the documented cadence despite the fired prompt's stale hackathon-mode text (same gap flagged again today); off-cadence shifts between the documented slots delivered all five well ahead of 17:00, and the pm-fallback (§7) additionally delivered FR-138 and FR-139 — zero idle shifts, and the backlog drained to zero `ready`/`in-progress` for the first time this cycle by day's end. Five more code/workflow PRs opened (#366/#368/#374/#378/#382), none merged by the founder; the open-PR queue grew from six to eleven across the day, the first six now over one working day old. INBOX #1/#3/#6/#7/#8 all still pending.
 
 ### Monday (2026-10-05), for reference
 
