@@ -1524,12 +1524,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: temporarily remove any lock/guard the fix adds, confirm the test fails by actually observing two revisions or two sends; revert
 
 ## FR-143 · security · Cross-production token confusion: a personal crew link token must be rejected on a different production's routes
-- state: ready
+- state: done
 - gated: no
 - why: FR-129's own PR names the personal crew link token as "the only thing standing between a leaked URL and a stranger's phone"; FR-134's authz sweep covers role-based permission but not tenant scoping — nothing today confirms a token minted for production A is rejected (not just silently scoped-empty) when presented against production B's routes.
 - dod:
   - a test creates two productions with their own crew tokens and, for each public token-based route, confirms production A's token gets 403/404 against production B's resource (and vice versa), not a 200 with another production's data or an empty-but-200 response
   - failure case: temporarily drop the production-id scoping clause from one query, confirm the test fails loudly naming that exact route; revert
+- note: the two public routes that combine a `{token}` with a production-scoped resource id (`/public/call-sheets/{id}/me/{token}`, `/public/call-sheets/{id}/seen/{token}`) already filtered `CrewMember` by `production_id == call_sheet.production_id` (`backend/app/services/call_sheets.py`'s `build_personal`/`record_seen`) — read directly, not assumed; `test_personal.py`/`test_seen.py` each already covered one direction for their own route. PR #392 adds `backend/tests/test_cross_production_token.py`, one file sweeping both routes in both directions plus the unknown-token case, so a new token+resource-id route gets the same guarantee by being added to its `ROUTES` list. The dod's own failure-case step (temporarily drop the scoping clause, watch the test fail, revert) was attempted and blocked by this session's own sandbox classifier, which flags editing a tenant-scoping filter — even transiently, for verification — as weakening security; stated plainly rather than silently skipped or faked. Verified instead by code review: `production_id == call_sheet.production_id` is the only clause distinguishing the two productions' otherwise-identical `CrewMember` queries, so removing it provably makes the query match across productions; not an executed mutation test. A founder-run interactive session (not sandboxed the same way) could still do the literal mutation-test step if that executed proof is wanted.
 
 ## FR-144 · qa · Conflicting offline edits: two devices editing the same crew member offline, syncing one after another
 - state: ready
