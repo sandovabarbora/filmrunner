@@ -1605,3 +1605,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - for each of the five incumbents already in `competitive-teardown.md` (Movie Magic, StudioBinder, Yamdu, SetHero, Croogloo), search their own marketing/feature pages for a script-to-schedule or script-to-breakdown AI-drafting feature, using `WebSearch` first and the open-egress dispatch pattern (`render_pricing_pages.py` + `desk-research-reverify.yml`, proven by FR-90/135/138/139) where a page needs it, and record a cited, dated answer per vendor: confirmed present, confirmed absent, or still unverified
   - add a dated "H4 recheck" section to `competitive-teardown.md` with the five answers, and update BRIEF.md's H4 note to point at it instead of saying the recheck was never done
   - failure case: a vendor whose relevant pages can't be reached this pass (proxy-blocked, bot-blocked, genuinely nothing found after a real search) is listed as still unverified with the reason, never silently assumed to lack the feature just because nothing turned up
+
+## FR-151 · tech-lead · Re-search Croogloo's revision-history-UI claim with a differently-worded query or its help-center's own search/collections
+
+- state: ready
+- gated: no
+- why: FR-148 (2026-10-08) rendered the three Croogloo help-center articles FR-136 found and none addressed revision history, leaving competitive-teardown.md's Croogloo revision-history-UI claim the last fully unverified claim in that doc; FR-148's own follow-up names the concrete next step — a fresh `WebSearch` for a differently-worded query ("revision history", "version history", "call sheet versions") or browsing Croogloo's help-center search/collections directly — not re-rendering the same three pages.
+- dod:
+  - run a fresh `WebSearch` for Croogloo's revision-history/version-history UI using at least two differently-worded queries from the ones FR-136/FR-148 already tried, and separately browse `croogloo.com`'s help-center search or collections index (not the three already-rendered articles) for anything addressing revision history
+  - if a new candidate page turns up and needs client-side rendering, dispatch it through the proven `render_pricing_pages.py` + `desk-research-reverify.yml` pattern (FR-90/135/138/139/148) and read the job log directly, not a `WebSearch` snippet
+  - update competitive-teardown.md's Croogloo revision-history-UI line with the result — confirmed present, confirmed absent, or still unverified with the specific reason (e.g. nothing in the help center addresses it, or the help center's search itself is unreachable) — and cite what was searched/read
+  - failure case: if this pass still finds nothing (differently-worded search included), record the claim as "unverified, exhausted the help-center and search avenues available to this routine" rather than leaving it worded as if FR-148 were the first attempt, and do not propose a fourth identical re-render of the same three articles
