@@ -106,25 +106,32 @@ the chosen position, not assuming it's free. One does, partially:
   with an incumbent's own marketing language and would read as a copy of
   it, not a distinct claim.
 - What StudioBinder has **not** verifiably shipped is the offline half.
-  The same teardown found StudioBinder's own offline support described by
-  a third party as "in the pipeline" (not shipped), SetHero explicitly
-  designed to assume a signal (browser-only, no app), and Yamdu/Croogloo's
-  offline behavior unverified either way. Movie Magic is offline only as
-  a side effect of distributing a static PDF that has none of the
-  "always latest" behavior the others advertise. The teardown's own
-  synthesis: "a call sheet that is genuinely both live *and*
-  offline-honest... is not something any researched incumbent currently
-  and verifiably ships."
+  Re-verified directly against StudioBinder's own support article
+  (`competitive-teardown.md`, "View offline", FR-138, 2026-10-06,
+  headless-rendered, not a third-party snippet): StudioBinder confirms
+  **no native iOS/Android app exists**, only a mobile-responsive web view
+  for recipients — ruling out the on-device caching a native app would
+  need — but the article never uses the word "offline" and does not
+  itself confirm or deny genuine offline support either way. The earlier
+  "in the pipeline" framing (a third-party review, never vendor-confirmed)
+  is superseded by this primary-source read: "not offline-capable today"
+  is the defensible claim, not a stated roadmap item. SetHero is
+  explicitly designed to assume a signal (browser-only, no app), and
+  Yamdu/Croogloo's offline behavior stays unverified either way. Movie
+  Magic is offline only as a side effect of distributing a static PDF that
+  has none of the "always latest" behavior the others advertise. The
+  teardown's own synthesis: "a call sheet that is genuinely both live
+  *and* offline-honest... is not something any researched incumbent
+  currently and verifiably ships."
 
 So the defensible half of the position is not "live" alone (StudioBinder
 already claims that) — it's the conjunction: live when there's signal,
 and truthful rather than silently stale when there isn't, verified as a
 real product behavior in this repo (FR-9's cached-copy status label with
 timestamp, tested against a real build) rather than a marketing adjective.
-If a future re-verification of StudioBinder's offline claim (flagged
-**unverified** in FR-2, not confirmed either way) finds they ship this
-too, this position needs revisiting — the failure case below names that
-trigger.
+That re-verification already ran (FR-138, above) and the position stands
+on today's evidence — the failure case below names what would still
+flip it.
 
 ### Supporting proof points (in priority order, all already built)
 
@@ -150,15 +157,18 @@ a decided price in this document.
 
 ## Failure case
 
-If a future re-verification of FR-2's **unverified** items (StudioBinder's
-offline capability specifically, since that is the one this position
-depends on distinguishing from) finds StudioBinder — or any competitor —
-has since shipped genuine live-and-offline-honest behavior, this document
-is wrong and must be revisited, not defended: re-run the "why this is not
-already someone else's position" check above against the new evidence and
-either sharpen the distinction (e.g. on the honesty/timestamp behavior
-specifically, not offline capability alone) or choose a different
-alternative from the list above. Likewise, if FR-3 interviews show ADs
+FR-2's original **unverified** flag on StudioBinder's offline capability
+was re-checked once already (FR-138, 2026-10-06, primary source): no
+native app exists, but the vendor's own text still neither confirms nor
+denies genuine offline support — the position held. If a future
+re-verification (on this narrower remaining question, or on any other
+competitor) finds StudioBinder — or any competitor — has since shipped
+genuine live-and-offline-honest behavior, this document is wrong and must
+be revisited, not defended: re-run the "why this is not already someone
+else's position" check above against the new evidence and either sharpen
+the distinction (e.g. on the honesty/timestamp behavior specifically, not
+offline capability alone) or choose a different alternative from the list
+above. Likewise, if FR-3 interviews show ADs
 don't relate to "offline-honest" as a stated pain (it wasn't on Q3's
 candidate list, which names late revisions, wrong call times, no-signal
 locations, missed updates, and printing cost/waste — "no-signal locations"
