@@ -12,7 +12,9 @@ import uuid
 
 
 def _tag() -> str:
-    return uuid.uuid4().hex[:6]
+    # Letters only: the search also matches the digits of a query against phone numbers, so a hex tag's digits
+    # could hit another contact's phone and make a name query flaky.
+    return "".join(chr(ord("a") + int(c, 16)) for c in uuid.uuid4().hex[:6])
 
 
 def _production(client: TestClient, name: str) -> str:
@@ -26,8 +28,9 @@ def _crew(client: TestClient, pid: str, name: str, phone: str | None, position: 
 
 def test_matches_name_prefix_any_word_and_phone_digits_with_last_production(client: TestClient) -> None:
     t = _tag()
+    d = f"{uuid.uuid4().int % 1000:03d}"
     a = _production(client, "Alpha")
-    _crew(client, a, f"Tomáš Novák{t}", f"+420 777 {t[:3]} 456")
+    _crew(client, a, f"Tomáš Novák{t}", f"+420 777 {d} 456")
     _crew(client, a, f"Petra Nováková{t}", "602 000 111", position="Best boy")
     _crew(client, a, f"Jan Dvořák{t}", None)
 
@@ -35,7 +38,7 @@ def test_matches_name_prefix_any_word_and_phone_digits_with_last_production(clie
     assert names(f"novák{t}") == [f"Tomáš Novák{t}"]  # any word
     assert names(f"nováková{t}") == [f"Petra Nováková{t}"]
     assert names(f"tomáš novák{t}") == [f"Tomáš Novák{t}"]
-    assert names(f"777{t[:3]}456") == [f"Tomáš Novák{t}"]  # phone digits
+    assert names(f"777{d}456") == [f"Tomáš Novák{t}"]  # phone digits
     assert client.get("/api/v1/contacts?q=t", headers=AUTH).json() == []  # too short to be useful
     hit = next(c for c in client.get(f"/api/v1/contacts?q=petra nováková{t}", headers=AUTH).json() if c["name"].endswith(t))
     assert hit["last_production_name"] == "Alpha" and hit["last_position"] == "Best boy"

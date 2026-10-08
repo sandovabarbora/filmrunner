@@ -100,6 +100,22 @@ TARGETS = [
         "id": "yamdu-ai-info",
         "claim": "FR-150/BRIEF H4: Yamdu's own AI-info page names which AI features exist and their beta/release status",
         "url": "https://yamdu.com/en/ai-info/",
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-technical-support",
+        "claim": "Croogloo: 'Technical Support' help-center collection — found by FR-136 as a WebSearch snippet only, titles/summaries name no export or download function for a call sheet, distribution report, or template",
+        "url": "https://support.croogloo.com/en/collections/12141864-technical-support",
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-distribution-drafts",
+        "claim": "Croogloo: 'Distribution Drafts' article — found by FR-136 as a WebSearch snippet only, no export/download function named for a call sheet, distribution report, or template",
+        "url": "https://support.croogloo.com/en/articles/7953698-distribution-drafts",
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-dailies-call-sheet-distro",
+        "claim": "Croogloo: 'Adding Dailies to Call Sheet Distro' article — found by FR-136 as a WebSearch snippet only, no export/download function named for a call sheet, distribution report, or template",
+        "url": "https://support.croogloo.com/en/articles/10279483-adding-dailies-to-call-sheet-distro",
     },
 ]
 

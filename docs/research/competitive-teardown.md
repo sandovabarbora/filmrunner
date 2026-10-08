@@ -163,7 +163,15 @@ marked items directly against the vendor pages.
   distributed files ([croogloo.com/features via search](https://croogloo.com/features/), checked 2026-09-14).
 - **Revise**: script/sides comparison is named explicitly, implying
   built-in revision diffing — call-sheet-specific revision-history UI is
-  **unverified** (features page blocked from direct read).
+  **unverified** (features page blocked from direct read, now confirmed
+  404/gone, FR-87/135). FR-148 (2026-10-08) headless-rendered three
+  Croogloo help-center articles found by FR-136 ("Technical Support"
+  collection, "Distribution Drafts", "Adding Dailies to Call Sheet
+  Distro") on the chance they addressed this; none of the three covers
+  revision history or a call-sheet UI at all (troubleshooting/login,
+  draft emails, and dailies-distribution-list management respectively —
+  detail in `switching-cost-teardown.md`'s FR-148 section), so this claim
+  stays **unverified**, not resolved by that pass.
 - **Distribute (tracking)**: distribution reporting shows when a call
   sheet lands, when it is opened, and who has not yet received it, plus
   text notifications on call-time changes — the most granular delivery
@@ -542,6 +550,27 @@ and does not itself confirm or deny the original "in the pipeline"
 roadmap claim — recorded as a partial resolution, not guessed past what
 the page actually says, per this item's own failure case.
 
+## SetHero no longer bot-walled, still no matching figure (FR-149, 2026-10-08)
+
+FR-149 was proposed (2026-10-08 morning brief) to headless-render Yamdu
+pricing and SetHero pricing/FAQ, and separately to resolve StudioBinder's
+mobile/offline claim — but both were mistaken premises, caught before any
+doc was wrongly rewritten: Yamdu/SetHero were already rendered twice (FR-90,
+re-confirmed by FR-135) with nothing new to find, and StudioBinder's
+mobile/offline claim is the section directly above, already resolved by
+FR-138 two days earlier (PR #378, merged after this item was proposed and
+started — a genuine duplicate caught only once this PR's conflict with
+`main` surfaced it, not before; see `BACKLOG.md`'s FR-149 note for the
+correction and the process gap it names). Re-running the dispatch
+([run 37748564705](https://github.com/sandovabarbora/filmrunner/actions/runs/37748564705))
+did surface one small, non-duplicate fact worth keeping: SetHero's
+`/pricing/` and `/faq/` pages no longer return the FR-83/90 202
+holding/interstitial response — both now return their real pages (200,
+57 and 122 rendered lines respectively) — but neither page states a
+figure matching this doc's "$19/month" claim, so that claim stays
+**unverified**, cause narrowed from "bot-walled" to "reachable, no
+matching figure on the page" rather than confirmed.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
@@ -550,7 +579,18 @@ the page actually says, per this item's own failure case.
   pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
   is resolved as far as a rendered page can take it, per FR-138 above;
   only a vendor statement using the word "offline" itself would close the
-  remaining gap).
+  remaining gap). For Croogloo revision-history UI specifically: FR-148
+  (2026-10-08) rendered the three help-center articles FR-136 found
+  adjacent to this question and none addressed it (detail in
+  `switching-cost-teardown.md`) — the next concrete step is a fresh
+  `WebSearch` for a differently-worded query (e.g. "revision history",
+  "version history", "call sheet versions") or browsing the Croogloo help
+  center's own search/collections directly, not re-rendering the same
+  three pages.
+  pricing/FAQ — now reachable but still no matching figure, Croogloo
+  revision-history UI — StudioBinder mobile/offline is resolved as far as
+  a rendered page can take it, per FR-138 above; only a vendor statement
+  using the word "offline" itself would close the remaining gap).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
