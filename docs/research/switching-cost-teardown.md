@@ -270,6 +270,27 @@ the containment policy allows a workflow-touching push again.
   articles rather than "no snippet found"), but still **unverified** for
   call-sheet/template export specifically, per the same failure case.
 
+## Resolution: StudioBinder's contact-export article (FR-139, 2026-10-06)
+
+FR-136 (this same day) found `support.studiobinder.com/en/articles/6787346-how-to-export-a-contact-list-csv-file`
+only as a `WebSearch` snippet, held at **partially confirmed** because a
+workflow-touching `git push` (needed to add the URL to
+`desk-research-reverify.yml`'s hardcoded target list) was refused by this
+session's own containment policy that shift. FR-138 (also today) proved a
+way around that exact blocker for a sibling StudioBinder claim: add the URL
+to `scripts/render_pricing_pages.py`'s plain-Python `TARGETS` list instead
+(not the workflow file itself), and dispatch the already-wired
+`desk-research-reverify.yml` unchanged. This item applies that same
+pattern here ([run 37485674340](https://github.com/sandovabarbora/filmrunner/actions/runs/37485674340)),
+and reads the article's own rendered body text directly: "Export your
+contact list as a CSV in StudioBinder to organize, back up, and share
+contact information... Step 1 — Open contact settings: Click the more icon
+(⋮) in the top-right corner to open settings. Step 2 — Select export CSV:
+Click Export CSV from the drop-down menu to download your list as a CSV
+file." This matches the `WebSearch` snippet exactly, with no caveat,
+plan restriction, or sign-in wall found anywhere in the article's own text.
+The claim is upgraded from **partially confirmed** to **confirmed**.
+
 ## Resolution: Croogloo's three export-adjacent articles (FR-148, 2026-10-08)
 
 FR-136's blocker (a workflow-touching `git push` refused by this session's

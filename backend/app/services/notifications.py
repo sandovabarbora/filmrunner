@@ -97,11 +97,22 @@ def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, tit
         try:
             send(endpoint=subscription.endpoint, p256dh=subscription.p256dh, auth=subscription.auth, payload=payload)
         except PushDeliveryError as exc:
-            summary.failed.append(DeliveryFailure(crew_member_name=member.contact.name, reason=exc.reason))
+            error = exc.reason
+            if exc.status_code == 403:
+                subscription.consecutive_403_count += 1
+                if subscription.consecutive_403_count >= 2:
+                    # Reproducible, not a one-off: the browser's push service keeps
+                    # rejecting this endpoint's VAPID signature, the signature of a
+                    # rotated key (FR-137's own failure case — a single 403 alone
+                    # must not be flagged this way).
+                    error = f"{exc.reason} (repeated — check whether the VAPID key was rotated, INBOX #5)"
+            else:
+                subscription.consecutive_403_count = 0
+            summary.failed.append(DeliveryFailure(crew_member_name=member.contact.name, reason=error))
             db.add(
                 DistributionLog(
                     revision_id=revision.id, contact_id=member.contact_id, channel=DistributionChannel.PUSH,
-                    sent_at=None, error=exc.reason,
+                    sent_at=None, error=error,
                 )
             )
             if exc.gone:
@@ -109,6 +120,7 @@ def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, tit
                 db.delete(subscription)
         else:
             summary.delivered += 1
+            subscription.consecutive_403_count = 0
             db.add(
                 DistributionLog(
                     revision_id=revision.id, contact_id=member.contact_id, channel=DistributionChannel.PUSH,

@@ -12,6 +12,7 @@ import string
 import uuid
 from datetime import date, datetime, timezone
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.production import CastMember, CrewMember, Location
@@ -88,14 +89,46 @@ def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date,
 
 def publish_revision(
     db: Session, call_sheet: CallSheet, payload: CallSheetRevisionCreate, created_by: str | None = None
-) -> CallSheetRevision:
+) -> tuple[CallSheetRevision, bool]:
     """Create a new revision on an existing call sheet, marking prior
     revisions as no longer current.
 
     This is the "hot revision" operation: same-day corrections happen by
     adding a new immutable revision, never by editing an existing one — see
     DESIGN.md for why.
+
+    Returns (revision, is_new). FR-142: a double-tap or a flaky-connection
+    retry can send two publish requests for the same call sheet within
+    milliseconds of each other. A Postgres transaction-scoped advisory
+    lock keyed on the call sheet serializes them; whichever call has to
+    wait for the other re-reads the call sheet once it gets the lock, and
+    if a revision was actually added while it waited, that call is the
+    duplicate half of the double-tap — it returns the revision the other
+    call just published, with is_new=False, instead of publishing a
+    second one. The caller must not send a second push when is_new is
+    False. A normal sequential pair of calls (an AD publishes now, then a
+    real correction minutes later) never contends for the lock, so each
+    still gets its own distinct revision exactly as before.
     """
+    revision_count_before_lock = len(call_sheet.revisions)
+    lock_key = str(call_sheet.id)
+    acquired_without_waiting = db.execute(
+        text("SELECT pg_try_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": lock_key}
+    ).scalar()
+    if not acquired_without_waiting:
+        # Someone else is publishing this exact call sheet right now. Wait for
+        # them — the lock releases automatically at the end of their
+        # transaction — rather than racing the "one current revision" unique
+        # index below.
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": lock_key})
+        db.expire(call_sheet)
+        if len(call_sheet.revisions) != revision_count_before_lock:
+            duplicate_of = call_sheet.current_revision
+            assert duplicate_of is not None  # a revision was just added, so one is current
+            return duplicate_of, False
+        # They errored out or published nothing (e.g. a validation failure):
+        # fall through and publish for real, now holding the lock ourselves.
+
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
     previous = call_sheet.current_revision
     if call_sheet.status == CallSheetStatus.DRAFT and previous is not None:
@@ -186,7 +219,7 @@ def publish_revision(
         len(payload.schedule_items),
         len(cast_calls),
     )
-    return revision
+    return revision, True
 
 
 def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> CallSheet:
