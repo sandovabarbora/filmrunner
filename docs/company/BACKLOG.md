@@ -1589,3 +1589,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - add Yamdu's and SetHero's pricing/FAQ URLs to `scripts/render_pricing_pages.py`'s `TARGETS`, dispatch `desk-research-reverify.yml` unchanged, and read the job log directly
   - update competitive-teardown.md's two claims with what the rendered text says — confirmed, corrected, or still unreachable with the reason
   - failure case: a page that still returns no usable rendered text (bot-blocked, genuinely empty) is recorded as "still unreachable, reason X" in the doc rather than retried silently or guessed from a `WebSearch` snippet
+
+## FR-150 · marketing · Check each competitive-teardown incumbent for script-to-schedule AI drafting, to test BRIEF.md H4
+- state: ready
+- gated: no
+- why: BRIEF.md's H4 (2026-09-18) names AI-assisted script-to-schedule generation as FilmRunner's differentiation claim ("nobody can demo this today — not Movie Magic, not StudioBinder, not Yamdu") and says plainly that checking this specific claim against FR-2/FR-21's own teardown "is not done in this shift and is not asserted here" — three and a half weeks later, still not done. `competitive-teardown.md` names Movie Magic's script-breakdown/stripboard generation *from an already-typed schedule*, never whether any of the five incumbents drafts a schedule or breakdown *from a pasted script* via AI, the exact capability H4 claims nobody else has.
+- dod:
+  - for each of the five incumbents already in `competitive-teardown.md` (Movie Magic, StudioBinder, Yamdu, SetHero, Croogloo), search their own marketing/feature pages for a script-to-schedule or script-to-breakdown AI-drafting feature, using `WebSearch` first and the open-egress dispatch pattern (`render_pricing_pages.py` + `desk-research-reverify.yml`, proven by FR-90/135/138/139) where a page needs it, and record a cited, dated answer per vendor: confirmed present, confirmed absent, or still unverified
+  - add a dated "H4 recheck" section to `competitive-teardown.md` with the five answers, and update BRIEF.md's H4 note to point at it instead of saying the recheck was never done
+  - failure case: a vendor whose relevant pages can't be reached this pass (proxy-blocked, bot-blocked, genuinely nothing found after a real search) is listed as still unverified with the reason, never silently assumed to lack the feature just because nothing turned up
