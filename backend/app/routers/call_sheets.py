@@ -132,7 +132,7 @@ def publish_revision_endpoint(
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
     try:
-        revision = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
+        revision, is_new = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
     except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
@@ -142,7 +142,10 @@ def publish_revision_endpoint(
     # FR-78: publish no longer waits ~7.7s (50 subscribers) on delivery; it runs
     # in the background once this response is already on its way. The AD sees
     # who was told via the history panel (build_history), not this response.
-    background_tasks.add_task(notify_subscribers_in_background, call_sheet.id, revision.id)
+    # FR-142: a double-tap collapses into the same revision (is_new False) —
+    # it was already notified by the call that actually published it.
+    if is_new:
+        background_tasks.add_task(notify_subscribers_in_background, call_sheet.id, revision.id)
     return CallSheetRevisionRead.model_validate(revision)
 
 
