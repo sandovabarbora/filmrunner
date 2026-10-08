@@ -211,11 +211,76 @@ are absent from that list, not merely un-mentioned in a snippet — this is
 the article's own complete, exhaustive statement of what exports. The
 claim above is upgraded from **unverified** to **confirmed**.
 
+## Re-verification pass (FR-136, 2026-10-06)
+
+This item's own dod asked for the same open-egress GitHub Actions dispatch
+FR-83/90/108/135 already used, pointed at the two sources this doc's
+"Follow-up needed" list named as unreached: Reddit/forum threads on
+switching, and StudioBinder's/Croogloo's contact and template export pages.
+That dispatch could not run this shift — a genuinely new blocker, not the
+proxy block this doc already documents: pushing a branch that edits
+`.github/workflows/desk-research-reverify.yml` (needed to add the two new
+vendor URLs below, which aren't among the existing script's hardcoded
+targets) was refused by this session's own containment policy ("Containment
+Escape" on the `git push`), separate from and in addition to this sandbox's
+usual proxy 403 on both vendor domains (re-confirmed directly this shift
+with a plain `urllib.request` call — `Tunnel connection failed: 403
+Forbidden` on both `support.studiobinder.com` and `support.croogloo.com`).
+Re-dispatching the workflow *unchanged* (the FR-135 trick) does not help
+here, since neither new URL is in its existing target list. Per this item's
+own failure case, that is stated plainly rather than retried silently or
+guessed around — the two findings below are sourced from `WebSearch`
+snippets only, the same lighter evidentiary tier FR-2/FR-21's original pass
+used, not the direct-fetch/rendered-DOM tier FR-89/90/108/135 reached. A
+future shift (or the founder) should still try the open-egress dispatch once
+the containment policy allows a workflow-touching push again.
+
+- **Reddit/forum threads on switching**: three fresh targeted `WebSearch`
+  queries this shift (`site:reddit.com` combined with each vendor name;
+  `site:reddit.com r/filmmakers production software "switched from"`)
+  again surfaced none — comparison/alternative sites (alternativeto.net,
+  storyflow.so) and vendor marketing pages, same as every prior pass. Four
+  searches in the original FR-21 pass, three more here: seven targeted
+  searches with zero hits is a stronger signal of genuine absence (or at
+  least non-indexing) than the original "four searches" note, but it stays
+  **unverified**, not "no such discussion exists," per the item's own
+  failure case.
+- **StudioBinder contact/crew export**: a `WebSearch` snippet names a
+  specific, real help article —
+  [support.studiobinder.com: How to export a contact list (CSV file)](https://support.studiobinder.com/en/articles/6787346-how-to-export-a-contact-list-csv-file)
+  (checked 2026-10-06) — stating a project's contact list exports as CSV
+  via the contact-settings menu's "Export CSV" option. This is new: the
+  original pass found StudioBinder's schedule/call-sheet export confirmed
+  but contacts/crew records "unverified." Held at **partially confirmed**
+  rather than upgraded to fully confirmed like FR-90/108's direct-fetch
+  findings, because the blocker above prevented reading the article's own
+  rendered text directly — the exact same caution this doc already applies
+  to SetHero's export article before FR-90 resolved it the same way. No
+  help-center article for exporting a call-sheet *template* itself (as
+  opposed to a filled call sheet to PDF, already confirmed) surfaced across
+  two further targeted searches; templates read as an in-app save/reuse
+  construct, not a separately exportable file, for this vendor.
+- **Croogloo contact/template export**: three further targeted searches
+  surfaced three real, named `support.croogloo.com` articles adjacent to
+  the question — "Technical Support" (collection), "Distribution Drafts",
+  and "Adding Dailies to Call Sheet Distro" — but none of their titles or
+  `WebSearch` summaries name an export or download function for a call
+  sheet, a distribution report, or a template; only the contacts export
+  already confirmed in the original pass. Narrower than before (named
+  articles rather than "no snippet found"), but still **unverified** for
+  call-sheet/template export specifically, per the same failure case.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Re-run the searches that returned nothing (Reddit/forum threads on
-  switching, StudioBinder/Croogloo contact and template export) with
-  working `WebFetch` or a founder session that can browse directly.
+- Re-run the open-egress GitHub Actions dispatch for the StudioBinder
+  contact-export article and the three Croogloo articles named above, once
+  a workflow-touching `git push` is not refused by this session's own
+  containment policy (FR-136, 2026-10-06) — that would upgrade both from
+  WebSearch-snippet tier to direct-fetch tier, the same step FR-90 took for
+  SetHero's export article.
+- Re-run the Reddit/forum searches again if a working `WebFetch` or a
+  founder session that can browse directly ever becomes available — seven
+  targeted searches across two passes (FR-21, FR-136) have found nothing.
 - The Movie Magic proprietary-format *fact* now has a neutral citation
   (2026-09-24); the "locked in" *framing* is still SetHero's own language
   and would benefit from a neutral discussion (forum, review site) if one

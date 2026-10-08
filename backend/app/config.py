@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # on the token routes. 0 disables a limit. Sized for a crew on one Wi-Fi: see app/ratelimit.py.
     public_rate_limit_per_ip: int = 300
     public_rate_limit_per_token: int = 30
+    # FR-128: the contact-photo endpoint is a cacheable, non-probing GET (no token, no write), so it
+    # gets its own per-IP budget rather than sharing the functional one above — see app/ratelimit.py.
+    public_rate_limit_per_ip_photos: int = 3000
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5"
 
