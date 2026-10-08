@@ -77,6 +77,12 @@ TARGETS = [
         "claim": "SetHero: browser-only, no app download required; offline behaviour unaddressed in earlier snippets",
         "url": "https://sethero.com/faq/",
     },
+    {
+        "doc": "docs/research/competitive-teardown.md",
+        "id": "studiobinder-mobile-offline",
+        "claim": "StudioBinder: offline version described by a third-party review as 'in the pipeline' (not offline-capable today); unverified directly against StudioBinder's own docs because the FAQ article timed out on every plain-fetch attempt (FR-83)",
+        "url": "https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available",
+    },
 ]
 
 
