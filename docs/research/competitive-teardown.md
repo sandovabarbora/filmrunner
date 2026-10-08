@@ -31,9 +31,12 @@ marked items directly against the vendor pages.
   dashboard ([studiobinder.com/call-sheet-app](https://www.studiobinder.com/call-sheet-app/), checked 2026-09-14).
 - **View offline**: an offline version is described by a third-party
   review as "in the pipeline" ([musicgateway.com review](https://www.musicgateway.com/blog/filmmaking/studiobinder-production-software-review), checked 2026-09-14) — i.e. **not offline-capable today**; recipients view a
-  web page/PDF that assumes connectivity. **Unverified** directly against
-  StudioBinder's own docs (page blocked); treat this as a hint, not
-  confirmed fact, until re-checked.
+  web page/PDF that assumes connectivity. **Partially confirmed directly**
+  (FR-149, 2026-10-08 — see the resolution below): StudioBinder's own FAQ
+  confirms no native iOS/Android app exists, consistent with "assumes
+  connectivity"; the article itself does not use the word "offline" at
+  all, so the no-connectivity behaviour specifically is still not stated
+  by StudioBinder's own docs, only implied by the absence of an app.
 - **Pricing** (confirmed 2026-09-25, FR-90 — see the resolution below):
   headless-rendered directly from `app.studiobinder.com/pricing` itself, not
   a third-party comparison. The "For Small Teams" tab: Free ($0, "covering
@@ -414,17 +417,50 @@ correction (the discipline FR-89 used for the Movie Magic price). Every
 one of the four is recorded above with its own current reason, not
 retried silently or guessed from memory, per this item's failure case.
 
+## StudioBinder mobile/offline, resolved (FR-149, 2026-10-08)
+
+FR-135's own next step (above) — add the StudioBinder mobile/offline FAQ
+URL to `render_pricing_pages.py`'s `TARGETS` and re-dispatch — was done
+this shift ([run 37748564705](https://github.com/sandovabarbora/filmrunner/actions/runs/37748564705),
+job log read directly). The article (`support.studiobinder.com`, "Is
+there a mobile or tablet app available?", by Robert Kiraz, dated
+2025-09-18) renders cleanly (200, 34 lines) and states directly: "While
+StudioBinder does not currently offer a dedicated iOS or Android app, the
+platform is mobile-responsive on the recipient side. This means your
+crew can view and interact with call sheets they receive on their mobile
+devices," adding that editing is recommended on desktop. This is a
+primary-source confirmation that no native app exists, upgrading the
+earlier third-party review's "in the pipeline" framing — but the article
+never uses the word "offline" and says nothing about behaviour without a
+network connection, so it confirms "no app" without confirming "assumes
+connectivity" as a stated fact (that remains a reasonable inference from
+"no app" + "mobile-responsive web view", not a direct quote). Recorded
+above as partially confirmed, not fully, per this item's own failure case
+(a page that renders doesn't automatically answer the exact question
+asked).
+
+This shift also re-ran the unmodified Yamdu-pricing and SetHero
+pricing/FAQ render targets as part of the same dispatch (they were
+already in `TARGETS` from FR-90/FR-135, not newly added): results are
+identical to FR-135's 2026-10-06 pass two days ago — Yamdu's page still
+renders with zero pricing content, SetHero's `/pricing/` and `/faq/`
+still return their real pages now (not the FR-83/90 interstitial — note
+this for a future shift: SetHero no longer 202-holds these two URLs, but
+neither page states a number matching this doc's "$19/month" figure, so
+that claim stays **unverified**, cause narrowed again rather than
+confirmed). No re-dispatch was proposed for these two in this item;
+they came along because the workflow re-runs every target in one job, not
+because this shift re-targeted them (the backlog item that proposed this
+as new work, FR-149 as originally written, had the premise wrong — see
+`BACKLOG.md`'s FR-149 note for the correction).
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Add the StudioBinder mobile/offline FAQ URL to `render_pricing_pages.py`'s
-  target list and re-dispatch (the FR-90 pattern) — the one concrete,
-  scoped next step the FR-135 pass above identified, now that a plain
-  fetch is confirmed reachable but insufficient for this specific page.
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
-  pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
-  now has the more specific next step above instead).
+  pricing/FAQ — now reachable but still no matching figure, Croogloo
+  revision-history UI).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
