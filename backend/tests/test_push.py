@@ -188,6 +188,98 @@ class TestNotifySubscribers:
         # A transient failure keeps the subscription for the next revision.
         assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 1
 
+    def test_a_single_403_is_not_misclassified_as_a_key_rotation(self, client: TestClient, db_session, vapid_configured) -> None:
+        """FR-137's dod, step 1: document what the code does with a plain 403
+        today, before any fix — `gone` stays False (push.py:77 only treats
+        404/410 as gone), so nothing deletes the subscription on a single 403."""
+
+        class _ForbiddenResponse:
+            status_code = 403
+            text = "forbidden"
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("forbidden", response=_ForbiddenResponse())):
+            with pytest.raises(push_service.PushDeliveryError) as exc_info:
+                push_service.send(endpoint="https://push.example.com/ep1", p256dh="a", auth="b", payload={})
+        assert exc_info.value.gone is False
+        assert exc_info.value.status_code == 403
+
+    def test_a_single_403_is_logged_as_a_plain_failure(self, client: TestClient, db_session, vapid_configured) -> None:
+        """One 403 alone must not be flagged as a key rotation (the dod's own
+        failure case) — it reads the same as any other transient failure."""
+        pid, member = _setup(client)
+        client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json=_subscribe_payload())
+
+        class _ForbiddenResponse:
+            status_code = 403
+            text = "forbidden"
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("forbidden", response=_ForbiddenResponse())):
+            resp = client.post(
+                f"/api/v1/productions/{pid}/call-sheets",
+                json={"shoot_date": "2026-09-22", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
+                headers=AUTH,
+            )
+        logs = db_session.query(DistributionLog).filter(DistributionLog.channel == DistributionChannel.PUSH).all()
+        assert len(logs) == 1 and logs[0].error == "push service returned 403"
+        assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).one().consecutive_403_count == 1
+
+    def test_a_repeated_403_from_the_same_subscription_is_flagged_as_likely_key_rotation(
+        self, client: TestClient, db_session, vapid_configured
+    ) -> None:
+        pid, member = _setup(client)
+        client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json=_subscribe_payload())
+
+        class _ForbiddenResponse:
+            status_code = 403
+            text = "forbidden"
+
+        def _publish(day_number: int, call: str):
+            return client.post(
+                f"/api/v1/productions/{pid}/call-sheets",
+                json={"shoot_date": "2026-09-22", "day_number": day_number, "day_count": 1, "initial_revision": {"general_crew_call": call, "schedule_items": []}},
+                headers=AUTH,
+            )
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("forbidden", response=_ForbiddenResponse())):
+            _publish(1, "06:30")
+            _publish(2, "07:00")
+
+        logs = (
+            db_session.query(DistributionLog)
+            .filter(DistributionLog.channel == DistributionChannel.PUSH)
+            .order_by(DistributionLog.id)
+            .all()
+        )
+        assert len(logs) == 2
+        assert logs[0].error == "push service returned 403"
+        assert "repeated" in logs[1].error and "VAPID" in logs[1].error
+        assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).one().consecutive_403_count == 2
+
+    def test_a_successful_send_resets_the_403_counter(self, client: TestClient, db_session, vapid_configured) -> None:
+        """A 403 that clears on the next attempt was transient, not a key
+        rotation — the counter must not keep accumulating across a success."""
+        pid, member = _setup(client)
+        client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json=_subscribe_payload())
+
+        class _ForbiddenResponse:
+            status_code = 403
+            text = "forbidden"
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("forbidden", response=_ForbiddenResponse())):
+            sheet = client.post(
+                f"/api/v1/productions/{pid}/call-sheets",
+                json={"shoot_date": "2026-09-22", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []}},
+                headers=AUTH,
+            ).json()
+        with patch("app.services.push.webpush", return_value=None):
+            client.post(
+                f"/api/v1/call-sheets/{sheet['id']}/revisions",
+                json={"general_crew_call": "07:00", "schedule_items": []},
+                headers=AUTH,
+            )
+
+        assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).one().consecutive_403_count == 0
+
     def test_a_revoked_subscription_is_deleted_so_it_is_not_retried(self, client: TestClient, db_session, vapid_configured) -> None:
         pid, member = _setup(client)
         client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json=_subscribe_payload())
