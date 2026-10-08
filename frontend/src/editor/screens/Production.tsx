@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
-import { clearPendingCrewEdit, loadAllPendingCrewEdits, savePendingCrewEdit, type PendingCrewEdit } from "../crewEdits";
+import { clearPendingCrewEdit, diffCrewEditFields, loadAllPendingCrewEdits, mergeCrewEdit, savePendingCrewEdit, type CrewEditableFields, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
 import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
@@ -251,15 +251,24 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
 type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean; contactId: string | null };
 const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false, contactId: null };
 
-/** A pending edit overlaid onto the server's copy of a crew member, for display and for re-editing. */
+function crewEditableFields(m: CrewMember): CrewEditableFields {
+  return {
+    name: m.contact.name, phone: m.contact.phone ?? "",
+    department: m.department, position: m.position,
+    standard_call_time: m.standard_call_time, is_head_of_department: m.is_head_of_department,
+  };
+}
+
+/** A pending edit overlaid onto the server's copy of a crew member, for display and for re-editing. Only the fields the patch actually touches change; everything else stays the server's own (possibly updated by someone else since). */
 function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
+  const merged = mergeCrewEdit(crewEditableFields(m), p.patch);
   return {
     ...m,
-    contact: { ...m.contact, name: p.name, phone: p.phone || null },
-    department: p.department,
-    position: p.position,
-    standard_call_time: p.standard_call_time,
-    is_head_of_department: p.is_head_of_department,
+    contact: { ...m.contact, name: merged.name, phone: merged.phone || null },
+    department: merged.department,
+    position: merged.position,
+    standard_call_time: merged.standard_call_time,
+    is_head_of_department: merged.is_head_of_department,
   };
 }
 
@@ -351,14 +360,26 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
 
   async function syncPendingEdit(edit: PendingCrewEdit, announce: boolean): Promise<void> {
     try {
-      const contact = await api.updateContact(conn, edit.contactId, { name: edit.name, phone: edit.phone || null });
-      const member = await api.updateCrewMember(conn, productionId, edit.memberId, {
-        department: edit.department, position: edit.position, standard_call_time: edit.standard_call_time, is_head_of_department: edit.is_head_of_department,
-      });
+      // Only the fields this device's edit actually touched are sent (FR-144): a field this
+      // edit never changed is left out of the patch, so it can't revert another device's
+      // concurrent, already-synced change to it back to this device's own stale copy.
+      const { name, phone, ...memberFields } = edit.patch;
+      const contactPatch: { name?: string; phone?: string | null } = {};
+      if (name !== undefined) contactPatch.name = name;
+      if (phone !== undefined) contactPatch.phone = phone || null;
+      const contact = Object.keys(contactPatch).length > 0 ? await api.updateContact(conn, edit.contactId, contactPatch) : null;
+      const member = Object.keys(memberFields).length > 0 ? await api.updateCrewMember(conn, productionId, edit.memberId, memberFields) : null;
       await clearPendingCrewEdit(edit.memberId);
-      setCrew((c) => (c ?? []).map((x) => (x.id === member.id ? { ...member, contact } : x)));
+      const syncedName = contact?.name ?? crew?.find((x) => x.id === edit.memberId)?.contact.name ?? "";
+      if (member || contact) {
+        setCrew((c) => (c ?? []).map((x) => {
+          if (x.id !== edit.memberId) return x;
+          const next = member ? { ...x, ...member } : x;
+          return contact ? { ...next, contact } : next;
+        }));
+      }
       setPending((p) => { if (!p.has(edit.memberId)) return p; const n = new Map(p); n.delete(edit.memberId); return n; });
-      if (announce) setNotice({ kind: "ok", text: L("{name} synced.", { name: contact.name }) });
+      if (announce) setNotice({ kind: "ok", text: L("{name} synced.", { name: syncedName }) });
     } catch (err) {
       if (announce) setNotice(err instanceof ApiError && err.status === 0
         ? { kind: "warn", text: L("Still offline; the change stays on this phone.") }
@@ -424,12 +445,20 @@ function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn
       // An edit to an existing person is never lost offline: it queues on this phone (FR-18 failure case).
       // Adding a new person offline has nothing to queue against yet (no crew-member id), so it just fails as before.
       if (editing && err instanceof ApiError && err.status === 0) {
-        const edit: PendingCrewEdit = {
-          memberId: editing.id, productionId, contactId: editing.contact_id,
+        const typed: CrewEditableFields = {
           name: form.name.trim(), phone: form.phone.trim(),
           department: form.department.trim(), position: form.position.trim(),
           standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
-          savedAt: new Date().toISOString(),
+        };
+        // Diffed against the server's own last-known copy (not the on-screen `editing`, which may
+        // already be overlaid with an earlier unsynced patch) and merged onto that earlier patch, so
+        // a second offline edit before the first one syncs never drops the first edit's own fields.
+        const serverMember = crew?.find((x) => x.id === editing.id);
+        const newPatch = serverMember ? diffCrewEditFields(crewEditableFields(serverMember), typed) : typed;
+        const patch = { ...pending.get(editing.id)?.patch, ...newPatch };
+        const edit: PendingCrewEdit = {
+          memberId: editing.id, productionId, contactId: editing.contact_id,
+          patch, savedAt: new Date().toISOString(),
         };
         await savePendingCrewEdit(edit);
         setPending((p) => new Map(p).set(edit.memberId, edit));
