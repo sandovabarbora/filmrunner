@@ -107,6 +107,21 @@ export function App() {
   }, [mode]);
 
   useEffect(() => {
+    // FR-130: a tab left open from before a publish must not keep showing the
+    // old revision forever — loadCallSheet() already goes network-first each
+    // call, so re-running it is enough; nothing here was re-running it. A
+    // periodic poll covers a screen left on through the shoot; the
+    // visibilitychange listener covers the common case of picking the phone
+    // back up, without waiting out the full interval.
+    if (mode.kind !== "share") return;
+    const refresh = () => { void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me); };
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
+  }, [mode]);
+
+  useEffect(() => {
     if (!printRequested || printedRef.current) return;
     if (result && (result.kind === "live" || result.kind === "cached")) {
       printedRef.current = true;
