@@ -1608,7 +1608,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 
 ## FR-151 · tech-lead · Re-search Croogloo's revision-history-UI claim with a differently-worded query or its help-center's own search/collections
 
-- state: ready
+- state: done
+- note: done 2026-10-08 (15:11 Prague shift). Five further differently-worded `WebSearch` queries plus a direct browse of the help center's own collections/search index (`site:support.croogloo.com`, collections listing) surfaced real structure and articles never seen before (Documents collection, Distribution Drafts, Attaching a Call Sheet to Sides, Cast-Agent Pairing) but nothing addressing a published call sheet's revision/version history. `competitive-teardown.md`'s Croogloo revision-history-UI line and its "Follow-up needed" section are both updated to "unverified, exhausted the help-center and search avenues available to this routine" per the dod's own failure case — no fourth re-render proposed, no new client-rendered candidate page turned up. PR is the whole deliverable.
 - gated: no
 - why: FR-148 (2026-10-08) rendered the three Croogloo help-center articles FR-136 found and none addressed revision history, leaving competitive-teardown.md's Croogloo revision-history-UI claim the last fully unverified claim in that doc; FR-148's own follow-up names the concrete next step — a fresh `WebSearch` for a differently-worded query ("revision history", "version history", "call sheet versions") or browsing Croogloo's help-center search/collections directly — not re-rendering the same three pages.
 - dod:

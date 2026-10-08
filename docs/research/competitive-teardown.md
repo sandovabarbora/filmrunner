@@ -171,7 +171,31 @@ marked items directly against the vendor pages.
   revision history or a call-sheet UI at all (troubleshooting/login,
   draft emails, and dailies-distribution-list management respectively —
   detail in `switching-cost-teardown.md`'s FR-148 section), so this claim
-  stays **unverified**, not resolved by that pass.
+  stayed **unverified**, not resolved by that pass. FR-151 (2026-10-08,
+  same day) re-searched with the differently-worded queries FR-148's own
+  follow-up named — `WebSearch` for `Croogloo "version history" call
+  sheet`, `Croogloo call sheet revisions site:support.croogloo.com`,
+  `Croogloo "republish" OR "revise" call sheet crew`, `Croogloo "Archive
+  Mode" documents`, and `croogloo.com call sheet revision "rev" change
+  log feature` — plus a direct browse of the help center's own
+  collections and search index (`support.croogloo.com/en/collections/…`,
+  `site:support.croogloo.com call sheet`; direct `WebFetch` to
+  `support.croogloo.com` is egress-blocked from this environment, same
+  as every prior shift's finding, so `WebSearch`'s own index of that
+  domain is the only reachable substitute). The collections browse
+  surfaced the real top-level structure (Production Office, Documents —
+  14 articles, Technical Support, Troubleshooting, Side Kit, Welcome to
+  Croogloo) and several real articles never seen before this pass
+  (`Distribution Drafts` — unlimited call-sheet drafts shared among the
+  team, pre-send only; `Attaching a Call Sheet to Sides`; `Sides in 1-up
+  & 2-up Format`; `Cast - Agent Pairing`; `FAQ - Troubleshooting`); none
+  of them, by title or by the snippet text returned, addresses a
+  published call sheet's revision/version history. This claim is now
+  **unverified, exhausted the help-center and search avenues available
+  to this routine** — a real answer needs either a Croogloo account
+  (to read in-app UI directly) or a vendor statement using the words
+  "revision" or "version history" that this pass's searches did not
+  surface, not a further re-search with this routine's tools.
 - **Distribute (tracking)**: distribution reporting shows when a call
   sheet lands, when it is opened, and who has not yet received it, plus
   text notifications on call-time changes — the most granular delivery
@@ -576,21 +600,22 @@ matching figure on the page" rather than confirmed.
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
-  pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
-  is resolved as far as a rendered page can take it, per FR-138 above;
-  only a vendor statement using the word "offline" itself would close the
-  remaining gap). For Croogloo revision-history UI specifically: FR-148
-  (2026-10-08) rendered the three help-center articles FR-136 found
-  adjacent to this question and none addressed it (detail in
-  `switching-cost-teardown.md`) — the next concrete step is a fresh
-  `WebSearch` for a differently-worded query (e.g. "revision history",
-  "version history", "call sheet versions") or browsing the Croogloo help
-  center's own search/collections directly, not re-rendering the same
-  three pages.
-  pricing/FAQ — now reachable but still no matching figure, Croogloo
-  revision-history UI — StudioBinder mobile/offline is resolved as far as
-  a rendered page can take it, per FR-138 above; only a vendor statement
-  using the word "offline" itself would close the remaining gap).
+  pricing/FAQ — now reachable but still no matching figure — StudioBinder
+  mobile/offline is resolved as far as a rendered page can take it, per
+  FR-138 above; only a vendor statement using the word "offline" itself
+  would close the remaining gap). Croogloo revision-history UI is no
+  longer an open next step for this routine: FR-148 (2026-10-08) rendered
+  the three help-center articles FR-136 found adjacent to the question and
+  FR-151 (2026-10-08, same day) followed up with five further differently
+  worded `WebSearch` queries plus a direct browse of the help center's
+  own collections/search index — none of it addresses the question, and
+  this pass exhausted the search avenues this routine's tools can reach
+  (direct `WebFetch` to `support.croogloo.com`/`croogloo.com` stays
+  egress-blocked). The claim stays **unverified, exhausted** until
+  someone with a Croogloo account can check the in-app UI directly, or a
+  future search surfaces a vendor statement this pass's queries missed —
+  not something a further re-search with `WebSearch` alone is likely to
+  resolve.
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
