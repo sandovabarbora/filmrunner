@@ -77,6 +77,18 @@ TARGETS = [
         "claim": "SetHero: browser-only, no app download required; offline behaviour unaddressed in earlier snippets",
         "url": "https://sethero.com/faq/",
     },
+    {
+        "doc": "docs/research/competitive-teardown.md",
+        "id": "yamdu-ai-script-breakdown",
+        "claim": "FR-150/BRIEF H4: Yamdu's AI creates script-breakdown suggestions (character/location/prop tagging) for the creative departments to confirm; unclear whether this is beta and whether it extends to AI schedule generation",
+        "url": "https://yamdu.com/en/lp/script-breakdown/",
+    },
+    {
+        "doc": "docs/research/competitive-teardown.md",
+        "id": "yamdu-ai-info",
+        "claim": "FR-150/BRIEF H4: Yamdu's own AI-info page names which AI features exist and their beta/release status",
+        "url": "https://yamdu.com/en/ai-info/",
+    },
 ]
 
 
