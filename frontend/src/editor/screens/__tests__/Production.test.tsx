@@ -93,6 +93,7 @@ describe("Crew edit form", () => {
     expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
     expect(screen.getByText("not saved")).toBeInTheDocument();
 
+    // The data that reached crewEdits.ts's queuing path: only changed fields are queued.
     // The data that reached crewEdits.ts's queuing path: only the changed field (FR-144), not the whole form.
     expect(savePendingCrewEdit).toHaveBeenCalledWith(expect.objectContaining({
       memberId: "member-1",

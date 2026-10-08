@@ -163,7 +163,15 @@ marked items directly against the vendor pages.
   distributed files ([croogloo.com/features via search](https://croogloo.com/features/), checked 2026-09-14).
 - **Revise**: script/sides comparison is named explicitly, implying
   built-in revision diffing — call-sheet-specific revision-history UI is
-  **unverified** (features page blocked from direct read).
+  **unverified** (features page blocked from direct read, now confirmed
+  404/gone, FR-87/135). FR-148 (2026-10-08) headless-rendered three
+  Croogloo help-center articles found by FR-136 ("Technical Support"
+  collection, "Distribution Drafts", "Adding Dailies to Call Sheet
+  Distro") on the chance they addressed this; none of the three covers
+  revision history or a call-sheet UI at all (troubleshooting/login,
+  draft emails, and dailies-distribution-list management respectively —
+  detail in `switching-cost-teardown.md`'s FR-148 section), so this claim
+  stays **unverified**, not resolved by that pass.
 - **Distribute (tracking)**: distribution reporting shows when a call
   sheet lands, when it is opened, and who has not yet received it, plus
   text notifications on call-time changes — the most granular delivery
@@ -568,6 +576,17 @@ matching figure on the page" rather than confirmed.
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
+  pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
+  is resolved as far as a rendered page can take it, per FR-138 above;
+  only a vendor statement using the word "offline" itself would close the
+  remaining gap). For Croogloo revision-history UI specifically: FR-148
+  (2026-10-08) rendered the three help-center articles FR-136 found
+  adjacent to this question and none addressed it (detail in
+  `switching-cost-teardown.md`) — the next concrete step is a fresh
+  `WebSearch` for a differently-worded query (e.g. "revision history",
+  "version history", "call sheet versions") or browsing the Croogloo help
+  center's own search/collections directly, not re-rendering the same
+  three pages.
   pricing/FAQ — now reachable but still no matching figure, Croogloo
   revision-history UI — StudioBinder mobile/offline is resolved as far as
   a rendered page can take it, per FR-138 above; only a vendor statement
