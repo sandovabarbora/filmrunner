@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from pywebpush import WebPushException
 
 from app.config import get_settings
-from app.models.call_sheet import DistributionChannel, DistributionLog
+from app.models.call_sheet import CallSheet, CallSheetRevision, DistributionChannel, DistributionLog
 from app.models.push import PushSubscription
 from app.services import push as push_service
 from app.services.notifications import notify_subscribers
@@ -246,8 +246,10 @@ class TestNotifySubscribers:
 
         logs = (
             db_session.query(DistributionLog)
+            .join(CallSheetRevision, CallSheetRevision.id == DistributionLog.revision_id)
+            .join(CallSheet, CallSheet.id == CallSheetRevision.call_sheet_id)
             .filter(DistributionLog.channel == DistributionChannel.PUSH)
-            .order_by(DistributionLog.id)
+            .order_by(CallSheet.day_number)  # publish order; ids are random UUIDs, so ordering by id was a coin flip
             .all()
         )
         assert len(logs) == 2

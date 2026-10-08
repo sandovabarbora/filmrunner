@@ -31,11 +31,16 @@ vi.mock("../../api", async () => {
   };
 });
 
-vi.mock("../../crewEdits", () => ({
-  loadAllPendingCrewEdits: vi.fn().mockResolvedValue([]),
-  savePendingCrewEdit: vi.fn().mockResolvedValue(undefined),
-  clearPendingCrewEdit: vi.fn().mockResolvedValue(undefined),
-}));
+// Only the IndexedDB calls are mocked; the pure diff/merge functions stay real, so the test drives FR-144's diff.
+vi.mock("../../crewEdits", async () => {
+  const actual = await vi.importActual<typeof import("../../crewEdits")>("../../crewEdits");
+  return {
+    ...actual,
+    loadAllPendingCrewEdits: vi.fn().mockResolvedValue([]),
+    savePendingCrewEdit: vi.fn().mockResolvedValue(undefined),
+    clearPendingCrewEdit: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 const conn: Connection = { apiBase: "https://api.example.test", token: "t" };
 
@@ -88,16 +93,12 @@ describe("Crew edit form", () => {
     expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
     expect(screen.getByText("not saved")).toBeInTheDocument();
 
-    // The data that reached crewEdits.ts's queuing path: the new phone, every other field unchanged.
+    // The data that reached crewEdits.ts's queuing path: only the changed field (FR-144), not the whole form.
     expect(savePendingCrewEdit).toHaveBeenCalledWith(expect.objectContaining({
       memberId: "member-1",
+      productionId: "prod-1",
       contactId: "contact-1",
-      name: "Jana Nováková",
-      phone: "+420 999 888 777",
-      department: "Camera",
-      position: "1st AC",
-      standard_call_time: "06:00",
-      is_head_of_department: false,
+      patch: { phone: "+420 999 888 777" },
     }));
   });
 });
