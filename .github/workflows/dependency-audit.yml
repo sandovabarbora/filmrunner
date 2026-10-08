@@ -1,0 +1,46 @@
+# FR-152: `pip-audit`/`npm audit` find new vulnerabilities as the advisory
+# database moves, independent of any code change here (FR-91/100/110/117/124
+# each had to be filed as a one-off backlog item just to re-run the same two
+# scanners). This runs them weekly and on demand, the same `schedule: cron` +
+# `workflow_dispatch` pattern `pilot-readiness.yml` already uses for a
+# periodic check nobody should have to remember to re-run by hand.
+#
+# Public registries only (PyPI, the npm registry) — no secret, no account.
+# A clean run is silent beyond this run's own summary; a run that finds
+# something beyond the already-accepted risk in
+# docs/research/dependency-audit-2026-09.md fails (red) rather than passing
+# silently — scripts/check_dependency_audit.py's own module docstring says
+# why this workflow does not write that finding back to the repo itself.
+name: dependency audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # Monday, 08:00 Prague in summer, 07:00 in winter
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run the dependency audit
+        run: python3 scripts/check_dependency_audit.py
