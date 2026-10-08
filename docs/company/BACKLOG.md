@@ -1571,3 +1571,21 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - `npm test`, `npm run typecheck`, and `npm run build` all stay clean with the new harness in place
   - failure case: temporarily break the interaction under test (e.g. revert the field's `onChange`/`onBlur` wiring, or reintroduce the full-snapshot-resend bug FR-144 just fixed) and confirm the new test fails loudly naming the broken behaviour, then revert
 - note: proposed 2026-10-07 ~16:11 shift (pm fallback, TEAM.md shift contract §7) — today's full plan (FR-140-FR-146) was already delivered by earlier shifts; the one `ready`+`gated:no` item, FR-145, stays correctly skipped (its dod depends on FR-138/FR-139, still only on open PRs #378/#382 per a live `list_pull_requests` check, not yet on `main`). Checked `scripts/check_backlog_duplicates.py --skip-prs` first (no likely duplicate found). Confirmed the gap is real before proposing it: `frontend/src/editor/screens/DayEditor.tsx` has no offline edit queue (editing is read-only while offline there), so the FR-144 patch-diff bug class does not generalize to schedule items/locations/cast calls the way a first guess assumed — ruled out as a candidate, not proposed.
+
+## FR-148 · tech-lead · Headless-render Croogloo's three discovered articles to resolve the revision-history-UI and export claims
+- state: ready
+- gated: no
+- why: FR-136 (2026-10-06) found three real Croogloo articles via `WebSearch` but could not dispatch the open-egress workflow against them — a workflow-touching push was refused by that shift's own containment policy — leaving competitive-teardown.md's revision-history-UI claim and switching-cost-teardown.md's template/contact-export claim both held at `WebSearch`-snippet tier. FR-138/FR-139 already proved the fix for this exact blocker the same day: add the target URL to `scripts/render_pricing_pages.py`'s `TARGETS` list (a plain `scripts/` file, not the workflow itself) and dispatch the already-wired `desk-research-reverify.yml` unchanged.
+- dod:
+  - add Croogloo's three articles found by FR-136 to `scripts/render_pricing_pages.py`'s `TARGETS`, dispatch `desk-research-reverify.yml` unchanged, and read the job log directly (not a `WebSearch` snippet)
+  - update competitive-teardown.md's revision-history-UI claim and switching-cost-teardown.md's export claim with what the rendered text actually says — confirmed, corrected, or still unreachable with the reason — citing the run
+  - failure case: if a workflow-touching push is again refused by this session's containment policy, or a page genuinely won't render, state that plainly in the doc as attempted-and-blocked or unreachable, not silently retried or guessed
+
+## FR-149 · tech-lead · Headless-render Yamdu and SetHero's pricing/FAQ pages to resolve competitive-teardown's last vendor-pricing claims
+- state: ready
+- gated: no
+- why: FR-135's 2026-10-06 dispatch left Yamdu pricing and SetHero pricing/FAQ still "unchanged/unverified" via the plain-HTML-fetch pattern `desk-research-reverify.yml` already uses; FR-90/FR-138/FR-139 already showed a headless-render pass resolves a claim a plain fetch cannot when the vendor's page is client-rendered, and that pattern has not yet been tried against these two specific pages.
+- dod:
+  - add Yamdu's and SetHero's pricing/FAQ URLs to `scripts/render_pricing_pages.py`'s `TARGETS`, dispatch `desk-research-reverify.yml` unchanged, and read the job log directly
+  - update competitive-teardown.md's two claims with what the rendered text says — confirmed, corrected, or still unreachable with the reason
+  - failure case: a page that still returns no usable rendered text (bot-blocked, genuinely empty) is recorded as "still unreachable, reason X" in the doc rather than retried silently or guessed from a `WebSearch` snippet
