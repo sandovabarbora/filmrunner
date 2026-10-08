@@ -272,7 +272,8 @@ function applyPendingEdit(m: CrewMember, p: PendingCrewEdit): CrewMember {
   };
 }
 
-function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn: Connection; productionId: string; productionName: string | null; canEdit: boolean; setNotice: (n: Notice) => void }) {
+// Exported for FR-147's component-interaction test; every other caller still goes through ProductionScreen.
+export function Crew({ conn, productionId, productionName, canEdit, setNotice }: { conn: Connection; productionId: string; productionName: string | null; canEdit: boolean; setNotice: (n: Notice) => void }) {
   const [cast, setCast] = useState<CastMember[]>([]);
   const L = useL();
   const [crew, setCrew] = useState<CrewMember[] | null>(null);
