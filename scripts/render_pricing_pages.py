@@ -55,6 +55,12 @@ TARGETS = [
     },
     {
         "doc": "docs/research/competitive-teardown.md",
+        "id": "studiobinder-offline-faq",
+        "claim": "StudioBinder: offline viewing described by a third-party review as \"in the pipeline\" — unverified against StudioBinder's own docs",
+        "url": "https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available",
+    },
+    {
+        "doc": "docs/research/competitive-teardown.md",
         "id": "yamdu-pricing",
         "claim": "Yamdu: Flex from $45/month + $22/additional user; Core $265/month for up to 20 users",
         "url": "https://yamdu.com/en/pricing/",
@@ -78,10 +84,10 @@ TARGETS = [
         "url": "https://sethero.com/faq/",
     },
     {
-        "doc": "docs/research/competitive-teardown.md",
-        "id": "studiobinder-mobile-offline",
-        "claim": "StudioBinder: offline version described by a third-party review as 'in the pipeline' (not offline-capable today); unverified directly against StudioBinder's own docs because the FAQ article timed out on every plain-fetch attempt (FR-83)",
-        "url": "https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available",
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "studiobinder-contact-export",
+        "claim": "StudioBinder: a WebSearch snippet (FR-136, 2026-10-06) states a project's contact list exports as CSV via the contact-settings menu's \"Export CSV\" option — held at partially confirmed, not yet read from the article's own rendered text",
+        "url": "https://support.studiobinder.com/en/articles/6787346-how-to-export-a-contact-list-csv-file",
     },
 ]
 

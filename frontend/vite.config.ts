@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -6,6 +7,12 @@ import { VitePWA } from "vite-plugin-pwa";
 // VITE_BASE is "/filmrunner/" on GitHub Pages (set in pages.yml) and "/" locally.
 export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
+  test: {
+    // Pure-function tests (the vast majority) stay on the fast default "node"
+    // environment; a component test opts into jsdom itself with a
+    // `// @vitest-environment jsdom` docblock at the top of the file (FR-147).
+    setupFiles: ["./src/test-setup.ts"],
+  },
   plugins: [
     react(),
     VitePWA({

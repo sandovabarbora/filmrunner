@@ -29,14 +29,28 @@ marked items directly against the vendor pages.
 - **Distribute**: sent by SMS and email; delivery is tracked in real time —
   bounced, viewed, and confirmed states per recipient, from a central
   dashboard ([studiobinder.com/call-sheet-app](https://www.studiobinder.com/call-sheet-app/), checked 2026-09-14).
-- **View offline**: an offline version is described by a third-party
-  review as "in the pipeline" ([musicgateway.com review](https://www.musicgateway.com/blog/filmmaking/studiobinder-production-software-review), checked 2026-09-14) — i.e. **not offline-capable today**; recipients view a
-  web page/PDF that assumes connectivity. **Partially confirmed directly**
-  (FR-149, 2026-10-08 — see the resolution below): StudioBinder's own FAQ
-  confirms no native iOS/Android app exists, consistent with "assumes
-  connectivity"; the article itself does not use the word "offline" at
-  all, so the no-connectivity behaviour specifically is still not stated
-  by StudioBinder's own docs, only implied by the absence of an app.
+- **View offline** (confirmed 2026-10-06, FR-138 — see the resolution
+  below): the original claim ("in the pipeline", a third-party review)
+  was never confirmed against StudioBinder's own docs, only hinted at.
+  Headless-rendered directly from StudioBinder's own help article
+  ([support.studiobinder.com "Is there a mobile or tablet app
+  available?"](https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available),
+  checked 2026-10-06, HTTP 200, full text read): "While StudioBinder does
+  not currently offer a dedicated iOS or Android app, the platform is
+  mobile-responsive on the recipient side. This means your crew can view
+  and interact with call sheets they receive on their mobile devices,"
+  with a note recommending "sticking to your computer" for full project
+  management. This confirms directly, not as a hint, that there is **no
+  native app** — only a mobile-responsive web view — which rules out the
+  on-device caching an app would need for offline access. The article
+  itself never uses the word "offline" and makes no claim either way
+  about viewing without connectivity; the original "in the pipeline"
+  wording is therefore **still unverified as a specific offline-viewing
+  roadmap item** — this resolution confirms the weaker, adjacent fact
+  (no app exists today) but does not confirm or deny that StudioBinder is
+  building offline support. Treat "not offline-capable today" as
+  consistent with the evidence (no app, a web view that is not described
+  as working offline) rather than as directly stated by the vendor.
 - **Pricing** (confirmed 2026-09-25, FR-90 — see the resolution below):
   headless-rendered directly from `app.studiobinder.com/pricing` itself, not
   a third-party comparison. The "For Small Teams" tab: Free ($0, "covering
@@ -417,42 +431,45 @@ correction (the discipline FR-89 used for the Movie Magic price). Every
 one of the four is recorded above with its own current reason, not
 retried silently or guessed from memory, per this item's failure case.
 
-## StudioBinder mobile/offline, resolved (FR-149, 2026-10-08)
+## Headless-render pass (FR-138, 2026-10-06)
 
-FR-135's own next step (above) — add the StudioBinder mobile/offline FAQ
-URL to `render_pricing_pages.py`'s `TARGETS` and re-dispatch — was done
-this shift ([run 37748564705](https://github.com/sandovabarbora/filmrunner/actions/runs/37748564705),
-job log read directly). The article (`support.studiobinder.com`, "Is
-there a mobile or tablet app available?", by Robert Kiraz, dated
-2025-09-18) renders cleanly (200, 34 lines) and states directly: "While
-StudioBinder does not currently offer a dedicated iOS or Android app, the
-platform is mobile-responsive on the recipient side. This means your
-crew can view and interact with call sheets they receive on their mobile
-devices," adding that editing is recommended on desktop. This is a
-primary-source confirmation that no native app exists, upgrading the
-earlier third-party review's "in the pipeline" framing — but the article
-never uses the word "offline" and says nothing about behaviour without a
-network connection, so it confirms "no app" without confirming "assumes
-connectivity" as a stated fact (that remains a reasonable inference from
-"no app" + "mobile-responsive web view", not a direct quote). Recorded
-above as partially confirmed, not fully, per this item's own failure case
-(a page that renders doesn't automatically answer the exact question
-asked).
+FR-135's own next step above — add the StudioBinder mobile/offline FAQ
+URL to `render_pricing_pages.py`'s target list and re-dispatch — done
+this shift. `scripts/render_pricing_pages.py` gained a
+`studiobinder-offline-faq` target; `.github/workflows/desk-research-reverify.yml`
+itself was not touched. Dispatched on branch
+`docs/fr-138-studiobinder-offline-faq` ([run 37469123815](https://github.com/sandovabarbora/filmrunner/actions/runs/37469123815)),
+job log read directly: the page is reachable (HTTP 200, 34 rendered text
+lines) and this time exposes its real answer text, not just the JSON-LD
+breadcrumb and Intercom string FR-135 found. See the corrected "View
+offline" bullet above for the resolution and its own caveat: the article
+confirms no native iOS/Android app exists (mobile access is a
+mobile-responsive web view), which is evidence consistent with "not
+offline-capable today," but the article never uses the word "offline"
+and does not itself confirm or deny the original "in the pipeline"
+roadmap claim — recorded as a partial resolution, not guessed past what
+the page actually says, per this item's own failure case.
 
-This shift also re-ran the unmodified Yamdu-pricing and SetHero
-pricing/FAQ render targets as part of the same dispatch (they were
-already in `TARGETS` from FR-90/FR-135, not newly added): results are
-identical to FR-135's 2026-10-06 pass two days ago — Yamdu's page still
-renders with zero pricing content, SetHero's `/pricing/` and `/faq/`
-still return their real pages now (not the FR-83/90 interstitial — note
-this for a future shift: SetHero no longer 202-holds these two URLs, but
-neither page states a number matching this doc's "$19/month" figure, so
-that claim stays **unverified**, cause narrowed again rather than
-confirmed). No re-dispatch was proposed for these two in this item;
-they came along because the workflow re-runs every target in one job, not
-because this shift re-targeted them (the backlog item that proposed this
-as new work, FR-149 as originally written, had the premise wrong — see
-`BACKLOG.md`'s FR-149 note for the correction).
+## SetHero no longer bot-walled, still no matching figure (FR-149, 2026-10-08)
+
+FR-149 was proposed (2026-10-08 morning brief) to headless-render Yamdu
+pricing and SetHero pricing/FAQ, and separately to resolve StudioBinder's
+mobile/offline claim — but both were mistaken premises, caught before any
+doc was wrongly rewritten: Yamdu/SetHero were already rendered twice (FR-90,
+re-confirmed by FR-135) with nothing new to find, and StudioBinder's
+mobile/offline claim is the section directly above, already resolved by
+FR-138 two days earlier (PR #378, merged after this item was proposed and
+started — a genuine duplicate caught only once this PR's conflict with
+`main` surfaced it, not before; see `BACKLOG.md`'s FR-149 note for the
+correction and the process gap it names). Re-running the dispatch
+([run 37748564705](https://github.com/sandovabarbora/filmrunner/actions/runs/37748564705))
+did surface one small, non-duplicate fact worth keeping: SetHero's
+`/pricing/` and `/faq/` pages no longer return the FR-83/90 202
+holding/interstitial response — both now return their real pages (200,
+57 and 122 rendered lines respectively) — but neither page states a
+figure matching this doc's "$19/month" claim, so that claim stays
+**unverified**, cause narrowed from "bot-walled" to "reachable, no
+matching figure on the page" rather than confirmed.
 
 ## Follow-up needed (cannot be done by this routine)
 
@@ -460,7 +477,9 @@ as new work, FR-149 as originally written, had the premise wrong — see
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
   pricing/FAQ — now reachable but still no matching figure, Croogloo
-  revision-history UI).
+  revision-history UI — StudioBinder mobile/offline is resolved as far as
+  a rendered page can take it, per FR-138 above; only a vendor statement
+  using the word "offline" itself would close the remaining gap).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
