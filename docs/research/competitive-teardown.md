@@ -29,11 +29,28 @@ marked items directly against the vendor pages.
 - **Distribute**: sent by SMS and email; delivery is tracked in real time —
   bounced, viewed, and confirmed states per recipient, from a central
   dashboard ([studiobinder.com/call-sheet-app](https://www.studiobinder.com/call-sheet-app/), checked 2026-09-14).
-- **View offline**: an offline version is described by a third-party
-  review as "in the pipeline" ([musicgateway.com review](https://www.musicgateway.com/blog/filmmaking/studiobinder-production-software-review), checked 2026-09-14) — i.e. **not offline-capable today**; recipients view a
-  web page/PDF that assumes connectivity. **Unverified** directly against
-  StudioBinder's own docs (page blocked); treat this as a hint, not
-  confirmed fact, until re-checked.
+- **View offline** (confirmed 2026-10-06, FR-138 — see the resolution
+  below): the original claim ("in the pipeline", a third-party review)
+  was never confirmed against StudioBinder's own docs, only hinted at.
+  Headless-rendered directly from StudioBinder's own help article
+  ([support.studiobinder.com "Is there a mobile or tablet app
+  available?"](https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available),
+  checked 2026-10-06, HTTP 200, full text read): "While StudioBinder does
+  not currently offer a dedicated iOS or Android app, the platform is
+  mobile-responsive on the recipient side. This means your crew can view
+  and interact with call sheets they receive on their mobile devices,"
+  with a note recommending "sticking to your computer" for full project
+  management. This confirms directly, not as a hint, that there is **no
+  native app** — only a mobile-responsive web view — which rules out the
+  on-device caching an app would need for offline access. The article
+  itself never uses the word "offline" and makes no claim either way
+  about viewing without connectivity; the original "in the pipeline"
+  wording is therefore **still unverified as a specific offline-viewing
+  roadmap item** — this resolution confirms the weaker, adjacent fact
+  (no app exists today) but does not confirm or deny that StudioBinder is
+  building offline support. Treat "not offline-capable today" as
+  consistent with the evidence (no app, a web view that is not described
+  as working offline) rather than as directly stated by the vendor.
 - **Pricing** (confirmed 2026-09-25, FR-90 — see the resolution below):
   headless-rendered directly from `app.studiobinder.com/pricing` itself, not
   a third-party comparison. The "For Small Teams" tab: Free ($0, "covering
@@ -414,17 +431,126 @@ correction (the discipline FR-89 used for the Movie Magic price). Every
 one of the four is recorded above with its own current reason, not
 retried silently or guessed from memory, per this item's failure case.
 
+## H4 recheck: does any incumbent offer script-to-schedule AI drafting? (FR-150, 2026-10-08)
+
+BRIEF.md's H4 (2026-09-18) names FilmRunner's differentiation claim as
+AI-assisted generation of a call sheet from a pasted script in minutes,
+asserting "nobody can demo this today — not Movie Magic, not StudioBinder,
+not Yamdu" — and flagged that this specific claim had never been checked
+against this doc's own teardown. This pass checks all five incumbents named
+above for an AI script-breakdown or AI script-to-schedule feature, using
+each vendor's own pages (`WebSearch` snippets quoting the vendor directly,
+upgraded to a primary-source headless render for Yamdu's two AI pages via
+`scripts/render_pricing_pages.py` + `desk-research-reverify.yml`, dispatched
+from a throwaway branch not merged to `main`, same pattern as FR-90/108/115/149
+— [run 37762341912](https://github.com/sandovabarbora/filmrunner/actions/runs/37762341912)).
+
+- **Yamdu — confirmed present, for script-to-breakdown (not script-to-schedule).**
+  This is a real, direct contradiction of H4's own wording. Yamdu's own
+  rendered page ([yamdu.com/en/lp/script-breakdown/](https://yamdu.com/en/lp/script-breakdown/),
+  rendered 2026-10-08) states plainly: "Import scripts from Final Draft,
+  Fountain, Celtx, or even PDF. Let Yamdu scan and arrange all the scene
+  information to help get you started right away," and under
+  "AI-Enhanced Script Tagging": "Tag the script or let Yamdu's AI create
+  breakdown suggestions for the creative departments to confirm and add
+  costumes, props, and other elements to your breakdown." It also auto-detects
+  characters and locations from the script import. Yamdu's own AI-info page
+  ([yamdu.com/en/ai-info/](https://yamdu.com/en/ai-info/), rendered 2026-10-08)
+  dates this feature's launch: "Start of the AI features beta test, including
+  breakdowns (2025-10-28)" — a beta that started just over eleven months
+  before this check; the page does not say whether it has since left beta.
+  **The schedule step itself stays manual, even for Yamdu**: the same
+  script-breakdown page's "Quick, Dynamic Planning" section describes moving
+  from breakdown to shooting schedule by dragging and dropping scenes on a
+  stripboard, with breakdown data "auto-filled" into it — no AI claim for
+  schedule generation itself, only for the breakdown step that feeds it.
+  So H4's narrower claim ("nobody offers AI-assisted script breakdown")
+  is false for Yamdu specifically; H4's broader claim (full script-to-schedule
+  generation with no human in the loop) still holds for Yamdu, since
+  scheduling remains a manual stripboard action.
+- **StudioBinder — confirmed absent.** StudioBinder's own script-breakdown
+  page ([studiobinder.com/script-breakdown-software/](https://www.studiobinder.com/script-breakdown-software/),
+  `WebSearch`-quoted directly 2026-10-08) describes manual element tagging
+  that feeds the schedule and call sheet; the only named automation is that
+  "when characters have dialogue in a scene, the software automatically
+  assigns cast IDs" — not AI-driven tagging or scheduling. StudioBinder's own
+  2026 blog post "16 Best AI Filmmaking Tools" treats AI as an external
+  category (suggesting a user run ChatGPT over their own script), not a
+  StudioBinder-built feature, and never claims the product itself runs AI
+  tagging or scheduling. A third-party comparison table (Filmustage, archived,
+  checked 2026-10-08) independently marks StudioBinder's "Automatic Script
+  Breakdown" as absent. Confirmed absent from the vendor's own page.
+- **SetHero — confirmed absent, in the vendor's own words.** SetHero's FAQ,
+  rendered directly this shift (not a `WebSearch` snippet — the full page
+  text came back clean this time, unlike FR-83/90/135's earlier 403/202
+  blocks on this same domain): "Does SetHero do scheduling or script
+  breakdowns? Currently, SetHero does not do scheduling or script
+  breakdowns. An awesome tool we recommend using for that is
+  https://thinkcrew.com/" ([sethero.com/faq/](https://sethero.com/faq/),
+  rendered 2026-10-08). The most direct, most confirmed answer of the five —
+  SetHero explicitly disclaims both scheduling and breakdown, AI or
+  otherwise, and points customers elsewhere.
+- **Croogloo — still unverified, same root cause as this doc's other
+  Croogloo gaps.** `croogloo.com/features/` — the page most likely to state
+  an AI claim if one exists — is confirmed 404 (FR-87, re-confirmed FR-135);
+  no replacement marketing page was found by a fresh `WebSearch` this shift
+  either. The reachable support docs describe a "Parse Script" option
+  ([support.croogloo.com Scripts & Sides](https://support.croogloo.com/en/collections/2618123-scripts-sides),
+  checked 2026-10-08) with no AI language anywhere in the visible help-center
+  titles or excerpts. This is suggestive of "absent" but not a confirmed
+  claim from a vendor marketing page the way StudioBinder/SetHero/Movie
+  Magic are — stays **unverified**, per this item's own failure case, same
+  as the revision-history-UI gap above.
+- **Movie Magic Scheduling — confirmed absent.** The official manual
+  (`mms-docs.ep.com`, `WebSearch`-quoted directly 2026-10-08) describes
+  script import as literal element-name matching: a plain `.fdx` import
+  brings in only the slugline and speaking characters, and a tagged `.sex`
+  ("Scheduling Export") file carries element data that is matched against
+  existing elements by name, creating new ones automatically on a mismatch —
+  rule-based import, not content understanding. EP's release notes (checked
+  back to the 10.4.22 beta, November 2023) and support FAQ never use AI/ML
+  language for this feature. Confirmed absent from the vendor's own
+  documentation, the deepest primary-source confirmation of the five since
+  it comes from the product manual itself, not a marketing page.
+
+**Net effect on H4**: the broad claim ("full script-to-schedule AI
+generation, no incumbent offers it") still holds across all five — nobody
+generates a *schedule* from a script via AI, FilmRunner's wedge is intact
+on that front. But H4's own wording names "not Yamdu" specifically for the
+general AI-assisted claim, and Yamdu's AI-assisted *script breakdown*
+(the step immediately before scheduling) is real, in beta since
+2025-10-28, confirmed from Yamdu's own pages — so H4 as literally worded
+is now **confirmed false for that one claim** and needs a narrower formulation
+(AI-assisted *scheduling* specifically, not breakdown) if it is to keep
+being used in positioning copy.
+## Headless-render pass (FR-138, 2026-10-06)
+
+FR-135's own next step above — add the StudioBinder mobile/offline FAQ
+URL to `render_pricing_pages.py`'s target list and re-dispatch — done
+this shift. `scripts/render_pricing_pages.py` gained a
+`studiobinder-offline-faq` target; `.github/workflows/desk-research-reverify.yml`
+itself was not touched. Dispatched on branch
+`docs/fr-138-studiobinder-offline-faq` ([run 37469123815](https://github.com/sandovabarbora/filmrunner/actions/runs/37469123815)),
+job log read directly: the page is reachable (HTTP 200, 34 rendered text
+lines) and this time exposes its real answer text, not just the JSON-LD
+breadcrumb and Intercom string FR-135 found. See the corrected "View
+offline" bullet above for the resolution and its own caveat: the article
+confirms no native iOS/Android app exists (mobile access is a
+mobile-responsive web view), which is evidence consistent with "not
+offline-capable today," but the article never uses the word "offline"
+and does not itself confirm or deny the original "in the pipeline"
+roadmap claim — recorded as a partial resolution, not guessed past what
+the page actually says, per this item's own failure case.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Add the StudioBinder mobile/offline FAQ URL to `render_pricing_pages.py`'s
-  target list and re-dispatch (the FR-90 pattern) — the one concrete,
-  scoped next step the FR-135 pass above identified, now that a plain
-  fetch is confirmed reachable but insufficient for this specific page.
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
   item still marked **unverified** above (Yamdu pricing, SetHero
   pricing/FAQ, Croogloo revision-history UI — StudioBinder mobile/offline
-  now has the more specific next step above instead).
+  is resolved as far as a rendered page can take it, per FR-138 above;
+  only a vendor statement using the word "offline" itself would close the
+  remaining gap).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.

@@ -55,6 +55,12 @@ TARGETS = [
     },
     {
         "doc": "docs/research/competitive-teardown.md",
+        "id": "studiobinder-offline-faq",
+        "claim": "StudioBinder: offline viewing described by a third-party review as \"in the pipeline\" — unverified against StudioBinder's own docs",
+        "url": "https://support.studiobinder.com/en/articles/1065638-is-there-a-mobile-or-tablet-app-available",
+    },
+    {
+        "doc": "docs/research/competitive-teardown.md",
         "id": "yamdu-pricing",
         "claim": "Yamdu: Flex from $45/month + $22/additional user; Core $265/month for up to 20 users",
         "url": "https://yamdu.com/en/pricing/",
@@ -78,6 +84,7 @@ TARGETS = [
         "url": "https://sethero.com/faq/",
     },
     {
+<<<<<<< HEAD
         "doc": "docs/research/competitive-teardown.md",
         "id": "yamdu-ai-script-breakdown",
         "claim": "FR-150/BRIEF H4: Yamdu's AI creates script-breakdown suggestions (character/location/prop tagging) for the creative departments to confirm; unclear whether this is beta and whether it extends to AI schedule generation",
@@ -88,6 +95,12 @@ TARGETS = [
         "id": "yamdu-ai-info",
         "claim": "FR-150/BRIEF H4: Yamdu's own AI-info page names which AI features exist and their beta/release status",
         "url": "https://yamdu.com/en/ai-info/",
+=======
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "studiobinder-contact-export",
+        "claim": "StudioBinder: a WebSearch snippet (FR-136, 2026-10-06) states a project's contact list exports as CSV via the contact-settings menu's \"Export CSV\" option — held at partially confirmed, not yet read from the article's own rendered text",
+        "url": "https://support.studiobinder.com/en/articles/6787346-how-to-export-a-contact-list-csv-file",
+>>>>>>> origin/main
     },
 ]
 

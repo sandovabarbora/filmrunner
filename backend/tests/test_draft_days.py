@@ -5,6 +5,8 @@ from datetime import date
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from app.models.call_sheet import CastCallEntry, CrewCallEntry
+from app.models.seen import RevisionView
 from app.services.call_sheets import next_day_for_token
 
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
@@ -69,3 +71,37 @@ def test_only_a_draft_can_be_deleted(client: TestClient) -> None:
     assert client.delete(f"/api/v1/call-sheets/{live['id']}", headers=AUTH).status_code == 409
     assert client.delete(f"/api/v1/call-sheets/{draft['id']}", headers=AUTH).status_code == 204
     assert [d["day_number"] for d in client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()] == [2]
+
+
+def test_deleting_a_draft_cleans_up_crew_calls_cast_calls_and_seen_receipts(client: TestClient, db_session) -> None:
+    """FR-146: the delete-draft route's manual child loop (schedule_items + cast_calls
+    + crew_calls) had never been exercised with cast_calls/crew_calls actually present,
+    and a 'seen' receipt can land on a draft's revision too (the public seen endpoint
+    does not check draft status) — both must be gone, not dangling, after the delete."""
+    pid, member = _setup(client)
+    actor_cid = client.post("/api/v1/contacts", json={"name": "Jan Herec"}, headers=AUTH).json()["id"]
+    actor = client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": actor_cid, "character_name": "X"}, headers=AUTH).json()
+    draft = client.post(f"/api/v1/productions/{pid}/call-sheets", json={
+        "shoot_date": "2026-09-23", "day_number": 1, "day_count": 2, "draft": True,
+        "initial_revision": {
+            "general_crew_call": "06:30",
+            "schedule_items": [_scene("42", 1)],
+            "crew_calls": [{"crew_member_id": member["id"], "call_time": "05:15"}],
+            "cast_calls": [{"cast_member_id": actor["id"], "status_code": "W", "call_time": "06:00"}],
+        },
+    }, headers=AUTH).json()
+    revision_id = draft["current_revision"]["id"]
+    # Reachable even on a draft: the public seen endpoint does not 404 a draft's token match.
+    assert client.post(f"/api/v1/public/call-sheets/{draft['id']}/seen/{member['personal_token']}").status_code == 204
+    assert db_session.query(RevisionView).filter(RevisionView.revision_id == revision_id).count() == 1
+    assert db_session.query(CrewCallEntry).filter(CrewCallEntry.revision_id == revision_id).count() == 1
+    assert db_session.query(CastCallEntry).filter(CastCallEntry.revision_id == revision_id).count() == 1
+
+    assert client.delete(f"/api/v1/call-sheets/{draft['id']}", headers=AUTH).status_code == 204
+
+    assert db_session.query(RevisionView).filter(RevisionView.revision_id == revision_id).count() == 0
+    assert db_session.query(CrewCallEntry).filter(CrewCallEntry.revision_id == revision_id).count() == 0
+    assert db_session.query(CastCallEntry).filter(CastCallEntry.revision_id == revision_id).count() == 0
+    # The people themselves outlive the deleted draft.
+    assert client.get(f"/api/v1/productions/{pid}/crew-members", headers=AUTH).json()[0]["id"] == member["id"]
+    assert client.get(f"/api/v1/productions/{pid}/cast-members", headers=AUTH).json()[0]["id"] == actor["id"]

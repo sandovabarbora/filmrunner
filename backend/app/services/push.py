@@ -36,12 +36,16 @@ _SEND_TIMEOUT_SECONDS = 5
 class PushDeliveryError(Exception):
     """A push attempt failed. `gone` marks a subscription the browser itself
     revoked (404/410 from the push service) — the caller should delete it
-    rather than retry it on the next publish."""
+    rather than retry it on the next publish. `status_code` is the push
+    service's own HTTP status when there is one (None for a network/timeout
+    error), so callers can recognise a specific status (e.g. 403, a VAPID
+    signature mismatch — FR-137) without re-parsing `reason`."""
 
-    def __init__(self, reason: str, *, gone: bool = False) -> None:
+    def __init__(self, reason: str, *, gone: bool = False, status_code: int | None = None) -> None:
         super().__init__(reason)
         self.reason = reason
         self.gone = gone
+        self.status_code = status_code
 
 
 def is_configured() -> bool:
@@ -77,7 +81,7 @@ def send(*, endpoint: str, p256dh: str, auth: str, payload: dict) -> None:
         gone = status_code in (404, 410)
         reason = f"push service returned {status_code}" if status_code else str(exc)
         logger.warning("Push delivery failed for endpoint %s…: %s", endpoint[:60], reason)
-        raise PushDeliveryError(reason, gone=gone) from exc
+        raise PushDeliveryError(reason, gone=gone, status_code=status_code) from exc
     except Exception as exc:  # noqa: BLE001 — network/timeout errors from `requests`, not worth enumerating
         reason = str(exc) or exc.__class__.__name__
         logger.warning("Push delivery failed for endpoint %s…: %s", endpoint[:60], reason)
