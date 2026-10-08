@@ -83,6 +83,12 @@ TARGETS = [
         "claim": "SetHero: browser-only, no app download required; offline behaviour unaddressed in earlier snippets",
         "url": "https://sethero.com/faq/",
     },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "studiobinder-contact-export",
+        "claim": "StudioBinder: a WebSearch snippet (FR-136, 2026-10-06) states a project's contact list exports as CSV via the contact-settings menu's \"Export CSV\" option — held at partially confirmed, not yet read from the article's own rendered text",
+        "url": "https://support.studiobinder.com/en/articles/6787346-how-to-export-a-contact-list-csv-file",
+    },
 ]
 
 
