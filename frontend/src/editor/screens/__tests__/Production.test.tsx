@@ -31,6 +31,7 @@ vi.mock("../../api", async () => {
   };
 });
 
+// Only the IndexedDB calls are mocked; the pure diff/merge functions stay real, so the test drives FR-144's diff.
 vi.mock("../../crewEdits", async () => {
   const actual = await vi.importActual<typeof import("../../crewEdits")>("../../crewEdits");
   return {
@@ -93,8 +94,10 @@ describe("Crew edit form", () => {
     expect(screen.getByText("not saved")).toBeInTheDocument();
 
     // The data that reached crewEdits.ts's queuing path: only changed fields are queued.
+    // The data that reached crewEdits.ts's queuing path: only the changed field (FR-144), not the whole form.
     expect(savePendingCrewEdit).toHaveBeenCalledWith(expect.objectContaining({
       memberId: "member-1",
+      productionId: "prod-1",
       contactId: "contact-1",
       patch: { phone: "+420 999 888 777" },
     }));

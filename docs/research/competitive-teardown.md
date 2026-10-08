@@ -439,6 +439,98 @@ correction (the discipline FR-89 used for the Movie Magic price). Every
 one of the four is recorded above with its own current reason, not
 retried silently or guessed from memory, per this item's failure case.
 
+## H4 recheck: does any incumbent offer script-to-schedule AI drafting? (FR-150, 2026-10-08)
+
+BRIEF.md's H4 (2026-09-18) names FilmRunner's differentiation claim as
+AI-assisted generation of a call sheet from a pasted script in minutes,
+asserting "nobody can demo this today — not Movie Magic, not StudioBinder,
+not Yamdu" — and flagged that this specific claim had never been checked
+against this doc's own teardown. This pass checks all five incumbents named
+above for an AI script-breakdown or AI script-to-schedule feature, using
+each vendor's own pages (`WebSearch` snippets quoting the vendor directly,
+upgraded to a primary-source headless render for Yamdu's two AI pages via
+`scripts/render_pricing_pages.py` + `desk-research-reverify.yml`, dispatched
+from a throwaway branch not merged to `main`, same pattern as FR-90/108/115/149
+— [run 37762341912](https://github.com/sandovabarbora/filmrunner/actions/runs/37762341912)).
+
+- **Yamdu — confirmed present, for script-to-breakdown (not script-to-schedule).**
+  This is a real, direct contradiction of H4's own wording. Yamdu's own
+  rendered page ([yamdu.com/en/lp/script-breakdown/](https://yamdu.com/en/lp/script-breakdown/),
+  rendered 2026-10-08) states plainly: "Import scripts from Final Draft,
+  Fountain, Celtx, or even PDF. Let Yamdu scan and arrange all the scene
+  information to help get you started right away," and under
+  "AI-Enhanced Script Tagging": "Tag the script or let Yamdu's AI create
+  breakdown suggestions for the creative departments to confirm and add
+  costumes, props, and other elements to your breakdown." It also auto-detects
+  characters and locations from the script import. Yamdu's own AI-info page
+  ([yamdu.com/en/ai-info/](https://yamdu.com/en/ai-info/), rendered 2026-10-08)
+  dates this feature's launch: "Start of the AI features beta test, including
+  breakdowns (2025-10-28)" — a beta that started just over eleven months
+  before this check; the page does not say whether it has since left beta.
+  **The schedule step itself stays manual, even for Yamdu**: the same
+  script-breakdown page's "Quick, Dynamic Planning" section describes moving
+  from breakdown to shooting schedule by dragging and dropping scenes on a
+  stripboard, with breakdown data "auto-filled" into it — no AI claim for
+  schedule generation itself, only for the breakdown step that feeds it.
+  So H4's narrower claim ("nobody offers AI-assisted script breakdown")
+  is false for Yamdu specifically; H4's broader claim (full script-to-schedule
+  generation with no human in the loop) still holds for Yamdu, since
+  scheduling remains a manual stripboard action.
+- **StudioBinder — confirmed absent.** StudioBinder's own script-breakdown
+  page ([studiobinder.com/script-breakdown-software/](https://www.studiobinder.com/script-breakdown-software/),
+  `WebSearch`-quoted directly 2026-10-08) describes manual element tagging
+  that feeds the schedule and call sheet; the only named automation is that
+  "when characters have dialogue in a scene, the software automatically
+  assigns cast IDs" — not AI-driven tagging or scheduling. StudioBinder's own
+  2026 blog post "16 Best AI Filmmaking Tools" treats AI as an external
+  category (suggesting a user run ChatGPT over their own script), not a
+  StudioBinder-built feature, and never claims the product itself runs AI
+  tagging or scheduling. A third-party comparison table (Filmustage, archived,
+  checked 2026-10-08) independently marks StudioBinder's "Automatic Script
+  Breakdown" as absent. Confirmed absent from the vendor's own page.
+- **SetHero — confirmed absent, in the vendor's own words.** SetHero's FAQ,
+  rendered directly this shift (not a `WebSearch` snippet — the full page
+  text came back clean this time, unlike FR-83/90/135's earlier 403/202
+  blocks on this same domain): "Does SetHero do scheduling or script
+  breakdowns? Currently, SetHero does not do scheduling or script
+  breakdowns. An awesome tool we recommend using for that is
+  https://thinkcrew.com/" ([sethero.com/faq/](https://sethero.com/faq/),
+  rendered 2026-10-08). The most direct, most confirmed answer of the five —
+  SetHero explicitly disclaims both scheduling and breakdown, AI or
+  otherwise, and points customers elsewhere.
+- **Croogloo — still unverified, same root cause as this doc's other
+  Croogloo gaps.** `croogloo.com/features/` — the page most likely to state
+  an AI claim if one exists — is confirmed 404 (FR-87, re-confirmed FR-135);
+  no replacement marketing page was found by a fresh `WebSearch` this shift
+  either. The reachable support docs describe a "Parse Script" option
+  ([support.croogloo.com Scripts & Sides](https://support.croogloo.com/en/collections/2618123-scripts-sides),
+  checked 2026-10-08) with no AI language anywhere in the visible help-center
+  titles or excerpts. This is suggestive of "absent" but not a confirmed
+  claim from a vendor marketing page the way StudioBinder/SetHero/Movie
+  Magic are — stays **unverified**, per this item's own failure case, same
+  as the revision-history-UI gap above.
+- **Movie Magic Scheduling — confirmed absent.** The official manual
+  (`mms-docs.ep.com`, `WebSearch`-quoted directly 2026-10-08) describes
+  script import as literal element-name matching: a plain `.fdx` import
+  brings in only the slugline and speaking characters, and a tagged `.sex`
+  ("Scheduling Export") file carries element data that is matched against
+  existing elements by name, creating new ones automatically on a mismatch —
+  rule-based import, not content understanding. EP's release notes (checked
+  back to the 10.4.22 beta, November 2023) and support FAQ never use AI/ML
+  language for this feature. Confirmed absent from the vendor's own
+  documentation, the deepest primary-source confirmation of the five since
+  it comes from the product manual itself, not a marketing page.
+
+**Net effect on H4**: the broad claim ("full script-to-schedule AI
+generation, no incumbent offers it") still holds across all five — nobody
+generates a *schedule* from a script via AI, FilmRunner's wedge is intact
+on that front. But H4's own wording names "not Yamdu" specifically for the
+general AI-assisted claim, and Yamdu's AI-assisted *script breakdown*
+(the step immediately before scheduling) is real, in beta since
+2025-10-28, confirmed from Yamdu's own pages — so H4 as literally worded
+is now **confirmed false for that one claim** and needs a narrower formulation
+(AI-assisted *scheduling* specifically, not breakdown) if it is to keep
+being used in positioning copy.
 ## Headless-render pass (FR-138, 2026-10-06)
 
 FR-135's own next step above — add the StudioBinder mobile/offline FAQ
@@ -458,6 +550,27 @@ and does not itself confirm or deny the original "in the pipeline"
 roadmap claim — recorded as a partial resolution, not guessed past what
 the page actually says, per this item's own failure case.
 
+## SetHero no longer bot-walled, still no matching figure (FR-149, 2026-10-08)
+
+FR-149 was proposed (2026-10-08 morning brief) to headless-render Yamdu
+pricing and SetHero pricing/FAQ, and separately to resolve StudioBinder's
+mobile/offline claim — but both were mistaken premises, caught before any
+doc was wrongly rewritten: Yamdu/SetHero were already rendered twice (FR-90,
+re-confirmed by FR-135) with nothing new to find, and StudioBinder's
+mobile/offline claim is the section directly above, already resolved by
+FR-138 two days earlier (PR #378, merged after this item was proposed and
+started — a genuine duplicate caught only once this PR's conflict with
+`main` surfaced it, not before; see `BACKLOG.md`'s FR-149 note for the
+correction and the process gap it names). Re-running the dispatch
+([run 37748564705](https://github.com/sandovabarbora/filmrunner/actions/runs/37748564705))
+did surface one small, non-duplicate fact worth keeping: SetHero's
+`/pricing/` and `/faq/` pages no longer return the FR-83/90 202
+holding/interstitial response — both now return their real pages (200,
+57 and 122 rendered lines respectively) — but neither page states a
+figure matching this doc's "$19/month" claim, so that claim stays
+**unverified**, cause narrowed from "bot-walled" to "reachable, no
+matching figure on the page" rather than confirmed.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
@@ -474,6 +587,10 @@ the page actually says, per this item's own failure case.
   "version history", "call sheet versions") or browsing the Croogloo help
   center's own search/collections directly, not re-rendering the same
   three pages.
+  pricing/FAQ — now reachable but still no matching figure, Croogloo
+  revision-history UI — StudioBinder mobile/offline is resolved as far as
+  a rendered page can take it, per FR-138 above; only a vendor statement
+  using the word "offline" itself would close the remaining gap).
 - Confirm current-year (2026) pricing directly on each vendor site —
   several figures above come from third-party aggregators that may lag
   the vendor's own page.
