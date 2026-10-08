@@ -55,7 +55,7 @@ writing a stale recording if a selector it depends on is gone.
 
 API on Fly.io (`backend/fly.toml`, region fra), Postgres on Supabase used
 as plain Postgres, see `docs/adr/ADR-002-hosting.md`. Deploy is manual
-and founder-only: `cd backend && fly deploy` (migrations run as the
+and founder-only: `cd backend && fly deploy --build-arg FILMRUNNER_GIT_SHA=$(git rev-parse HEAD)` (migrations run as the
 release command). Secrets live in Fly only. After the first deploy, seed
 one realistic demo production and call sheet so the live URL shows
 something real on first open: `cd backend && python -m app.seed_demo`
