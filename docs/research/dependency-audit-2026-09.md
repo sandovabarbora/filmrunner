@@ -335,6 +335,63 @@ for whoever eventually revisits test tooling.
 No migration, no API contract change, no `app/` code change — this PR is
 the version bump alone. Backend changed: deploy needed (pins only).
 
+## Scheduled re-run infrastructure, and one new finding (FR-152, 2026-10-08 17:00 shift)
+
+FR-91/100/110/117/124 above are each a one-off backlog item filed purely
+because the advisory database moved since the last pass — the actual gap
+FR-152 closes: `.github/workflows/dependency-audit.yml` now runs both
+scanners weekly (Monday) and on demand, via `scripts/check_dependency_audit.py`,
+modeled on `pilot-readiness.yml`'s own `schedule: cron` + `workflow_dispatch`
+pattern. A clean run is silent beyond its own `$GITHUB_STEP_SUMMARY`; a run
+that finds anything beyond the `xlsx` risk already accepted below fails
+(red) rather than passing silently — the script itself does not write to
+this file (every workflow in this repo is `permissions: contents: read`
+and none commits back to the tree today, checked directly), so the failing
+run is the signal, same as `pilot-readiness.yml`'s failing checks already
+are, and a shift or the founder still does the actual write.
+
+Running the new script for real against `main`'s current HEAD (`3d87aaa`)
+to verify it before merging surfaced a genuine new finding, not previously
+documented: **`source-map-js`** (transitive, via `postcss`/`css-tree`,
+both pinned `^1.2.1` in `frontend/package-lock.json`), `GHSA-68fv-2mgg-jv7q`
+— event-loop denial of service via indexed source-map section offsets,
+high severity, affecting `>=1.0.0 <1.2.2`. `npm view source-map-js
+versions --json` confirmed `1.2.2` is published and satisfies both
+packages' own `^1.2.1` range (checked directly in `package-lock.json`'s
+`dependencies` entries for `node_modules/css-tree` and `node_modules/postcss`,
+not assumed).
+
+Fixed in this same PR, not left as a follow-up: `npm update source-map-js`
+bumped the lockfile's resolved version `1.2.1` → `1.2.2` with **no**
+`package.json` change (it is a transitive devDependency-chain package,
+never imported by this app's own code) — a 3-line `package-lock.json` diff.
+Verified real, not assumed from the version bump alone: `npm run typecheck`
+clean, `npm run build` succeeds (same four HTML entries, PWA v1.3.0
+precache manifest), `npm test` **71/71** pass. The Playwright E2E suite
+was not re-run for this change — scoped as build-tooling-only (`postcss`/
+`css-tree` are not part of this app's runtime bundle or server-rendered
+paths) and already covered by typecheck+build+unit; noted here rather
+than silently skipped.
+
+`npm audit --json` after the bump: **1 finding**, `xlsx`, unchanged from
+FR-124's own baseline — confirmed the fix closed exactly the one new
+finding and nothing else.
+
+### Backend (`pip-audit`)
+
+Fresh run via the new script, same method as every prior pass (`pip-audit
+-r backend/requirements.txt -f json`): **0 known vulnerabilities**,
+unchanged since FR-100/110/117/124.
+
+### Result
+
+One real, fixable finding caught by the very first real run of the
+infrastructure this item built — the scheduled job's own purpose
+demonstrated, not just asserted. `xlsx`'s two advisories remain the only
+open, accepted risk (still no fix on the npm registry — re-checked `npm
+view xlsx versions --json`, still `0.18.5`, same as FR-124's own
+re-check).
+
 ## Re-run (FR-124, 2026-10-02 11:00 shift): clean baseline, nothing new
 
 Due since FR-110/FR-117's 2026-10-01 10:00 pass — the advisory databases
