@@ -80,14 +80,25 @@ never a source of truth (see `TEAM.md`).
   testing. No customer quotes are in the document — it is a founder/
   mentor strategy session brief, not interview output, so it carries no
   more weight than any other hypothesis until FR-3 tests it.
-- H4 (new): the brief's differentiation claim is speed and AI-assisted
-  generation ("script to a call sheet in everyone's pocket in 30
-  minutes... nobody can demo this today — not Movie Magic, not
-  StudioBinder, not Yamdu"). FR-2's teardown already checked what these
-  incumbents do; a future pass could check that teardown against this
-  specific claim (does any incumbent offer script-to-schedule AI
-  drafting?) but that recheck is not done in this shift and is not
-  asserted here.
+- H4 (new, rechecked 2026-10-08 — FR-150): the brief's differentiation claim
+  is speed and AI-assisted generation ("script to a call sheet in everyone's
+  pocket in 30 minutes... nobody can demo this today — not Movie Magic, not
+  StudioBinder, not Yamdu"). The recheck this note asked for is done: see
+  `competitive-teardown.md`'s "H4 recheck" section. Result is mixed, not a
+  clean confirmation — **full script-to-schedule AI generation (a schedule
+  drafted by AI from a script, no human in the loop) is still offered by
+  none of the five incumbents**, so the broad wedge claim holds. But the
+  claim as literally worded names "not Yamdu" for AI assistance generally,
+  and Yamdu's own pages (checked directly, not a `WebSearch` snippet)
+  confirm a real AI-assisted *script-breakdown* feature (character/
+  location/prop tagging suggestions a human confirms), in beta since
+  2025-10-28 — the step immediately before scheduling, not scheduling
+  itself. H4 as worded is **confirmed false for that one claim** and should
+  be narrowed to AI-assisted *scheduling* specifically before reuse in
+  positioning copy; StudioBinder, SetHero, and Movie Magic Scheduling are
+  confirmed absent even for breakdown (SetHero's own FAQ explicitly
+  disclaims both), and Croogloo stays unverified (its features page is
+  dead, the one page likely to state such a claim).
 - H5 (new): the brief names explicit anti-scope-creep guardrails ("the
   chain stays thin", "depth at the end", "one operator: the 1st AD wins
   every conflict") that read as consistent with this repo's own
