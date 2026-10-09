@@ -440,19 +440,88 @@ count, blocked on dismissing the cookie-consent overlay first. The
 order-of-magnitude estimate above is unchanged — no number was extracted
 either way, so nothing here revises it, up or down.
 
+## Cookie overlay fixed, and a deeper blocker found (FR-155, 2026-10-09)
+
+FR-154's own follow-up named a precise next step: the cookie-consent
+overlay's real markup had never been inspected, only guessed at via
+`role="button"` phrase-matching. This shift added a direct DOM dump (every
+frame, searched for the overlay's three known control labels verbatim,
+plus later for "Year of production"/"Format"/"2025") to
+`scripts/render_filmography_year_filter.py`, still on throwaway branch
+`marketing/fr-154-filmography-year-filter-throwaway` (not merged — same
+precedent as FR-108/FR-115), and dispatched it four more times via the
+open-egress `desk-research-reverify.yml` pattern
+([37922529768](https://github.com/sandovabarbora/filmrunner/actions/runs/37922529768),
+[37922911496](https://github.com/sandovabarbora/filmrunner/actions/runs/37922911496),
+[37923326885](https://github.com/sandovabarbora/filmrunner/actions/runs/37923326885),
+[37923780172](https://github.com/sandovabarbora/filmrunner/actions/runs/37923780172)),
+reading each job log directly.
+
+**Part 1, fixed and confirmed, not just attempted**: the dump showed
+"Reject all" rendered as a plain `<span role=None>` with no accessible role
+at all — the real reason every `role="button"` lookup in
+FR-105/108/115/149/150/154 silently matched nothing. Added a text-based
+(`get_by_text`, any role) fallback click. Result: `OK. I Agree.` is now
+clicked successfully, and a second dump taken immediately after confirms
+both `OK. I Agree.` and `Individualised settings` are gone from the DOM
+(`Reject all` persists as a separate, always-present footer "Cookie
+settings" control, unrelated to the dismissed modal — checked separately,
+not conflated with the modal itself being gone). This part of FR-155's dod
+is done: the overlay is dismissed and confirmed gone via a real DOM read,
+not an assumption.
+
+**Part 2: dismissing the overlay did not unblock the interaction — a
+second, previously-unseen blocker exists.** With the overlay gone, the
+`'2025'` exact-text matches FR-154 found "but not clickable" were dumped
+directly too: they resolve to `<span class="text-sm medium">2025</span>`
+inside each production card's `<div class="badge ...">` (e.g. "2025, 2026
+production" under "Resident Evil") — the listing's own date badges, not
+the year-filter's control. The real "Year of production" accordion was
+dumped the same way: it is a bare `<label class="label">Year of
+production</label>`, no `for` attribute, no role. Clicking it directly
+(Playwright's full actionability trace, read from the job log) fails after
+15 retries over 5s with **"element is not visible"** — not covered by
+another element, not a timing race, genuinely not rendered as visible.
+Walking up to the label's parent and clicking that instead resolves to
+`<div role="combobox" aria-readonly="true" aria-expanded="false"
+aria-disabled="false" class="form-control input dropdown is-dropdown
+show-desktop">` — a real custom ARIA combobox widget, confirmed collapsed
+(`aria-expanded="false"`) — which **also** reports "element is not
+visible" under the identical retry trace. So "Year of production" is a
+genuine collapsed custom dropdown component (not a decorative label, and
+not a button this script merely guessed the wrong role for), but neither
+it nor its label is currently visible to Playwright's actionability check,
+for a reason not yet diagnosed (candidates, untried: the combobox needs
+scrolling into the viewport first; it only renders at non-zero height
+after a different ancestor — maybe the "Filtering"/"Format" sidebar
+container itself — is interacted with first; or it is intentionally
+hidden until a separate "show filters" toggle elsewhere on the page runs
+first).
+
+**Per this item's own failure case**: this is recorded as "unverified"
+with two specific, confirmed facts — the per-year filter panel and its
+live counter exist (FR-154, unchanged), and the cookie overlay is no
+longer the blocker (FR-155, this shift) — plus one specific new blocker
+named exactly: a collapsed `role="combobox"` element Playwright cannot yet
+interact with. No count is guessed either way; the order-of-magnitude
+estimate above is unchanged.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- **Narrowed by FR-154 (2026-10-09)**: the year-filter interaction script
-  (`scripts/render_filmography_year_filter.py`, kept on throwaway branch
-  `marketing/fr-154-filmography-year-filter-throwaway`, not merged) needs
-  its cookie-consent dismissal step fixed first — try locating the
-  "OK. I Agree." control via `get_by_role("link", ...)` or a plain CSS
-  text/attribute selector instead of `role="button"`, confirm the overlay
-  is actually gone (e.g. assert it's no longer in the accessibility tree,
-  not just that a click was attempted) before any further interaction, then
-  retry expanding "Year of production" and selecting a specific year. The
-  hard part (finding the real filter panel and its live counter) is already
-  done and documented above; the remaining gap is narrow and mechanical.
+- **Narrowed by FR-155 (2026-10-09)**: the year-filter interaction script
+  (`scripts/render_filmography_year_filter.py`, throwaway branch
+  `marketing/fr-154-filmography-year-filter-throwaway`, not merged) has its
+  cookie-consent dismissal fixed and confirmed (see above) — the remaining
+  gap is narrower and specific: make the `role="combobox"` "Year of
+  production" dropdown visible/interactable. Try, in order: (a) scroll the
+  combobox element into view explicitly before clicking (Playwright's
+  auto-scroll may not reach it inside a nested scroll container); (b) dump
+  the combobox's own ancestor chain (same markup-dump technique used above)
+  to check whether a different, currently-collapsed container needs
+  expanding first; (c) check for a `visibility:hidden`/`height:0` CSS state
+  tied to a sibling toggle this script has not yet clicked. The hard parts
+  (the live counter, and the cookie overlay) are done; what remains is one
+  specific, named visibility problem on one specific, identified element.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - **Closed (FR-121, 2026-10-02)**: the 15–20% critical-mass figure is
