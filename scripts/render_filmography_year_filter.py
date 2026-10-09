@@ -73,6 +73,30 @@ def _dismiss_cookie_banner(page) -> str:
     return "no cookie-banner button matched any known text (may not exist, or none was needed)"
 
 
+def _open_advanced_search(page) -> str:
+    """The page's visible text includes an 'Advanced search' toggle before any
+    year/country/format options appear — those options may only become
+    interactable once it's expanded. Best-effort; reports what happened."""
+    for role in ("button", "link"):
+        try:
+            loc = page.get_by_role(role, name="Advanced search", exact=False)
+            if loc.count() > 0:
+                loc.first.click(timeout=5000)
+                page.wait_for_timeout(500)
+                return f"clicked role={role} 'Advanced search'"
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        loc = page.get_by_text("Advanced search", exact=False)
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            page.wait_for_timeout(500)
+            return "clicked plain-text 'Advanced search'"
+    except Exception:  # noqa: BLE001
+        pass
+    return "no 'Advanced search' toggle could be found or clicked"
+
+
 def _find_and_activate_year_control(page, year: str) -> tuple[str, bool]:
     """Try several strategies to find and activate a control for `year`.
 
@@ -152,6 +176,9 @@ def main() -> int:
 
         before_lines = _to_lines(page.locator("body").inner_text(timeout=TIMEOUT_MS))
         before_entries = _entries_lines(before_lines)
+
+        advanced_search_note = _open_advanced_search(page)
+        report.append(f"- advanced search: {advanced_search_note}")
 
         strategy_desc, activated = _find_and_activate_year_control(page, TARGET_YEAR)
         report.append(f"- year-control strategy for {TARGET_YEAR!r}: {strategy_desc}")
