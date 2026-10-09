@@ -117,10 +117,20 @@ item's own failure case — the same convention FR-2 used.
   ([support.croogloo.com: Distribution List Features — Compare, Export, Merge](https://support.croogloo.com/en/articles/7939987-distribution-list-features-compare-export-merge),
   [support.croogloo.com: Exporting Contacts](https://support.croogloo.com/en/articles/10139791-exporting-contacts), checked 2026-09-18).
   Call sheets, sides comparisons, and distribution reports (open/confirm/
-  bounce tracking) do not have a documented export in the snippets found;
-  **unverified** whether that history survives leaving the platform.
-- **Working export function**: yes, for contacts specifically — confirmed
-  directly from Croogloo's own help center.
+  bounce tracking) do not have a documented export — **confirmed absent**
+  across seven directly-read help-center articles (FR-148, FR-153); the
+  in-app tracking UI and emailed status reports are not a file export.
+  **Unverified** whether that distribution history survives leaving the
+  platform. Accounting/time data is a separate story: submitted Daily Time
+  Reports and Weekly Timesheets are emailed to Accounting admins as an
+  Excel file (one sheet per department) and also kept in-app under
+  Documents → Time Reports — a second, real export surface, but scoped to
+  payroll/accounting data, not call sheets (see "Resolution" below, FR-153).
+- **Working export function**: yes, for contacts (full CSV/Excel/vCard
+  download) and for time reports/timesheets (automatic Excel-by-email to
+  Accounting) — confirmed directly from Croogloo's own help center. No
+  export function confirmed for call sheets, distribution reports, or
+  templates.
 - **Lock-in signal**: none found. Croogloo documents integrations with
   Excel, Google Drive/Calendar, Dropbox, Slack, and Movie Magic Scheduling
   ([croogloo.com/features via search](https://croogloo.com/features/), checked 2026-09-14, re-confirmed
@@ -337,13 +347,58 @@ rather than stretched to fit, per this item's own failure case. That claim
 stays **unverified**, unchanged from the 2026-09-25/2026-10-06 passes — a
 different source (not these three articles) would be needed to resolve it.
 
+## Resolution: Croogloo's export surface beyond contacts (FR-153, 2026-10-09)
+
+A fresh `WebSearch` pass (not a help-center collections browse — "Documents"
+and the other collection names FR-151 already surfaced returned no further
+candidate articles when searched directly for "export"/"Reports") found four
+new named articles beyond the three FR-136/148 already resolved as not
+export: **Distribution Tracking Reports**, **Track your Distribution**,
+**Daily Time Reports**, and **Time Report Tracking and Storage
+(Accounting)**. All four were added to `scripts/render_pricing_pages.py`'s
+`TARGETS` list (the same containment-avoiding path FR-138/139/148 already
+used) and dispatched through `desk-research-reverify.yml`
+([run 37897908781](https://github.com/sandovabarbora/filmrunner/actions/runs/37897908781)),
+rendered text read directly from the job log, not a `WebSearch` snippet:
+
+- **Distribution Tracking Reports** / **Track your Distribution**: both
+  describe only an in-app tracking UI (Sent/Received/Opened/Bounced/
+  Deferred/Dropped status, viewed via a "Track distribution" shortcut) and
+  emailed status reports — no export, download, CSV, or Excel function
+  named anywhere in either article's full rendered text. These two do not
+  extend the export surface.
+- **Daily Time Reports**: a short stub article with no body text of its
+  own (just category tags and "Related Articles" links); it points to
+  **Time Report Tracking and Storage (Accounting)** as the real source.
+- **Time Report Tracking and Storage (Accounting)**: a genuine new export
+  surface, **confirmed present**, distinct from the contacts export. Its
+  own text: "Departments will be loaded on their own sheet within the
+  excel file, in addition to a sheet for the Daily Production Report" —
+  submitted Daily Time Reports and Weekly Timesheets are emailed to the
+  production's Accounting admin(s) as an **Excel file**, one sheet per
+  department, triggered automatically on every submission; the same data
+  is also "databanked in Croogloo" and retrievable in-app from the
+  Documents module's Time Reports folder. This is accounting/time data,
+  not call-sheet or distribution-report data, and the delivery mechanism
+  is an automatic email attachment rather than an on-demand export button
+  — a narrower, different-shaped surface than the contacts export's
+  List-Options-menu download, named plainly rather than conflated with it.
+
+**Net effect on Q6 (switching cost):** Croogloo's export surface is no
+longer "contacts only" — a second, real export path exists (time/payroll
+data as Excel), but it is accounting-scoped, not a call-sheet/distribution/
+template export. The specific question FR-136/148 opened (can a call
+sheet, a distribution report, or a template be exported) is still
+**confirmed absent** across all seven articles checked directly so far
+(three FR-148, three FR-136/this item's Distribution-tracking pair, one
+Daily-Time-Reports stub); only the Accounting time-report path was net-new.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- Find Croogloo's actual export surface, if one exists beyond contacts
-  (already confirmed) — the three named articles above are now resolved
-  as not it, so a fresh `WebSearch` or help-center browse for other
-  candidate articles (e.g. a "Reports" or "Export" collection) is the next
-  step, not a re-render of the same three pages.
+- Croogloo's call-sheet/distribution-report/template export question is
+  now checked against seven named articles with nothing found; a further
+  search would need a genuinely different candidate (not another
+  variation of "export"/"reports" wording) — none turned up this pass.
 - Find a source for Croogloo's call-sheet-specific revision-history UI —
   the three articles rendered this shift don't address it; `croogloo.com/features/`
   is confirmed gone (FR-87/135) and no help-center article found so far

@@ -107,6 +107,30 @@ TARGETS = [
         "claim": "Croogloo: 'Adding Dailies to Call Sheet Distro' article — found by FR-136 as a WebSearch snippet only, no export/download function named for a call sheet, distribution report, or template",
         "url": "https://support.croogloo.com/en/articles/10279483-adding-dailies-to-call-sheet-distro",
     },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-distribution-tracking-reports",
+        "claim": "Croogloo: 'Distribution Tracking Reports' article — found by FR-153 (2026-10-09) as a fresh WebSearch snippet, describing emailed/in-app tracking reports (sent/received/opened status); unverified whether the report itself can be exported/downloaded as a file",
+        "url": "https://support.croogloo.com/en/articles/7953857-distribution-tracking-reports",
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-track-your-distribution",
+        "claim": "Croogloo: 'Track your Distribution' article — found by FR-153 (2026-10-09) as a fresh WebSearch snippet, sibling to Distribution Tracking Reports; unverified whether it names an export/download function",
+        "url": "https://support.croogloo.com/en/articles/10227461-track-your-distribution",
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-daily-time-reports",
+        "claim": "Croogloo: 'Daily Time Reports' article — found by FR-153 (2026-10-09) as a fresh WebSearch snippet, a different export surface candidate (accounting/time data, not contacts); unverified whether it names an export/download function",
+        "url": "https://support.croogloo.com/en/articles/10911328-daily-time-reports",
+    },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "croogloo-time-report-tracking-storage",
+        "claim": "Croogloo: 'Time Report Tracking and Storage (Accounting)' article — found by FR-153 (2026-10-09) as a fresh WebSearch snippet; unverified whether it names an export/download function for accounting data",
+        "url": "https://support.croogloo.com/en/articles/7832584-time-report-tracking-and-storage-accounting",
+    },
 ]
 
 
