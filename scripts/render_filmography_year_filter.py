@@ -44,7 +44,7 @@ COOKIE_BUTTON_TEXTS = [
     "Accept all", "Accept All", "Accept", "I agree", "I Agree",
     "Souhlasím", "Rozumím", "Povolit vše", "Allow all", "Allow All",
 ]
-_ENTRIES_RE = re.compile(r"\b\d[\d,]*\s*(total\s+)?entries\b", re.IGNORECASE)
+_ENTRIES_RE = re.compile(r"\b\d[\d,]*\s*(total\s+)?entries\b|show results\s*\(\s*\d[\d,]*\s*\)", re.IGNORECASE)
 
 
 def _to_lines(text: str) -> list[str]:
@@ -95,6 +95,31 @@ def _open_advanced_search(page) -> str:
     except Exception:  # noqa: BLE001
         pass
     return "no 'Advanced search' toggle could be found or clicked"
+
+
+def _expand_year_section(page) -> str:
+    """Within the Advanced search panel, 'Year of production' reads as a
+    section header with no year values shown yet — likely its own
+    collapsible accordion, the same pattern 'Advanced search' itself used.
+    Best-effort; reports what happened."""
+    for role in ("button", "link"):
+        try:
+            loc = page.get_by_role(role, name="Year of production", exact=False)
+            if loc.count() > 0:
+                loc.first.click(timeout=5000)
+                page.wait_for_timeout(500)
+                return f"clicked role={role} 'Year of production'"
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        loc = page.get_by_text("Year of production", exact=False)
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            page.wait_for_timeout(500)
+            return "clicked plain-text 'Year of production'"
+    except Exception:  # noqa: BLE001
+        pass
+    return "no 'Year of production' toggle could be found or clicked"
 
 
 def _find_and_activate_year_control(page, year: str) -> tuple[str, bool]:
@@ -191,6 +216,22 @@ def main() -> int:
         report.append("")
         report.extend(f"- {l}" for l in new_after_advanced_search) if new_after_advanced_search else report.append(
             "(no new lines — opening Advanced search did not visibly change the rendered text)"
+        )
+        report.append("")
+
+        year_section_note = _expand_year_section(page)
+        report.append(f"- year-of-production section: {year_section_note}")
+        try:
+            page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+        except Exception:  # noqa: BLE001
+            page.wait_for_timeout(1000)
+        after_year_section_lines = _to_lines(page.locator("body").inner_text(timeout=TIMEOUT_MS))
+        new_after_year_section = [l for l in after_year_section_lines if l not in set(after_advanced_search_lines)]
+        report.append("")
+        report.append("## Lines present after expanding 'Year of production' but not before (do individual years appear?)")
+        report.append("")
+        report.extend(f"- {l}" for l in new_after_year_section) if new_after_year_section else report.append(
+            "(no new lines — expanding 'Year of production' did not visibly change the rendered text)"
         )
         report.append("")
 
