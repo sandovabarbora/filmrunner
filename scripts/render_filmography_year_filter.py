@@ -182,14 +182,36 @@ def _expand_year_section(page) -> str:
                 return f"clicked role={role} 'Year of production'"
         except Exception:  # noqa: BLE001
             continue
+    direct_click_error = None
     try:
         loc = page.get_by_text("Year of production", exact=False)
         if loc.count() > 0:
             loc.first.click(timeout=5000)
             page.wait_for_timeout(500)
             return "clicked plain-text 'Year of production'"
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001 — FR-155: surface *why* the click failed instead of swallowing it
+        direct_click_error = f"{type(e).__name__}: {e}"
+
+    # FR-155: a markup dump showed this is a bare <label class="label"> with
+    # no `for` attribute and no role — not independently interactive. The
+    # same "Advanced search" toggle worked as a real link, so this label is
+    # plausibly just the visible text inside a clickable wrapper row (the
+    # usual accordion-header pattern). Try the label's own parent element.
+    try:
+        loc = page.locator("xpath=//*[normalize-space(text())='Year of production']/..")
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            page.wait_for_timeout(500)
+            return "clicked the parent element of the 'Year of production' label"
+    except Exception as e:  # noqa: BLE001
+        if direct_click_error:
+            return (
+                f"direct click on 'Year of production' failed ({direct_click_error}); "
+                f"parent-element click also failed ({type(e).__name__}: {e})"
+            )
+
+    if direct_click_error:
+        return f"found plain-text 'Year of production' but click() raised {direct_click_error}"
     return "no 'Year of production' toggle could be found or clicked"
 
 
