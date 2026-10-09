@@ -44,7 +44,60 @@ COOKIE_BUTTON_TEXTS = [
     "Accept all", "Accept All", "Accept", "I agree", "I Agree",
     "Souhlasím", "Rozumím", "Povolit vše", "Allow all", "Allow All",
 ]
+# FR-155: the three control labels FR-154's own DOM dumps showed verbatim in
+# the overlay's text, used to find the real markup directly instead of
+# guessing a role again.
+COOKIE_OVERLAY_TEXTS = ["OK. I Agree.", "Individualised settings", "Reject all"]
 _ENTRIES_RE = re.compile(r"\b\d[\d,]*\s*(total\s+)?entries\b|show results\s*\(\s*\d[\d,]*\s*\)", re.IGNORECASE)
+
+_DUMP_MATCHING_ELEMENTS_JS = """
+(needle) => {
+  const matches = [];
+  const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT);
+  let node = walker.currentNode;
+  while (node) {
+    const text = (node.textContent || '').trim();
+    if (text && text.includes(needle)) {
+      const childHasIt = Array.from(node.children).some(c => (c.textContent || '').includes(needle));
+      if (!childHasIt) {
+        matches.push({
+          tag: node.tagName,
+          role: node.getAttribute('role'),
+          id: node.id,
+          className: node.className,
+          outerHTML: node.outerHTML.slice(0, 500),
+        });
+      }
+    }
+    node = walker.nextNode();
+  }
+  return matches;
+}
+"""
+
+
+def _dump_cookie_overlay_markup(page) -> list[str]:
+    """Search every frame's real DOM for the overlay's three known control
+    labels and report each match's tag/role/id/class/outerHTML directly, per
+    FR-155's dod: read the real markup instead of guessing a role again."""
+    lines = []
+    for frame in page.frames:
+        for needle in COOKIE_OVERLAY_TEXTS:
+            try:
+                matches = frame.evaluate(_DUMP_MATCHING_ELEMENTS_JS, needle)
+            except Exception as e:  # noqa: BLE001 — a detached/cross-origin frame must not abort the whole dump
+                lines.append(f"- frame {frame.url!r}, needle {needle!r}: evaluate failed: {type(e).__name__}: {e}")
+                continue
+            if not matches:
+                lines.append(f"- frame {frame.url!r}, needle {needle!r}: no element's textContent contains this text")
+                continue
+            for m in matches:
+                lines.append(
+                    f"- frame {frame.url!r}, needle {needle!r}: "
+                    f"<{m['tag']} role={m['role']!r} id={m['id']!r} class={m['className']!r}> "
+                    f"{m['outerHTML']}"
+                )
+    return lines
 
 
 def _to_lines(text: str) -> list[str]:
@@ -198,6 +251,13 @@ def main() -> int:
 
         cookie_note = _dismiss_cookie_banner(page)
         report.append(f"- cookie banner: {cookie_note}")
+
+        report.append("")
+        report.append("## Cookie overlay markup dump, right after the first dismissal attempt (FR-155)")
+        report.append("")
+        first_dump = _dump_cookie_overlay_markup(page)
+        report.extend(f"{l}" for l in first_dump) if first_dump else report.append("(no frames found)")
+        report.append("")
 
         before_lines = _to_lines(page.locator("body").inner_text(timeout=TIMEOUT_MS))
         before_entries = _entries_lines(before_lines)
