@@ -376,13 +376,83 @@ Czech-domestic, ad, and student productions this doc's estimate depends on
 most for the "low tens to low hundreds" range. **The order-of-magnitude
 estimate above is unchanged**; no defensible new count was extracted.
 
+## Filmography year-filter interaction attempt (FR-154, 2026-10-09)
+
+FR-105's own follow-up (above) named the next step precisely: render the
+Filmography page's year filter with real headless Chromium, since its
+per-year counts are populated client-side. This shift built
+`scripts/render_filmography_year_filter.py` and dispatched it five times via
+the open-egress `desk-research-reverify.yml` pattern (FR-90/108/115/149/150's
+own precedent), on throwaway branch
+`marketing/fr-154-filmography-year-filter-throwaway` (not merged — the script
+is a one-off interaction tool, not a permanent addition, same as FR-115's
+`fetch_office_docs.py`). Each run read the real rendered DOM directly via the
+GitHub Actions job log, not a `WebSearch` snippet.
+
+**Genuine progress, not a clean result**: iterating across the five runs
+([37910070707](https://github.com/sandovabarbora/filmrunner/actions/runs/37910070707),
+[37910321583](https://github.com/sandovabarbora/filmrunner/actions/runs/37910321583),
+[37910636001](https://github.com/sandovabarbora/filmrunner/actions/runs/37910636001),
+[37910968399](https://github.com/sandovabarbora/filmrunner/actions/runs/37910968399),
+[37911298704](https://github.com/sandovabarbora/filmrunner/actions/runs/37911298704))
+confirmed real structure that no prior shift had seen, but did not reach a
+per-year number:
+
+1. A direct attempt (no interaction beyond the page load) found two DOM
+   elements with the exact text "2025" but neither was clickable — the
+   first sign something was blocking interaction, not yet explained.
+2. Clicking the page's "Advanced search" link (confirmed clickable,
+   `role=link`) and reading the DOM state right after revealed a real
+   filter panel that no earlier shift had read: "Filtering", "Format",
+   "**Year of production**", a sort control, and, critically, "**Show
+   results (506)**" — a live, client-rendered result counter. 506 matches
+   FR-105's own unfiltered total exactly, confirming this counter is the
+   genuine per-year-count mechanism FR-105 inferred must exist, not a
+   different or decorative number.
+3. "Year of production" itself shows no individual year values in the
+   panel yet — clicking it (as a presumed accordion toggle, the same
+   pattern "Advanced search" used) succeeded in one run and failed in
+   another, with no code difference between the two attempts other than
+   retrying — inconsistent behaviour pointing at something external
+   intercepting the click rather than the control itself being unreachable.
+4. The actual cause: every run's full-text dump (present from the very
+   first run, including run 1 before any fix was attempted) shows a
+   persistent cookie-consent overlay ("In order to give you the best
+   service, we need your consent... **OK. I Agree.** / Individualised
+   settings / Reject all") that was never dismissed. The script's dismissal
+   logic searches for an accessible `role="button"` matching a list of
+   known consent-button phrases (including "I Agree", which is a substring
+   of "OK. I Agree.") — it found no match in any of the five runs, meaning
+   the actual controls are implemented some other way (e.g. plain links or
+   custom elements with no button role) this script never tried. A
+   persistent overlay is the most plausible explanation for the two
+   consistently-non-clickable "2025" elements (Playwright's actionability
+   check fails an element whose click point is covered by something else)
+   and for the inconsistent "Year of production" click result.
+
+**Per this item's own failure case**: this is recorded as "unverified,
+client-rendered filter panel confirmed to exist but not reachable from this
+routine" — a specific technical reason, not a guessed number. **What this
+closes**: whether a real per-year filtered-count mechanism exists on this
+page at all (yes, confirmed: "Show results (N)", currently 506 unfiltered).
+**What stays open**: actually selecting a year and reading the updated
+count, blocked on dismissing the cookie-consent overlay first. The
+order-of-magnitude estimate above is unchanged — no number was extracted
+either way, so nothing here revises it, up or down.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- If a per-year Filmography count becomes worth the cost, render the
-  filtered page with real headless Chromium (the FR-90 pattern) rather than
-  a plain fetch, since the year-filter counts appear to be client-rendered.
-  Even then, per the finding above, expect it to remain an annual-completion
-  proxy skewed toward larger/international titles, not a 30-day count.
+- **Narrowed by FR-154 (2026-10-09)**: the year-filter interaction script
+  (`scripts/render_filmography_year_filter.py`, kept on throwaway branch
+  `marketing/fr-154-filmography-year-filter-throwaway`, not merged) needs
+  its cookie-consent dismissal step fixed first — try locating the
+  "OK. I Agree." control via `get_by_role("link", ...)` or a plain CSS
+  text/attribute selector instead of `role="button"`, confirm the overlay
+  is actually gone (e.g. assert it's no longer in the accessibility tree,
+  not just that a click was attempted) before any further interaction, then
+  retry expanding "Year of production" and selecting a specific year. The
+  hard part (finding the real filter panel and its live counter) is already
+  done and documented above; the remaining gap is narrow and mechanical.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - **Closed (FR-121, 2026-10-02)**: the 15–20% critical-mass figure is
