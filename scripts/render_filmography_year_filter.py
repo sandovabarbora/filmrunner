@@ -76,13 +76,13 @@ _DUMP_MATCHING_ELEMENTS_JS = """
 """
 
 
-def _dump_cookie_overlay_markup(page) -> list[str]:
-    """Search every frame's real DOM for the overlay's three known control
-    labels and report each match's tag/role/id/class/outerHTML directly, per
-    FR-155's dod: read the real markup instead of guessing a role again."""
+def _dump_markup_for_texts(page, texts: list[str]) -> list[str]:
+    """Search every frame's real DOM for each of `texts` and report each
+    match's tag/role/id/class/outerHTML directly, per FR-155's dod: read the
+    real markup instead of guessing a role again."""
     lines = []
     for frame in page.frames:
-        for needle in COOKIE_OVERLAY_TEXTS:
+        for needle in texts:
             try:
                 matches = frame.evaluate(_DUMP_MATCHING_ELEMENTS_JS, needle)
             except Exception as e:  # noqa: BLE001 — a detached/cross-origin frame must not abort the whole dump
@@ -98,6 +98,10 @@ def _dump_cookie_overlay_markup(page) -> list[str]:
                     f"{m['outerHTML']}"
                 )
     return lines
+
+
+def _dump_cookie_overlay_markup(page) -> list[str]:
+    return _dump_markup_for_texts(page, COOKIE_OVERLAY_TEXTS)
 
 
 def _to_lines(text: str) -> list[str]:
@@ -309,6 +313,16 @@ def main() -> int:
         )
         report.append("")
 
+        # FR-155: the year-section toggle itself was never confirmed
+        # clickable (every attempt reports "no toggle could be found or
+        # clicked") — read its real markup the same way the cookie overlay's
+        # was read, instead of continuing to guess role=button/link.
+        report.append("## 'Year of production'/'Format' markup dump (why can the toggle not be found or clicked?)")
+        report.append("")
+        year_label_dump = _dump_markup_for_texts(page, ["Year of production", "Format"])
+        report.extend(year_label_dump) if year_label_dump else report.append("(no frames found)")
+        report.append("")
+
         # The cookie-consent widget on this site renders a few seconds after
         # the initial load (the first _dismiss_cookie_banner call above, run
         # right after domcontentloaded/networkidle, consistently found no
@@ -329,17 +343,38 @@ def main() -> int:
         second_dump = _dump_cookie_overlay_markup(page)
         if second_dump:
             report.extend(second_dump)
-            overlay_gone = all("no element's textContent contains this text" in l for l in second_dump)
+            # "Reject all" persisting while the other two are gone would mean
+            # a *different*, always-present element (e.g. a footer "Cookie
+            # settings" link) also contains that phrase — checked separately
+            # below rather than treated as the modal still being up.
+            overlay_gone = all(
+                "no element's textContent contains this text" in l
+                for l in second_dump
+                if "'OK. I Agree.'" in l or "'Individualised settings'" in l
+            )
         else:
             report.append("(no frames found)")
             overlay_gone = True
         report.append("")
-        report.append(f"- overlay confirmed gone: {overlay_gone}")
+        report.append(f"- overlay (OK I Agree / Individualised settings) confirmed gone: {overlay_gone}")
         report.append("")
 
         strategy_desc, activated = _find_and_activate_year_control(page, TARGET_YEAR)
         report.append(f"- year-control strategy for {TARGET_YEAR!r}: {strategy_desc}")
         report.append(f"- activation succeeded: {activated}")
+
+        if not activated:
+            # FR-155: the exact-text '2025' matches found above could be the
+            # listing cards' own "2025 production" labels (a different,
+            # unrelated node this script's exact-text strategy 3 never
+            # distinguished from a real filter control), not the "Year of
+            # production" panel's own controls. Read their real markup.
+            report.append("")
+            report.append(f"## {TARGET_YEAR!r} exact-text match markup dump (are these the filter's own controls, or listing-card labels?)")
+            report.append("")
+            year_match_dump = _dump_markup_for_texts(page, [TARGET_YEAR])
+            report.extend(year_match_dump) if year_match_dump else report.append("(no frames found)")
+            report.append("")
 
         after_lines = None
         after_entries = []
