@@ -123,7 +123,21 @@ def _dismiss_cookie_banner(page) -> str:
                 return f"clicked a cookie-banner button matching {text!r}"
         except Exception:  # noqa: BLE001 — try every candidate text, report the first hit
             continue
-    return "no cookie-banner button matched any known text (may not exist, or none was needed)"
+    # FR-155: the real overlay control has no accessible role at all — a
+    # markup dump (_dump_cookie_overlay_markup) showed "Reject all" rendered
+    # as a plain <span role=None>, so a role="button" locator can never
+    # match it. Fall back to a plain text locator (any element, any role)
+    # and click whatever actually renders the phrase.
+    for text in COOKIE_OVERLAY_TEXTS:
+        try:
+            loc = page.get_by_text(text, exact=False)
+            if loc.count() > 0:
+                loc.first.click(timeout=3000)
+                page.wait_for_timeout(500)
+                return f"clicked plain-text cookie-overlay control matching {text!r} (no accessible role)"
+        except Exception:  # noqa: BLE001
+            continue
+    return "no cookie-banner control matched any known text or role (may not exist, or none was needed)"
 
 
 def _open_advanced_search(page) -> str:
@@ -304,6 +318,24 @@ def main() -> int:
         # result. Dismiss it again, now that enough time has passed.
         late_cookie_note = _dismiss_cookie_banner(page)
         report.append(f"- cookie banner (second attempt, after interacting with the page): {late_cookie_note}")
+
+        # FR-155 dod: confirm the overlay is actually gone (not in the
+        # accessibility/DOM tree any more), not just that a click was
+        # attempted — a stale click target would otherwise look identical
+        # to a real dismissal in the report above.
+        report.append("")
+        report.append("## Cookie overlay markup dump, right after the second dismissal attempt (confirms whether it is actually gone)")
+        report.append("")
+        second_dump = _dump_cookie_overlay_markup(page)
+        if second_dump:
+            report.extend(second_dump)
+            overlay_gone = all("no element's textContent contains this text" in l for l in second_dump)
+        else:
+            report.append("(no frames found)")
+            overlay_gone = True
+        report.append("")
+        report.append(f"- overlay confirmed gone: {overlay_gone}")
+        report.append("")
 
         strategy_desc, activated = _find_and_activate_year_control(page, TARGET_YEAR)
         report.append(f"- year-control strategy for {TARGET_YEAR!r}: {strategy_desc}")
