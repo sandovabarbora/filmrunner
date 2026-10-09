@@ -180,6 +180,20 @@ def main() -> int:
         advanced_search_note = _open_advanced_search(page)
         report.append(f"- advanced search: {advanced_search_note}")
 
+        try:
+            page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+        except Exception:  # noqa: BLE001
+            page.wait_for_timeout(1000)
+        after_advanced_search_lines = _to_lines(page.locator("body").inner_text(timeout=TIMEOUT_MS))
+        new_after_advanced_search = [l for l in after_advanced_search_lines if l not in set(before_lines)]
+        report.append("")
+        report.append("## Lines present after opening Advanced search but not before (does a year-filter panel appear at all?)")
+        report.append("")
+        report.extend(f"- {l}" for l in new_after_advanced_search) if new_after_advanced_search else report.append(
+            "(no new lines — opening Advanced search did not visibly change the rendered text)"
+        )
+        report.append("")
+
         strategy_desc, activated = _find_and_activate_year_control(page, TARGET_YEAR)
         report.append(f"- year-control strategy for {TARGET_YEAR!r}: {strategy_desc}")
         report.append(f"- activation succeeded: {activated}")
@@ -219,6 +233,13 @@ def main() -> int:
         report.append("")
         report.append("```")
         report.append("\n".join(before_lines)[:20000])
+        report.append("```")
+
+        report.append("")
+        report.append("## Full rendered visible text right after opening Advanced search (before any year-control attempt)")
+        report.append("")
+        report.append("```")
+        report.append("\n".join(after_advanced_search_lines)[:20000])
         report.append("```")
 
         if activated:
