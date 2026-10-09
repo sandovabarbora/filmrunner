@@ -18,6 +18,23 @@ AXE = Path(__file__).resolve().parents[1] / "node_modules" / "axe-core" / "axe.m
 BLOCKING = {"serious", "critical"}
 
 
+#: Rules axe-core ships `enabled: false` by default that this app's own screens made a case
+#: for turning on (relevant to the public sheet, personal crew link, editor or print view, and
+#: not already covered by an always-on rule). Judged in full, with the ones left off and why,
+#: in docs/research/axe-ci-gate-2026-10.md's "FR-157" section. `label-content-name-mismatch`
+#: was FR-127's own fix; the rest are FR-157's survey of the other fifteen.
+ENABLED_OPT_IN_RULES = {
+    "label-content-name-mismatch": {"enabled": True},
+    "table-fake-caption": {"enabled": True},
+    "css-orientation-lock": {"enabled": True},
+    "focus-order-semantics": {"enabled": True},
+    "identical-links-same-purpose": {"enabled": True},
+    "p-as-heading": {"enabled": True},
+    "target-size": {"enabled": True},
+    "td-has-header": {"enabled": True},
+}
+
+
 def audit(page: Page, label: str) -> list[dict]:
     """Run axe on the current page; returns every violation, prints a summary, asserts none blocking.
 
@@ -26,12 +43,26 @@ def audit(page: Page, label: str) -> list[dict]:
     and `enabled: false` by default, so a plain `axe.run(document)` silently skips it; confirmed
     by reintroducing FR-82's own aria-label mismatch locally and watching the plain default run
     report zero violations. Enabled explicitly so this class of regression fails CI again.
+
+    FR-157: axe-core ships fifteen more rules `enabled: false`. Each was judged for relevance to
+    this app's own screens (not assumed); the seven in `ENABLED_OPT_IN_RULES` above are plausibly
+    relevant and workable as a hard gate here. `table-fake-caption` found a real issue: the crew
+    print view's department-divider row (`<th colspan="3">`, spanning every column) was
+    structurally identical to a one-cell "fake caption" row, axe-core's own heuristic for a
+    table's first row — true regardless of intent, since that row genuinely was this table's
+    first row. Fixed in `crewPrint.ts` by giving the table real column headers (`<thead>`:
+    Name/Position/Phone) so its actual first row has three distinct cells and the department
+    row — now further down, repeated per department, not axe's target — stops matching; the
+    free-floating "Crew list · printed ..." line was also moved into a proper `<caption>` while
+    touching this markup, a related but separate improvement. The other six enabled rules found
+    nothing on this app's current markup but are kept on as regression gates. The remaining eight
+    stay off; why is in the doc above, not repeated here.
     """
     assert AXE.exists(), "axe-core is a devDependency: run npm ci in frontend/"
     page.add_script_tag(path=str(AXE))
     result = page.evaluate(
-        "async () => await axe.run(document, { resultTypes: ['violations'],"
-        " rules: { 'label-content-name-mismatch': { enabled: true } } })"
+        "async (rules) => await axe.run(document, { resultTypes: ['violations'], rules })",
+        ENABLED_OPT_IN_RULES,
     )
     violations = result["violations"]
     print(f"\n[a11y] {label}: {len(violations)} violation kinds")
