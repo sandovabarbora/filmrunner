@@ -62,3 +62,9 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-154 throwaway step, not meant to land on main: drives the Czech
+      # Film Commission's Filmography page's year filter (FR-105 found its
+      # per-year counts are client-rendered, a plain fetch can't read them).
+      - name: Render the Filmography page's year filter
+        run: python3 scripts/render_filmography_year_filter.py
