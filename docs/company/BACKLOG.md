@@ -1630,8 +1630,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a new CVE with no safe non-breaking upgrade available (FR-91's own blocked-finding shape, or FR-111's accepted `xlsx` precedent) makes the workflow report red/flag it in the run summary rather than pass silently, and the workflow itself never auto-merges a fix — any upgrade still goes through a real PR and the full test suite, exactly as FR-100/110/117 did by hand
 
 ## FR-153 · pm · Find Croogloo's export surface beyond contacts (BRIEF Q6 follow-up)
-- state: ready
+- state: done
 - gated: no
+- note: 09:00 shift 2026-10-09 — fresh `WebSearch` found four new candidate articles; dispatched via `render_pricing_pages.py`/`desk-research-reverify.yml` (run 37897908781). Found a genuine new export surface (Daily Time Reports/Weekly Timesheets emailed to Accounting as Excel, one sheet per department) — accounting-scoped, not call-sheet/distribution/template export, which stays confirmed absent across all seven articles checked. `switching-cost-teardown.md` updated (Croogloo section + new "Resolution" section + "Follow-up needed" list). PR `docs/fr-153-croogloo-export-surface`.
 - why: BRIEF.md Q6 (what would make an AD switch mid-season) depends on each incumbent's real export/lock-in posture; `switching-cost-teardown.md`'s own "Follow-up needed" list names Croogloo's export surface beyond contacts (already confirmed) as the next open step, distinct from the revision-history-UI question FR-151 already exhausted the same day — FR-148's three rendered help-center articles resolved as not addressing either question, so this item picks up the export-surface half specifically, not a re-render of the same three pages.
 - dod:
   - run a fresh `WebSearch` for Croogloo's export features (contact list aside) and separately browse `support.croogloo.com`'s help-center collections/search index (e.g. a "Reports" or "Export" collection) for anything not already read by FR-136/FR-148/FR-151
