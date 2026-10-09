@@ -506,22 +506,72 @@ named exactly: a collapsed `role="combobox"` element Playwright cannot yet
 interact with. No count is guessed either way; the order-of-magnitude
 estimate above is unchanged.
 
+## Combobox root cause found, chain exhausted (FR-156, 2026-10-09)
+
+FR-155 named three untried candidate fixes for the collapsed `combobox`.
+This shift added all three to `scripts/render_filmography_year_filter.py`
+(still on throwaway branch `marketing/fr-154-filmography-year-filter-throwaway`,
+not merged — same precedent as FR-108/FR-115/FR-154/FR-155), tried them in
+order, stopping at the first that worked, and dispatched the script once
+via the open-egress `desk-research-reverify.yml` pattern
+([run 37935495082](https://github.com/sandovabarbora/filmrunner/actions/runs/37935495082),
+completed `success`), reading the job log directly.
+
+**(a) Explicit scroll-into-view before clicking: failed.** `scroll_into_view_if_needed`
+itself timed out after 14 retries over ~5s with "element is not visible" at
+every retry — scrolling was never the obstacle; the element has no
+position to scroll to because it isn't rendered at all (consistent with
+(c) below).
+
+**(b) Dump the combobox's own ancestor chain: no collapsed ancestor found.**
+All 7 ancestors up to the page's `<section>` wrapper report
+`display='block'`/`'flex'`, `visibility='visible'`, and a non-zero height
+(the section itself: `height='2347.75px'`). None of FR-155's "maybe a
+parent container" candidates holds — nothing upstream is hiding this
+element.
+
+**(c) Root cause, found and confirmed directly: the combobox's own computed
+style is `display: none`.** Not inherited, not a parent's state — the
+element itself. The sibling-toggle search (any adjacent element with
+`aria-expanded` or a `button`/`switch` role) matched a `<div
+role="combobox">` labelled "Format" — the page's *other* filter, a sibling
+in the same `wrapper`, not a toggle for "Year of production" specifically
+— clicked it, and retried the Year-of-production combobox click: still
+"element is not visible" after another 14 retries. Clicking a false-positive
+sibling does nothing for an element whose own style hides it; the real
+control that flips this specific element's `display` (if one exists,
+separate from the "Format" combobox found here) was not identified.
+
+**Per this item's own failure case — all three named candidates tried,
+none worked, chain named exhausted, no fourth sub-item proposed.** The two
+facts FR-154/FR-155 already confirmed stand unchanged: the per-year filter
+panel and its live counter exist, and the cookie overlay is no longer the
+blocker. The specific, now-final blocker is: the "Year of production"
+combobox has `display: none` set directly on itself, the sibling-toggle
+search available to this script found only the unrelated "Format"
+combobox next to it (not whatever control, if any, actually drives this
+element's own display state), and no further named candidate remains
+untried. The order-of-magnitude estimate above is unchanged; no count is
+guessed either way.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- **Narrowed by FR-155 (2026-10-09)**: the year-filter interaction script
+- **Exhausted by FR-156 (2026-10-09)**: the year-filter interaction script
   (`scripts/render_filmography_year_filter.py`, throwaway branch
-  `marketing/fr-154-filmography-year-filter-throwaway`, not merged) has its
-  cookie-consent dismissal fixed and confirmed (see above) — the remaining
-  gap is narrower and specific: make the `role="combobox"` "Year of
-  production" dropdown visible/interactable. Try, in order: (a) scroll the
-  combobox element into view explicitly before clicking (Playwright's
-  auto-scroll may not reach it inside a nested scroll container); (b) dump
-  the combobox's own ancestor chain (same markup-dump technique used above)
-  to check whether a different, currently-collapsed container needs
-  expanding first; (c) check for a `visibility:hidden`/`height:0` CSS state
-  tied to a sibling toggle this script has not yet clicked. The hard parts
-  (the live counter, and the cookie overlay) are done; what remains is one
-  specific, named visibility problem on one specific, identified element.
+  `marketing/fr-154-filmography-year-filter-throwaway`, not merged) tried
+  all three candidate fixes FR-155 named for the collapsed `role="combobox"`
+  "Year of production" control and confirmed the real cause — the element's
+  own computed style is `display: none`, not a collapsed ancestor and not
+  a visibility/height state on a sibling this script could identify and
+  click. No further candidate is named; re-attempting scroll/ancestor/
+  sibling-toggle fixes on this same element would duplicate this shift's
+  work. A genuinely new angle (not a retry of this one) would be needed to
+  carry this further — e.g. reading the page's own client-side JS/framework
+  source to find what sets or clears this element's `display` directly,
+  which is outside what this routine's dispatched-script pattern can do.
+  The per-year count stays "unverified, client-rendered filter confirmed to
+  exist but not reachable from this routine," exactly as FR-154/FR-155 left
+  it.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - **Closed (FR-121, 2026-10-02)**: the 15–20% critical-mass figure is
