@@ -235,6 +235,16 @@ def main() -> int:
         )
         report.append("")
 
+        # The cookie-consent widget on this site renders a few seconds after
+        # the initial load (the first _dismiss_cookie_banner call above, run
+        # right after domcontentloaded/networkidle, consistently found no
+        # match) — by now it has had time to appear, and as an overlay it
+        # would intercept clicks on whatever sits underneath it, which is a
+        # plausible real cause of every prior run's "found but not clickable"
+        # result. Dismiss it again, now that enough time has passed.
+        late_cookie_note = _dismiss_cookie_banner(page)
+        report.append(f"- cookie banner (second attempt, after interacting with the page): {late_cookie_note}")
+
         strategy_desc, activated = _find_and_activate_year_control(page, TARGET_YEAR)
         report.append(f"- year-control strategy for {TARGET_YEAR!r}: {strategy_desc}")
         report.append(f"- activation succeeded: {activated}")
