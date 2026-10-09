@@ -215,6 +215,156 @@ def _expand_year_section(page) -> str:
     return "no 'Year of production' toggle could be found or clicked"
 
 
+_ANCESTOR_CHAIN_JS = """
+(el) => {
+  const result = [];
+  let node = el.parentElement;
+  let depth = 0;
+  while (node && depth < 8) {
+    const cs = window.getComputedStyle(node);
+    result.push({
+      tag: node.tagName,
+      id: node.id,
+      className: node.className,
+      display: cs.display,
+      visibility: cs.visibility,
+      height: cs.height,
+      ariaHidden: node.getAttribute('aria-hidden'),
+      ariaExpanded: node.getAttribute('aria-expanded'),
+    });
+    node = node.parentElement;
+    depth++;
+  }
+  return result;
+}
+"""
+
+# FR-156 candidate (c): read the combobox's own computed style, and if an
+# adjacent sibling looks like an unclicked toggle (has aria-expanded, or a
+# button/switch role), click it directly inside the page (no round-trip
+# needed to re-locate it from Python) and report whether one was found.
+_OWN_STYLE_AND_TOGGLE_JS = """
+(el) => {
+  const cs = window.getComputedStyle(el);
+  const info = {
+    display: cs.display,
+    visibility: cs.visibility,
+    height: cs.height,
+    opacity: cs.opacity,
+    toggled: false,
+    toggleDesc: null,
+  };
+  const parent = el.parentElement;
+  if (parent) {
+    const siblings = Array.from(parent.children).filter((c) => c !== el);
+    for (const sib of siblings) {
+      const role = sib.getAttribute('role');
+      if (sib.hasAttribute('aria-expanded') || role === 'button' || role === 'switch') {
+        info.toggleDesc = `<${sib.tagName} role=${role}> text=${(sib.textContent || '').trim().slice(0, 80)}`;
+        sib.click();
+        info.toggled = true;
+        break;
+      }
+    }
+  }
+  return info;
+}
+"""
+
+
+def _try_year_combobox_fixes(page) -> tuple[str, bool]:
+    """FR-156: FR-155 isolated the blocker to the 'Year of production'
+    combobox (role=combobox, aria-expanded=false) reporting 'element is not
+    visible' from both itself and its label. Try the three named candidate
+    fixes from this item's own dod, in order, and stop at the first that
+    works. Returns (report lines joined, whether activation succeeded)."""
+    combobox_loc = page.locator("xpath=//*[normalize-space(text())='Year of production']/..")
+    if combobox_loc.count() == 0:
+        return "the 'Year of production' label's parent element (the combobox) could not be located at all", False
+
+    lines = []
+
+    # (a) explicit scroll-into-view before clicking, in case Playwright's
+    # own auto-scroll doesn't reach it inside a nested scroll container.
+    try:
+        combobox_loc.first.scroll_into_view_if_needed(timeout=5000)
+        combobox_loc.first.click(timeout=5000)
+        lines.append("(a) scroll-into-view then click: succeeded")
+        return "\n".join(lines), True
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"(a) scroll-into-view then click: failed ({type(e).__name__}: {e})")
+
+    # (b) dump the combobox's own ancestor chain to check whether a
+    # different, still-collapsed container needs expanding first.
+    ancestor_dump = []
+    try:
+        ancestor_dump = combobox_loc.first.evaluate(_ANCESTOR_CHAIN_JS)
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"(b) ancestor-chain dump: evaluate failed ({type(e).__name__}: {e})")
+    if ancestor_dump:
+        lines.append("(b) ancestor-chain dump (closest first):")
+        for a in ancestor_dump:
+            lines.append(
+                f"    <{a['tag']} id={a['id']!r} class={a['className']!r}> "
+                f"display={a['display']!r} visibility={a['visibility']!r} height={a['height']!r} "
+                f"aria-hidden={a['ariaHidden']!r} aria-expanded={a['ariaExpanded']!r}"
+            )
+        collapsed = [
+            a for a in ancestor_dump
+            if a["display"] == "none" or a["visibility"] == "hidden" or a["height"] == "0px"
+        ]
+        if collapsed:
+            target = collapsed[0]
+            lines.append(
+                f"(b) found a collapsed ancestor: <{target['tag']} id={target['id']!r} class={target['className']!r}>"
+            )
+            if target["id"]:
+                try:
+                    page.locator(f"#{target['id']}").first.click(timeout=3000)
+                    page.wait_for_timeout(500)
+                    combobox_loc.first.click(timeout=5000)
+                    lines.append("(b) clicking the collapsed ancestor by id, then the combobox: succeeded")
+                    return "\n".join(lines), True
+                except Exception as e:  # noqa: BLE001
+                    lines.append(f"(b) clicking the collapsed ancestor by id, then the combobox: failed ({type(e).__name__}: {e})")
+            else:
+                lines.append("(b) collapsed ancestor has no id to target a click at; not attempted")
+        else:
+            lines.append(
+                "(b) no ancestor has display:none/visibility:hidden/height:0 — "
+                "the combobox's own subtree is not CSS-collapsed by an ancestor"
+            )
+    else:
+        lines.append("(b) ancestor-chain dump: empty (no ancestors found, or evaluate returned nothing)")
+
+    # (c) check the combobox's own computed style for a hidden state tied
+    # to an unclicked sibling toggle, and click that sibling directly if
+    # found.
+    try:
+        own_style = combobox_loc.first.evaluate(_OWN_STYLE_AND_TOGGLE_JS)
+    except Exception as e:  # noqa: BLE001
+        lines.append(f"(c) own-style/sibling-toggle check: evaluate failed ({type(e).__name__}: {e})")
+        own_style = None
+    if own_style:
+        lines.append(
+            f"(c) combobox's own computed style: display={own_style['display']!r} "
+            f"visibility={own_style['visibility']!r} height={own_style['height']!r} "
+            f"opacity={own_style['opacity']!r}"
+        )
+        if own_style.get("toggled"):
+            lines.append(f"(c) clicked sibling toggle {own_style['toggleDesc']}, retrying combobox click")
+            try:
+                page.wait_for_timeout(500)
+                combobox_loc.first.click(timeout=5000)
+                lines.append("(c) combobox click after sibling toggle: succeeded")
+                return "\n".join(lines), True
+            except Exception as e:  # noqa: BLE001
+                lines.append(f"(c) combobox click after sibling toggle: failed ({type(e).__name__}: {e})")
+        else:
+            lines.append("(c) no sibling element with aria-expanded or a button/switch role found next to the combobox")
+    return "\n".join(lines), False
+
+
 def _find_and_activate_year_control(page, year: str) -> tuple[str, bool]:
     """Try several strategies to find and activate a control for `year`.
 
@@ -344,6 +494,31 @@ def main() -> int:
         year_label_dump = _dump_markup_for_texts(page, ["Year of production", "Format"])
         report.extend(year_label_dump) if year_label_dump else report.append("(no frames found)")
         report.append("")
+
+        # FR-156: FR-155 isolated the blocker to the combobox itself
+        # reporting "element is not visible" — try the three named
+        # candidate fixes in order and stop at the first that works.
+        report.append("## FR-156: candidate fixes for the collapsed 'Year of production' combobox")
+        report.append("")
+        combobox_fix_report, combobox_activated = _try_year_combobox_fixes(page)
+        report.append(combobox_fix_report)
+        report.append("")
+        report.append(f"- combobox made interactable: {combobox_activated}")
+        report.append("")
+        if combobox_activated:
+            try:
+                page.wait_for_load_state("networkidle", timeout=TIMEOUT_MS)
+            except Exception:  # noqa: BLE001
+                page.wait_for_timeout(1000)
+            after_combobox_fix_lines = _to_lines(page.locator("body").inner_text(timeout=TIMEOUT_MS))
+            new_after_combobox_fix = [l for l in after_combobox_fix_lines if l not in set(after_year_section_lines)]
+            report.append("## Lines present after the FR-156 combobox fix but not before (do individual years now appear?)")
+            report.append("")
+            report.extend(f"- {l}" for l in new_after_combobox_fix) if new_after_combobox_fix else report.append(
+                "(no new lines — the combobox click succeeded but no new year options rendered)"
+            )
+            report.append("")
+            after_year_section_lines = after_combobox_fix_lines
 
         # The cookie-consent widget on this site renders a few seconds after
         # the initial load (the first _dismiss_cookie_banner call above, run
