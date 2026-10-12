@@ -5,16 +5,21 @@
   --paper: #f7f4ee;
   --paper-2: #efeae1;
   --ink: #17150f;
-  --ink-2: #4d4842;
-  /* FR-63: 5.0:1 on paper, 4.6:1 on the shaded panels — AA for the small text it carries (hints, meta, labels). */
-  --muted: #6e685f;
+  /* FR-161: 9.9:1 on paper, 10.9:1 on white, 7.2:1 on --rule (the avatar-fallback chip,
+     its binding case) — AAA everywhere. Was #4d4842 (5.96:1 on --rule, AA only). */
+  --ink-2: #413c37;
+  /* FR-161: 7.2:1 on paper-2 (the binding case), 7.9:1 on paper, 8.7:1 on white — AAA
+     (7:1) everywhere it's used. Was #6e685f (AA only: 5.0:1 on paper, 4.6:1 on paper-2 —
+     the pair axe-core's color-contrast-enhanced flagged). */
+  --muted: #4f4b45;
   --rule: #d8d1c4;
   --rule-strong: #17150f;
   --warn-bg: #fff2cc;
   --warn-ink: #5a4300;
   --err-bg: #f9dcd8;
   --err-ink: #6b1d16;
-  --ok-ink: #1f5c3a;
+  /* FR-161: 7.2:1 on the .status.online pill's #e5f0e8 background (AAA). Was #1f5c3a (6.8:1, AA). */
+  --ok-ink: #1e5838;
   /* Revision paper colours, as printed on set: A white, B blue, C pink, D yellow, E green. */
   --rev-a: #ffffff; --rev-b: #cfe3f7; --rev-c: #f8d3dc; --rev-d: #f8ec9e; --rev-e: #cfeacb;
   --rev: var(--rev-a);
@@ -274,7 +279,8 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   cursor: pointer;
 }
 .contact-btn.phone { font-family: var(--mono); }
-.contact-btn.wa { color: #0d7a3a; }
+/* FR-161: #0b6530 is 7.2:1 on white (AAA); was #0d7a3a (5.44:1, AA only). */
+.contact-btn.wa { color: #0b6530; }
 .contact .phone.none { color: var(--muted); font-family: var(--sans); font-size: 0.8125rem; }
 .hospital { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-2); }
 .hospital .k { color: var(--muted); }
@@ -407,7 +413,8 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .tomorrow .k { margin-right: 6px; }
 .tomorrow a { color: var(--ink); }
 .tomorrow b { font-family: var(--mono); }
-.tomorrow[data-kind="cancelled"] strong { color: #b3261e; letter-spacing: 0.06em; }
+/* FR-161: #9d211a is 7.2:1 on paper (AAA); was #b3261e (5.95:1, AA only). */
+.tomorrow[data-kind="cancelled"] strong { color: #9d211a; letter-spacing: 0.06em; }
 @media print { .tomorrow { border-color: #000; } }
 
 /* FR-48: language toggle in the masthead. */

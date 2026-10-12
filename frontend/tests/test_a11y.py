@@ -32,6 +32,7 @@ ENABLED_OPT_IN_RULES = {
     "p-as-heading": {"enabled": True},
     "target-size": {"enabled": True},
     "td-has-header": {"enabled": True},
+    "color-contrast-enhanced": {"enabled": True},
 }
 
 

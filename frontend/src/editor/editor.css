@@ -89,7 +89,11 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .share-text-actions { margin-top: 10px; align-items: center; }
 .share-preview { margin-top: 10px; }
 .share-preview textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; }
-.quiet-link.whatsapp { color: #0d7a3a; }
+/* FR-161: .quiet-link resets to a transparent background (styles.css), so this renders
+   directly on --paper here, not on white like styles.css's .contact-btn.wa — #0a5e2d is
+   7.2:1 on paper (AAA); was #0d7a3a (6.55:1 on paper, AA only — axe-core's
+   color-contrast-enhanced flagged it live in the editor's Crew tab). */
+.quiet-link.whatsapp { color: #0a5e2d; }
 
 /* FR-31: paste the crew list. */
 .paste-crew { margin-top: 12px; }

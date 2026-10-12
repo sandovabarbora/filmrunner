@@ -9,8 +9,9 @@
   --paper-2: #efeae1;
   --ink: #17150f;
   --ink-2: #4d4842;
-  /* FR-63: AA contrast for the small text this carries. */
-  --muted: #6e685f;
+  /* FR-161: #4f4b45 is 7.9:1 on paper (AAA), matching styles.css's token; was #6e685f
+     (5.0:1, AA only — axe-core's color-contrast-enhanced flagged it on landing/privacy). */
+  --muted: #4f4b45;
   --rule: #d8d1c4;
   --rule-strong: #17150f;
   --rev-b: #cfe3f7;
