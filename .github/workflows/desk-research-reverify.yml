@@ -62,3 +62,9 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-159 (throwaway branch, not meant to land on main): FR-158's CDX
+      # search for SetHero timed out every time; retry with the Internet
+      # Archive's lighter single-snapshot availability endpoint instead.
+      - name: Retry SetHero Wayback lookup with the availability endpoint
+        run: python3 scripts/fetch_wayback_sethero_retry.py
