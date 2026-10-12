@@ -131,6 +131,12 @@ TARGETS = [
         "claim": "Croogloo: 'Time Report Tracking and Storage (Accounting)' article — found by FR-153 (2026-10-09) as a fresh WebSearch snippet; unverified whether it names an export/download function for accounting data",
         "url": "https://support.croogloo.com/en/articles/7832584-time-report-tracking-and-storage-accounting",
     },
+    {
+        "doc": "docs/research/switching-cost-teardown.md",
+        "id": "yamdu-capterra-reviews",
+        "claim": "Yamdu: Capterra reviewers describe having to re-enter cast/crew contacts for every new production on a lower tier instead of carrying them forward — sourced only from a WebSearch snippet (2026-09-18); a plain fetch 403'd even from an open-egress GitHub Actions runner (FR-90)",
+        "url": "https://www.capterra.com/p/186025/Yamdu/reviews/",
+    },
 ]
 
 
