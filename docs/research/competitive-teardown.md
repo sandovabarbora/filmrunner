@@ -595,15 +595,67 @@ figure matching this doc's "$19/month" claim, so that claim stays
 **unverified**, cause narrowed from "bot-walled" to "reachable, no
 matching figure on the page" rather than confirmed.
 
+## Wayback Machine checked for Yamdu/SetHero pricing (FR-158, 2026-10-12)
+
+FR-158 was proposed (2026-10-12 morning brief) because four separate live-
+page attempts (FR-83, FR-90, FR-148, FR-149) had all found Yamdu's and
+SetHero's pricing pages fully loading but carrying zero pricing text — the
+figure is injected client-side after load. `web.archive.org` is a
+genuinely different source, never tried before: an older crawl might
+predate whatever hides the figure today, or might have been captured after
+the page's own JS had run. New `scripts/fetch_wayback_pricing.py` queries
+the Internet Archive's CDX API for each URL, fetches the most recent `200`
+snapshot's raw content (the `id_` modifier, which suppresses Wayback's own
+toolbar/link-rewriting), and dumps the same stripped-text view
+`fetch_page_text.py` uses. Dispatched from throwaway branch
+`marketing/fr-158-wayback-pricing-throwaway` (not merged, same unmerged-
+branch precedent as FR-108/115/154/155/156) via the existing open-egress
+`desk-research-reverify.yml` pattern, twice — the second run after raising
+the per-request timeout from 20s to 45s and adding up to 3 CDX retries,
+once the first run's single CDX attempt for SetHero timed out with no
+result either way
+([run 1](https://github.com/sandovabarbora/filmrunner/actions/runs/38216641044),
+[run 2](https://github.com/sandovabarbora/filmrunner/actions/runs/38216952240)).
+Both runs read directly from the job log, not a `WebSearch` snippet.
+
+- **Yamdu — checked, genuinely exhausted, same gap as the live page.**
+  Both runs found the same most-recent `200` snapshot,
+  `20260513131415` (2026-05-13), fetched cleanly (200, 19,574 bytes) and
+  stripped to only 20 text lines — nav/menu/footer items and a copyright
+  line, the identical "page loads, no pricing text" shape FR-90/FR-135
+  already found on the live page. The archived crawl was evidently taken
+  after the page's chrome rendered but before (or without) whatever
+  client-side call injects the actual price, so an older snapshot does not
+  help here. The "$45/month Flex, $265/month Core" claim stays
+  **unverified, Wayback Machine checked and exhausted** per this item's
+  own failure case — no further retry of the live page or this same
+  archive query is useful.
+- **SetHero — not completed, a different failure mode from "checked and
+  exhausted."** The CDX lookup for `sethero.com/pricing/` timed out on
+  every attempt across both runs (1 attempt at 20s, then 3 attempts at 45s
+  each) — `web.archive.org`'s own CDX search endpoint, not the snapshot
+  fetch itself, never returned a response from this open-egress runner.
+  This is stated plainly as **unverified, Wayback Machine lookup could not
+  be completed (CDX API consistently times out from this egress pattern)**
+  — distinct from Yamdu's result above, since no snapshot list was ever
+  obtained either way, not a negative result. The "$19/month" claim is
+  unchanged from FR-149's own wording. A future attempt could try the CDX
+  API's `.txt` output (plain, not JSON) or a direct `/web/timemap/link/`
+  request instead of `/cdx/search/cdx`, but that is a genuinely different
+  query shape, not a third retry of the same one.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Re-run this teardown with working `WebFetch`/browser access to read
   each vendor's pricing and product pages directly, and resolve every
-  item still marked **unverified** above (Yamdu pricing, SetHero
-  pricing/FAQ — now reachable but still no matching figure — StudioBinder
-  mobile/offline is resolved as far as a rendered page can take it, per
-  FR-138 above; only a vendor statement using the word "offline" itself
-  would close the remaining gap). Croogloo revision-history UI is no
+  item still marked **unverified** above (Yamdu pricing — now also
+  checked against its own Wayback Machine history, genuinely exhausted;
+  SetHero pricing/FAQ — now reachable but still no matching figure, and
+  its Wayback Machine CDX lookup could not be completed rather than
+  checked-and-exhausted, see FR-158 above — StudioBinder mobile/offline is
+  resolved as far as a rendered page can take it, per FR-138 above; only a
+  vendor statement using the word "offline" itself would close the
+  remaining gap). Croogloo revision-history UI is no
   longer an open next step for this routine: FR-148 (2026-10-08) rendered
   the three help-center articles FR-136 found adjacent to the question and
   FR-151 (2026-10-08, same day) followed up with five further differently
