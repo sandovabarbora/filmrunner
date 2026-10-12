@@ -393,6 +393,37 @@ sheet, a distribution report, or a template be exported) is still
 (three FR-148, three FR-136/this item's Distribution-tracking pair, one
 Daily-Time-Reports stub); only the Accounting time-report path was net-new.
 
+## Resolution: Yamdu Capterra reviews — headless render also blocked (FR-160, 2026-10-12)
+
+FR-83's plain `urllib` fetch of `capterra.com/p/186025/Yamdu/reviews/` 403'd,
+attributed at the time to "the same bot-protection pattern" FR-90 found on
+SetHero's pricing/FAQ pages. That attribution went stale once FR-149
+(2026-10-08) proved a real headless-Chromium render gets past SetHero's own
+exact interstitial — so the bot-protection class blocking SetHero and the
+one blocking this Capterra URL were never actually shown to be the same
+thing. `scripts/render_pricing_pages.py`'s `TARGETS` list gained a
+`yamdu-capterra-reviews` entry on throwaway branch
+`pm/fr-160-yamdu-capterra-throwaway` (not merged, same unmerged precedent as
+FR-108/115/154/155/156/158/159), dispatched through
+`desk-research-reverify.yml`'s open-egress pattern unchanged
+([run 38241376766](https://github.com/sandovabarbora/filmrunner/actions/runs/38241376766)),
+read directly from the job log, not a `WebSearch` snippet.
+
+Result: **403, same as the plain fetch.** A real headless Chromium browser
+(Playwright, the same build that got past SetHero's interstitial) still
+gets blocked outright on this specific Capterra URL — seven lines of body
+text were extracted even under the 403 (likely an interstitial/challenge
+page's own text, per the script's own reachability gate the digit-line and
+full-text dump only prints for a `200`), confirming this is Capterra's own
+bot defense rejecting the request at the HTTP layer, not a client-side
+rendering gap a browser clears the way it did for SetHero. The contact-
+retention lock-in signal for Yamdu stays sourced only from the original
+2026-09-18 `WebSearch` snippet — **unverified, headless-browser attempt
+also blocked** — and this specific Capterra angle is now exhausted: per
+FR-160's own failure case, no third attempt follows and the earlier
+snippet is not treated as confirmed just because no stronger source
+exists.
+
 ## Follow-up needed (cannot be done by this routine)
 
 - Croogloo's call-sheet/distribution-report/template export question is
@@ -410,8 +441,12 @@ Daily-Time-Reports stub); only the Accounting time-report path was net-new.
   (2026-09-24); the "locked in" *framing* is still SetHero's own language
   and would benefit from a neutral discussion (forum, review site) if one
   becomes reachable.
-- The Yamdu Capterra-reviews 403 (contact-retention lock-in signal) is
-  still unresolved; `competitive-teardown.md`'s FR-90 pass found the same
-  bot-protection pattern on SetHero's own pricing/FAQ pages, so a browser
-  fingerprint or session-cookie approach beyond a bare headless render
-  would be needed for any of these review-site sources.
+- The Yamdu Capterra-reviews angle is now **exhausted** (FR-160,
+  2026-10-12): a real headless-Chromium render, the same build that cleared
+  SetHero's own interstitial (FR-149), still gets a 403 on this specific
+  URL — Capterra's bot defense is confirmed distinct from SetHero's
+  client-side rendering gap, not the same pattern. A browser fingerprint or
+  session-cookie approach beyond a bare headless render would be needed to
+  go further, and per FR-160's own failure case this routine does not
+  attempt a third variant; the contact-retention lock-in signal stays
+  sourced only from the original 2026-09-18 `WebSearch` snippet.
