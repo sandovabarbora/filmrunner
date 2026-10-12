@@ -62,3 +62,10 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-158 (throwaway dispatch, not kept on main): check whether an
+      # older Wayback Machine snapshot of Yamdu/SetHero pricing predates
+      # whatever client-side injection has hidden the figure on every live
+      # render attempt so far (FR-83, FR-90, FR-148, FR-149).
+      - name: Check Wayback Machine for archived pricing snapshots
+        run: python3 scripts/fetch_wayback_pricing.py
