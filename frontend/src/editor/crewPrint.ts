@@ -37,8 +37,9 @@ export function crewPrintHtml(crew: CrewMember[], cast: CastMember[], production
     list.sort((a, b) => Number(b.is_head_of_department) - Number(a.is_head_of_department) || a.contact.name.localeCompare(b.contact.name, "cs"));
   }
   const row = (cells: string[]) => `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+  const crewHead = `<thead><tr><th scope="col">${escapeHtml(L("Name"))}</th><th scope="col">${escapeHtml(L("Position"))}</th><th scope="col">${escapeHtml(L("Phone"))}</th></tr></thead>`;
   const crewRows = departments
-    .map(([dept, list]) => `<tr class="dept"><th colspan="3">${escapeHtml(dept)}</th></tr>` +
+    .map(([dept, list]) => `<tr class="dept"><th colspan="3" scope="colgroup">${escapeHtml(dept)}</th></tr>` +
       list.map((m) => row([
         escapeHtml(m.contact.name) + (m.is_head_of_department ? ` <span class="hod">${escapeHtml(L("HoD"))}</span>` : ""),
         escapeHtml(m.position),
@@ -57,18 +58,19 @@ export function crewPrintHtml(crew: CrewMember[], cast: CastMember[], production
   body { font: 10.5pt/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #17150f; margin: 16pt; }
   h1 { font-size: 14pt; margin: 0 0 2pt; }
   .meta { color: #55504a; font-size: 9pt; margin: 0 0 10pt; }
+  caption.meta { text-align: left; caption-side: top; padding: 0; }
   h2 { font-size: 9pt; letter-spacing: .1em; text-transform: uppercase; color: #55504a; margin: 10pt 0 3pt; }
   table { width: 100%; border-collapse: collapse; }
   td, th { text-align: left; padding: 2pt 4pt; border-bottom: .5pt solid #d8d1c4; vertical-align: top; }
   tr.dept th { background: #efeae1; font-size: 9pt; letter-spacing: .08em; text-transform: uppercase; border-bottom: .8pt solid #17150f; }
+  thead th { font-size: 8pt; letter-spacing: .05em; text-transform: uppercase; color: #55504a; border-bottom: .8pt solid #17150f; }
   tr, tr.dept { break-inside: avoid; }
   .hod { font-size: 8pt; border: .5pt solid #17150f; border-radius: 2pt; padding: 0 3pt; }
   td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
   @page { size: A4; margin: 12mm; }
 </style></head><body>
 <h1>${escapeHtml(productionName)}</h1>
-<p class="meta">${escapeHtml(L("Crew list"))} · ${escapeHtml(L("printed {when}", { when: new Date().toLocaleString() }))}</p>
-<table>${crewRows}</table>
+<table><caption class="meta">${escapeHtml(L("Crew list"))} · ${escapeHtml(L("printed {when}", { when: new Date().toLocaleString() }))}</caption>${crewHead}<tbody>${crewRows}</tbody></table>
 ${cast.length ? `<h2>${escapeHtml(L("Cast"))}</h2><table>${castRows}</table>` : ""}
 </body></html>`;
 }
