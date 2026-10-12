@@ -31,7 +31,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-TIMEOUT = 20
+TIMEOUT = 45
+CDX_RETRIES = 3  # the CDX API's own search endpoint is slower and flakier
+# than a single page fetch (FR-158's first dispatch timed out on SetHero's
+# lookup, with no result either way) — retry a timeout a few times before
+# treating it as a real "could not check" outcome.
 USER_AGENT = "Mozilla/5.0 (compatible; FilmRunnerResearchBot/1.0; +https://sandovabarbora.github.io/filmrunner/)"
 
 _SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
@@ -64,13 +68,21 @@ def _cdx_lookup(url: str) -> tuple[str | None, str]:
         + "&output=json&filter=statuscode:200&collapse=digest"
     )
     req = urllib.request.Request(cdx_url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            raw = r.read(1_000_000).decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        return None, f"CDX HTTP {e.code}"
-    except Exception as e:  # noqa: BLE001 — report every failure mode, not just the typed ones
-        return None, f"CDX {type(e).__name__}: {e}"
+
+    raw = None
+    last_err = ""
+    for attempt in range(CDX_RETRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                raw = r.read(1_000_000).decode("utf-8", errors="replace")
+            break
+        except urllib.error.HTTPError as e:
+            last_err = f"CDX HTTP {e.code}"
+            break  # an HTTP error is not a timeout; retrying won't help
+        except Exception as e:  # noqa: BLE001 — report every failure mode, not just the typed ones
+            last_err = f"CDX {type(e).__name__}: {e} (attempt {attempt + 1}/{CDX_RETRIES})"
+    if raw is None:
+        return None, last_err
 
     try:
         rows = json.loads(raw)
