@@ -335,7 +335,7 @@ center) stays **unverified** — a negative result on three named articles
 is not an exhaustive search of the whole center, per this item's own
 failure case.
 
-## Croogloo revision-history UI — not addressed by this pass (FR-148, 2026-10-08)
+## Croogloo revision-history UI — unverified, exhausted (FR-148/FR-151, 2026-10-08)
 
 Checked directly: none of the three rendered articles above mentions
 revision history, version tracking, or a call-sheet UI at all — they
@@ -343,9 +343,20 @@ cover troubleshooting/login, draft emails, and dailies-distribution-list
 management. `competitive-teardown.md`'s "call-sheet-specific
 revision-history UI is unverified (features page blocked from direct
 read)" claim is not touched by these three pages; stated plainly here
-rather than stretched to fit, per this item's own failure case. That claim
-stays **unverified**, unchanged from the 2026-09-25/2026-10-06 passes — a
-different source (not these three articles) would be needed to resolve it.
+rather than stretched to fit, per this item's own failure case. FR-151
+(2026-10-08, same day) followed up with five further differently worded
+`WebSearch` queries (`Croogloo "version history" call sheet`, `Croogloo
+call sheet revisions site:support.croogloo.com`, `Croogloo "republish" OR
+"revise" call sheet crew`, `Croogloo "Archive Mode" documents`,
+`croogloo.com call sheet revision "rev" change log feature`) plus a direct
+browse of the help center's own collections/search index — none of it
+addresses the question. Direct `WebFetch` to `support.croogloo.com`/
+`croogloo.com` stays egress-blocked from this environment. The claim
+stays **unverified, exhausted** until someone with a Croogloo account can
+check the in-app UI directly, or a future search surfaces a vendor
+statement these ten queries (five FR-148, five FR-151) and the collections
+browse missed — not something a further re-search with `WebSearch` alone
+is likely to resolve.
 
 ## Resolution: Croogloo's export surface beyond contacts (FR-153, 2026-10-09)
 
@@ -430,10 +441,20 @@ exists.
   now checked against seven named articles with nothing found; a further
   search would need a genuinely different candidate (not another
   variation of "export"/"reports" wording) — none turned up this pass.
-- Find a source for Croogloo's call-sheet-specific revision-history UI —
-  the three articles rendered this shift don't address it; `croogloo.com/features/`
-  is confirmed gone (FR-87/135) and no help-center article found so far
-  covers it either.
+- Croogloo's call-sheet-specific revision-history UI is no longer an open
+  next step for this routine: FR-148 (2026-10-08) rendered the three
+  help-center articles FR-136 found adjacent to the question and FR-151
+  (2026-10-08, same day) followed up with five further differently worded
+  `WebSearch` queries plus a direct browse of the help center's own
+  collections/search index — none of it addresses the question, and this
+  pass exhausted the search avenues this routine's tools can reach (direct
+  `WebFetch` to `support.croogloo.com`/`croogloo.com` stays
+  egress-blocked). The claim stays **unverified, exhausted** until someone
+  with a Croogloo account can check the in-app UI directly, or a future
+  search surfaces a vendor statement this pass's queries missed — not
+  something a further re-search with `WebSearch` alone is likely to
+  resolve. (Matches `competitive-teardown.md`'s own "Follow-up needed"
+  wording for the same claim, reconciled by FR-165.)
 - Re-run the Reddit/forum searches again if a working `WebFetch` or a
   founder session that can browse directly ever becomes available — seven
   targeted searches across two passes (FR-21, FR-136) have found nothing.
