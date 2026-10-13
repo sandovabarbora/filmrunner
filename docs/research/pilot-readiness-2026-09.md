@@ -175,7 +175,10 @@ the deploy-staleness check, now found in a third script. `rate_limit_is_enforced
 same open-egress runner and asserts at least one response comes back `429` with a `Retry-After`
 header; `classify_rate_limit_burst` is the pure pass/fail logic, unit-tested in
 `scripts/tests/test_check_live_stack.py` without a network call. First live `workflow_dispatch` run
-against this change: FR_166_RUN_PLACEHOLDER.
+against this change (run [38403891459](https://github.com/sandovabarbora/filmrunner/actions/runs/38403891459),
+2026-10-13, dispatched from this item's own branch before merge): **confirmed working** —
+`9/301 requests 429'd, Retry-After present`. The live deploy's `public_rate_limit_per_ip` guard
+(FR-51/ADR-008) does enforce in production, not just in the local test suite.
 
 ## For the founder's phone (step-by-step)
 
