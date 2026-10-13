@@ -62,3 +62,11 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-167 (throwaway, not merged — same precedent as FR-108/115/154/
+      # 155/156/158/159/160): read the Filmography page's own inline
+      # scripts and same-origin script source for what sets or clears the
+      # "Year of production" combobox's display:none, the one angle FR-156
+      # named as untried and outside a rendered-interaction script's reach.
+      - name: Search the Filmography page's own JS source
+        run: python3 scripts/search_filmography_js_source.py
