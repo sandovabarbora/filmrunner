@@ -1,12 +1,13 @@
-"""Tests for the FR-109 deploy-staleness decision logic in check_live_stack.py.
+"""Tests for the FR-109/FR-166 decision logic in check_live_stack.py.
 
-`deploy_matches_main`/`fetch` hit the live API and the public GitHub API, so they
-are verified by a real workflow_dispatch run (same pattern as check_live_stack.py's
-other live checks), not here. `deploy_staleness_message` takes its inputs already
-fetched, so the decision/formatting logic is fully testable without a network call.
+`deploy_matches_main`/`rate_limit_is_enforced_live`/`fetch` hit the live API and the public
+GitHub API, so they are verified by a real workflow_dispatch run (same pattern as
+check_live_stack.py's other live checks), not here. `deploy_staleness_message` and
+`classify_rate_limit_burst` take their inputs already fetched, so the decision/formatting
+logic is fully testable without a network call.
 """
 
-from check_live_stack import deploy_staleness_message
+from check_live_stack import classify_rate_limit_burst, deploy_staleness_message
 
 
 def test_no_reported_sha_is_unverified_not_a_failure() -> None:
@@ -48,3 +49,30 @@ def test_behind_main_with_no_commit_list_still_reports_rather_than_crashing() ->
     assert ok is False
     assert "1 commits behind main" in detail
     assert "since unknown" in detail
+
+
+def test_no_429_in_the_burst_is_a_failure() -> None:
+    ok, detail = classify_rate_limit_burst([(200, {}) for _ in range(301)])
+    assert ok is False
+    assert "none 429'd" in detail
+
+
+def test_429_without_retry_after_is_a_failure() -> None:
+    results = [(200, {}) for _ in range(300)] + [(429, {})]
+    ok, detail = classify_rate_limit_burst(results)
+    assert ok is False
+    assert "missing Retry-After" in detail
+
+
+def test_429_with_retry_after_passes() -> None:
+    results = [(200, {}) for _ in range(300)] + [(429, {"retry-after": "30"})]
+    ok, detail = classify_rate_limit_burst(results)
+    assert ok is True
+    assert "1/301 requests 429'd" in detail
+
+
+def test_some_429s_missing_retry_after_is_still_a_failure() -> None:
+    results = [(429, {"retry-after": "30"}), (429, {})]
+    ok, detail = classify_rate_limit_burst(results)
+    assert ok is False
+    assert "1 of those were missing Retry-After" in detail

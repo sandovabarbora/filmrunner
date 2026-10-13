@@ -160,8 +160,22 @@ and on demand (`gh workflow run "pilot readiness (live)"`), from a runner that c
 `filmrunner-api.fly.dev` — the routine's sandbox cannot. It checks only public endpoints: API health,
 that the deployed build carries this week's routes, that an unknown personal token and an unknown
 call sheet are refused, that the Web Push key is configured, that CORS allows the Pages origin, that
-all four pages serve, and that a handful of requests is not rate-limited. The run summary carries a
-pass/fail table. **Read its last run instead of repeating a blocked `curl`.**
+all four pages serve, that a handful of requests is not rate-limited, and that a burst past the
+configured per-IP limit does get refused with a `429`/`Retry-After` (FR-166, below). The run summary
+carries a pass/fail table. **Read its last run instead of repeating a blocked `curl`.**
+
+### FR-166 (2026-10-13): the live rate limit was actually exercised, not assumed clean
+
+`rate_limit_headers_on_refusal` only ever proved a handful of requests under the limit stays `200` —
+it never drove the real deployed instance past `public_rate_limit_per_ip` (300, `backend/app/
+config.py`) to confirm the FR-51/ADR-008 abuse guard actually fires in production. That is the same
+"enabled but never confirmed to fire" shape FR-162 found in six axe-core CI rules and FR-164 found in
+the deploy-staleness check, now found in a third script. `rate_limit_is_enforced_live`
+(`scripts/check_live_stack.py`) fires 301 real `GET`s at `/api/v1/public/push/vapid-key` through this
+same open-egress runner and asserts at least one response comes back `429` with a `Retry-After`
+header; `classify_rate_limit_burst` is the pure pass/fail logic, unit-tested in
+`scripts/tests/test_check_live_stack.py` without a network call. First live `workflow_dispatch` run
+against this change: FR_166_RUN_PLACEHOLDER.
 
 ## For the founder's phone (step-by-step)
 

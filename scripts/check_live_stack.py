@@ -147,6 +147,41 @@ def rate_limit_headers_on_refusal() -> tuple[bool, str]:
     return all(s == 200 for s in statuses), f"5 requests → {statuses}"
 
 
+def classify_rate_limit_burst(results: list[tuple[int, dict[str, str]]]) -> tuple[bool, str]:
+    """Pure decision logic for a burst driven past the configured per-IP limit.
+
+    `results` is a list of (status, headers) pairs already fetched; unit-tested without a
+    network call, same split as `deploy_staleness_message`/`deploy_matches_main`.
+    `rate_limit_headers_on_refusal` above only proves a handful of requests is NOT limited —
+    this is the other half of FR-51's claim: abuse past the limit must actually be refused.
+    """
+    limited = [headers for status, headers in results if status == 429]
+    if not limited:
+        return False, f"{len(results)} requests, none 429'd — limiter never fired"
+    missing_retry_after = [h for h in limited if "retry-after" not in h]
+    if missing_retry_after:
+        return False, (
+            f"{len(limited)}/{len(results)} requests 429'd but "
+            f"{len(missing_retry_after)} of those were missing Retry-After"
+        )
+    return True, f"{len(limited)}/{len(results)} requests 429'd, Retry-After present"
+
+
+def rate_limit_is_enforced_live() -> tuple[bool, str]:
+    """Drive the live deploy itself past `public_rate_limit_per_ip` and confirm it 429s.
+
+    FR-51/FR-128 already proved the limiter's logic is correct against a local test Postgres;
+    this confirms the deployed instance's own config and middleware wiring actually enforce it,
+    which neither a local unit test nor `rate_limit_headers_on_refusal` above can show.
+    """
+    limit = int(os.environ.get("PUBLIC_RATE_LIMIT_PER_IP", "300"))
+    results = []
+    for _ in range(limit + 1):
+        status, _, headers = fetch(f"{API}/api/v1/public/push/vapid-key")
+        results.append((status, headers))
+    return classify_rate_limit_burst(results)
+
+
 CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
     ("API health", api_health),
     ("API serves this week's routes", api_openapi_has_the_current_surface),
@@ -159,6 +194,7 @@ CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
     ("Pages: landing", page_serves("landing.html", "FilmRunner")),
     ("Pages: privacy note", page_serves("privacy.html", "Supabase")),
     ("A handful of requests is not rate limited", rate_limit_headers_on_refusal),
+    ("Live deploy enforces its rate limit (FR-166)", rate_limit_is_enforced_live),
     ("Deploy matches main (FR-109)", deploy_matches_main),
 ]
 
