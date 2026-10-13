@@ -554,8 +554,85 @@ element's own display state), and no further named candidate remains
 untried. The order-of-magnitude estimate above is unchanged; no count is
 guessed either way.
 
+## JS-source search for the combobox's display gate (FR-167, 2026-10-13)
+
+FR-156 named one untried angle outside what a dispatched-interaction script
+can do: reading the Filmography page's own client-side JS/framework source
+for what sets or clears the "Year of production" `role="combobox"`
+element's `display: none`. This is that — a text search over source, not
+another rendered interaction.
+
+**Method.** `scripts/search_filmography_js_source.py` (new, throwaway
+branch `marketing/fr-167-filmography-js-source-throwaway`, not merged —
+same precedent as FR-108/115/154/155/156/158/159/160), dispatched via the
+open-egress `desk-research-reverify.yml` pattern
+([run 38420496151](https://github.com/sandovabarbora/filmrunner/actions/runs/38420496151),
+completed `success`), job log read directly. It fetched the page's raw
+HTML, resolved every `<script src>` it loads, fetched the same-origin ones
+in full, and searched those plus the page's own inline `<script>` blocks for
+the control's visible label ("Year of production") and the exact class
+tokens FR-155 found on the combobox itself (`is-dropdown`, `show-desktop`),
+plus plausible JS-identifier variants (`yearOfProduction`, `year-of-production`).
+
+**Result: outcome (b), with the mechanism identified more precisely than
+the dod's own wording anticipated.** The page loads exactly three
+same-origin scripts (`jquery.min.js`, `tinymce.min.js`, `scripts.min.js`,
+all fetched and searched in full, 908KB combined) plus three small inline
+blocks — no third-party script at all, so nothing was out of reach for
+this item's own scope. Across all of that text, the *only* match for any
+needle is a single, generic, site-wide handler in `scripts.min.js`:
+
+    if($(".is-dropdown").length>0)$(".is-dropdown").on("click",function(n){
+      n.preventDefault();$(this).toggleClass("is-opened")
+    });
+
+This is jQuery, not a framework with virtual-DOM state — but it has the
+same practical effect the dod's outcome (b) describes: there is no
+control-specific flag, string, or identifier anywhere in the page's JS that
+singles out "Year of production" or gates its initial `display: none`.
+The one handler found is shared by *every* `.is-dropdown` element on the
+page (every filter, not just this one) and only toggles a CSS class
+(`is-opened`) on click — it does not set `display` directly, and nothing
+in it explains why this element starts hidden before any click. Neither
+"Year of production" (the visible label) nor `show-desktop` (the other
+class FR-155 found on the element) appears anywhere in the JS at all —
+their complete absence, for a class name shaped exactly like a
+responsive/breakpoint-visibility utility (`show-desktop` reads as "hide by
+default, show at a desktop breakpoint"), is itself informative: it is
+much more consistent with a CSS stylesheet rule (a `@media` breakpoint
+toggling `display` on `.show-desktop`, never fetched or searched here —
+this item's own dod scoped the search to script source, not stylesheets)
+than with anything JavaScript sets or clears at runtime. That would also
+explain FR-156's result directly: a headless-Chromium script's default
+viewport may simply not cross whatever width threshold `.show-desktop`'s
+own CSS rule requires, so the element never leaves `display: none`
+regardless of any click, scroll, or ancestor state — consistent with every
+one of FR-156's three failed attempts, none of which touched viewport size.
+
+**Per this item's own failure case — the fetch itself was never blocked**
+(page and all three same-origin scripts returned `200` from the open-egress
+runner, same as every FR-83/88/90/105/154/155/156 shift's own experience).
+Closing this avenue the same way FR-159/FR-160 closed theirs: no further
+JS-source angle is named, since the complete script inventory was already
+searched and came back empty for anything control-specific. The plausible
+CSS-breakpoint explanation above is a lead for a future item, not a finding
+this one's own dod covers or claims to confirm — it is named here, dated,
+so a future shift doesn't re-run this exact search expecting a different
+result, not asserted as the proven cause.
+
 ## Follow-up needed (cannot be done by this routine)
 
+- **New lead, untried (FR-167, 2026-10-13)**: the JS-source search named
+  above found no control-specific gate in any script, but did find that
+  the combobox's own `show-desktop` class is shaped exactly like a
+  responsive-visibility utility class, which would be a CSS `@media` rule,
+  not JS — never fetched or searched here (this item's dod scoped to
+  script source only). If a future shift wants to carry this further: (1)
+  fetch the page's own stylesheet(s) and search for `.show-desktop`'s rule
+  directly, or (2) re-dispatch FR-156's own interaction script with an
+  explicit wide desktop viewport size set before the click attempt, rather
+  than Playwright's default. Neither has been tried; this is a new,
+  named angle, not a repeat of FR-156's exhausted interaction attempts.
 - **Exhausted by FR-156 (2026-10-09)**: the year-filter interaction script
   (`scripts/render_filmography_year_filter.py`, throwaway branch
   `marketing/fr-154-filmography-year-filter-throwaway`, not merged) tried
@@ -565,13 +642,14 @@ guessed either way.
   a visibility/height state on a sibling this script could identify and
   click. No further candidate is named; re-attempting scroll/ancestor/
   sibling-toggle fixes on this same element would duplicate this shift's
-  work. A genuinely new angle (not a retry of this one) would be needed to
-  carry this further — e.g. reading the page's own client-side JS/framework
-  source to find what sets or clears this element's `display` directly,
-  which is outside what this routine's dispatched-script pattern can do.
-  The per-year count stays "unverified, client-rendered filter confirmed to
-  exist but not reachable from this routine," exactly as FR-154/FR-155 left
-  it.
+  work. FR-156 named one genuinely new angle — reading the page's own
+  client-side JS/framework source to find what sets or clears this
+  element's `display` directly — which FR-167 (2026-10-13, see above) has
+  since attempted and closed: no control-specific flag exists in any
+  script the page loads. The per-year count stays "unverified,
+  client-rendered filter confirmed to exist but not reachable from this
+  routine," exactly as FR-154/FR-155/FR-156 left it; FR-167's own new lead
+  (a likely CSS breakpoint rule, untried) is the next angle, not this one.
 - productionlist.com's Prague listing is confirmed genuinely gone (FR-87,
   2026-09-25, no live replacement found) — closed, not a follow-up any more.
 - **Closed (FR-121, 2026-10-02)**: the 15–20% critical-mass figure is
