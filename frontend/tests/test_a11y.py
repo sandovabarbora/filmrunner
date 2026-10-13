@@ -28,7 +28,6 @@ ENABLED_OPT_IN_RULES = {
     "table-fake-caption": {"enabled": True},
     "css-orientation-lock": {"enabled": True},
     "focus-order-semantics": {"enabled": True},
-    "identical-links-same-purpose": {"enabled": True},
     "p-as-heading": {"enabled": True},
     "target-size": {"enabled": True},
     "td-has-header": {"enabled": True},
@@ -45,7 +44,7 @@ def audit(page: Page, label: str) -> list[dict]:
     report zero violations. Enabled explicitly so this class of regression fails CI again.
 
     FR-157: axe-core ships fifteen more rules `enabled: false`. Each was judged for relevance to
-    this app's own screens (not assumed); the seven in `ENABLED_OPT_IN_RULES` above are plausibly
+    this app's own screens (not assumed); the six in `ENABLED_OPT_IN_RULES` above are plausibly
     relevant and workable as a hard gate here. `table-fake-caption` found a real issue: the crew
     print view's department-divider row (`<th colspan="3">`, spanning every column) was
     structurally identical to a one-cell "fake caption" row, axe-core's own heuristic for a
@@ -54,9 +53,12 @@ def audit(page: Page, label: str) -> list[dict]:
     Name/Position/Phone) so its actual first row has three distinct cells and the department
     row — now further down, repeated per department, not axe's target — stops matching; the
     free-floating "Crew list · printed ..." line was also moved into a proper `<caption>` while
-    touching this markup, a related but separate improvement. The other six enabled rules found
-    nothing on this app's current markup but are kept on as regression gates. The remaining eight
-    stay off; why is in the doc above, not repeated here.
+    touching this markup, a related but separate improvement. The other five enabled rules found
+    nothing on this app's current markup but are kept on as regression gates. `identical-links-
+    same-purpose` (FR-162/FR-163) was dropped from this set: axe-core's own `evaluate`/`after`
+    for that rule can only return `true` or downgrade to `incomplete`, never `false`, so it could
+    never fail this suite regardless of markup — the same shape of gap `hidden-content` already
+    has. The remaining nine stay off; why is in the doc above, not repeated here.
     """
     assert AXE.exists(), "axe-core is a devDependency: run npm ci in frontend/"
     page.add_script_tag(path=str(AXE))
