@@ -62,3 +62,11 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-169 (throwaway, not merged to main): FR-168 found the
+      # "Year of production" combobox's `.show-desktop` class requires a
+      # viewport >=1440px wide; every prior interaction attempt used 1280px.
+      # Re-run the interaction at 1920x1080 to finally read a real per-year
+      # count for BRIEF Q5.
+      - name: Render Filmography year filter at a wide viewport (FR-169)
+        run: python3 scripts/render_filmography_year_filter_wide_viewport.py
