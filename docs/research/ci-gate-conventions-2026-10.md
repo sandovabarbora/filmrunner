@@ -106,3 +106,41 @@ this gate. Combined with FR-162 (axe-core), FR-164/FR-166 (`check_live_stack.py`
 (`check_conventions.py`), every gate `ci.yml` runs on every PR has now been exercised end to
 end at least once with a real, deliberately non-compliant PR rather than assumed from reading
 the script.
+
+## FR-172: "Company docs format" gate confirmed to fire end to end, 2026-10-14
+
+`ci.yml`'s "Company docs format" step (`python scripts/check_company_docs.py docs/company`)
+is unconditional — unlike the `RUN_HEAVY`-gated checks and unlike the four gates FR-162/
+FR-164/FR-166/FR-170/FR-171 had already confirmed — and runs on every single PR to this repo,
+including the routine's own state/backlog/research PRs. `scripts/tests/test_check_company_docs.py`
+only exercises `check_backlog`/`check_inbox` as pure functions locally; nobody had opened a
+real PR with a genuinely malformed `BACKLOG.md`/`INBOX.md` item and watched the hosted check
+turn red.
+
+### What was run
+
+A throwaway PR (#508, branch `test/fr-172-company-docs-gate-throwaway`) added one new
+`BACKLOG.md` item, `FR-9999`, with `state: redy` — a typo, not one of the five values
+`check_company_docs.py` allows. Verified locally first (`python scripts/check_company_docs.py
+docs/company` exited 1 with the expected message) before opening the PR.
+
+### What the hosted check showed
+
+- Run [38587517479](https://github.com/sandovabarbora/filmrunner/actions/runs/38587517479/job/115933450025),
+  `conclusion: failure`. The "Company docs format" step printed the script's own message —
+  `BACKLOG.md: FR-9999: invalid state 'redy' (allowed: ['blocked', 'done', 'in-progress',
+  'ready'])` — then `Process completed with exit code 1`.
+- `pull_request_read get` on PR #508 while that check was red returned `"mergeable_state":
+  "blocked"` — the same direct cross-check FR-170/FR-171 used, confirming the ruleset actually
+  withholds merge, not just that the check reports red.
+- PR #508 was closed without merging once both were recorded (one comment with the run link
+  and result). The remote throwaway branch could not be deleted this shift (`git push origin
+  --delete` 403'd, the same failure every prior throwaway-branch attempt this week has hit) —
+  harmless, the PR stays closed.
+
+### Conclusion
+
+No wiring gap found — this gate behaves exactly as `TEAM.md`/`check_company_docs.py`'s own
+docstring describe it. With this item, every gate `ci.yml` runs unconditionally on every PR —
+not just the `RUN_HEAVY`-conditional ones FR-162/164/166/170/171 covered — has now been
+exercised end to end at least once with a real, deliberately non-compliant PR.
