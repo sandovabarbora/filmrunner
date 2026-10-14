@@ -620,19 +620,85 @@ this one's own dod covers or claims to confirm — it is named here, dated,
 so a future shift doesn't re-run this exact search expecting a different
 result, not asserted as the proven cause.
 
+## CSS breakpoint found: root cause confirmed, not just plausible (FR-168, 2026-10-14)
+
+FR-167's own follow-up named the one untried angle precisely: fetch the
+Filmography page's own stylesheet(s) and search for the `.show-desktop`
+rule FR-155 found on the "Year of production" combobox, since the class is
+shaped like a responsive-visibility utility (CSS), not a JS-driven flag
+(already ruled out by FR-167's exhaustive script-source search). This
+shift did exactly that — a stylesheet read, not another rendered
+interaction (FR-156 already exhausted that angle).
+
+**Method.** `scripts/search_filmography_css.py` (new, throwaway branch
+`marketing/fr-168-filmography-css-throwaway`, not merged — same precedent
+as FR-108/115/154/155/156/158/159/160/167), dispatched via the open-egress
+`desk-research-reverify.yml` pattern
+([run 38527066602](https://github.com/sandovabarbora/filmrunner/actions/runs/38527066602),
+completed `success`), job log read directly. It fetched the page's raw
+HTML, resolved every same-origin `<link rel=stylesheet href>` it loads,
+fetched those in full, and searched the combined CSS text (plus any inline
+`<style>` block) for `.show-desktop`, tracking each match's full
+`@media`/selector nesting context rather than just a flat string hit.
+
+**Result: outcome (a) — found, and the root cause is now confirmed, not
+just inferred.** The page loads two same-origin stylesheets (one
+third-party font stylesheet, not fetched — out of this item's own
+same-origin scope, same precedent as FR-167's script search) plus one
+inline `<style>` block. `.show-desktop` appears exactly twice in
+`core-6591e05c8d.css` (113,728 bytes, fetched in full, not truncated):
+
+1. At the top level, grouped with its sibling breakpoint classes:
+   `.show-mobile,.show-tablet,.show-laptop,.show-desktop` — the shared
+   base rule every one of these utility classes shares (hidden by
+   default, consistent with their name).
+2. Inside **`@media(min-width: 1440px)`**: `.show-desktop` on its own,
+   the rule that actually reveals it.
+
+**This is wider than every prior Playwright render's viewport.**
+`scripts/render_filmography_year_filter.py` (FR-154/155/156's own script,
+branch `marketing/fr-154-filmography-year-filter-throwaway`) sets
+`viewport={"width": 1280, "height": 1000}` — confirmed directly by reading
+that branch's own source, not assumed. 1280px never crosses the
+1440px breakpoint the stylesheet requires, so the "Year of production"
+combobox was *never going to render* under any of FR-154/155/156's three
+attempts (scroll-into-view, ancestor-chain dump, sibling-toggle click) —
+not because any interaction was wrong, but because the viewport itself
+was too narrow for the element to leave `display: none` regardless of
+what the script did. This names the root cause precisely, exactly as this
+item's own dod asked, superseding FR-156's "no further candidate named"
+close with the actual mechanism.
+
+**Per this item's own failure case — not triggered.** The stylesheet fetch
+was not blocked (both same-origin stylesheets returned `200` from the
+open-egress runner), and the search was conclusive (a specific selector
+and breakpoint found, not an unreadable minified blob) — so the
+wide-viewport interaction retry named as this item's fallback branch was
+not needed. The order-of-magnitude estimate above is still unchanged —
+this closes *why* the control was unreachable, not the per-year count
+itself, which still requires an actual render past 1440px width to read
+the "Show results (N)" counter FR-154 already confirmed exists.
+
 ## Follow-up needed (cannot be done by this routine)
 
-- **New lead, untried (FR-167, 2026-10-13)**: the JS-source search named
-  above found no control-specific gate in any script, but did find that
-  the combobox's own `show-desktop` class is shaped exactly like a
-  responsive-visibility utility class, which would be a CSS `@media` rule,
-  not JS — never fetched or searched here (this item's dod scoped to
-  script source only). If a future shift wants to carry this further: (1)
-  fetch the page's own stylesheet(s) and search for `.show-desktop`'s rule
-  directly, or (2) re-dispatch FR-156's own interaction script with an
-  explicit wide desktop viewport size set before the click attempt, rather
-  than Playwright's default. Neither has been tried; this is a new,
-  named angle, not a repeat of FR-156's exhausted interaction attempts.
+- **New lead, untried (FR-168, 2026-10-14)**: the exact blocker is now
+  known — `.show-desktop` only leaves `display: none` at
+  `@media(min-width: 1440px)` (confirmed by reading
+  `core-6591e05c8d.css` directly), and every prior interaction attempt
+  (FR-154/155/156) used a 1280px-wide Playwright viewport, below that
+  threshold. A future shift can re-dispatch
+  `scripts/render_filmography_year_filter.py` with its viewport widened
+  past 1440px (e.g. 1920×1080, as this item's own dod suggested) and
+  should now reach the live "Show results (N)" counter FR-154 already
+  confirmed exists, actually select a year, and read the resulting count
+  — the one step that would finally produce a real per-year number for
+  Q5. This is a precise, confirmed-reachable next step, not a guess.
+
+- **Closed (FR-168, 2026-10-14)**: FR-167's own lead (above) is resolved —
+  see the dated FR-168 section above for the confirmed root cause
+  (`.show-desktop` requires `@media(min-width: 1440px)`, wider than every
+  prior render's 1280px viewport). The one remaining step is named in the
+  FR-168 follow-up entry below.
 - **Exhausted by FR-156 (2026-10-09)**: the year-filter interaction script
   (`scripts/render_filmography_year_filter.py`, throwaway branch
   `marketing/fr-154-filmography-year-filter-throwaway`, not merged) tried
