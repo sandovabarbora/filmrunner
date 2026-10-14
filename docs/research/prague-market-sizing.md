@@ -679,26 +679,80 @@ this closes *why* the control was unreachable, not the per-year count
 itself, which still requires an actual render past 1440px width to read
 the "Show results (N)" counter FR-154 already confirmed exists.
 
-## Follow-up needed (cannot be done by this routine)
+## Wide-viewport retry: combobox opens, selection still blocked (FR-169, 2026-10-14)
 
-- **New lead, untried (FR-168, 2026-10-14)**: the exact blocker is now
-  known — `.show-desktop` only leaves `display: none` at
-  `@media(min-width: 1440px)` (confirmed by reading
-  `core-6591e05c8d.css` directly), and every prior interaction attempt
-  (FR-154/155/156) used a 1280px-wide Playwright viewport, below that
-  threshold. A future shift can re-dispatch
-  `scripts/render_filmography_year_filter.py` with its viewport widened
-  past 1440px (e.g. 1920×1080, as this item's own dod suggested) and
-  should now reach the live "Show results (N)" counter FR-154 already
-  confirmed exists, actually select a year, and read the resulting count
-  — the one step that would finally produce a real per-year number for
-  Q5. This is a precise, confirmed-reachable next step, not a guess.
+FR-168's own named next step: re-dispatch the year-filter interaction with
+the viewport explicitly widened past the confirmed 1440px breakpoint.
+
+**Method.** `scripts/render_filmography_year_filter_wide_viewport.py` (new,
+throwaway branch `marketing/fr-169-filmography-wide-viewport-throwaway`, not
+merged — same precedent as FR-108/115/154/155/156/158/159/160/167/168) is
+FR-156's own `render_filmography_year_filter.py` with exactly one change:
+`viewport={"width": 1920, "height": 1080}` instead of 1280x1000. Same
+cookie-dismissal, Advanced-search-open, "Year of production"-section-expand,
+and combobox-activation logic, unchanged, so any difference in outcome is
+attributable to the viewport width. Dispatched via the open-egress
+`desk-research-reverify.yml` pattern
+([run 38540885581](https://github.com/sandovabarbora/filmrunner/actions/runs/38540885581),
+completed `success`), job log read directly.
+
+**Result: partial.** The breakpoint theory is confirmed in practice, not
+just by the stylesheet: expanding the "Year of production" section (a plain
+click on its label text) now reveals the full year list as rendered,
+visible text — "2026" through "2003", "1983-2003", "All years" — which
+FR-154/155/156 never once saw at 1280px regardless of which combobox fix
+they tried. The combobox's own `scroll_into_view_if_needed` + `click` (the
+same fix (a) FR-156 tried and failed with) also now succeeds, consistent
+with the element no longer being `display: none`.
+
+**But selecting an individual year still fails, and no results counter
+ever renders.** An exact-text match for `"2025"` finds exactly two
+elements (`<span class="text-sm medium">2025</span>`, confirmed by a markup
+dump — not a listing card's "2025, 2026 production" badge, a different
+element the dump also found separately) — `click()` on both raised an
+exception this script's own report does not capture in detail (a gap worth
+fixing if this angle is ever retried, not fixed here). Searching the full
+rendered text for FR-154's own confirmed `"Show results (N)"` counter or
+the `"N total entries"` phrasing found nothing, before or after every step
+— not even the unfiltered `506` FR-154 read two weeks ago. Either the
+counter text only renders in a page state this run's interaction sequence
+never reached, or the page's own markup/copy has changed since 2026-09-29;
+this run cannot distinguish the two. The only count-shaped text found at
+all was a page-number footer ("1 2 3 … 43"), which is pagination over the
+unfiltered list, not a per-year filtered count — not usable for Q5.
+
+**Per this item's own failure case — triggered.** The click did not change
+any counter (none was ever found to change), so per the dod: this names the
+Filmography year-filter angle **fully exhausted** — no further
+viewport/selector variant is proposed. Four attempts (FR-154, 155, 156,
+169) have now tried, in order: the base interaction, cookie-overlay
+dismissal, three ancestor/sibling/scroll fixes, a JS-source search (FR-167)
+and a CSS-breakpoint read (FR-168) to find *why* it failed, and finally the
+viewport width fix the CSS read itself prescribed — and still cannot
+produce one reliable click-through to a real per-year count. **BRIEF Q5 has
+no path to a real per-year production count from this source**, via a
+dispatched browser script. The order-of-magnitude estimate above (unchanged
+throughout this whole chain) is the one number this routine can defend for
+Q5 from this page; a precise per-year figure would need either a human
+clicking through the live site directly, or the site exposing its counts
+via a documented API/query-string pattern (untried, and not named as a
+candidate by any shift so far — if a future shift wants to pick this up
+again, that is the one genuinely new angle, not another viewport/selector
+variant on the same rendered-interaction approach four shifts have now
+spent on).
 
 - **Closed (FR-168, 2026-10-14)**: FR-167's own lead (above) is resolved —
   see the dated FR-168 section above for the confirmed root cause
   (`.show-desktop` requires `@media(min-width: 1440px)`, wider than every
-  prior render's 1280px viewport). The one remaining step is named in the
-  FR-168 follow-up entry below.
+  prior render's 1280px viewport). The one remaining step it named (the
+  wide-viewport retry) is FR-169's, immediately above — now also closed,
+  angle fully exhausted.
+- **Exhausted by FR-169 (2026-10-14)**: the wide-viewport retry (above)
+  confirmed the breakpoint theory in practice (the year list now renders),
+  but selecting an individual year still fails and no results counter ever
+  appears. No further viewport/selector variant on this dispatched-browser-
+  script approach is proposed; the one untried angle left is a documented
+  API/query-string pattern on the site itself (not attempted by any shift).
 - **Exhausted by FR-156 (2026-10-09)**: the year-filter interaction script
   (`scripts/render_filmography_year_filter.py`, throwaway branch
   `marketing/fr-154-filmography-year-filter-throwaway`, not merged) tried
