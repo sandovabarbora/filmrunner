@@ -62,3 +62,11 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-168 (throwaway, not merged — same precedent as FR-108/115/154/
+      # 155/156/158/159/160/167): read the Filmography page's own same-origin
+      # stylesheet(s) plus inline <style> blocks for the `.show-desktop` rule
+      # FR-155 found on the "Year of production" combobox and FR-167's JS
+      # search named as a CSS-shaped, never-checked lead.
+      - name: Search the Filmography page's own CSS source
+        run: python3 scripts/search_filmography_css.py
