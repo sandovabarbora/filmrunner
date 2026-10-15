@@ -36,6 +36,12 @@ CANDIDATES = [
     ("rok (Czech 'year') as a filterUrl query param", {"currentPageId": "7181", "filterUrl": "/en/filmography/?rok=2025"}),
     ("year as its own top-level param", {"currentPageId": "7181", "filterUrl": "/en/filmography/", "year": "2025"}),
     ("a different year, same pattern as the best filterUrl candidate", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=2020"}),
+    ("year 1990, same pattern", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=1990"}),
+    ("year 2010, same pattern", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=2010"}),
+    ("year 2026, same pattern", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=2026"}),
+    ("year 1950 (implausibly early, should be 0 or near-0 if real)", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=1950"}),
+    ("nonsense year value 'abc' (should error or fall back if filterUrl is really parsed)", {"currentPageId": "7181", "filterUrl": "/en/filmography/?year=abc"}),
+    ("nonsense query key entirely unrelated to year (does ANY query string on filterUrl trigger the same 22?)", {"currentPageId": "7181", "filterUrl": "/en/filmography/?foo=bar"}),
 ]
 
 
