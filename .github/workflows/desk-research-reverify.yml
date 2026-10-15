@@ -62,3 +62,9 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-173 (throwaway dispatch, not part of the merged PR): look for a
+      # documented API/query-string pattern behind the Filmography page's
+      # year filter, per FR-169's own named follow-up.
+      - name: Find the Filmography year-filter's API/query-string pattern
+        run: python3 scripts/find_filmography_year_api.py
