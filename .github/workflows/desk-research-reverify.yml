@@ -62,3 +62,9 @@ jobs:
 
       - name: Render client-rendered pricing pages
         run: python3 scripts/render_pricing_pages.py
+
+      # FR-174: extend FR-173's confirmed per-year Filmography count endpoint
+      # into a real 2015-2026 series. Throwaway step, not meant to stay on
+      # main — same pattern FR-173/167/168/169 used.
+      - name: Probe Filmography per-year count API (FR-174)
+        run: python3 scripts/probe_filmography_count_api.py
