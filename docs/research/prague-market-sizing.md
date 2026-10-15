@@ -784,3 +784,85 @@ spent on).
 - Once FR-3 interviews happen, fold interviewees' own estimates into this
   file rather than treating this shift's order-of-magnitude figure as
   final.
+
+## A real per-year count, via the documented API endpoint (FR-173, 2026-10-15)
+
+FR-169's own failure case named the one untried angle: "the site exposing
+its counts via a documented API/query-string pattern." This item found it.
+
+**Method.** `scripts/find_filmography_year_api.py` (throwaway branch
+`marketing/fr-173-filmography-api-throwaway`, not merged — same precedent
+as FR-108/154/155/156/158/159/160/167/168/169) first ruled out a static
+pattern (no `wp-json`, no readable `<form>`-submitted query string, no
+inline `fetch(...)` target in the page's raw HTML — the Filmography page
+turns out to be an Umbraco site, not WordPress, confirmed by the 404 on
+`/wp-json/`), then drove real headless Chromium with every network
+request logged through the same cookie-dismiss/Advanced-search/Year-of-
+production-expand/combobox-open sequence FR-169 already confirmed reaches
+the open combobox. That capture found the real endpoint the page's own
+Angular app calls to render its results count:
+
+    GET https://filmcommission.gov.cz/umbraco/surface/SearchSurface/GetFilmographyCount
+        ?currentPageId=7181&filterUrl=%2Fen%2Ffilmography%2F
+
+(note: `filmcommission.cz` itself 301-redirects to `filmcommission.gov.cz`
+now — every URL this and prior shifts cited under the `.cz` domain still
+resolves, just worth knowing if a future shift greps for the literal
+domain.) The captured call used the *unfiltered* `filterUrl` (the in-
+browser year click still never completes a real submission, consistent
+with every FR-154/155/156/169 finding) — but it named the real parameter
+shape to try directly.
+
+`scripts/probe_filmography_count_api.py` (same throwaway branch) then
+called that endpoint directly with `filterUrl` values encoding a year
+filter, dispatched via the open-egress `desk-research-reverify.yml`
+pattern ([run 38698206445](https://github.com/sandovabarbora/filmrunner/actions/runs/38698206445),
+`success`), job log read directly, two rounds (the second widened after
+the first round's `year=2025` and `year=2020` both returned the same
+`22`, which needed ruling out as a fixed fallback value rather than
+assumed real):
+
+| `filterUrl` query | Response body |
+|---|---|
+| none (baseline, unfiltered) | `506` |
+| `?year=2025` | `22` |
+| `?year=2020` | `22` |
+| `?year=2010` | `8` |
+| `?year=2026` | `11` |
+| `?year=1990` | `0` |
+| `?year=1950` | `0` |
+| `?year=abc` (nonsense value) | `506` (falls back to unfiltered) |
+| `?foo=bar` (unrelated query key) | `506` (falls back to unfiltered) |
+| `?rok=2025` (Czech spelling) | `506` (not the recognized key — `year` is) |
+
+**This is a real, working per-year filter, not a coincidence or a fixed
+fallback.** The two checks that would have exposed a fallback-value
+artifact both came back clean: a genuinely invalid year (`abc`) and an
+entirely unrelated query key (`foo=bar`) both fall back to the same `506`
+as no filter at all, while every recognized year returns a distinct,
+plausible count (`0` for 1950/1990, before this page's dataset plausibly
+starts; `8`/`11`/`22` for 2010/2026/2025) — exactly the behavior a real
+server-side year filter would produce, and not something a static
+fallback constant could explain.
+
+**Scope and limits, stated plainly.** This is a per-year count of
+Filmography database entries (film/TV credits tagged with a production
+year), not BRIEF Q5's own "active production" definition (one that issued
+a call sheet in the last 30 days) — no public source answers that exact
+question directly, the same limit the "Definition" section above already
+names. It is, however, the most concrete, queryable, real figure this
+whole research thread has produced: a precise count per calendar year,
+not an order-of-magnitude estimate or a `WebSearch` snippet. 2025's own
+count (`22`, with the year still two and a half months from closing) is
+consistent with the existing order-of-magnitude estimate above, for
+whatever that consistency is worth as a sanity check.
+
+**Follow-up needed, closing the item's own dod:** the Filmography
+year-filter angle, opened FR-154 and kept open through FR-155/156/167/
+168/169, is now resolved, not exhausted-and-abandoned — a working
+year → count query exists and is documented here with its exact
+parameter shape. A future shift could extend the table above across more
+years (2015-2026 inclusive) to build a real per-year trend line for Q5,
+or fold the `22`/`11` figures directly into the order-of-magnitude
+estimate's own reasoning above; neither is done in this item, which
+stops at proving and documenting the mechanism per its own dod.
