@@ -861,8 +861,85 @@ whatever that consistency is worth as a sanity check.
 year-filter angle, opened FR-154 and kept open through FR-155/156/167/
 168/169, is now resolved, not exhausted-and-abandoned — a working
 year → count query exists and is documented here with its exact
-parameter shape. A future shift could extend the table above across more
-years (2015-2026 inclusive) to build a real per-year trend line for Q5,
-or fold the `22`/`11` figures directly into the order-of-magnitude
-estimate's own reasoning above; neither is done in this item, which
-stops at proving and documenting the mechanism per its own dod.
+parameter shape. FR-174 (below) extends it into a real series.
+
+## A real per-year count series, 2015–2026 (FR-174, 2026-10-15)
+
+FR-173's own follow-up note named the concrete next step: extend the six
+scattered year probes into a full 2015–2026 series. `scripts/probe_filmography_count_api.py`
+(throwaway branch `marketing/fr-174-filmography-year-series-throwaway`, not
+merged — same pattern as FR-173) called the same documented endpoint for
+every year 2015 through 2026 inclusive, plus FR-173's own two control probes
+(an invalid year, an unrelated query key) run again first to catch any
+behaviour change before trusting a single result. Dispatched via the
+open-egress `desk-research-reverify.yml` pattern
+([run 38711415945](https://github.com/sandovabarbora/filmrunner/actions/runs/38711415945),
+`success`), job log read directly.
+
+**Control probes, re-checked before trusting the series:** baseline
+(unfiltered) `506`, invalid year (`abc`) `506`, unrelated key (`foo=bar`)
+`506` — all three match, exactly as FR-173 found one day earlier. No
+behaviour change.
+
+**The series, all 12 years returned a real, distinct response (no fetch
+errors, no year fell back to the unfiltered `506`):**
+
+| year | count |
+|---|---|
+| 2015 | 30 |
+| 2016 | 27 |
+| 2017 | 34 |
+| 2018 | 33 |
+| 2019 | 40 |
+| 2020 | 22 |
+| 2021 | 33 |
+| 2022 | 27 |
+| 2023 | 20 |
+| 2024 | 15 |
+| 2025 | 22 |
+| 2026 | 11 |
+
+(2025 and 2026 are partial/in-progress years per FR-173's own note — 2025 is
+still over two months from closing, 2026 not yet half over — so their lower
+counts are expected, not a real decline, and both figures match FR-173's own
+2026-10-14 probe exactly, confirming the API's result is stable day to day.)
+
+**Is this plausible, stated honestly rather than silently tabulated, per
+this item's own dod:** not monotonic, and not expected to be — this is a
+small, specific-production-type dataset (Filmography entries), not a smooth
+macro series. Two features are worth calling out rather than passing over:
+
+- **2020 (`22`) is the lowest full year other than 2024**, consistent with
+  the well-known, independently-verifiable fact that film/TV production
+  worldwide paused for months in 2020 (COVID-19) — a plausible real cause,
+  not an artifact, though this routine has not cross-checked a Czech-specific
+  production-halt source to confirm the causal link, only that the direction
+  fits.
+- **2022→2023→2024 declines each year (27→20→15), the steepest sustained
+  drop in the whole series**, with no comparable independently-verifiable
+  external cause on hand the way 2020 has one. The more likely explanation,
+  stated as a hypothesis and not a confirmed fact, is **recency lag in the
+  database itself** — a production's credits plausibly get tagged with some
+  delay after the production year closes, so the most recent complete years
+  are undercounted at the time of query, the same dynamic already named for
+  2025/2026's partial-year counts above, just less visible for a fully
+  elapsed year. This routine has no way to test that hypothesis directly
+  (no "last updated" field on the endpoint, no historical snapshot to diff
+  against) — flagged as a real open question, not resolved here.
+
+**Does it change or merely confirm the existing order-of-magnitude estimate
+above:** confirms it, with more precision than before. The order-of-magnitude
+section above this one already put Prague-area production activity in the
+same rough band this series' typical year (20–40) sits in; this series
+doesn't move that estimate, it replaces an order-of-magnitude guess with a
+dozen real, individually-verified data points — still Filmography database
+entries by production year, not BRIEF Q5's own "active in the last 30 days"
+definition (the scope note above still applies unchanged).
+
+**Follow-up needed:** the 2022–2024 decline's recency-lag hypothesis is
+untested and worth a future shift's attention if a way to test it turns up
+(e.g. re-running this exact probe weeks or months from now and checking
+whether 2023/2024's counts rise, which would confirm lag rather than a real
+decline). Otherwise this angle's own dod is now fully closed — a working
+mechanism (FR-173) and a full, honestly-caveated series (FR-174) both exist
+and are documented here.
