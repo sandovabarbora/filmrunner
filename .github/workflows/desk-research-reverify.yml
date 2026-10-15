@@ -68,3 +68,9 @@ jobs:
       # year filter, per FR-169's own named follow-up.
       - name: Find the Filmography year-filter's API/query-string pattern
         run: python3 scripts/find_filmography_year_api.py
+
+      # FR-173 follow-up: the network capture above found the real AJAX
+      # endpoint (GetFilmographyCount); probe it directly with candidate
+      # year-filter parameters.
+      - name: Probe the GetFilmographyCount endpoint directly
+        run: python3 scripts/probe_filmography_count_api.py
