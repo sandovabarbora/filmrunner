@@ -119,7 +119,18 @@ FR-3 interviews and the open questions above to confirm or kill.
 - A hypothesis that cannot be tested within a month of starting FR-3 is
   marked "parked" in this file, never deleted or silently treated as true.
 
-## Out of scope until this brief is v1
+## Out of scope
 
-New product features, landing page, pricing page, deployment, outreach
-beyond interview invitations.
+Product features are **in scope** and have been since `DECISIONS.md`'s
+2026-09-14 "one working loop" entry, whose own first line overrides this
+section's original "no product features until BRIEF.md v1" rule (the
+founder's call: build toward one working slice — AD publishes a call
+sheet, crew opens a link on a phone, it works offline, a hot revision
+propagates — rather than wait for interviews to finish first). Well over
+a hundred features (FR-8 through FR-181) have shipped under that
+override; this section previously still read as if the original rule
+were in force, which it is not.
+
+What the 2026-09-14 override never touched, and what stays out of scope:
+landing page, pricing page, deployment, and outreach beyond interview
+invitations.
