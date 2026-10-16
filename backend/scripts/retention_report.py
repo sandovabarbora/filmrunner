@@ -35,8 +35,22 @@ def main() -> None:
         else:
             now = datetime.now(timezone.utc)
             for p in wrapped:
-                created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
-                age_days = (now - created).days
+                if p.wrapped_at is not None:
+                    wrapped_at = p.wrapped_at if p.wrapped_at.tzinfo else p.wrapped_at.replace(tzinfo=timezone.utc)
+                    age_days = (now - wrapped_at).days
+                    # FR-181's migration backfilled wrapped_at = created_at for any row
+                    # already WRAPPED before the column existed; that case is still only
+                    # a proxy, not an observed wrap time, so it is labelled as such.
+                    is_estimated = p.wrapped_at == p.created_at
+                    age_label = (
+                        f"wrapped {age_days} days ago, estimated from created_at (migrated before wrapped_at existed)"
+                        if is_estimated
+                        else f"wrapped {age_days} days ago"
+                    )
+                else:
+                    created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
+                    age_days = (now - created).days
+                    age_label = f"created {age_days} days ago [proxy only, not time-since-wrap — see docs/ops/data-retention.md]"
                 contacts = db.scalar(
                     select(func.count(func.distinct(Contact.id)))
                     .select_from(Contact)
@@ -57,8 +71,7 @@ def main() -> None:
                     .where(CrewMember.production_id == p.id)
                 )
                 print(
-                    f"- {p.name!r} ({p.id}): created {age_days} days ago "
-                    f"[proxy only, not time-since-wrap — see docs/ops/data-retention.md]; "
+                    f"- {p.name!r} ({p.id}): {age_label}; "
                     f"{crew} crew members, {contacts} contacts, {subs} push subscriptions, {views} read receipts"
                 )
 

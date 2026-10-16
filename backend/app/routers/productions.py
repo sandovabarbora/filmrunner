@@ -5,7 +5,7 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 import logging
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi.responses import Response
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -16,7 +16,7 @@ from app.authz import CREW_EDIT, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRO
 from app.models.call_sheet import CallSheet, CallSheetRevision, ScheduleItem
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
-from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production
+from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production, ProductionStatus
 from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, delete_contact_photo, store_contact_photo
 from app.schemas.production import (
     ContactUpdate,
@@ -90,7 +90,16 @@ def get_production(access: Access = Depends(require(PRODUCTION_READ))) -> Produc
 def update_production(payload: ProductionUpdate, db: Session = Depends(get_db), access: Access = Depends(require(PRODUCTION_EDIT))) -> ProductionRead:
     """Rename or move along prep → shooting → wrapped (FR-34). Members and days are untouched."""
     production = access.production
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if "status" in changes and changes["status"] != production.status:
+        # FR-181: wrapped_at tracks the *most recent* WRAPPED transition, not the
+        # first one — a production that un-wraps and wraps again must end up
+        # timestamped at the second wrap, so retention is measured from there.
+        if changes["status"] == ProductionStatus.WRAPPED:
+            production.wrapped_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        else:
+            production.wrapped_at = None
+    for field, value in changes.items():
         if field == "name" and (value is None or not value.strip()):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A production needs a name")
         setattr(production, field, value.strip() if isinstance(value, str) else value)

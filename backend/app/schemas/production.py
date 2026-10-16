@@ -4,6 +4,7 @@ Reference: https://docs.pydantic.dev/latest/concepts/models/
 """
 
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -51,6 +52,8 @@ class ProductionRead(ProductionCreate):
     my_role: str | None = None
     permissions: list[str] = []
     id: uuid.UUID
+    # None until the production first wraps (FR-181); cleared if it un-wraps again.
+    wrapped_at: datetime | None = None
 
 
 class LocationCreate(BaseModel):

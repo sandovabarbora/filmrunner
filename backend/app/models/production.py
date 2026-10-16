@@ -47,6 +47,11 @@ class Production(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # Set when `status` transitions to WRAPPED, cleared if it moves away again (FR-181).
+    # None for a production that has never been WRAPPED, or wrapped before this column
+    # existed and was never backfilled (see the migration's own backfill, which covers
+    # that case from `created_at` — a weaker proxy, not a true wrap time).
+    wrapped_at: Mapped[datetime | None] = mapped_column(default=None)
 
     locations: Mapped[list["Location"]] = relationship(back_populates="production")
     crew_members: Mapped[list["CrewMember"]] = relationship(back_populates="production")
