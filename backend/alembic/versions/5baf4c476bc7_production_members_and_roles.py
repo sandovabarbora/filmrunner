@@ -43,3 +43,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_production_members_production_id'), table_name='production_members')
     op.drop_table('production_members')
     # ### end Alembic commands ###
+    # create_table's sa.Enum(...) column implicitly created this Postgres
+    # type; drop_table never implicitly drops it (same gap as 0ea2247026ef).
+    sa.Enum(name='production_role').drop(op.get_bind(), checkfirst=True)

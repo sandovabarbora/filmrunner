@@ -151,3 +151,12 @@ def downgrade() -> None:
     op.drop_table('productions')
     op.drop_table('contacts')
     # ### end Alembic commands ###
+    # create_table's sa.Enum(...) columns implicitly create a named Postgres
+    # type; drop_table never implicitly drops it, so it must be dropped here
+    # explicitly or a later upgrade's CREATE TYPE fails with DuplicateObject.
+    sa.Enum(name='int_ext').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='day_night').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='distribution_channel').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='cast_status_code').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='call_sheet_status').drop(op.get_bind(), checkfirst=True)
+    sa.Enum(name='production_status').drop(op.get_bind(), checkfirst=True)
