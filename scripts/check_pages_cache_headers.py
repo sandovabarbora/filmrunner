@@ -83,6 +83,29 @@ def sample_asset(url: str) -> dict:
     }
 
 
+def decide(results: list[dict]) -> tuple[bool, dict]:
+    """Pure decision logic: which of these already-sampled assets should fail the job.
+
+    An asset that is unreachable is reported only as unreachable — its necessarily
+    absent Cache-Control is not re-flagged as a separate "missing" failure.
+    """
+    unreachable = [r for r in results if not all(s["status"] == 200 for s in r["samples"])]
+    reachable = [r for r in results if r not in unreachable]
+    missing_cache_control = [r for r in reachable if not r["has_cache_control"]]
+    # Only a real flip matters: an asset that is consistently absent Cache-Control
+    # is already caught by missing_cache_control above, not flagged unstable too.
+    unstable_cache_control = [
+        r for r in reachable if r["has_cache_control"] and not r["cache_control_stable"]
+    ]
+    failed = bool(unreachable or missing_cache_control or unstable_cache_control)
+    detail = {
+        "unreachable_names": [r["url"].rsplit("/", 1)[-1] for r in unreachable],
+        "missing_cache_control_names": [r["url"].rsplit("/", 1)[-1] for r in missing_cache_control],
+        "unstable_cache_control_names": [r["url"].rsplit("/", 1)[-1] for r in unstable_cache_control],
+    }
+    return failed, detail
+
+
 def main() -> int:
     try:
         assets = discover_hashed_assets(["", "editor.html", "landing.html"])
@@ -112,12 +135,23 @@ def main() -> int:
         return 1
 
     results = [sample_asset(url) for url in assets[:5]]
-    unreachable = [r for r in results if not all(s["status"] == 200 for s in r["samples"])]
+    failed, detail = decide(results)
 
-    lines = [
-        f"## Pages cache headers (FR-85) — {len(results)} hashed asset(s), "
-        f"{SAMPLES_PER_ASSET} fetches each",
-        "",
+    heading = (
+        f"## Pages cache headers (FR-85) — {'FAILED' if failed else 'OK'}, "
+        f"{len(results)} hashed asset(s), {SAMPLES_PER_ASSET} fetches each"
+    )
+    lines = [heading, ""]
+    if detail["missing_cache_control_names"]:
+        lines.append(f"Missing `Cache-Control` entirely: {', '.join(detail['missing_cache_control_names'])}")
+    if detail["unstable_cache_control_names"]:
+        lines.append(
+            "`Cache-Control` flipped across samples (not CDN warm-up, a real asset "
+            f"answering 200 every time): {', '.join(detail['unstable_cache_control_names'])}"
+        )
+    if detail["missing_cache_control_names"] or detail["unstable_cache_control_names"]:
+        lines.append("")
+    lines += [
         f"`{PAGES}`",
         "",
         "| Asset | Cache-Control (stable?) | ETag present | Samples |",
@@ -143,7 +177,7 @@ def main() -> int:
     with open("docs/research/pages-cache-headers.json", "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=2)
 
-    return 1 if unreachable else 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
