@@ -1,5 +1,24 @@
 # Alembic downgrade() walk (FR-178, 2026-10-16)
 
+> **Update 2026-10-16 (FR-179, re-verified):** all three bugs below are
+> fixed on `fix/fr-179-alembic-downgrade-bugs`. Re-ran the walk against a
+> fresh local Postgres 16: `alembic upgrade head` (clean), `alembic
+> downgrade base` (now leaves **zero** `pg_type` entries in `public` —
+> previously 6 orphaned enums survived), `alembic upgrade head` again
+> (clean, previously failed with `DuplicateObject`). A second full
+> `downgrade base` → `upgrade head` round trip produced an identical
+> `information_schema.columns` + `pg_indexes` + `pg_constraint` +
+> `pg_enum` MD5 fingerprint before and after. `9520a7babf8c`'s downgrade no
+> longer raises `CompileError` — it now names the real Postgres
+> auto-generated constraint (`call_sheet_revisions_head_of_day_crew_member_id_fkey`)
+> instead of passing `None`, which changes nothing about what `upgrade()`
+> creates, so it is safe to replay against a database already migrated past
+> this revision in production. Full backend suite: 248/248 passed
+> (`filmrunner`/`filmrunner_dev` role recreated locally for
+> `test_migration_enum_casing.py`, which hardcodes that DSN — unrelated to
+> this fix, just missing in this fresh sandbox). Detail below is FR-178's
+> original report, left as the record of what was found.
+
 Confirms, for the first time, whether any of the 19 Alembic migrations'
 `downgrade()` actually reverses its `upgrade()` cleanly against a real
 database. Until this check, `check_migrations.sh`'s "one Alembic head" CI
