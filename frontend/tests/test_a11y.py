@@ -147,6 +147,39 @@ def test_crew_list_print_view(page: Page, frontend_url: str, api_url: str) -> No
     printed.close()
 
 
+def test_cast_locations_members_settings_tabs(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-183: FR-63 (2026-09-22) wrote this suite for "the four screens" the editor had then.
+    It has since grown to six tabs (`Production.tsx:85-90`) — Cast is only ever clicked in
+    passing by `test_crew_list_print_view`, to populate it before opening the print view, never
+    itself audited; Locations, Members and Settings are never visited by this suite at all."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E a11y tabs {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Cast']")
+    page.wait_for_selector("#castName", timeout=10_000)
+    page.fill("#castName", "Anna Geislerová"); page.fill("#castCharacter", "MARTA")
+    page.click("#addCast")
+    expect(page.locator("#cast")).to_contain_text("MARTA", timeout=10_000)
+    audit(page, "editor · Cast tab")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Riverbank, Troja")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Riverbank, Troja", timeout=10_000)
+    audit(page, "editor · Locations tab")
+
+    # Members: owner-only (`manage`, Production.tsx:89); the production's creator is its owner.
+    page.click("role=tab[name='Members']")
+    page.wait_for_selector("#memberEmail", timeout=10_000)
+    audit(page, "editor · Members tab")
+
+    # Settings: editor-or-above (`edit`, Production.tsx:90); the owner qualifies.
+    page.click("role=tab[name='Settings']")
+    page.wait_for_selector("#productionName", timeout=10_000)
+    audit(page, "editor · Settings tab")
+
+
 def test_a_report_of_the_non_blocking_findings_exists(page: Page, frontend_url: str) -> None:
     """The report is part of the deliverable; this keeps it from silently disappearing."""
     report = Path(__file__).resolve().parents[2] / "docs" / "research" / "a11y-2026-09.md"
