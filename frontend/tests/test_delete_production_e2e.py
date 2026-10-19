@@ -27,10 +27,12 @@ def test_deleting_a_production_removes_it_and_its_crew_for_good(page: Page, fron
     page.click("#deleteProduction")
 
     expect(page.locator("#notice")).to_contain_text("deleted", timeout=15_000)
-    # Back on the Productions list (empty, since this was the only production this
-    # browser context created), with no trace of the deleted one anywhere on the page.
+    # Back on the Productions list, with no trace of the deleted one anywhere on the
+    # page. The service token sees every production the whole API/database has ever
+    # created (not just this browser context's own), so the list itself may be
+    # non-empty here — this suite's other tests share the same backend — asserting
+    # "#intro" (empty-list only) would be wrong whenever another test's production exists.
     page.wait_for_selector("#newProduction", timeout=10_000)
-    expect(page.locator("#intro")).to_be_visible()
     expect(page.locator("#main")).not_to_contain_text(name)
 
     # A fresh production still works (the editor itself is unaffected).
