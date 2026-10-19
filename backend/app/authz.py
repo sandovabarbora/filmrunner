@@ -20,11 +20,16 @@ from app.models.production import Production
 PRODUCTION_READ = "production:read"
 PRODUCTION_MANAGE_MEMBERS = "production:manage_members"
 PRODUCTION_EDIT = "production:edit"  # name and lifecycle status (FR-34)
+# Deliberately its own permission rather than reusing PRODUCTION_MANAGE_MEMBERS (FR-185): today
+# both resolve to owner-only, but deleting a production is irreversible in a way managing members
+# never is, so it gets a name an endpoint can ask for precisely, and a future role split (e.g. a
+# co-owner who manages members but cannot delete) doesn't silently inherit it.
+PRODUCTION_DELETE = "production:delete"
 DAY_PUBLISH = "day:publish"
 CREW_EDIT = "crew:edit"
 
 ROLE_PERMISSIONS: dict[ProductionRole, frozenset[str]] = {
-    ProductionRole.OWNER: frozenset({PRODUCTION_READ, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_EDIT, DAY_PUBLISH, CREW_EDIT}),
+    ProductionRole.OWNER: frozenset({PRODUCTION_READ, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_EDIT, PRODUCTION_DELETE, DAY_PUBLISH, CREW_EDIT}),
     ProductionRole.EDITOR: frozenset({PRODUCTION_READ, PRODUCTION_EDIT, DAY_PUBLISH, CREW_EDIT}),
     ProductionRole.VIEWER: frozenset({PRODUCTION_READ}),
 }

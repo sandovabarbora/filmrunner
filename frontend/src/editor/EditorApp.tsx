@@ -106,7 +106,12 @@ function EditorAppInner() {
       )}
       {route.screen === "production" && (
         <ProductionScreen conn={conn} productionId={route.productionId} production={production} tab={route.tab} setNotice={setNotice}
-          onUpdated={(p) => setProductions((ps) => (ps ?? []).map((x) => (x.id === p.id ? p : x)))} />
+          onUpdated={(p) => setProductions((ps) => (ps ?? []).map((x) => (x.id === p.id ? p : x)))}
+          onDeleted={(deletedId) => {
+            setProductions((ps) => (ps ?? []).filter((x) => x.id !== deletedId));
+            setNotice({ kind: "ok", text: L("{name} deleted.", { name: production?.name ?? "" }) });
+            navigate({ screen: "productions" });
+          }} />
       )}
       {route.screen === "day" && (
         <DayEditor conn={conn} productionId={route.productionId} productionName={production?.name ?? null} callSheetId={route.callSheetId}

@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import Principal, require_api_token, require_principal
-from app.authz import CREW_EDIT, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
-from app.models.call_sheet import CallSheet, CallSheetRevision, ScheduleItem
+from app.authz import CREW_EDIT, PRODUCTION_DELETE, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRODUCTION_READ, Access, ROLE_PERMISSIONS, require, resolve_access, resolve_access_or_none, visible_productions
+from app.models.call_sheet import CallSheet, CallSheetRevision, DistributionLog, ScheduleItem
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
 from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production
@@ -97,6 +97,71 @@ def update_production(payload: ProductionUpdate, db: Session = Depends(get_db), 
     db.commit()
     db.refresh(production)
     return _with_access(production, access.role)
+
+
+@router.delete("/productions/{production_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_production(production_id: uuid.UUID, db: Session = Depends(get_db), access: Access = Depends(require(PRODUCTION_DELETE))) -> None:
+    """FR-185: delete a production and every row scoped to it.
+
+    No ORM/DB cascade covers this whole chain (most of it predates an owner
+    ever needing to remove a production outright, see FR-79's own narrower
+    fix), so it is done explicitly here, in the order each FK requires:
+    null the one dangling reference (a revision's head of day) before the
+    crew members it points at are removed, then children before parents.
+    Orphaned contacts (this production's crew/cast, unused anywhere else)
+    go too — the one thing FR-79's narrower cascade never had to consider.
+    """
+    production = access.production
+    call_sheet_ids = [row[0] for row in db.query(CallSheet.id).filter(CallSheet.production_id == production_id).all()]
+    revision_ids = [
+        row[0] for row in db.query(CallSheetRevision.id).filter(CallSheetRevision.call_sheet_id.in_(call_sheet_ids)).all()
+    ] if call_sheet_ids else []
+    contact_ids = {
+        row[0]
+        for row in (
+            db.query(CrewMember.contact_id).filter(CrewMember.production_id == production_id).all()
+            + db.query(CastMember.contact_id).filter(CastMember.production_id == production_id).all()
+        )
+    }
+
+    if revision_ids:
+        # Nulled, not deleted: head_of_day_crew_member_id has no ON DELETE clause, so it would
+        # block removing the crew members below otherwise (the same shape of bug FR-79 fixed
+        # for push_subscriptions, caught here by tracing every FK before writing the delete).
+        db.query(CallSheetRevision).filter(CallSheetRevision.id.in_(revision_ids)).update(
+            {"head_of_day_crew_member_id": None}, synchronize_session=False
+        )
+        db.query(ScheduleItem).filter(ScheduleItem.revision_id.in_(revision_ids)).delete(synchronize_session=False)
+        db.query(DistributionLog).filter(DistributionLog.revision_id.in_(revision_ids)).delete(synchronize_session=False)
+
+    # Cast/crew members cascade their own call entries (and, for crew, push subscriptions and
+    # revision views) at the database level — ON DELETE CASCADE, proven by FR-79's own test.
+    db.query(CastMember).filter(CastMember.production_id == production_id).delete(synchronize_session=False)
+    db.query(CrewMember).filter(CrewMember.production_id == production_id).delete(synchronize_session=False)
+
+    if call_sheet_ids:
+        db.query(CallSheetRevision).filter(CallSheetRevision.call_sheet_id.in_(call_sheet_ids)).delete(synchronize_session=False)
+        db.query(CallSheet).filter(CallSheet.production_id == production_id).delete(synchronize_session=False)
+
+    db.query(Location).filter(Location.production_id == production_id).delete(synchronize_session=False)
+    db.query(ProductionMember).filter(ProductionMember.production_id == production_id).delete(synchronize_session=False)
+
+    if contact_ids:
+        still_used = {
+            row[0]
+            for row in (
+                db.query(CrewMember.contact_id).filter(CrewMember.contact_id.in_(contact_ids)).all()
+                + db.query(CastMember.contact_id).filter(CastMember.contact_id.in_(contact_ids)).all()
+            )
+        }
+        orphaned = contact_ids - still_used
+        if orphaned:
+            # ContactPhoto cascades via its own ON DELETE CASCADE on contact_id.
+            db.query(Contact).filter(Contact.id.in_(orphaned)).delete(synchronize_session=False)
+
+    db.delete(production)
+    db.commit()
+    logger.info("Deleted production %s (%s) by %s", production.id, production.name, access.principal.label)
 
 
 @router.get("/productions", response_model=list[ProductionRead])

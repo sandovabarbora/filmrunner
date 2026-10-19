@@ -8,9 +8,9 @@ creating a production and publishing a revision: deleting a location (FR-38), we
 auto-filling on publish (FR-39), the crew's "tomorrow at a glance" (FR-42), the AD's days list at
 a glance (FR-43), and the personal-calls picker's precedence (FR-44). This script creates one
 disposable "CI check <uuid>" production on the live stack and drives all five through the real
-API end to end, then leaves the production in place (there is no delete-production endpoint;
-disposability is by name only, the same convention `docs/research/pilot-readiness-live3.py` and
-`backend/app/seed_demo.py` already use).
+API end to end, then deletes that same production (FR-185's `DELETE /productions/{id}`) once
+every check has run — a failed check still leaves the production in place for inspection, since
+cleanup only runs after every check in `CHECKS` has executed, never skipped on a failure.
 
 Modelled on `docs/research/pilot-readiness-live3.py` (disposable-production convention, the
 shared "service" bearer token), but reads that token from the environment rather than a local
@@ -293,10 +293,18 @@ def main() -> int:
         results = [check(name, fn) for name, fn in CHECKS]
 
     failed = [r for r in results if not r[1]]
+    cleanup_note = "not created"
+    if hasattr(F, "production_id"):
+        if failed:
+            cleanup_note = f"kept for inspection (`{F.production_id}`): a check failed"
+        else:
+            status, body = call("DELETE", f"/api/v1/productions/{F.production_id}")
+            cleanup_note = f"deleted (`{F.production_id}`)" if status == 204 else f"delete failed: {status} {body}"
+
     lines = [
         f"## Live write-path checks (FR-68) — {'all good' if not failed else f'{len(failed)} failing'}",
         "",
-        f"API `{API}` · production `{getattr(F, 'name', 'not created')}`",
+        f"API `{API}` · production `{getattr(F, 'name', 'not created')}` · cleanup: {cleanup_note}",
         "",
         "| Check | Result | Detail |",
         "|---|---|---|",

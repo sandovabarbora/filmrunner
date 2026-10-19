@@ -61,6 +61,8 @@ export const api = {
     request<CallSheetRevision>(c, "POST", `/api/v1/call-sheets/${callSheetId}/revisions`, payload),
   updateProduction: (c: Connection, productionId: string, patch: { name?: string; status?: string }) =>
     request<Production>(c, "PATCH", `/api/v1/productions/${productionId}`, patch),
+  deleteProduction: (c: Connection, productionId: string) =>
+    request<void>(c, "DELETE", `/api/v1/productions/${productionId}`),
   seenReport: (c: Connection, callSheetId: string) =>
     request<SeenReport>(c, "GET", `/api/v1/call-sheets/${callSheetId}/seen`),
   setActuals: (c: Connection, callSheetId: string, actuals: Actuals) =>

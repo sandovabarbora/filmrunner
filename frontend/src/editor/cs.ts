@@ -164,6 +164,11 @@ export const CS: Record<string, string> = {
   "Wrapped productions stay readable; every link keeps working. Days are never deleted — cancel a day from its own screen.": "Dotočené produkce zůstávají čitelné; všechny odkazy fungují dál. Dny se nikdy nemažou — den zrušíš na jeho obrazovce.",
   "Saved. {name} is {status}.": "Uloženo. {name}: {status}.",
   "Could not save the production": "Produkci se nepodařilo uložit",
+  "Delete this production": "Smazat tuto produkci",
+  "Permanently deletes the crew, cast, locations and every shoot day. There is no undo.": "Natrvalo smaže štáb, herce, lokace a všechny natáčecí dny. Nelze vrátit zpět.",
+  "Delete production": "Smazat produkci",
+  "Could not delete the production": "Produkci se nepodařilo smazat",
+  "{name} deleted.": "{name}: smazáno.",
   // cast
   "No cast yet. Add the actors once; each day then gets its own status, pickup, make-up and on-set times.": "Zatím žádní herci. Přidej je jednou; každý den pak dostane vlastní status, vyzvednutí, masku a čas na place.",
   "Character": "Postava",

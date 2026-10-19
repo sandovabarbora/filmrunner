@@ -161,7 +161,7 @@ export interface CallSheetCreate {
   draft?: boolean;
 }
 
-export type Permission = "production:read" | "production:manage_members" | "production:edit" | "day:publish" | "crew:edit";
+export type Permission = "production:read" | "production:manage_members" | "production:edit" | "production:delete" | "day:publish" | "crew:edit";
 export type ProductionRole = "owner" | "editor" | "viewer";
 
 export interface Production {

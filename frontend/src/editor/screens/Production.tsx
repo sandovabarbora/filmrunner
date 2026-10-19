@@ -71,9 +71,9 @@ function Checklist({ conn, productionId, canEdit, refreshKey }: { conn: Connecti
   );
 }
 
-export function ProductionScreen({ conn, productionId, production, tab, setNotice, onUpdated }: {
+export function ProductionScreen({ conn, productionId, production, tab, setNotice, onUpdated, onDeleted }: {
   conn: Connection; productionId: string; production: Production | null; tab: "days" | "crew" | "cast" | "locations" | "members" | "settings";
-  setNotice: (n: Notice) => void; onUpdated: (p: Production) => void;
+  setNotice: (n: Notice) => void; onUpdated: (p: Production) => void; onDeleted: (productionId: string) => void;
 }) {
   const L = useL();
   const manage = can(production, "production:manage_members");
@@ -95,7 +95,7 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
       {tab === "cast" && <Cast conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "locations" && <Locations conn={conn} productionId={productionId} canEdit={can(production, "crew:edit")} setNotice={setNotice} />}
       {tab === "members" && manage && <Members conn={conn} productionId={productionId} setNotice={setNotice} />}
-      {tab === "settings" && edit && production && <Settings conn={conn} production={production} setNotice={setNotice} onUpdated={onUpdated} />}
+      {tab === "settings" && edit && production && <Settings conn={conn} production={production} setNotice={setNotice} onUpdated={onUpdated} onDeleted={onDeleted} />}
       {production === null && <p className="hint">{L("Production not found in this list; go back to Productions.")}</p>}
     </>
   );
@@ -799,8 +799,10 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
   );
 }
 
-/** FR-34: rename, or move the production along prep → shooting → wrapped. Nothing else lives here on purpose. */
-function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection; production: Production; setNotice: (n: Notice) => void; onUpdated: (p: Production) => void }) {
+/** FR-34/FR-185: rename, move the production along prep → shooting → wrapped, or delete it outright. */
+function Settings({ conn, production, setNotice, onUpdated, onDeleted }: {
+  conn: Connection; production: Production; setNotice: (n: Notice) => void; onUpdated: (p: Production) => void; onDeleted: (productionId: string) => void;
+}) {
   const L = useL();
   const [name, setName] = useState(production.name);
   const [status, setStatus] = useState(production.status);
@@ -815,6 +817,17 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
     } catch (err) {
       setNotice(noticeFromError(err, L("Could not save the production")));
     } finally {
+      setBusy(false);
+    }
+  }
+  async function del() {
+    if (!window.confirm(`Delete ${production.name}? This removes its crew, cast, locations and every shoot day for good. This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await api.deleteProduction(conn, production.id);
+      onDeleted(production.id);
+    } catch (err) {
+      setNotice(noticeFromError(err, L("Could not delete the production")));
       setBusy(false);
     }
   }
@@ -833,6 +846,13 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
       <div className="inline">
         <button type="button" id="saveProduction" className="secondary" disabled={!changed || !name.trim() || busy} onClick={() => void save()}>{L("Save")}</button>
       </div>
+      {production.permissions?.includes("production:delete") && (
+        <section className="block" aria-label={L("Delete this production")}>
+          <h3>{L("Delete this production")}</h3>
+          <p className="hint">{L("Permanently deletes the crew, cast, locations and every shoot day. There is no undo.")}</p>
+          <button type="button" id="deleteProduction" className="quiet danger" disabled={busy} onClick={() => void del()}>{L("Delete production")}</button>
+        </section>
+      )}
     </section>
   );
 }
