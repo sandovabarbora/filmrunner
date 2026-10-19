@@ -77,3 +77,47 @@ frontend E2E suite: 93 passed, 3 skipped (same pre-existing skips as every prior
 shift), no new failures. Backend suite: 327 passed, 3 skipped. `npm run
 typecheck` and `vitest run` (66/66) clean. No backend/frontend product code changed —
 only the new test file — so no deploy is needed.
+
+## Follow-up pass (FR-186, 2026-10-19): Cast, Locations, Members, Settings tabs
+
+FR-183 found the same four editor tabs — Cast, Locations, Members, Settings — had
+never had an axe-core pass; this item is the keyboard-nav equivalent of that gap, not
+covered by the four screens above. Added
+`test_cast_locations_members_settings_tabs_keyboard_nav` to
+`frontend/tests/test_keyboard_nav.py`: after creating a production, each tab gets one
+real row first (a cast member with a character name, a location with a name and
+address, a viewer-role member) so `walk_keyboard()` exercises each tab's "Remove"/role
+controls, not just its empty add-row fields, before Settings (no add-row of its own,
+walked as-is).
+
+**Zero keyboard-operability defects on any of the four tabs.** Same root cause as the
+2026-10-05 pass: every interactive control under `frontend/src/editor` already carries
+the shared `input:focus-visible, select:focus-visible, textarea:focus-visible` rule in
+`editor.css`, and none of these four tabs opens an overlay or dialog that could hold
+focus, so the dod's own keyboard-trap failure case had nothing to exercise today —
+confirmed directly (grepped `frontend/src/editor` for `<dialog`/a focus-trapping
+modal: none), not assumed from the 2026-10-05 finding.
+
+**Failure-case discipline run and verified** (same precedent as the 2026-10-05 pass
+and FR-63/82's axe-core version): temporarily added `#productionStatus:focus-visible {
+outline: none; }` to `editor.css`, rebuilt, and re-ran the new test — failed loudly and
+specifically (`SELECT#productionStatus 'prep\nshooting\nwrapped' has no visible focus
+indicator (Tab #2)`), proving the test actually catches a real regression on this tab,
+not just that it passes today. Reverted the change, rebuilt, and confirmed `git diff`
+showed the CSS file byte-identical to before (no residual change shipped) before
+re-running the full suite clean.
+
+One incidental finding, not this item's scope: adding a location in this sandbox logs
+`Geocoding failed for 'Trojská 1, Praha 7': 403 Forbidden` (the same Nominatim-egress
+block FR-106/FR-19 already document) — harmless here since the test only asserts the
+location's name appears in the list, not that it resolved, but noted so a future
+reader isn't surprised by the warning in the test's own stderr capture.
+
+### Verification (FR-186)
+
+`frontend/tests/test_keyboard_nav.py`: 4 passed (the new test plus the three from the
+2026-10-05 pass, unchanged). Full frontend E2E suite: 97 passed, 3 skipped (same
+pre-existing skips), no new failures. Backend suite: 248 passed (unaffected — no
+backend code touched). `npm run typecheck` clean; `vitest run` 71/71 clean. No
+backend/frontend product code changed — only the new test and this doc — so no deploy
+is needed.

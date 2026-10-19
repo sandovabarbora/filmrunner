@@ -30,7 +30,7 @@ opened — not merely for holding focus while genuinely open.
 import uuid
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from test_editor_e2e import _connect, _create_production
 
@@ -158,3 +158,41 @@ def test_personal_link_day_screen_and_crew_tab_keyboard_nav(page: Page, frontend
     crew_view.wait_for_selector("#you", timeout=15_000)
     walk_keyboard(crew_view, "crew sheet via personal link")
     crew_view.close()
+
+
+def test_cast_locations_members_settings_tabs_keyboard_nav(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-186: FR-126 covered the Crew tab and the day screen; the Cast, Locations,
+    Members and Settings tabs (FR-183's axe-coverage gap, same shape for keyboard nav)
+    had never been walked keyboard-only. Each tab gets one real row (with its own
+    "Remove"/control reachable by Tab, not just the add-row fields) before the walk, so
+    the walk exercises the same populated state a real AD works in, not an empty form."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E kbd tabs {uuid.uuid4().hex[:6]}")
+
+    page.click("role=tab[name='Cast']")
+    page.wait_for_selector("#castName", timeout=10_000)
+    page.fill("#castName", "Anna Geislerová")
+    page.fill("#castCharacter", "MARTA")
+    page.click("#addCast")
+    expect(page.locator("#cast")).to_contain_text("Anna Geislerová", timeout=10_000)
+    walk_keyboard(page, "editor · Cast tab")
+
+    page.click("role=tab[name='Locations']")
+    page.wait_for_selector("#locName", timeout=10_000)
+    page.fill("#locName", "Riverbank, Troja")
+    page.fill("#locAddress", "Trojská 1, Praha 7")
+    page.click("#addLocation")
+    expect(page.locator("#locations")).to_contain_text("Riverbank, Troja", timeout=15_000)
+    walk_keyboard(page, "editor · Locations tab")
+
+    page.click("role=tab[name='Members']")
+    page.wait_for_selector("#memberEmail", timeout=10_000)
+    page.fill("#memberEmail", "viewer@example.com")
+    page.select_option("#memberRole", "viewer")
+    page.click("#addMember")
+    expect(page.locator("#members")).to_contain_text("viewer@example.com", timeout=10_000)
+    walk_keyboard(page, "editor · Members tab")
+
+    page.click("role=tab[name='Settings']")
+    page.wait_for_selector("#productionName", timeout=10_000)
+    walk_keyboard(page, "editor · Settings tab")
