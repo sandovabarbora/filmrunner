@@ -1,6 +1,6 @@
 # ADR-007: Web Push for revision notifications
 
-Status: accepted, partially gated (see below)
+Status: accepted, live
 Date: 2026-09-15
 
 ## Context
@@ -98,23 +98,25 @@ Fallback channels (SMS, email-per-revision) are explicitly **not built**
 this shift, per the dod. If a production ever needs them, they would need
 a paid provider account — an INBOX item at that time, not now.
 
-## Gating (why this item is `gated: partial`)
+## Gating (closed — was `gated: partial`)
 
-Everything above needs no account and ships in this PR. What does need
-the founder:
+Everything above needs no account and shipped in the original PR. The one
+thing that needed the founder has been done:
 
 - **VAPID keys as Fly secrets.** `backend/scripts/generate_vapid_keys.py`
   prints a fresh keypair to the terminal (never to a file, never to the
-  repo); the founder runs it once and sets
+  repo); the founder ran it once and set
   `FILMRUNNER_VAPID_PUBLIC_KEY` / `FILMRUNNER_VAPID_PRIVATE_KEY` /
   `FILMRUNNER_VAPID_SUBJECT` (a `mailto:` contact the push services may
   use to reach the site operator — RFC 8292 requires one) via
-  `fly secrets set`. Filed as INBOX #5.
-- Until those secrets exist, `GET /api/v1/public/push/vapid-key` returns
-  `{"public_key": null}` and the frontend simply does not offer the
+  `fly secrets set`. Filed as INBOX #5, now `state: done`.
+- With those secrets set, `backend/app/services/push.py`'s
+  `is_configured()` (both keys present) makes `public_key()` return the
+  real public key, so `GET /api/v1/public/push/vapid-key` now returns a
+  real `public_key` instead of `null`, and the frontend offers the
   "Enable notifications" control — the same "visible but inert until
   configured" pattern FR-18's photo upload uses for the Supabase Storage
-  secret, not a broken button.
+  secret, now past the inert stage for push.
 
 ## iOS support
 
