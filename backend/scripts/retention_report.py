@@ -63,18 +63,18 @@ def main() -> None:
                 )
 
         print()
-        print("== Crew members whose removal would hit the FR-79 bug today (active push subscription blocks DELETE) ==")
-        blocked = db.execute(
+        print("== Crew members with an active push subscription (informational; removal cascades it since FR-79) ==")
+        subscribed = db.execute(
             select(CrewMember.id, Contact.name, Production.name)
             .join(Contact, Contact.id == CrewMember.contact_id)
             .join(Production, Production.id == CrewMember.production_id)
             .join(PushSubscription, PushSubscription.crew_member_id == CrewMember.id)
             .distinct()
         ).all()
-        if not blocked:
+        if not subscribed:
             print("(none)")
         else:
-            for member_id, contact_name, production_name in blocked:
+            for member_id, contact_name, production_name in subscribed:
                 print(f"- {contact_name!r} on {production_name!r} (crew_member {member_id})")
 
         print()
