@@ -67,6 +67,8 @@ export interface PersonalSheet {
   personal_call: string | null;
   pickup_time?: string | null;
   note?: string | null;
+  call_before?: string | null;
+  pickup_before?: string | null;
   department_head: ContactCard | null;
 }
 

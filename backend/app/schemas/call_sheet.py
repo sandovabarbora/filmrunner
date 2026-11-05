@@ -128,6 +128,9 @@ class PersonalSheet(BaseModel):
     personal_call: str | None
     pickup_time: str | None = None
     note: str | None = None
+    # What this person's own times were on the revision this one replaced; None when they did not move.
+    call_before: str | None = None
+    pickup_before: str | None = None
     department_head: ContactCard | None
 
 

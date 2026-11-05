@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -18,7 +19,7 @@ from app.database import SessionLocal
 from app.models.call_sheet import CallSheet, CallSheetRevision, DistributionChannel, DistributionLog
 from app.models.production import CrewMember
 from app.models.push import PushSubscription
-from app.services.call_sheets import change_summary, revision_changes
+from app.services.call_sheets import change_summary, personal_changes, revision_changes
 from app.services.push import PushDeliveryError, is_configured, send
 
 logger = logging.getLogger(__name__)
@@ -37,18 +38,28 @@ class NotificationSummary:
     failed: list[DeliveryFailure] = field(default_factory=list)
 
 
-def _revision_message(call_sheet: CallSheet, revision: CallSheetRevision) -> tuple[str, str]:
-    """(title, body) for the push notification — the same line FR-11 shows on the sheet itself."""
-    title = f"Day {call_sheet.day_number}: REV {revision.revision_letter}"
-    call = revision.general_crew_call or "call time not set"
+def _revision_title(call_sheet: CallSheet, revision: CallSheetRevision) -> str:
+    return f"Day {call_sheet.day_number}: REV {revision.revision_letter}"
+
+
+def _revision_body(call_sheet: CallSheet, revision: CallSheetRevision, member: CrewMember) -> str | None:
+    """What this person's phone says, or None when the revision is not about them: someone else's
+    personal call moving is not worth waking anybody, and a push that cries wolf gets switched off."""
     if revision.revision_letter == "A":
-        body = f"New call sheet: crew call {call}"
-    else:
-        prev_letter = chr(ord(revision.revision_letter) - 1)
-        prev = next((r for r in call_sheet.revisions if r.revision_letter == prev_letter), None)
-        # The same diff the sheet shows (FR-23), so the push never says something the link does not.
-        body = f"REV {revision.revision_letter} replaces {prev_letter}: {change_summary(revision_changes(prev, revision))}"
-    return title, body
+        return f"New call sheet: crew call {revision.general_crew_call or 'call time not set'}"
+    prev_letter = chr(ord(revision.revision_letter) - 1)
+    prev = next((r for r in call_sheet.revisions if r.revision_letter == prev_letter), None)
+    # The same diff the sheet shows (FR-23), so the push never says something the link does not.
+    everyone = revision_changes(prev, revision)
+    others = [c for c in everyone if c.field != "personal_calls"]
+    own = personal_changes(prev, revision, member)
+    if everyone and not others and not own:
+        return None
+    # Someone on the general call moved with the crew call: one fact, said once.
+    crew_call = next((c for c in others if c.field == "crew_call"), None)
+    if crew_call is not None:
+        own = [c for c in own if not (c.field == "your_call" and (c.before, c.after) == (crew_call.before, crew_call.after))]
+    return f"REV {revision.revision_letter} replaces {prev_letter}: {change_summary(own + others)}"
 
 
 def notify_day_cancelled(db: Session, call_sheet: CallSheet) -> NotificationSummary:
@@ -58,17 +69,16 @@ def notify_day_cancelled(db: Session, call_sheet: CallSheet) -> NotificationSumm
         return NotificationSummary()
     title = f"Day {call_sheet.day_number}: CANCELLED"
     body = f"Day {call_sheet.day_number} ({call_sheet.shoot_date.isoformat()}) is off. Open the sheet for details."
-    return _notify(db, call_sheet, revision, title, body)
+    return _notify(db, call_sheet, revision, title, lambda _member: body)
 
 
 def notify_subscribers(db: Session, call_sheet: CallSheet, revision: CallSheetRevision) -> NotificationSummary:
-    """Push the new revision to every subscribed crew member of this production."""
-    title, body = _revision_message(call_sheet, revision)
-    return _notify(db, call_sheet, revision, title, body)
+    """Push the new revision to every subscribed crew member it concerns, each with their own line."""
+    return _notify(db, call_sheet, revision, _revision_title(call_sheet, revision), lambda member: _revision_body(call_sheet, revision, member))
 
 
-def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, title: str, body: str) -> NotificationSummary:
-    """Push one message to every subscribed crew member of this production, logged against `revision`.
+def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, title: str, body_for: Callable[[CrewMember], str | None]) -> NotificationSummary:
+    """Push to every subscribed crew member `body_for` has a message for, logged against `revision`.
 
     Every attempt — success or failure — is logged to DistributionLog so an
     AD can see who did not get the update (the dod's failure case), rather
@@ -91,8 +101,11 @@ def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, tit
         return summary
 
     for subscription in subscriptions:
-        summary.attempted += 1
         member = subscription.crew_member
+        body = body_for(member)
+        if body is None:
+            continue
+        summary.attempted += 1
         payload = {"title": title, "body": body, "url": subscription.link_url, "tag": f"filmrunner-{call_sheet.id}"}
         try:
             send(endpoint=subscription.endpoint, p256dh=subscription.p256dh, auth=subscription.auth, payload=payload)

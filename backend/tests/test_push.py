@@ -299,6 +299,46 @@ class TestNotifySubscribers:
         assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 0
 
 
+class TestPersonalPush:
+    """FR-201: each phone gets its own line, and nobody is woken by someone else's call moving."""
+
+    def _two_subscribers(self, client: TestClient):
+        pid, gaffer = _setup(client)
+        contact = client.post("/api/v1/contacts", json={"name": "Marek Sýkora"}, headers=AUTH).json()["id"]
+        dop = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Camera", "position": "DoP"}, headers=AUTH).json()
+        client.post(f"/api/v1/public/crew/{gaffer['personal_token']}/push-subscription", json=_subscribe_payload("https://push.example.com/gaffer"))
+        client.post(f"/api/v1/public/crew/{dop['personal_token']}/push-subscription", json=_subscribe_payload("https://push.example.com/dop"))
+        sheet = client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": "2026-11-10", "day_number": 7, "day_count": 24, "initial_revision": {"general_crew_call": "07:00", "schedule_items": []}}, headers=AUTH).json()
+        return gaffer, sheet
+
+    @staticmethod
+    def _bodies(mocked) -> dict[str, str]:
+        return {c.kwargs["subscription_info"]["endpoint"].rsplit("/", 1)[1]: json.loads(c.kwargs["data"])["body"] for c in mocked.call_args_list}
+
+    def test_only_the_person_whose_call_moved_is_told(self, client: TestClient, vapid_configured) -> None:
+        gaffer, sheet = self._two_subscribers(client)
+        with patch.object(push_service, "webpush") as mocked:
+            client.post(f"/api/v1/call-sheets/{sheet['id']}/revisions", json={"general_crew_call": "07:00", "schedule_items": [], "crew_calls": [{"crew_member_id": gaffer["id"], "call_time": "05:00"}]}, headers=AUTH)
+        bodies = self._bodies(mocked)
+        assert set(bodies) == {"gaffer"}
+        assert bodies["gaffer"].startswith("REV B replaces A: your call 07:00 → 05:00")
+
+    def test_a_change_for_everyone_reaches_everyone_and_leads_with_their_own(self, client: TestClient, vapid_configured) -> None:
+        gaffer, sheet = self._two_subscribers(client)
+        with patch.object(push_service, "webpush") as mocked:
+            client.post(f"/api/v1/call-sheets/{sheet['id']}/revisions", json={"general_crew_call": "06:30", "schedule_items": [], "crew_calls": [{"crew_member_id": gaffer["id"], "call_time": "05:00"}]}, headers=AUTH)
+        bodies = self._bodies(mocked)
+        assert bodies["gaffer"].startswith("REV B replaces A: your call 07:00 → 05:00; crew call 07:00 → 06:30")
+        assert bodies["dop"].startswith("REV B replaces A: crew call 07:00 → 06:30")  # the same move, said once
+
+    def test_republishing_identical_content_still_tells_everyone(self, client: TestClient, vapid_configured) -> None:
+        """A restored cancelled day is published unchanged, and that is the message that says the day is back on."""
+        _gaffer, sheet = self._two_subscribers(client)
+        with patch.object(push_service, "webpush") as mocked:
+            client.post(f"/api/v1/call-sheets/{sheet['id']}/revisions", json={"general_crew_call": "07:00", "schedule_items": []}, headers=AUTH)
+        assert set(self._bodies(mocked)) == {"gaffer", "dop"}
+
+
 def test_send_signs_and_calls_webpush_for_real(vapid_configured, monkeypatch) -> None:
     """Exercises the real VAPID signing path (py_vapid), mocking only the final HTTP POST."""
     captured = {}

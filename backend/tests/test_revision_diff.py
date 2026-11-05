@@ -172,3 +172,40 @@ def test_the_push_line_shows_two_changes_and_counts_the_rest() -> None:
     assert line.startswith("crew call 07:00 → 06:30; location, sc 42 Troja → SSS")
     assert line.endswith("… (+1 more)")
     assert len(line) < 130
+
+
+def _crew_full(client: TestClient, pid: str, name: str, standing: str | None = None) -> dict:
+    contact = client.post("/api/v1/contacts", json={"name": name}, headers=AUTH).json()
+    return client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact["id"], "department": "Electric", "position": "Gaffer", "standard_call_time": standing}, headers=AUTH).json()
+
+
+def _me(client: TestClient, sheet_id: str, member: dict) -> dict:
+    return client.get(f"/api/v1/public/call-sheets/{sheet_id}/me/{member['personal_token']}").json()
+
+
+def test_a_moved_personal_call_says_what_it_was(client: TestClient) -> None:
+    pid = _production(client)
+    gaffer, dop = _crew_full(client, pid, "Tomáš"), _crew_full(client, pid, "Marek")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _publish(client, sheet["id"], {"general_crew_call": "07:00", "schedule_items": [], "crew_calls": [{"crew_member_id": gaffer["id"], "call_time": "05:00", "pickup_time": "04:30"}]})
+    me = _me(client, sheet["id"], gaffer)
+    assert (me["personal_call"], me["call_before"], me["pickup_time"], me["pickup_before"]) == ("05:00", "07:00", "04:30", None)
+    other = _me(client, sheet["id"], dop)
+    assert (other["personal_call"], other["call_before"]) == ("07:00", None)
+
+
+def test_a_moved_crew_call_counts_as_your_call_only_if_it_is_yours(client: TestClient) -> None:
+    """Failure case: someone on a standing time must not be told their call moved when the crew call did."""
+    pid = _production(client)
+    floating, standing = _crew_full(client, pid, "Jana"), _crew_full(client, pid, "Petr", standing="05:00")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _publish(client, sheet["id"], {"general_crew_call": "06:30", "schedule_items": []})
+    assert _me(client, sheet["id"], floating)["call_before"] == "07:00"
+    assert _me(client, sheet["id"], standing)["call_before"] is None
+
+
+def test_rev_a_never_has_a_before(client: TestClient) -> None:
+    pid = _production(client)
+    member = _crew_full(client, pid, "Jana")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    assert _me(client, sheet["id"], member)["call_before"] is None

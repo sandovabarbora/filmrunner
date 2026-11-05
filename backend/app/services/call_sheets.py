@@ -309,6 +309,34 @@ def build_contacts(db: Session, call_sheet: CallSheet) -> CallSheetContacts:
     return CallSheetContacts(head_of_day=head_of_day, department_heads=[card(m) for m in heads], nearest_hospital=hospital)
 
 
+def _crew_entry(revision: CallSheetRevision, member: CrewMember) -> CrewCallEntry | None:
+    return next((e for e in revision.crew_calls if e.crew_member_id == member.id), None)
+
+
+def effective_call(revision: CallSheetRevision, member: CrewMember) -> str | None:
+    """When this person is due: today's own entry, then their standing time, then the crew call."""
+    entry = _crew_entry(revision, member)
+    return (entry.call_time if entry and entry.call_time else None) or member.standard_call_time or revision.general_crew_call
+
+
+def personal_changes(before: CallSheetRevision | None, after: CallSheetRevision, member: CrewMember) -> list[RevisionChange]:
+    """The part of a revision that is about this one person; the push leads with it."""
+    if before is None:
+        return []
+    changes: list[RevisionChange] = []
+    was, now = effective_call(before, member), effective_call(after, member)
+    if was != now:
+        changes.append(RevisionChange(field="your_call", label="Your call", before=was, after=now))
+    old, new = _crew_entry(before, member), _crew_entry(after, member)
+    was_pickup, now_pickup = old.pickup_time if old else None, new.pickup_time if new else None
+    if was_pickup != now_pickup:
+        changes.append(RevisionChange(field="your_pickup", label="Your pickup", before=was_pickup, after=now_pickup or "none"))
+    was_note, now_note = old.note if old else None, new.note if new else None
+    if was_note != now_note and now_note:
+        changes.append(RevisionChange(field="your_note", label="Note for you", before=None, after=now_note))
+    return changes
+
+
 def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSheet | None:
     """The personal block for `?me=<token>`: None when the token is not a crew member of this production."""
     member = (
@@ -332,16 +360,22 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     head_card = None
     if head is not None:
         head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email, photo_url=head.contact.photo_url)
-    entry = None
-    if revision is not None:
-        entry = next((e for e in revision.crew_calls if e.crew_member_id == member.id), None)
+    entry = _crew_entry(revision, member) if revision is not None else None
+    before = previous_revision(call_sheet)
+    call = effective_call(revision, member) if revision is not None else (member.standard_call_time or general)
+    was_call = effective_call(before, member) if before is not None else call
+    pickup = entry.pickup_time if entry else None
+    before_entry = _crew_entry(before, member) if before is not None else None
+    was_pickup = before_entry.pickup_time if before_entry else None
     return PersonalSheet(
         name=member.contact.name,
         department=member.department,
         position=member.position,
-        personal_call=(entry.call_time if entry and entry.call_time else None) or member.standard_call_time or general,
-        pickup_time=entry.pickup_time if entry else None,
+        personal_call=call,
+        pickup_time=pickup,
         note=entry.note if entry else None,
+        call_before=was_call if before is not None and was_call != call else None,
+        pickup_before=was_pickup if before is not None and was_pickup != pickup else None,
         department_head=head_card,
     )
 

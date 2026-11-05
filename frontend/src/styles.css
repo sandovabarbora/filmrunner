@@ -176,6 +176,11 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you .name { font-weight: 600; }
 .you .role { font-size: 0.8125rem; color: var(--muted); }
 .you .value { font-family: var(--mono); font-weight: 700; font-size: 3.25rem; letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
+.you-call { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+/* The old time sits beside the new one, large enough to read at arm's length; struck, so it can never be mistaken for it. */
+.you .was { font-size: 1.25rem; color: var(--ink-2); }
+.you .was .k { font-size: var(--fs-small); }
+.you .was s { font-family: var(--mono); font-weight: 600; }
 .contacts .hod.mine { border-width: 1px; }
 .you-extra { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 0.875rem; color: var(--ink-2); }
 .you-extra .k { color: var(--muted); }
