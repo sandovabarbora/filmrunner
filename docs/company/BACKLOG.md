@@ -13,6 +13,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the three metrics in `docs/pilot/pilot-plan.md` reported per shoot day (FR-96)
   - failure case: if the kill criteria trigger after week 1, no pilot is run and BRIEF.md is re-framed instead; if a pilot day breaks (sign-in, push, offline), the AD falls back to their usual PDF that same day and the break becomes the top backlog item
 
+## FR-208 · pm · Find out which part of a plan change actually hurts
+- state: ready
+- gated: yes
+- why: outreach named a sudden plan change as the biggest pain, but that sentence covers deciding, replanning, telling and paying, and FR-200 to FR-207 only address telling; the FR-3 script cannot tell them apart (`docs/research/plan-change-interviews.md`)
+- dod:
+  - the guide's decision table and the founder's prediction are written down before the first conversation
+  - five or six conversations held across the guide's role slots, one notes file each under `docs/research/interviews/`
+  - one paragraph in `DECISIONS.md` says which row of the table applied, with the split by role
+  - failure case: if fewer than five people agree to talk, widen through referrals and the channels in `discovery-plan.md` rather than deciding on fewer; if no pattern appears, run three more in the thinnest role
+
 ## FR-96 · tech-lead · Read-only pilot metrics report per shoot day
 - state: done
 - note: delivered 2026-09-25 (feat/fr-96-pilot-metrics): `python -m scripts.pilot_metrics <production_id>`; call times are Prague wall clock converted to UTC to match `now()`-stored timestamps; draft days skipped, cancelled days listed with their status; 4 tests in `backend/tests/test_pilot_metrics.py` (real Postgres), full backend suite 153/153

@@ -9,6 +9,10 @@ assumptions. This plan is the instrument; running it (recruiting real
 candidates and sending invitations) is out of this routine's reach — see
 "Sourcing candidates" and the INBOX item below.
 
+For conversations about sudden plan changes, use
+`plan-change-interviews.md` (FR-208) instead of the script below: this one
+cannot separate deciding from telling.
+
 ## Target roles
 
 The person who *drafts* call-sheet times/locations, the person who
