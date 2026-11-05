@@ -122,7 +122,10 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   const catchingUp = personal?.changes_since && personal.revision_letter === rev?.revision_letter ? personal : null;
   const allChanges = catchingUp?.changes_since ?? callSheet.changes ?? [];
   const changes = allChanges.filter((c) => !personal || c.field !== "personal_calls");
-  const notAboutYou = !!personal && changes.length === 0 && allChanges.length > 0 && !personal.call_before && !personal.pickup_before;
+  const notAboutYou = !!personal && changes.length === 0 && allChanges.length > 0 && !personal.call_before && !personal.pickup_before && !personal.note_changed;
+  // The block and the sheet load separately, and the block can come from this phone's copy while the sheet is live. A call time from an
+  // older revision under a newer sheet is the one thing this page must never show as if it were current.
+  const personalBehind = !!personal?.revision_letter && !!rev && personal.revision_letter !== rev.revision_letter;
   const minorChanges = changes.filter((c) => MINOR_FIELDS.has(c.field));
   const changedScenes = new Set(changes.flatMap((c) => c.scenes ?? []));
   const revMark = <RevMark label={L("rev.markLabel")} />;
@@ -155,12 +158,14 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           </div>
           <div className="you-call">
             {/* An actor's day starts at their own pickup; the crew call is never their time, and someone not called has none. */}
-            {personal.is_cast && !personal.works_today
+            {personalBehind
+              ? <p className="you-off" id="yourCallBehind" role="status">{L("you.behind", { rev: rev!.revision_letter })}</p>
+              : personal.is_cast && !personal.works_today
               ? <p className="you-off" id="yourCallOff">{L("you.notToday")}</p>
               : <div className="value" id="yourCall">{personal.personal_call || (personal.is_cast ? personal.pickup_time : rev?.general_crew_call) || "—"}</div>}
-            {personal.call_before && <div className="was" id="yourCallWas"><span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></div>}
+            {!personalBehind && personal.call_before && <div className="was" id="yourCallWas"><span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></div>}
           </div>
-          {(personal.pickup_time || personal.note || personal.makeup_hair_time || personal.on_set_time) && (
+          {!personalBehind && (personal.pickup_time || personal.note || personal.makeup_hair_time || personal.on_set_time) && (
             <div className="you-extra" id="yourExtra">
               {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
               {personal.makeup_hair_time && <span><span className="k">{L("th.mh")} </span><span className="v">{personal.makeup_hair_time}</span></span>}

@@ -69,6 +69,7 @@ export interface PersonalSheet {
   note?: string | null;
   call_before?: string | null;
   pickup_before?: string | null;
+  note_changed?: boolean;
   revision_letter?: string | null;
   confirmed_at?: string | null;
   is_cast?: boolean;

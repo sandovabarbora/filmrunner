@@ -8,12 +8,16 @@ Reference: https://docs.pydantic.dev/latest/concepts/models/#nested-models
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from app.models.call_sheet import CallSheetStatus, CastStatusCode, DayNight, IntExt
 from app.schemas.push import NotificationSummaryRead
+
+# The database keeps UTC without a zone. Sent as is, a browser reads it as local time: "issued 21:40" for a revision out at 22:40.
+UtcDatetime = Annotated[datetime, AfterValidator(lambda d: d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d)]
 
 
 class ScheduleItemCreate(BaseModel):
@@ -100,7 +104,7 @@ class CallSheetRevisionRead(BaseModel):
     sunset: str | None
     weather_forecast: str | None
     safety_notes: str | None
-    created_at: datetime
+    created_at: UtcDatetime
     created_by: str | None
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemRead] = []
@@ -131,9 +135,10 @@ class PersonalSheet(BaseModel):
     # What this person's own times were on the revision this one replaced; None when they did not move.
     call_before: str | None = None
     pickup_before: str | None = None
+    note_changed: bool = False
     # FR-202: which revision this block describes, and whether this person has confirmed that one.
     revision_letter: str | None = None
-    confirmed_at: datetime | None = None
+    confirmed_at: UtcDatetime | None = None
     # FR-205: an actor's link; their times come from the day's cast call, and only someone called today has one.
     is_cast: bool = False
     works_today: bool = True
@@ -194,7 +199,7 @@ class RevisionSummary(BaseModel):
     """The revision this one replaced: enough for "REV B replaces A, issued 06:12"."""
 
     revision_letter: str
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class RevisionChange(BaseModel):
@@ -237,7 +242,7 @@ class HistoryEntry(BaseModel):
     revision with no recorded author reads as "unknown", not an empty cell."""
 
     revision_letter: str
-    created_at: datetime
+    created_at: UtcDatetime
     created_by: str
     changes: list[RevisionChange]
     opened: int
@@ -262,7 +267,7 @@ class CallSheetRead(BaseModel):
     day_count: int
     unit_name: str
     status: CallSheetStatus
-    created_at: datetime
+    created_at: UtcDatetime
     production_title: str | None = None  # the sheet's headline; the unit alone says nothing to a freelancer on three shoots
     current_revision: CallSheetRevisionRead | None = None
     contacts: CallSheetContacts | None = None
@@ -312,8 +317,8 @@ class SeenEntry(BaseModel):
     position: str
     phone: str | None
     personal_token: str | None  # FR-206: None for a read-only member
-    seen_at: datetime | None
-    confirmed_at: datetime | None = None
+    seen_at: UtcDatetime | None
+    confirmed_at: UtcDatetime | None = None
     subscribed: bool  # has a push subscription on this production
     is_cast: bool = False  # FR-205; crew_member_id then holds the cast member's id
 
@@ -345,7 +350,7 @@ class ConfirmRequest(BaseModel):
 
 class ConfirmResult(BaseModel):
     revision_letter: str
-    confirmed_at: datetime
+    confirmed_at: UtcDatetime
 
 
 class SeenReport(BaseModel):
