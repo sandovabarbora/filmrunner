@@ -133,10 +133,7 @@ founder's own network.
 
 ## Note-taking template
 
-One file per interview, `docs/research/interviews/<yyyy-mm-dd>-<role>-<size-bucket>.md`
-(create the `interviews/` folder when the first real interview happens —
-no placeholder files are added by this plan, since no interviews have run
-yet):
+One file per interview outside this repository, which is public: `<yyyy-mm-dd>-<role>-<size-bucket>.md`:
 
 ```
 # Interview: <role> · <size bucket> · <yyyy-mm-dd>
