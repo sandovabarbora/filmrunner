@@ -25,8 +25,8 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import Actuals, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.services.call_sheets import CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
+from app.services.call_sheets import RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
 
 logger = logging.getLogger(__name__)
@@ -273,6 +273,23 @@ def mark_seen_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     if not record_seen(db, call_sheet, token):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
+
+
+@public_router.post("/public/call-sheets/{call_sheet_id}/confirm/{token}", response_model=ConfirmResult)
+def confirm_public(call_sheet_id: uuid.UUID, token: str, payload: ConfirmRequest, db: Session = Depends(get_db)) -> ConfirmResult:
+    """Unauthenticated, like the rest of a personal link: "I know about this revision" (FR-202). 409 when a newer one replaced it."""
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    if call_sheet.status == CallSheetStatus.DRAFT:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
+    if call_sheet.status == CallSheetStatus.CANCELLED:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This day is cancelled; there is nothing to confirm")
+    try:
+        confirmed_at = record_confirmed(db, call_sheet, token, payload.revision_letter)
+    except RevisionNoLongerCurrent as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if confirmed_at is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
+    return ConfirmResult(revision_letter=payload.revision_letter, confirmed_at=confirmed_at)
 
 
 @router.get("/call-sheets/{call_sheet_id}/history", response_model=list[HistoryEntry])

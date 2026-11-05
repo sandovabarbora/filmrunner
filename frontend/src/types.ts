@@ -69,6 +69,8 @@ export interface PersonalSheet {
   note?: string | null;
   call_before?: string | null;
   pickup_before?: string | null;
+  revision_letter?: string | null;
+  confirmed_at?: string | null;
   department_head: ContactCard | null;
 }
 
@@ -88,7 +90,7 @@ export interface CallSheet {
   /** FR-35: where the day happens, in schedule order. */
   locations?: SheetLocation[];
   /** FR-43: on the AD's days list only. */
-  opened?: { seen: number; total: number; first_location_name: string | null } | null;
+  opened?: { seen: number; confirmed?: number; total: number; first_location_name: string | null } | null;
   /** FR-65: what actually happened; authenticated reads only, never on the crew's sheet. */
   actuals?: Actuals | null;
   /** FR-23: what the current revision replaced and what changed; absent on a sheet with only REV A. */
@@ -324,6 +326,7 @@ export interface SeenEntry {
   phone: string | null;
   personal_token: string;
   seen_at: string | null;
+  confirmed_at?: string | null;
   subscribed: boolean;
 }
 

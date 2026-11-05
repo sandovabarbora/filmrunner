@@ -39,7 +39,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 PUBLIC_PREFIX = "/api/v1/public/"
 TOKEN_ROUTES = [
     re.compile(r"^/api/v1/public/crew/([^/]+)/"),
-    re.compile(r"^/api/v1/public/call-sheets/[^/]+/(?:me|seen)/([^/]+)$"),
+    re.compile(r"^/api/v1/public/call-sheets/[^/]+/(?:me|seen|confirm)/([^/]+)$"),
 ]
 PHOTO_ROUTE = re.compile(r"^/api/v1/public/contacts/[^/]+/photo$")
 WINDOW_SECONDS = 60

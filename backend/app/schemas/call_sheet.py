@@ -131,6 +131,9 @@ class PersonalSheet(BaseModel):
     # What this person's own times were on the revision this one replaced; None when they did not move.
     call_before: str | None = None
     pickup_before: str | None = None
+    # FR-202: which revision this block describes, and whether this person has confirmed that one.
+    revision_letter: str | None = None
+    confirmed_at: datetime | None = None
     department_head: ContactCard | None
 
 
@@ -200,6 +203,7 @@ class RevisionChange(BaseModel):
 
 class OpenedSummary(BaseModel):
     seen: int
+    confirmed: int = 0
     total: int
     first_location_name: str | None = None
 
@@ -297,7 +301,17 @@ class SeenEntry(BaseModel):
     phone: str | None
     personal_token: str
     seen_at: datetime | None
+    confirmed_at: datetime | None = None
     subscribed: bool  # has a push subscription on this production
+
+
+class ConfirmRequest(BaseModel):
+    revision_letter: str = Field(min_length=1, max_length=1)
+
+
+class ConfirmResult(BaseModel):
+    revision_letter: str
+    confirmed_at: datetime
 
 
 class SeenReport(BaseModel):

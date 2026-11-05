@@ -82,9 +82,11 @@ export interface CallSheetViewProps {
   shareUrl?: string | null;
   /** FR-48: labels in the crew member's language; user-entered text is never translated. */
   lang?: Lang;
+  /** FR-202: the confirm action; it follows the change it confirms, and only a personal link has one. */
+  confirm?: ReactNode;
 }
 
-export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null, lang = "en" }: CallSheetViewProps) {
+export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null, lang = "en", confirm = null }: CallSheetViewProps) {
   const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
   const rev = callSheet.current_revision;
   const myDept = personal?.department ?? null;
@@ -160,6 +162,8 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           {changedScenes.size > 0 && <p className="rev-legend">{L("rev.mark")}</p>}
         </section>
       )}
+
+      {confirm}
 
       <section className="calls" aria-label="Call times">
         <div className="call crew">

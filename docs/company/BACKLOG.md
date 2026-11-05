@@ -2104,3 +2104,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the push leads with the person's own change, and is not sent at all to someone only another person's call concerns
   - failure case: a crew-call change does not read as "your call moved" for someone on a standing time; identical republishing (a restored day) still reaches everyone
 
+## FR-202 · tech-lead · "Got it": the crew confirms a revision, the AD chases who has not
+- state: done
+- gated: no
+- why: every role in the 2026-11-05 persona review said an opened link is not proof anyone read it, and whoever sends the change is the one blamed when somebody "was never told"
+- dod:
+  - a personal link has one action, "Got it · REV X", stored per revision so a new revision starts the count over
+  - the day screen leads with "N of M confirmed", lists who has not with unopened first, and gives call, WhatsApp and SMS on each row with the message written; the days list shows the count too
+  - the personal block refreshes with the sheet, so a revision that arrives by polling never sits above yesterday's call time
+  - failure case: confirming a replaced revision is refused and the sheet reloads; offline the action is disabled and says why; a failed send says so and keeps the button
+

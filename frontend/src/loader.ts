@@ -127,3 +127,20 @@ export function markSeen(apiBase: string, sheetId: string, token: string): void 
     void fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/seen/${encodeURIComponent(token)}`, { method: "POST", keepalive: true }).catch(() => undefined);
   } catch { /* offline: nothing to report */ }
 }
+
+export type ConfirmResult = { kind: "confirmed"; confirmedAt: string } | { kind: "stale" } | { kind: "failed" };
+
+/** FR-202: "I know about REV X". Unlike a read receipt the person is waiting for the answer, so every outcome is reported. */
+export async function confirmRevision(apiBase: string, sheetId: string, token: string, letter: string): Promise<ConfirmResult> {
+  try {
+    const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/confirm/${encodeURIComponent(token)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision_letter: letter }),
+    });
+    if (resp.status === 409) return { kind: "stale" };
+    if (!resp.ok) return { kind: "failed" };
+    const data = (await resp.json()) as { confirmed_at: string };
+    return { kind: "confirmed", confirmedAt: data.confirmed_at };
+  } catch {
+    return { kind: "failed" };
+  }
+}

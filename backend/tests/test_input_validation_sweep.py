@@ -34,7 +34,7 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
 from app.main import app
-from app.schemas.call_sheet import CallSheetCreate
+from app.schemas.call_sheet import CallSheetCreate, ConfirmRequest
 from app.schemas.production import CastMemberCreate, ContactCreate, CrewMemberCreate, LocationCreate, MemberCreate, ProductionCreate
 from app.schemas.push import PushSubscriptionCreate
 
@@ -138,6 +138,7 @@ EXPECTED_REQUIRED_FIELDS: dict[type[BaseModel], set[str]] = {
     CrewMemberCreate: {"contact_id", "department", "position"},
     CallSheetCreate: {"shoot_date", "day_number", "day_count", "initial_revision"},
     PushSubscriptionCreate: {"endpoint", "keys", "keys.p256dh", "keys.auth", "link_url"},
+    ConfirmRequest: {"revision_letter"},
 }
 
 
@@ -171,6 +172,8 @@ def _valid_body(model: type[BaseModel], ids: dict) -> dict:
         return {"shoot_date": "2026-01-01", "day_number": 1, "day_count": 1, "initial_revision": {}}
     if model is PushSubscriptionCreate:
         return {"endpoint": "https://push.example/abc", "keys": {"p256dh": "p", "auth": "a"}, "link_url": "https://example.com/sheet"}
+    if model is ConfirmRequest:
+        return {"revision_letter": "A"}
     raise AssertionError(f"no VALID_BODIES example registered for {model.__name__}; add one so this sweep covers it")
 
 
@@ -195,6 +198,8 @@ def _fill(path: str, ids: dict) -> str:
             parts.append(ids["production_id"])
         elif segment == "{token}":
             parts.append(ids["crew_member_token"])
+        elif segment == "{call_sheet_id}":
+            parts.append(ids["call_sheet_id"])
         elif segment.startswith("{") and segment.endswith("}"):
             parts.append(str(uuid.uuid4()))
         else:
@@ -215,7 +220,12 @@ def _ids(client: TestClient, auth_headers) -> dict:
         json={"contact_id": contact_id, "department": "AD", "position": "2nd AD"},
         headers=auth_headers,
     ).json()
-    return {"production_id": pid, "contact_id": contact_id, "crew_member_token": crew["personal_token"]}
+    sheet = client.post(
+        f"/api/v1/productions/{pid}/call-sheets",
+        json={"shoot_date": "2026-01-01", "day_number": 1, "day_count": 1, "initial_revision": {}},
+        headers=auth_headers,
+    ).json()
+    return {"production_id": pid, "contact_id": contact_id, "crew_member_token": crew["personal_token"], "call_sheet_id": sheet["id"]}
 
 
 @pytest.mark.parametrize("method,path,model", ROUTES_WITH_REQUIRED_FIELDS, ids=[f"{m}:{p}" for m, p, _ in ROUTES_WITH_REQUIRED_FIELDS])

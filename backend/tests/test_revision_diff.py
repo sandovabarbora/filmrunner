@@ -209,3 +209,59 @@ def test_rev_a_never_has_a_before(client: TestClient) -> None:
     member = _crew_full(client, pid, "Jana")
     sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
     assert _me(client, sheet["id"], member)["call_before"] is None
+
+
+def _confirm(client: TestClient, sheet_id: str, member: dict, letter: str):
+    return client.post(f"/api/v1/public/call-sheets/{sheet_id}/confirm/{member['personal_token']}", json={"revision_letter": letter})
+
+
+def _report(client: TestClient, sheet_id: str) -> dict:
+    report = client.get(f"/api/v1/call-sheets/{sheet_id}/seen", headers=AUTH).json()
+    return {e["name"]: e for e in report["seen"] + report["not_seen"]}
+
+
+def test_confirming_is_per_revision_and_the_ad_sees_it(client: TestClient) -> None:
+    pid = _production(client)
+    gaffer, dop = _crew_full(client, pid, "Tomáš"), _crew_full(client, pid, "Marek")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    r = _confirm(client, sheet["id"], gaffer, "A")
+    assert r.status_code == 200 and r.json()["revision_letter"] == "A"
+    entries = _report(client, sheet["id"])
+    assert entries["Tomáš"]["confirmed_at"] and entries["Tomáš"]["seen_at"]  # confirming implies it was opened
+    assert entries["Marek"]["confirmed_at"] is None
+    assert _me(client, sheet["id"], gaffer)["confirmed_at"]
+    days = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()
+    assert (days[0]["opened"]["confirmed"], days[0]["opened"]["total"]) == (1, 2)
+
+    _publish(client, sheet["id"], {"general_crew_call": "06:30", "schedule_items": []})
+    assert _report(client, sheet["id"])["Tomáš"]["confirmed_at"] is None  # REV B starts over
+    me = _me(client, sheet["id"], gaffer)
+    assert me["confirmed_at"] is None and me["revision_letter"] == "B"
+    assert dop["id"]
+
+
+def test_confirming_a_replaced_revision_is_refused(client: TestClient) -> None:
+    """Failure case: a phone still showing REV A must not record "I know" against the plan that replaced it."""
+    pid = _production(client)
+    gaffer = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _publish(client, sheet["id"], {"general_crew_call": "06:30", "schedule_items": []})
+    assert _confirm(client, sheet["id"], gaffer, "A").status_code == 409
+    assert _report(client, sheet["id"])["Tomáš"]["confirmed_at"] is None
+
+
+def test_confirming_twice_keeps_the_first_time(client: TestClient) -> None:
+    pid = _production(client)
+    gaffer = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"schedule_items": []})
+    first = _confirm(client, sheet["id"], gaffer, "A").json()["confirmed_at"]
+    assert _confirm(client, sheet["id"], gaffer, "A").json()["confirmed_at"] == first
+
+
+def test_confirm_needs_a_real_token_and_a_live_day(client: TestClient) -> None:
+    pid = _production(client)
+    gaffer = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"schedule_items": []})
+    assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/nobody", json={"revision_letter": "A"}).status_code == 404
+    client.post(f"/api/v1/call-sheets/{sheet['id']}/cancel", headers=AUTH)
+    assert _confirm(client, sheet["id"], gaffer, "A").status_code == 409

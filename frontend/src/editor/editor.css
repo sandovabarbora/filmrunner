@@ -110,7 +110,17 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .cancel-day { margin-top: 12px; align-items: center; flex-wrap: wrap; }
 
 /* FR-36: who has opened the current revision. */
-.seen { margin-top: 14px; }
+.seen { margin: 14px 0 0; }
+.seen-count { margin: 0; font-size: 1.125rem; font-weight: 700; }
+.seen .hint { margin: 2px 0 0; }
+/* FR-202: who still does not know, with the three ways to reach them on the row. */
+.waiting { list-style: none; margin: 10px 0; padding: 0; border-top: 1px solid var(--rule); }
+.waiting li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.waiting .name { font-weight: 600; }
+.waiting-state { font-size: var(--fs-small); color: var(--ink-2); }
+.waiting li[data-state="unopened"] .waiting-state { font-weight: 700; color: var(--err-ink); }
+.confirmed-list { list-style: none; margin: 0 0 8px; padding: 0; font-size: var(--fs-small); }
+.confirmed-list .meta { color: var(--muted); }
 .chips { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; gap: 8px; align-items: center; min-height: var(--control-sm); padding: 4px 4px 4px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-size: var(--fs-small); }
 .chip .meta { color: var(--muted); }

@@ -131,6 +131,11 @@ export function whatsappUrl(number: string | null, text: string): string {
   return `${base}?text=${encodeURIComponent(text)}`;
 }
 
+/** `?&body=` is the one spelling both iOS and Android Messages accept. SMS reaches the people who never open an app. */
+export function smsUrl(number: string, text: string): string {
+  return `sms:+${number}?&body=${encodeURIComponent(text)}`;
+}
+
 export function canWebShare(): boolean {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }

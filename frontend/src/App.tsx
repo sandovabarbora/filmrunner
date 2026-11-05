@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CallSheetView } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
+import { ConfirmRevision } from "./ConfirmRevision";
 import type { CrewDayRef, CrewNextDay, PersonalSheet } from "./types";
 import { detectLang, fmtDate, rememberLang, t, type Lang } from "./i18n";
 
@@ -71,6 +72,7 @@ export function App() {
   // FR-47: the PDF button appends ?print=1 so the printed page opens the print dialog on load, no extra tap.
   const [printRequested] = useState(() => new URLSearchParams(window.location.search).get("print") === "1");
   const printedRef = useRef(false);
+  const refreshRef = useRef<() => void>(() => undefined);
 
   async function load(url: string, id: string, me: string | null = null) {
     const r = await loadCallSheet(url, id);
@@ -114,7 +116,12 @@ export function App() {
     // visibilitychange listener covers the common case of picking the phone
     // back up, without waiting out the full interval.
     if (mode.kind !== "share") return;
-    const refresh = () => { void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me); };
+    const refresh = () => {
+      void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
+      // The person's own call moves with the sheet: refreshing one without the other would show a new revision under an old call time.
+      if (mode.me) void loadPersonal(mode.api, mode.sheet, mode.me).then((p) => { if (p !== "invalid") setPersonal(p); });
+    };
+    refreshRef.current = refresh;
     const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     const timer = window.setInterval(refresh, 60_000);
@@ -204,6 +211,19 @@ export function App() {
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
           shareUrl={shareUrl}
           lang={lang}
+          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && result.data.status !== "cancelled" && result.data.current_revision ? (
+            <ConfirmRevision
+              apiBase={mode.api}
+              sheetId={mode.sheet}
+              token={mode.me}
+              letter={result.data.current_revision.revision_letter}
+              // The block and the sheet refresh separately: a confirmation counts only for the revision on screen.
+              confirmedAt={personal.revision_letter === result.data.current_revision.revision_letter ? personal.confirmed_at ?? null : null}
+              offline={result.kind !== "live"}
+              lang={lang}
+              onStale={() => refreshRef.current()}
+            />
+          ) : null}
         />
       )}
       {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {

@@ -712,7 +712,8 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     page.fill("#general_crew_call", "06:30"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
     expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 0 of 2", timeout=10_000)
-    expect(page.locator("#notSeen .chip")).to_have_count(2)
+    expect(page.locator("#confirmedCount")).to_contain_text("0 of 2 confirmed")
+    expect(page.locator("#unconfirmed li")).to_have_count(2)
     assert page.get_by_label("Nudge Tomáš Novák on WhatsApp").get_attribute("href").startswith("https://wa.me/420777123456?text=")
     assert page.get_by_label("Nudge Eva Malá on WhatsApp").count() == 0  # no phone, no broken link
 
@@ -720,8 +721,13 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     v = page.context.new_page(); v.goto(eva_link); v.wait_for_selector("#you", timeout=15_000); v.close()
     page.reload(); page.wait_for_selector("#seenPanel", timeout=10_000)
     expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 1 of 2", timeout=10_000)
-    expect(page.locator("#notSeen")).to_contain_text("Tomáš Novák")
-    expect(page.locator("#notSeen")).not_to_contain_text("Eva Malá")
+    # Opened is not confirmed: Eva stays on the list, now as having opened it, and Tomáš is chased first.
+    expect(page.locator("#unconfirmed li").first).to_contain_text("Tomáš Novák")
+    expect(page.locator("#unconfirmed li", has_text="Eva Malá")).to_contain_text("not confirmed")
+    v = page.context.new_page(); v.goto(eva_link); v.click("#confirmBtn"); v.wait_for_selector("#confirmDone", timeout=15_000); v.close()
+    page.reload(); page.wait_for_selector("#seenPanel", timeout=10_000)
+    expect(page.locator("#confirmedCount")).to_contain_text("1 of 2 confirmed", timeout=10_000)
+    expect(page.locator("#unconfirmed")).not_to_contain_text("Eva Malá")
     # FR-43: the days list carries the same count without opening the day.
     page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
     page.wait_for_selector("#days", timeout=10_000)
