@@ -61,6 +61,12 @@ export const api = {
     request<CallSheetRevision>(c, "POST", `/api/v1/call-sheets/${callSheetId}/revisions`, payload),
   updateProduction: (c: Connection, productionId: string, patch: { name?: string; status?: string }) =>
     request<Production>(c, "PATCH", `/api/v1/productions/${productionId}`, patch),
+  moveScene: (c: Connection, callSheetId: string, body: { scene_number: string; occurrence: number; target_call_sheet_id: string; expected_revision_letter: string; expected_target_revision_letter: string }) =>
+    request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/move-scene`, body),
+  rescheduleDay: (c: Connection, callSheetId: string, body: { shoot_date: string; expected_revision_letter: string }) =>
+    request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/reschedule`, body),
+  swapDays: (c: Connection, callSheetId: string, body: { other_call_sheet_id: string; expected_revision_letter: string; expected_other_revision_letter: string }) =>
+    request<CallSheetCreated>(c, "POST", `/api/v1/call-sheets/${callSheetId}/swap-with`, body),
   seenReport: (c: Connection, callSheetId: string) =>
     request<SeenReport>(c, "GET", `/api/v1/call-sheets/${callSheetId}/seen`),
   setActuals: (c: Connection, callSheetId: string, actuals: Actuals) =>

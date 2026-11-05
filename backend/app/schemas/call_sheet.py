@@ -192,13 +192,17 @@ class RevisionSummary(BaseModel):
 class RevisionChange(BaseModel):
     """One line of "what changed" between the last two revisions (FR-23)."""
 
-    # crew_call | shooting_call | location | scenes_added | scenes_removed | scene_detail | scene_order
+    # shoot_date | crew_call | shooting_call | location | scene_moved_out | scene_moved_in | scenes_added | scenes_removed | scene_detail | scene_order
     # | safety_notes | cast_calls | personal_calls | head_of_day | weather | sunrise | sunset
     field: str
     label: str  # "Crew call"; complete on its own for the push and the AD's history
     before: str | None
     after: str | None
     scenes: list[str] = []  # which scenes this row is about, so the sheet can mark them in the margin
+    # FR-203: for a moved scene, the day on the other end, so the sheet can link to it.
+    other_call_sheet_id: uuid.UUID | None = None
+    other_day_number: int | None = None
+    other_date: str | None = None
 
 
 class OpenedSummary(BaseModel):
@@ -303,6 +307,27 @@ class SeenEntry(BaseModel):
     seen_at: datetime | None
     confirmed_at: datetime | None = None
     subscribed: bool  # has a push subscription on this production
+
+
+class MoveSceneRequest(BaseModel):
+    """FR-203. `occurrence` tells apart a scene shot in two parts on one day; the letters are what the AD was looking at."""
+
+    scene_number: str
+    occurrence: int = Field(default=0, ge=0)
+    target_call_sheet_id: uuid.UUID
+    expected_revision_letter: str
+    expected_target_revision_letter: str
+
+
+class RescheduleRequest(BaseModel):
+    shoot_date: date
+    expected_revision_letter: str
+
+
+class SwapDaysRequest(BaseModel):
+    other_call_sheet_id: uuid.UUID
+    expected_revision_letter: str
+    expected_other_revision_letter: str
 
 
 class ConfirmRequest(BaseModel):

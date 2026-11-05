@@ -93,6 +93,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [actualsDirty, setActualsDirty] = useState(false);
   const [actualsBusy, setActualsBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // FR-203: changes that span days. They go out as soon as they are confirmed, so each one asks first.
+  const [days, setDays] = useState<CallSheetCreated[]>([]);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [movingScene, setMovingScene] = useState<{ index: number; targetId: string } | null>(null);
+  const [movingDay, setMovingDay] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [swapId, setSwapId] = useState("");
   const latest = useRef<Draft | null>(null);
   const key = draftKey(productionId, callSheetId);
 
@@ -130,8 +137,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     api.listCrew(conn, productionId).then((c) => { if (!cancelled) setCrew(c); }).catch(() => undefined);
     api.listLocations(conn, productionId).then((l) => { if (!cancelled) setLocations(l); }).catch(() => undefined);
     api.listCast(conn, productionId).then((c) => { if (!cancelled) setCast(c); }).catch(() => undefined);
+    api.listCallSheets(conn, productionId).then((d) => { if (!cancelled) setDays(d); }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [conn, productionId, productionName, callSheetId, key, setNotice]);
+  }, [conn, productionId, productionName, callSheetId, key, setNotice, reloadTick]);
 
   useEffect(() => { latest.current = draft; if (draft) void saveDraft(draft); }, [draft]);
 
@@ -247,6 +255,46 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         : noticeFromError(err, L("Publish failed")));
     } finally {
       setBusy(false);
+    }
+  }
+
+  const otherDays = days.filter((d) => d.id !== draft?.callSheetId && d.status !== "cancelled");
+  const dayLabel = (d: CallSheetCreated) => `${L("Day")} ${d.day_number} · ${d.shoot_date}${d.status === "draft" ? ` · ${L("planned")}` : ""}`;
+
+  /** Runs one change spanning days, then shows the day as the server now has it. */
+  async function replan(change: () => Promise<unknown>, done: string) {
+    setBusy(true);
+    try {
+      await change();
+      setMovingScene(null); setMovingDay(false); setNewDate(""); setSwapId("");
+      setNotice({ kind: "ok", text: done });
+      setReloadTick((t) => t + 1);
+    } catch (err) {
+      setNotice(noticeFromError(err, L("Could not change the plan")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function moveScene(index: number, target: CallSheetCreated) {
+    if (!draft?.callSheetId) return;
+    const item = draft.items[index];
+    const occurrence = draft.items.slice(0, index).filter((it) => it.scene_number === item.scene_number).length;
+    void replan(() => api.moveScene(conn, draft.callSheetId!, {
+      scene_number: item.scene_number, occurrence, target_call_sheet_id: target.id,
+      expected_revision_letter: draft.lastPublishedLetter!, expected_target_revision_letter: target.current_revision?.revision_letter ?? "A",
+    }), L("Scene {n} moved to Day {day}. Both days have a new revision.", { n: item.scene_number, day: target.day_number }));
+  }
+
+  function moveDay() {
+    if (!draft?.callSheetId) return;
+    const other = swapId ? days.find((d) => d.id === swapId) : null;
+    if (other) {
+      void replan(() => api.swapDays(conn, draft.callSheetId!, {
+        other_call_sheet_id: other.id, expected_revision_letter: draft.lastPublishedLetter!, expected_other_revision_letter: other.current_revision?.revision_letter ?? "A",
+      }), L("Days swapped. Both days have a new revision."));
+    } else if (newDate) {
+      void replan(() => api.rescheduleDay(conn, draft.callSheetId!, { shoot_date: newDate, expected_revision_letter: draft.lastPublishedLetter! }), L("The day moved to {date}.", { date: newDate }));
     }
   }
 
@@ -393,7 +441,31 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           <Field label={L("Day")} id="day_number" type="number" value={String(draft.day_number)} onChange={(v) => update({ day_number: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
           <Field label={L("of")} id="day_count" type="number" value={String(draft.day_count)} onChange={(v) => update({ day_count: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
         </div>
-        {draft.callSheetId && <p className="hint">{L("Date, unit and day number are fixed once published; times, notes and scenes change through revisions.")}</p>}
+        {draft.callSheetId && !movingDay && (
+          <div className="inline" id="moveDayRow">
+            {!readOnly && dayStatus !== "cancelled" && <button type="button" className="quiet" id="moveDay" disabled={busy || draft.dirtySincePublish} onClick={() => setMovingDay(true)}>{L("Move or swap this day…")}</button>}
+            {draft.dirtySincePublish && !readOnly && <span className="hint">{L("Publish your changes first.")}</span>}
+          </div>
+        )}
+        {draft.callSheetId && movingDay && (
+          <div className="replan" id="moveDayPanel">
+            <Field label={L("New date")} id="newDate" type="date" value={newDate} onChange={(v) => { setNewDate(v); setSwapId(""); }} disabled={busy} />
+            {otherDays.length > 0 && (
+              <label className="field" htmlFor="swapWith">
+                <span className="label">{L("Or swap with")}</span>
+                <select id="swapWith" value={swapId} disabled={busy} onChange={(e) => { setSwapId(e.target.value); setNewDate(""); }}>
+                  <option value="">{L("— pick a day —")}</option>
+                  {otherDays.map((d) => <option key={d.id} value={d.id}>{dayLabel(d)}</option>)}
+                </select>
+              </label>
+            )}
+            <p className="hint">{planned ? L("This day is still planned, so nobody is told.") : L("A new revision goes out straight away and everyone with notifications on is told. Scenes and calls stay as they are.")}</p>
+            <div className="inline">
+              <button type="button" id="moveDayGo" disabled={busy || (!newDate && !swapId)} onClick={moveDay}>{L("Move the day")}</button>
+              <button type="button" className="quiet" disabled={busy} onClick={() => { setMovingDay(false); setNewDate(""); setSwapId(""); }}>{L("Keep it")}</button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="block" aria-label={L("Calls")}>
@@ -540,8 +612,28 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <button type="button" className="quiet icon-only" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}><Icon name="up" /></button>
                   <button type="button" className="quiet icon-only" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}><Icon name="down" /></button>
                   <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>{L("Remove")}</button>
+                  {draft.callSheetId && !draft.dirtySincePublish && dayStatus !== "cancelled" && otherDays.length > 0 && it.scene_number && (
+                    <select className="move-to" aria-label={L("Move to another day: {n}", { n: it.scene_number })} value={movingScene?.index === i ? movingScene.targetId : ""} disabled={busy}
+                      onChange={(e) => setMovingScene(e.target.value ? { index: i, targetId: e.target.value } : null)}>
+                      <option value="">{L("Move to day…")}</option>
+                      {otherDays.map((d) => <option key={d.id} value={d.id}>{dayLabel(d)}</option>)}
+                    </select>
+                  )}
                 </div>
               )}
+              {movingScene?.index === i && (() => {
+                const target = days.find((d) => d.id === movingScene.targetId);
+                if (!target) return null;
+                return (
+                  <div className="replan" id="moveScenePanel">
+                    <p className="hint">{L("Scene {n} leaves this day and goes last on Day {day}. A new revision goes out on both days straight away.", { n: it.scene_number, day: target.day_number })}</p>
+                    <div className="inline">
+                      <button type="button" id="moveSceneGo" disabled={busy} onClick={() => moveScene(i, target)}>{L("Move scene {n}", { n: it.scene_number })}</button>
+                      <button type="button" className="quiet" disabled={busy} onClick={() => setMovingScene(null)}>{L("Keep it")}</button>
+                    </div>
+                  </div>
+                );
+              })()}
             </li>
           ))}
         </ol>

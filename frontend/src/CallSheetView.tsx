@@ -41,7 +41,24 @@ const DATA_FIELDS = new Set(["crew_call", "shooting_call", "scenes_added", "scen
 /** True changes, but nobody re-plans their morning around them, and the new values are right below on the sheet: named, not spelled out. */
 const MINOR_FIELDS = new Set(["weather", "sunrise", "sunset", "head_of_day"]);
 
-function ChangeRow({ c, lang }: { c: RevisionChange; lang: Lang }) {
+function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHref?: (id: string) => string }) {
+  if (c.field === "shoot_date") {
+    return (
+      <li data-field={c.field}>
+        <span className="k">{t(lang, "change.shoot_date")}</span>
+        <span className="v">{c.before && <><s>{fmtDate(lang, c.before)}</s><span className="to" aria-hidden="true"> → </span></>}<b>{fmtDate(lang, c.after ?? "")}</b></span>
+      </li>
+    );
+  }
+  if ((c.field === "scene_moved_out" || c.field === "scene_moved_in") && c.other_call_sheet_id && c.other_date) {
+    const where = `${t(lang, "day.n", { n: c.other_day_number ?? "" })} · ${fmtDate(lang, c.other_date)}`;
+    return (
+      <li data-field={c.field}>
+        <span className="k">{t(lang, `change.${c.field}` as Key)}</span>
+        <span className="v"><b>{t(lang, "change.moved", { n: (c.scenes ?? []).join(", ") })} {dayHref ? <a href={dayHref(c.other_call_sheet_id)}>{where}</a> : where}</b></span>
+      </li>
+    );
+  }
   // The server's `label` and "N changed" are English (they also feed the push); the sheet renders from `field` and falls back to them.
   const key = `change.${c.field}` as Key;
   const known = t(lang, key) !== key;
@@ -84,9 +101,11 @@ export interface CallSheetViewProps {
   lang?: Lang;
   /** FR-202: the confirm action; it follows the change it confirms, and only a personal link has one. */
   confirm?: ReactNode;
+  /** FR-203: the link to another day of this shoot, for a scene moved to or from it. */
+  dayHref?: (callSheetId: string) => string;
 }
 
-export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null, lang = "en", confirm = null }: CallSheetViewProps) {
+export function CallSheetView({ callSheet, personal = null, freshness, shareUrl = null, lang = "en", confirm = null, dayHref }: CallSheetViewProps) {
   const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
   const rev = callSheet.current_revision;
   const myDept = personal?.department ?? null;
@@ -153,7 +172,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
           {changes.length > 0 && (
             <ul className="rev-changes" id="revChanges">
-              {changes.filter((c) => !MINOR_FIELDS.has(c.field)).map((c, i) => <ChangeRow key={`${c.field}-${i}`} c={c} lang={lang} />)}
+              {changes.filter((c) => !MINOR_FIELDS.has(c.field)).map((c, i) => <ChangeRow key={`${c.field}-${i}`} c={c} lang={lang} dayHref={dayHref} />)}
               {minorChanges.length > 0 && (
                 <li className="also" data-field="also">{L("rev.also", { list: minorChanges.map((c) => t(lang, `change.${c.field}` as Key).toLowerCase()).join(", ") })}</li>
               )}

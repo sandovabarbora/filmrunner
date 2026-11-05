@@ -1159,3 +1159,52 @@ def test_crew_filter_narrows_the_list_and_the_print_view_has_everyone(page: Page
     assert "tok-" not in html and "sheet=" not in html
     assert html.index("Camera") < html.index("Marek Sýkora") < html.index("Petra Králová")
     printed.close()
+
+
+def test_ad_moves_a_scene_to_the_next_day_and_the_crew_sees_where_it_went(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-203: one action from the day screen; a new revision on both days; the crew's sheet links to the other day."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E move {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#shoot_date", "2031-03-10"); page.fill("#general_crew_call", "07:00")
+    page.click("#addScene"); page.locator("#items input.scene").first.fill("42"); page.locator("#items input.set").first.fill("River")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.click("#startNextDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.locator("#items li").first.get_by_role("button", name="Remove").click()
+    page.fill("#shoot_date", "2031-03-11"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+
+    page.click("role=link[name='" + page.locator(".crumbs a").nth(1).inner_text() + "']")
+    page.wait_for_selector("#days", timeout=10_000)
+    page.locator("#days a.row").first.click()
+    picker = page.get_by_label("Move to another day: 42")
+    picker.wait_for(timeout=10_000)
+    picker.select_option(index=1)
+    page.click("#moveSceneGo")
+    expect(page.locator("#notice")).to_contain_text("Scene 42 moved to Day 2", timeout=15_000)
+    expect(page.locator("#publish")).to_contain_text("REV C", timeout=10_000)
+
+    link = page.locator("#shareLink").get_attribute("href")
+    v = page.context.new_page(); v.goto(link)
+    moved = v.locator("#revChanges li[data-field='scene_moved_out']")
+    expect(moved).to_contain_text("Day 2", timeout=15_000)
+    v.locator("#revChanges li[data-field='scene_moved_out'] a").click()
+    expect(v.locator("#revChanges li[data-field='scene_moved_in']")).to_contain_text("Day 1", timeout=15_000)
+    v.close()
+
+
+def test_a_day_with_unpublished_edits_cannot_be_moved(page: Page, frontend_url: str, api_url: str) -> None:
+    """Failure case: replanning publishes the server's copy, so it must not run past edits that have not gone out."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E move dirty {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "07:00"); page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    expect(page.locator("#moveDay")).to_be_enabled(timeout=10_000)
+    page.fill("#general_crew_call", "06:00")
+    expect(page.locator("#moveDay")).to_be_disabled()
+

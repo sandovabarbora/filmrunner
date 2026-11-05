@@ -211,6 +211,7 @@ export function App() {
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
           shareUrl={shareUrl}
           lang={lang}
+          dayHref={mode.kind === "share" ? (id) => `?api=${encodeURIComponent(mode.api)}&sheet=${id}${mode.me ? `&me=${encodeURIComponent(mode.me)}` : ""}` : undefined}
           confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && result.data.status !== "cancelled" && result.data.current_revision ? (
             <ConfirmRevision
               apiBase={mode.api}

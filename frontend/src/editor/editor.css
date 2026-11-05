@@ -111,6 +111,9 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 
 /* FR-36: who has opened the current revision. */
 .seen { margin: 14px 0 0; }
+.replan { margin: 8px 0 0; padding: 10px 12px; border: var(--frame); border-radius: var(--radius); background: #fff; }
+.replan .hint { margin: 0 0 8px; }
+.item-actions select.move-to { min-height: var(--control-sm); margin-left: auto; width: auto; max-width: 60%; font-size: var(--fs-small); }
 .seen-count { margin: 0; font-size: 1.125rem; font-weight: 700; }
 .seen .hint { margin: 2px 0 0; }
 /* FR-202: who still does not know, with the three ways to reach them on the row. */

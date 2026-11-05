@@ -159,6 +159,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .rev-changes .v { display: block; margin-top: 1px; font-size: var(--fs-body); line-height: 1.3; overflow-wrap: anywhere; }
 .rev-changes b { font-weight: 700; }
 .rev-changes .data .v { font-family: var(--mono); font-size: 1.0625rem; }
+.rev-changes a { color: inherit; }
 .rev-changes .also { font-size: var(--fs-small); }
 .rev-legend { margin: 10px 0 0; font-size: var(--fs-small); }
 .rev-mark { margin-left: 2px; font-family: var(--mono); font-weight: 700; color: var(--ink); }

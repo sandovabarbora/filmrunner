@@ -1,5 +1,7 @@
 """FR-23: what changed between the last two revisions, on the public read."""
 
+NO_MOVE = {"other_call_sheet_id": None, "other_day_number": None, "other_date": None}
+
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
@@ -43,7 +45,7 @@ def test_changed_calls_scene_order_and_notes_are_listed(client: TestClient) -> N
     assert read["previous_revision"]["revision_letter"] == "A"
     assert read["previous_revision"]["created_at"]
     by_field = {c["field"]: c for c in read["changes"]}
-    assert by_field["crew_call"] == {"field": "crew_call", "label": "Crew call", "before": "06:30", "after": "07:30", "scenes": []}
+    assert by_field["crew_call"] == {"field": "crew_call", "label": "Crew call", "before": "06:30", "after": "07:30", "scenes": [], **NO_MOVE}
     assert by_field["scene_order"]["before"] == "7, 12A" and by_field["scene_order"]["after"] == "12A, 7"
     assert by_field["safety_notes"]["after"] == "Stairs, wet"
     assert "shooting_call" not in by_field  # unchanged fields are left out
@@ -86,13 +88,13 @@ def test_a_scene_moving_location_is_listed_with_both_names(client: TestClient) -
     scenes = [{**_scene("42", 1), "location_id": troja}, {**_scene("43", 2), "location_id": troja}, {**_scene("44", 3), "location_id": studio}]
     sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": scenes})
     changes = _publish(client, sheet["id"], {"general_crew_call": "07:00", "schedule_items": [{**s, "location_id": studio} for s in scenes]})
-    assert changes == [{"field": "location", "label": "Location, sc 42, 43", "before": "Troja", "after": "Studio", "scenes": ["42", "43"]}]
+    assert changes == [{"field": "location", "label": "Location, sc 42, 43", "before": "Troja", "after": "Studio", "scenes": ["42", "43"], **NO_MOVE}]
 
 
 def test_scene_content_changes_name_only_what_moved(client: TestClient) -> None:
     sheet = _sheet(client, _production(client), {"schedule_items": [_scene("42", 1)]})
     changes = _publish(client, sheet["id"], {"schedule_items": [{**_scene("42", 1), "int_ext": "EXT", "day_night": "NIGHT", "set_description": "Rain cover", "page_count_eighths": 11}]})
-    assert changes == [{"field": "scene_detail", "label": "Scene 42", "before": "INT DAY · Set · 1 pg", "after": "EXT NIGHT · Rain cover · 1 3/8 pg", "scenes": ["42"]}]
+    assert changes == [{"field": "scene_detail", "label": "Scene 42", "before": "INT DAY · Set · 1 pg", "after": "EXT NIGHT · Rain cover · 1 3/8 pg", "scenes": ["42"], **NO_MOVE}]
 
 
 def test_added_and_removed_scenes_are_not_reported_as_a_new_order(client: TestClient) -> None:

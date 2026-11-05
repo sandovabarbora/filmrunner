@@ -88,7 +88,7 @@ def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date,
 
 
 def publish_revision(
-    db: Session, call_sheet: CallSheet, payload: CallSheetRevisionCreate, created_by: str | None = None
+    db: Session, call_sheet: CallSheet, payload: CallSheetRevisionCreate, created_by: str | None = None, commit: bool = True
 ) -> tuple[CallSheetRevision, bool]:
     """Create a new revision on an existing call sheet, marking prior
     revisions as no longer current.
@@ -109,6 +109,9 @@ def publish_revision(
     False. A normal sequential pair of calls (an AD publishes now, then a
     real correction minutes later) never contends for the lock, so each
     still gets its own distinct revision exactly as before.
+
+    `commit=False` leaves the transaction open for a change spanning several
+    days (app/services/replan.py); its advisory lock is held until that commit.
     """
     revision_count_before_lock = len(call_sheet.revisions)
     lock_key = str(call_sheet.id)
@@ -194,6 +197,7 @@ def publish_revision(
         # Audit field comes from the authenticated caller, never from the body.
         created_by=created_by if created_by is not None else payload.created_by,
         head_of_day_crew_member_id=head_of_day_id,
+        shoot_date=call_sheet.shoot_date,
     )
     db.add(revision)
     db.flush()  # assign revision.id before building children
@@ -210,7 +214,10 @@ def publish_revision(
     if not revision.weather_forecast:
         _fill_weather_forecast(db, revision, call_sheet.shoot_date, payload.schedule_items)
 
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(revision)
     logger.info(
         "Published revision %s for call sheet %s (%d schedule items, %d cast calls)",
@@ -439,6 +446,13 @@ def _scene_detail_change(number: str, old: ScheduleItem, new: ScheduleItem) -> R
     return RevisionChange(field="scene_detail", label=f"Scene {number}", before=" · ".join(before), after=" · ".join(after), scenes=[number])
 
 
+def _move_change(field: str, label: str, scene_number: str, other: CallSheetRevision) -> RevisionChange:
+    sheet = other.call_sheet
+    where = f"Day {sheet.day_number}, {sheet.shoot_date.isoformat()}"
+    return RevisionChange(field=field, label=label, before=None, after=where, scenes=[scene_number],
+                          other_call_sheet_id=sheet.id, other_day_number=sheet.day_number, other_date=sheet.shoot_date.isoformat())
+
+
 def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> list[RevisionChange]:
     old, new = _keyed_items(before), _keyed_items(after)
     common = [k for k in new if k in old]
@@ -454,10 +468,18 @@ def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> li
     for (was_name, now_name), scenes in moved.items():
         changes.append(RevisionChange(field="location", label=f"Location, sc {', '.join(scenes)}", before=was_name, after=now_name or "no location", scenes=scenes))
 
-    added = [k[0] for k in new if k not in old]
+    # A recorded move says where the scene went; it is not also a scene that appeared or vanished.
+    moved_out = {m.scene_number for m in after.moves_out}
+    moved_in = {m.scene_number for m in after.moves_in}
+    for move in after.moves_out:
+        changes.append(_move_change("scene_moved_out", f"Scene {move.scene_number} moved to", move.scene_number, move.to_revision))
+    for move in after.moves_in:
+        changes.append(_move_change("scene_moved_in", f"Scene {move.scene_number} moved from", move.scene_number, move.from_revision))
+
+    added = [k[0] for k in new if k not in old and k[0] not in moved_in]
     if added:
         changes.append(RevisionChange(field="scenes_added", label="Scenes added", before=None, after=", ".join(added), scenes=added))
-    removed = [k[0] for k in old if k not in new]
+    removed = [k[0] for k in old if k not in new and k[0] not in moved_out]
     if removed:
         changes.append(RevisionChange(field="scenes_removed", label="Scenes removed", before=None, after=", ".join(removed), scenes=removed))
     for key in common:
@@ -493,6 +515,8 @@ def revision_changes(before: CallSheetRevision | None, after: CallSheetRevision)
     if before is None:
         return []
     changes: list[RevisionChange] = []
+    if before.shoot_date and after.shoot_date and before.shoot_date != after.shoot_date:
+        changes.append(RevisionChange(field="shoot_date", label="Date", before=before.shoot_date.isoformat(), after=after.shoot_date.isoformat()))
     for field, label, attr in (("crew_call", "Crew call", "general_crew_call"), ("shooting_call", "Shooting call", "shooting_call")):
         old, new = getattr(before, attr), getattr(after, attr)
         if (old or None) != (new or None):
@@ -533,7 +557,9 @@ def change_summary(changes: list[RevisionChange]) -> str:
         return "republished, content unchanged"
     parts = []
     for c in changes[:2]:
-        if c.before is None:
+        if c.field in ("scene_moved_out", "scene_moved_in"):
+            parts.append(f"{c.label.lower()} {c.after}")
+        elif c.before is None:
             parts.append(f"{c.label.lower()}: {_push_value(c.after)}")
         else:
             parts.append(f"{c.label.lower()} {_push_value(c.before)} → {_push_value(c.after)}")

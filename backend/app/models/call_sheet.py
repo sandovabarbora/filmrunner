@@ -124,6 +124,8 @@ class CallSheetRevision(Base):
     created_by: Mapped[str | None] = mapped_column(String(255))
     # The person running the day on set (usually the 1st AD); shown first in contacts.
     head_of_day_crew_member_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("crew_members.id"))
+    # FR-203: the date this revision was published for. A day can move, and the diff has to be able to say from where.
+    shoot_date: Mapped[date | None] = mapped_column()
 
     call_sheet: Mapped["CallSheet"] = relationship(back_populates="revisions")
     head_of_day: Mapped["CrewMember | None"] = relationship()  # noqa: F821
@@ -133,6 +135,24 @@ class CallSheetRevision(Base):
     cast_calls: Mapped[list["CastCallEntry"]] = relationship(back_populates="revision")
     crew_calls: Mapped[list["CrewCallEntry"]] = relationship(back_populates="revision", cascade="all, delete-orphan")
     distribution_log: Mapped[list["DistributionLog"]] = relationship(back_populates="revision")
+    moves_out: Mapped[list["SceneMove"]] = relationship(foreign_keys="SceneMove.from_revision_id", passive_deletes=True)
+    moves_in: Mapped[list["SceneMove"]] = relationship(foreign_keys="SceneMove.to_revision_id", passive_deletes=True)
+
+
+class SceneMove(Base):
+    """FR-203: a scene left one day and arrived on another. Links the two revisions published together, so
+    each sheet can say where the scene went instead of reporting an unrelated removal and addition."""
+
+    __tablename__ = "scene_moves"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    scene_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    from_revision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("call_sheet_revisions.id", ondelete="CASCADE"), nullable=False, index=True)
+    to_revision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("call_sheet_revisions.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    from_revision: Mapped["CallSheetRevision"] = relationship(foreign_keys=[from_revision_id], overlaps="moves_out")
+    to_revision: Mapped["CallSheetRevision"] = relationship(foreign_keys=[to_revision_id], overlaps="moves_in")
 
 
 class ScheduleItem(Base):
