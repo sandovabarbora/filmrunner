@@ -37,7 +37,7 @@ def test_history_has_one_line_per_revision_with_author_changes_and_opened_count(
     assert [h["revision_letter"] for h in history] == ["A", "B"]
     assert history[0]["opened"] == 1  # REV A's own receipt is untouched by REV B existing
     assert history[1]["opened"] == 0
-    assert history[1]["changes"] == [{"field": "crew_call", "label": "Crew call", "before": "06:30", "after": "07:00"}]
+    assert history[1]["changes"] == [{"field": "crew_call", "label": "Crew call", "before": "06:30", "after": "07:00", "scenes": []}]
 
 
 def test_history_shows_unknown_for_a_revision_with_no_recorded_author(client: TestClient, db_session) -> None:

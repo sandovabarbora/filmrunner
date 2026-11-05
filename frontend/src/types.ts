@@ -100,10 +100,12 @@ export interface RevisionSummary {
 }
 
 export interface RevisionChange {
-  field: "crew_call" | "shooting_call" | "scene_order" | "safety_notes" | "personal_calls" | string;
+  /** Open-ended on purpose: a sheet rendered by an older bundle falls back to `label` for a field it does not know. */
+  field: string;
   label: string;
   before: string | null;
   after: string | null;
+  scenes?: string[];
 }
 
 /* Create payloads (backend/app/schemas). */

@@ -592,8 +592,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   )}
                   {h.changes.length > 0 && (
                     <ul className="history-changes">
-                      {h.changes.map((c) => (
-                        <li key={c.field}>
+                      {h.changes.map((c, i) => (
+                        <li key={`${c.field}-${i}`}>
                           <span className="k">{c.label}</span>{" "}
                           {c.before !== null ? <><s>{c.before}</s> → <b>{c.after ?? "—"}</b></> : <b>{c.after ?? "—"}</b>}
                         </li>

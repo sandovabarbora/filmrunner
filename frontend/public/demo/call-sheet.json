@@ -200,6 +200,16 @@
       "after": "06:30"
     },
     {
+      "field": "location",
+      "label": "Location, sc 17, 18",
+      "before": "Studio Barrandov",
+      "after": "Cottage, Sedlec",
+      "scenes": [
+        "17",
+        "18"
+      ]
+    },
+    {
       "field": "scene_order",
       "label": "Scenes",
       "before": "17, 18, 42, 43",

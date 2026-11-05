@@ -355,21 +355,103 @@ def previous_revision(call_sheet: CallSheet) -> CallSheetRevision | None:
     return next((r for r in call_sheet.revisions if r.revision_letter == wanted), None)
 
 
+def _ordered_items(revision: CallSheetRevision) -> list[ScheduleItem]:
+    return sorted(revision.schedule_items, key=lambda i: i.order_index)
+
+
 def _scene_order(revision: CallSheetRevision) -> str:
-    return ", ".join(item.scene_number for item in sorted(revision.schedule_items, key=lambda i: i.order_index))
+    return ", ".join(item.scene_number for item in _ordered_items(revision))
 
 
 def _personal_calls_key(revision: CallSheetRevision) -> dict[uuid.UUID, tuple[str | None, str | None, str | None]]:
     return {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in revision.crew_calls}
 
 
-def revision_changes(before: CallSheetRevision | None, after: CallSheetRevision) -> list[RevisionChange]:
-    """What a crew member who read `before` last night needs to know about `after` (FR-23).
+def _keyed_items(revision: CallSheetRevision) -> dict[tuple[str, int], ScheduleItem]:
+    """Scenes by (number, nth occurrence): a scene shot in two parts on one day appears twice and must pair up with itself."""
+    seen: dict[str, int] = {}
+    keyed = {}
+    for item in _ordered_items(revision):
+        nth = seen.get(item.scene_number, 0)
+        seen[item.scene_number] = nth + 1
+        keyed[(item.scene_number, nth)] = item
+    return keyed
 
-    Compares the things that change a person's morning: the two call times,
-    the scene order, safety notes, and how many personal calls moved. Fields
-    that did not change are left out, so an unchanged sheet yields [] and the
-    viewer shows no diff line at all — never an empty "replaces" sentence.
+
+def _pages_label(eighths: int) -> str:
+    whole, rest = divmod(eighths, 8)
+    if rest == 0:
+        return f"{whole} pg"
+    return f"{whole} {rest}/8 pg" if whole else f"{rest}/8 pg"
+
+
+def _scene_detail_change(number: str, old: ScheduleItem, new: ScheduleItem) -> RevisionChange | None:
+    """Everything about a scene except where it is shot, only the parts that moved."""
+    before, after = [], []
+    if old.int_ext != new.int_ext or old.day_night != new.day_night:
+        before.append(f"{old.int_ext.value} {old.day_night.value}")
+        after.append(f"{new.int_ext.value} {new.day_night.value}")
+    if old.set_description != new.set_description:
+        before.append(old.set_description)
+        after.append(new.set_description)
+    if old.page_count_eighths != new.page_count_eighths:
+        before.append(_pages_label(old.page_count_eighths))
+        after.append(_pages_label(new.page_count_eighths))
+    if not after:
+        return None
+    return RevisionChange(field="scene_detail", label=f"Scene {number}", before=" · ".join(before), after=" · ".join(after), scenes=[number])
+
+
+def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> list[RevisionChange]:
+    old, new = _keyed_items(before), _keyed_items(after)
+    common = [k for k in new if k in old]
+    changes: list[RevisionChange] = []
+
+    # Grouped, because a rained-out exterior moves several scenes to the same cover set and that is one fact for the crew.
+    moved: dict[tuple[str | None, str | None], list[str]] = {}
+    for key in common:
+        was, now = old[key], new[key]
+        if was.location_id != now.location_id:
+            names = (was.location.name if was.location else None, now.location.name if now.location else None)
+            moved.setdefault(names, []).append(key[0])
+    for (was_name, now_name), scenes in moved.items():
+        changes.append(RevisionChange(field="location", label=f"Location, sc {', '.join(scenes)}", before=was_name, after=now_name or "no location", scenes=scenes))
+
+    added = [k[0] for k in new if k not in old]
+    if added:
+        changes.append(RevisionChange(field="scenes_added", label="Scenes added", before=None, after=", ".join(added), scenes=added))
+    removed = [k[0] for k in old if k not in new]
+    if removed:
+        changes.append(RevisionChange(field="scenes_removed", label="Scenes removed", before=None, after=", ".join(removed), scenes=removed))
+    for key in common:
+        detail = _scene_detail_change(key[0], old[key], new[key])
+        if detail is not None:
+            changes.append(detail)
+    # Only the scenes on both revisions: adding or dropping one is reported above, not as a new shooting order.
+    if [k for k in old if k in new] != common:
+        changes.append(RevisionChange(field="scene_order", label="Scenes", before=_scene_order(before) or None, after=_scene_order(after) or None))
+    return changes
+
+
+def _cast_changes(before: CallSheetRevision, after: CallSheetRevision) -> list[RevisionChange]:
+    def key(revision: CallSheetRevision) -> dict[uuid.UUID, tuple]:
+        return {e.cast_member_id: (e.status_code, e.pickup_time, e.call_time, e.makeup_hair_time, e.on_set_time) for e in revision.cast_calls}
+
+    old, new = key(before), key(after)
+    entries = {e.cast_member_id: e for e in list(before.cast_calls) + list(after.cast_calls)}
+    names = sorted(entries[k].cast_member.contact.name for k in set(old) | set(new) if old.get(k) != new.get(k))
+    if not names:
+        return []
+    return [RevisionChange(field="cast_calls", label="Cast", before=None, after=", ".join(names))]
+
+
+def revision_changes(before: CallSheetRevision | None, after: CallSheetRevision) -> list[RevisionChange]:
+    """What a crew member who read `before` last night needs to know about `after` (FR-23, FR-200).
+
+    Covers every field a revision carries, most consequential first, so an
+    empty list means the content really is identical: the push may only say
+    "no changes" when that is true. test_revision_diff.py fails when a new
+    revision field is added without being compared here.
     """
     if before is None:
         return []
@@ -378,27 +460,48 @@ def revision_changes(before: CallSheetRevision | None, after: CallSheetRevision)
         old, new = getattr(before, attr), getattr(after, attr)
         if (old or None) != (new or None):
             changes.append(RevisionChange(field=field, label=label, before=old, after=new))
-    old_order, new_order = _scene_order(before), _scene_order(after)
-    if old_order != new_order:
-        changes.append(RevisionChange(field="scene_order", label="Scenes", before=old_order or None, after=new_order or None))
+    changes.extend(_schedule_changes(before, after))
     if (before.safety_notes or None) != (after.safety_notes or None):
         changes.append(RevisionChange(field="safety_notes", label="Safety", before=before.safety_notes, after=after.safety_notes))
+    changes.extend(_cast_changes(before, after))
     old_pc, new_pc = _personal_calls_key(before), _personal_calls_key(after)
     moved = sum(1 for k in set(old_pc) | set(new_pc) if old_pc.get(k) != new_pc.get(k))
     if moved:
         changes.append(RevisionChange(field="personal_calls", label="Personal calls", before=None, after=f"{moved} changed"))
+    if before.head_of_day_crew_member_id != after.head_of_day_crew_member_id:
+        changes.append(RevisionChange(
+            field="head_of_day", label="Head of day",
+            before=before.head_of_day.contact.name if before.head_of_day else None,
+            after=after.head_of_day.contact.name if after.head_of_day else "not set",
+        ))
+    for field, label, attr in (("weather", "Weather", "weather_forecast"), ("sunrise", "Sunrise", "sunrise"), ("sunset", "Sunset", "sunset")):
+        old, new = getattr(before, attr), getattr(after, attr)
+        if (old or None) != (new or None):
+            changes.append(RevisionChange(field=field, label=label, before=old, after=new))
     return changes
 
 
+_PUSH_VALUE_LIMIT = 60
+
+
+def _push_value(value: str | None) -> str:
+    if not value:
+        return "—"
+    return value if len(value) <= _PUSH_VALUE_LIMIT else f"{value[:_PUSH_VALUE_LIMIT - 1]}…"
+
+
 def change_summary(changes: list[RevisionChange]) -> str:
-    """One line for a push notification: the first two changes, "before → after"."""
+    """One line for a push notification: the first two changes, then how many more."""
+    if not changes:
+        return "republished, content unchanged"
     parts = []
     for c in changes[:2]:
-        if c.field == "personal_calls":
-            parts.append(f"{c.label.lower()} {c.after}")
+        if c.before is None:
+            parts.append(f"{c.label.lower()}: {_push_value(c.after)}")
         else:
-            parts.append(f"{c.label.lower()} {c.before or '—'} → {c.after or '—'}")
-    return "; ".join(parts) if parts else "no changes to calls or scenes"
+            parts.append(f"{c.label.lower()} {_push_value(c.before)} → {_push_value(c.after)}")
+    more = len(changes) - 2
+    return "; ".join(parts) + (f" (+{more} more)" if more > 0 else "")
 
 
 def build_sheet_locations(db: Session, call_sheet: CallSheet) -> list[SheetLocation]:
