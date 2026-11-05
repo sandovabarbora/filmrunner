@@ -2173,3 +2173,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a planned day leaves no trace on a crew's sheet; a removed personal note counts as a change; the page-load receipt and a quick confirm cannot collide
   - failure case: confirming a cancelled day or as an actor not called reads as a failure to send, not as "a newer revision came out"
 
+## FR-209 · frontend · The first screen after a plan change answers when, where and what to do
+- state: done
+- gated: no
+- note: delivered 2026-11-05 (feat/fr-209-plan-change-first-screen). Critique snapshot scored the screens 21/40; the founder chose all five priority issues. Not done: the AD still appears on their own list, weather text stays English, no real crew has seen it.
+- why: the design critique found the confirm action below the fold, no place on the personal card, one identical change list for everyone, and margin asterisks that did not work
+- dod:
+  - a personal link shows call, place and confirm within the first 390x844 screen; only date, shooting call, safety and moved scenes stay open above the fold, the rest behind one tap; a printed sheet carries all of it
+  - asterisks are gone; the revision colour stays
+  - someone who already confirmed sees the list folded
+  - the AD sees how many have not opened and one next person to remind, because each message carries its own link
+  - failure case: the shared link folds nothing, since it has no personal block to lead with

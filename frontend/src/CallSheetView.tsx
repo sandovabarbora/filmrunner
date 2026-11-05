@@ -30,16 +30,23 @@ function mapsUrl(loc: SheetLocation): string | null {
   return null;
 }
 
-/** The screenplay convention for a revised line: an asterisk in the margin. */
-function RevMark({ label }: { label: string }) {
-  return <span className="rev-mark" role="img" aria-label={label}>*</span>;
-}
-
 /** Values people compare at a glance (times, scene numbers) are set in the data face; prose is not. */
 const DATA_FIELDS = new Set(["crew_call", "shooting_call", "scenes_added", "scenes_removed", "scene_order", "sunrise", "sunset"]);
 
 /** True changes, but nobody re-plans their morning around them, and the new values are right below on the sheet: named, not spelled out. */
 const MINOR_FIELDS = new Set(["weather", "sunrise", "sunset", "head_of_day"]);
+
+/** On a personal link these stay open: they change when, where or how safely this person works. Everything else waits behind one tap. */
+const FIRST_ON_PERSONAL = new Set(["shoot_date", "shooting_call", "location", "safety_notes", "scene_moved_out", "scene_moved_in"]);
+
+/** A bare "Scenes removed / 43" says nothing to someone half awake; these read as a sentence. */
+function changeSentence(c: RevisionChange, lang: Lang): string | null {
+  const after = c.after ?? "";
+  const several = after.includes(",") ? "many" : "one";
+  if (c.field === "scenes_removed" || c.field === "scenes_added") return t(lang, `change.${c.field}.${several}` as Key, { n: after });
+  if (c.field === "cast_calls") return t(lang, "change.cast_calls.sentence", { names: after });
+  return null;
+}
 
 function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHref?: (id: string) => string }) {
   if (c.field === "shoot_date") {
@@ -59,6 +66,8 @@ function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHre
       </li>
     );
   }
+  const sentence = changeSentence(c, lang);
+  if (sentence) return <li data-field={c.field}><span className="v"><b>{sentence}</b></span></li>;
   // The server's `label` and "N changed" are English (they also feed the push); the sheet renders from `field` and falls back to them.
   const key = `change.${c.field}` as Key;
   const known = t(lang, key) !== key;
@@ -77,12 +86,44 @@ function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHre
   );
 }
 
-function ScheduleRow({ item, locationName, changed, mark }: { item: ScheduleItem; locationName?: string; changed: boolean; mark: ReactNode }) {
+/** The changes, most urgent first. Someone who has already confirmed came for a time, not for this list, so it folds away for them. */
+function RevChanges({ first, rest, foldAll, lang, dayHref }: { first: RevisionChange[]; rest: RevisionChange[]; foldAll: boolean; lang: Lang; dayHref?: (id: string) => string }) {
+  const shown = foldAll ? [] : first;
+  const folded = foldAll ? [...first, ...rest] : rest;
+  const [open, setOpen] = useState(shown.length === 0 && !foldAll);
+  const row = (c: RevisionChange, i: number) => <ChangeRow key={`${c.field}-${i}`} c={c} lang={lang} dayHref={dayHref} />;
+  const minor = folded.filter((c) => MINOR_FIELDS.has(c.field));
+  const shownMinor = shown.filter((c) => MINOR_FIELDS.has(c.field));
+  const also = (list: RevisionChange[]) => list.length > 0 && <li className="also" data-field="also">{t(lang, "rev.also", { list: list.map((c) => t(lang, `change.${c.field}` as Key).toLowerCase()).join(", ") })}</li>;
+  return (
+    <>
+      {shown.length > 0 && (
+        <ul className="rev-changes" id="revChanges">
+          {shown.filter((c) => !MINOR_FIELDS.has(c.field)).map(row)}
+          {also(shownMinor)}
+        </ul>
+      )}
+      {folded.length > 0 && (
+        <>
+          <button type="button" className="rev-toggle" id="revMoreToggle" aria-expanded={open} aria-controls="revMore" onClick={() => setOpen(!open)}>
+            <Icon name={open ? "up" : "down"} />{t(lang, foldAll ? "rev.allChanges" : "rev.more", { n: folded.length })}
+          </button>
+          <ul className="rev-changes" id="revMore" hidden={!open}>
+            {folded.filter((c) => !MINOR_FIELDS.has(c.field)).map(row)}
+            {also(minor)}
+          </ul>
+        </>
+      )}
+    </>
+  );
+}
+
+function ScheduleRow({ item, locationName }: { item: ScheduleItem; locationName?: string }) {
   // React escapes text by construction; never dangerouslySetInnerHTML here.
   return (
     <tr>
       <td className="n">{item.order_index}</td>
-      <td className="scene">{item.scene_number}{changed && mark}</td>
+      <td className="scene">{item.scene_number}</td>
       <td className="ie">{item.int_ext}</td>
       <td className="dn">{item.day_night}</td>
       <td className="set">{item.set_description}{locationName && <span className="loc"> · {locationName}</span>}</td>
@@ -126,9 +167,19 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   // The block and the sheet load separately, and the block can come from this phone's copy while the sheet is live. A call time from an
   // older revision under a newer sheet is the one thing this page must never show as if it were current.
   const personalBehind = !!personal?.revision_letter && !!rev && personal.revision_letter !== rev.revision_letter;
-  const minorChanges = changes.filter((c) => MINOR_FIELDS.has(c.field));
-  const changedScenes = new Set(changes.flatMap((c) => c.scenes ?? []));
-  const revMark = <RevMark label={L("rev.markLabel")} />;
+  const alreadyConfirmed = !!personal?.confirmed_at && personal.revision_letter === rev?.revision_letter;
+  // Where this person is going first: the first scene with a location. The sheet lists the others below.
+  const firstScene = items.find((i) => i.location_id && locationNames.has(i.location_id));
+  const firstPlace = sheetLocations.find((l) => l.id === firstScene?.location_id) ?? null;
+  const placeChange = changes.find((c) => c.field === "location" && firstScene && (c.scenes ?? []).includes(firstScene.scene_number));
+  const firstPlaceBefore = placeChange?.before ?? null;
+  const firstPlaceUrl = firstPlace ? mapsUrl(firstPlace) : null;
+  // On the shared link nothing competes with the list, so nothing folds. A personal link has already said this person's own time and place.
+  const showsPlace = !!personal && !!firstPlace && !(personal.is_cast && !personal.works_today);
+  const leads = (c: RevisionChange) => FIRST_ON_PERSONAL.has(c.field) && !(showsPlace && c === placeChange);
+  const first = personal ? changes.filter(leads) : changes;
+  const rest = personal ? changes.filter((c) => !leads(c)) : [];
+  const otherPlaces = sheetLocations.length - 1;
   return (
     <article id="sheet" className="sheet visible" aria-label="Call sheet">
       <header className="sheet-header">
@@ -136,7 +187,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           <h2 className="production">{title}</h2>
           <p className="day" id="dayLabel">
             {L("day.of", { n: callSheet.day_number, count: callSheet.day_count })} — {callSheet.unit_name}
-            {" "}<span className="date" id="dateLabel">· {fmtDate(lang, callSheet.shoot_date)}</span>
+            {" "}<span className="date" id="dateLabel">{fmtDate(lang, callSheet.shoot_date)}</span>
           </p>
         </div>
         <div id="revBadgeWrap">
@@ -173,6 +224,17 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
               {personal.note && <span className="note">{personal.note}</span>}
             </div>
           )}
+          {showsPlace && firstPlace && (
+            <div className="you-where" id="yourPlace">
+              <div className="label">{L("you.where")}</div>
+              <div className="place">
+                <b>{firstPlace.name}</b>
+                {firstPlaceBefore && <div className="was" id="yourPlaceWas">{L("you.was")} <s>{firstPlaceBefore}</s></div>}
+              </div>
+              {firstPlace.address && (firstPlaceUrl ? <a className="address-link" href={firstPlaceUrl} target="_blank" rel="noreferrer">{firstPlace.address}</a> : <div>{firstPlace.address}</div>)}
+              {otherPlaces > 0 && <div className="more-places">{L("you.morePlaces", { n: otherPlaces })}</div>}
+            </div>
+          )}
         </section>
       )}
 
@@ -185,15 +247,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           {catchingUp?.since_letter && <p className="rev-since" id="revSince">{L("rev.since", { rev: catchingUp.since_letter })}</p>}
           {changes.length === 0 && allChanges.length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
           {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
-          {changes.length > 0 && (
-            <ul className="rev-changes" id="revChanges">
-              {changes.filter((c) => !MINOR_FIELDS.has(c.field)).map((c, i) => <ChangeRow key={`${c.field}-${i}`} c={c} lang={lang} dayHref={dayHref} />)}
-              {minorChanges.length > 0 && (
-                <li className="also" data-field="also">{L("rev.also", { list: minorChanges.map((c) => t(lang, `change.${c.field}` as Key).toLowerCase()).join(", ") })}</li>
-              )}
-            </ul>
-          )}
-          {changedScenes.size > 0 && <p className="rev-legend">{L("rev.mark")}</p>}
+          {changes.length > 0 && <RevChanges key={rev.revision_letter} first={first} rest={rest} foldAll={alreadyConfirmed} lang={lang} dayHref={dayHref} />}
         </section>
       )}
 
@@ -218,7 +272,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {rev?.safety_notes && (
         <section className="safety" id="safetyBox" aria-label={L("safety")}>
-          <div className="label">{L("safety")}{changes.some((c) => c.field === "safety_notes") && revMark}</div>
+          <div className="label">{L("safety")}</div>
           <p id="safetyText">{rev.safety_notes}</p>
         </section>
       )}
@@ -231,7 +285,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             return (
               <div className="location" key={loc.id} data-location={loc.id}>
                 <div className="location-head">
-                  <span className="name">{loc.name}{changes.some((c) => c.field === "location" && (c.scenes ?? []).some((n) => loc.scene_numbers.includes(n))) && revMark}</span>
+                  <span className="name">{loc.name}</span>
                   {loc.scene_numbers.length > 0 && <span className="scenes">{L("where.sc")} {loc.scene_numbers.join(", ")}</span>}
                 </div>
                 {loc.address && <div className="address">{url ? <a href={url} target="_blank" rel="noreferrer">{loc.address}</a> : loc.address}</div>}
@@ -251,7 +305,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             <tr><th>#</th><th>{L("th.scene")}</th><th>{L("th.ie")}</th><th>{L("th.dn")}</th><th>{L("th.set")}</th><th>{L("th.pages")}</th></tr>
           </thead>
           <tbody id="scheduleBody">
-            {items.map((item) => <ScheduleRow key={item.id ?? item.order_index} item={item} locationName={locationNames.get(item.location_id ?? "")} changed={changedScenes.has(item.scene_number)} mark={revMark} />)}
+            {items.map((item) => <ScheduleRow key={item.id ?? item.order_index} item={item} locationName={locationNames.get(item.location_id ?? "")} />)}
           </tbody>
         </table>
       </section>
@@ -265,7 +319,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
               {callSheet.cast_calls!.map((r) => (
                 <tr key={r.cast_member_id} data-cast={r.cast_member_id}>
                   <td className="set">{r.name}</td><td className="character">{r.character_name}</td><td className="ie">{r.status_code}</td>
-                  <td className="time" data-k={L("th.pickup")}>{r.pickup_time ?? ""}</td><td className="time" data-k={L("th.call")}>{r.call_time ?? ""}</td><td className="time" data-k={L("th.mh")}>{r.makeup_hair_time ?? ""}</td><td className="time" data-k={L("th.onSet")}>{r.on_set_time ?? ""}</td>
+                  <td className="time" data-k={L("you.pickup")}>{r.pickup_time ?? ""}</td><td className="time" data-k={L("th.call")}>{r.call_time ?? ""}</td><td className="time" data-k={L("th.mh")}>{r.makeup_hair_time ?? ""}</td><td className="time" data-k={L("th.onSet")}>{r.on_set_time ?? ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -322,7 +376,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {freshness.fromCache && (
         <p className="cached-at" id="cachedAt">
-          Copy saved {new Date(freshness.fetchedAt).toLocaleString()}. You are offline; times may have changed since.
+          {L("cached.note", { time: new Date(freshness.fetchedAt).toLocaleString() })}
         </p>
       )}
 

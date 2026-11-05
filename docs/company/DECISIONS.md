@@ -132,3 +132,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: the date of a published day is no longer fixed. Moving or swapping days goes through `app/services/replan.py`, always as a new revision on every day touched, in one transaction. Revisions stay immutable; `CallSheet.shoot_date` is the current date and `CallSheetRevision.shoot_date` is what each revision was published for.
 - Why: outreach to production companies named a sudden plan change as the biggest pain, and "cancel and create a new day" loses the revision history, the read receipts and every personal link's continuity.
 - Revisit when: pilots show ADs reschedule ranges of days rather than single days or pairs.
+
+## 2026-11-05: the confirm action follows the changes and rests at the bottom of the screen
+- Decision: `.confirm` stays after the change list and is `position: sticky; bottom: 0`, not above the list. Margin asterisks are removed. The revision colour stays on the badge and the change block.
+- Why: above the list it would invite a confirmation before reading, which is the thing confirming exists to prevent. Asterisks sat inline, their key was far away and they skipped changed times, while the list already says what changed.
+- Revisit when: pilot data shows people confirm without opening "more changes" and then miss something that was folded.
