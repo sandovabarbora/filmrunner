@@ -26,7 +26,7 @@ from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.services.call_sheets import RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import NotCalledToday, RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
 from app.services.replan import ReplanConflict, move_scene, reschedule_day, swap_days
 
@@ -339,7 +339,7 @@ def confirm_public(call_sheet_id: uuid.UUID, token: str, payload: ConfirmRequest
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This day is cancelled; there is nothing to confirm")
     try:
         confirmed_at = record_confirmed(db, call_sheet, token, payload.revision_letter)
-    except RevisionNoLongerCurrent as exc:
+    except (RevisionNoLongerCurrent, NotCalledToday) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if confirmed_at is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
@@ -360,8 +360,12 @@ def get_call_sheet_history(
 def get_seen_report(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> SeenReport:
     """Who has opened the current revision (FR-36); the AD's answer to "did everyone get REV B?"."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
-    require_on(db, principal, call_sheet.production_id, PRODUCTION_READ)
+    access = require_on(db, principal, call_sheet.production_id, PRODUCTION_READ)
     report = build_seen_report(db, call_sheet)
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No revision published yet")
+    # FR-206: a personal link could confirm on its owner's behalf, so only those who chase people get them.
+    if DAY_PUBLISH not in access.permissions:
+        for entry in report.seen + report.not_seen:
+            entry.personal_token = None
     return report

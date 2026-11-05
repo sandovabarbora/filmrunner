@@ -635,9 +635,9 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
                   {pending.has(m.id) && (
                     <button type="button" className="quiet" onClick={() => void syncPendingEdit(pending.get(m.id)!, true)} aria-label={L("Sync {name}", { name: m.contact.name })}>{L("Sync")}</button>
                   )}
-                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token)); setNotice({ kind: "ok", text: L("{name}'s link copied. One link for the whole shoot; it always opens their next day.", { name: m.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: m.contact.name })}><Icon name="link" />{L("Link")}</button>
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, m.personal_token!)); setNotice({ kind: "ok", text: L("{name}'s link copied. One link for the whole shoot; it always opens their next day.", { name: m.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: m.contact.name })}><Icon name="link" />{L("Link")}</button>
                   {whatsappNumber(m.contact.phone) && (
-                    <a className="quiet-link whatsapp" href={whatsappUrl(whatsappNumber(m.contact.phone), onboardingMessageText(productionName, m, personalLink(conn.apiBase, m.personal_token)))}
+                    <a className="quiet-link whatsapp" href={whatsappUrl(whatsappNumber(m.contact.phone), onboardingMessageText(productionName, m, personalLink(conn.apiBase, m.personal_token!)))}
                       target="_blank" rel="noreferrer" aria-label={L("Send link to {name} on WhatsApp", { name: m.contact.name })}><Icon name="chat" />{L("WhatsApp")}</a>
                   )}
                   <button type="button" className="quiet" onClick={() => startEdit(m)} aria-label={L("Edit {name}", { name: m.contact.name })}>{L("Edit")}</button>
@@ -648,10 +648,10 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
           ))}
         </ul>
       )}
-      {allCrew && allCrew.length > 0 && (
+      {canEdit && allCrew && allCrew.length > 0 && (
         <div className="inline" id="allLinks">
           <button type="button" className="quiet" id="copyAllLinks" onClick={() => {
-            void navigator.clipboard?.writeText(allLinksText(allCrew, (m) => personalLink(conn.apiBase, m.personal_token)));
+            void navigator.clipboard?.writeText(allLinksText(allCrew, (m) => personalLink(conn.apiBase, m.personal_token!)));
             setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: allCrew.length }) });
           }}><Icon name="copy" />{L("Copy all links")}</button>
           <span className="hint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</span>
@@ -915,7 +915,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
               </span>
               {canEdit && (
                 <span className="row-actions">
-                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, a.personal_token)); setNotice({ kind: "ok", text: L("Link for {name} copied.", { name: a.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: a.contact.name })}><Icon name="copy" />{L("Link")}</button>
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, a.personal_token!)); setNotice({ kind: "ok", text: L("Link for {name} copied.", { name: a.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: a.contact.name })}><Icon name="copy" />{L("Link")}</button>
                   <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={L("Edit {name}", { name: a.contact.name })}>{L("Edit")}</button>
                   <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={L("Remove {name}", { name: a.contact.name })}>{L("Remove")}</button>
                 </span>

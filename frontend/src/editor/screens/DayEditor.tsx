@@ -407,13 +407,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
                     {waiting.map((e) => {
                       const number = whatsappNumber(e.phone);
-                      const link = personalLink(conn.apiBase, e.personal_token);
+                      const link = e.personal_token ? personalLink(conn.apiBase, e.personal_token) : null;
                       const castCall = e.is_cast ? draft.castCalls?.[e.crew_member_id] : undefined;
                       // Someone who will not open a link should still get their times from the message itself.
                       const castTimes = castCall ? [castCall.pickup && `${L("pickup")} ${castCall.pickup}`, castCall.call && `${L("call")} ${castCall.call}`, castCall.makeup && `M/H ${castCall.makeup}`, castCall.onSet && `${L("on set")} ${castCall.onSet}`].filter(Boolean).join(", ") : "";
                       const nudge = castCall
-                        ? L("REV {rev} for Day {n} is out. Your times: {times}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, times: castTimes || "—", link })
-                        : L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link });
+                        ? L("REV {rev} for Day {n} is out. Your times: {times}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, times: castTimes || "—", link: link ?? "" })
+                        : L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link: link ?? "" });
                       return (
                         <li key={e.crew_member_id} data-state={e.seen_at ? "opened" : "unopened"}>
                           <div className="waiting-who">
@@ -422,8 +422,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                           </div>
                           <div className="row-actions">
                             {e.phone && <a className="quiet-link" href={`tel:${e.phone.replace(/[^+\d]/g, "")}`} aria-label={L("Call {name}", { name: e.name })}><Icon name="phone" />{L("Call")}</a>}
-                            {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />WhatsApp</a>}
-                            {number && shareable && <a className="quiet-link" href={smsUrl(number, nudge)} aria-label={L("SMS {name}", { name: e.name })}>SMS</a>}
+                            {number && shareable && link && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />WhatsApp</a>}
+                            {number && shareable && link && <a className="quiet-link" href={smsUrl(number, nudge)} aria-label={L("SMS {name}", { name: e.name })}>SMS</a>}
                           </div>
                         </li>
                       );
@@ -779,13 +779,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             </div>
           </div>
         )}
-        {published && crew.length > 0 && (
+        {published && canPublish && crew.length > 0 && (
           <div className="share" id="personalLinks">
             <div className="label">{L("Personal links · one per person, for the whole shoot")}</div>
             <p className="hint">{L("Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.")}</p>
             <ul className="list">
               {crew.map((m) => {
-                const link = personalLink(conn.apiBase, m.personal_token);  // stable for the whole shoot (FR-32)
+                const link = personalLink(conn.apiBase, m.personal_token!);  // stable for the whole shoot (FR-32)
                 const number = whatsappNumber(m.contact.phone);
                 const message = () => personalMessageText(draft, m, locations, link);
                 return (

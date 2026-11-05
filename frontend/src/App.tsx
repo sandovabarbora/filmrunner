@@ -213,7 +213,7 @@ export function App() {
           shareUrl={shareUrl}
           lang={lang}
           dayHref={mode.kind === "share" ? (id) => `?api=${encodeURIComponent(mode.api)}&sheet=${id}${mode.me ? `&me=${encodeURIComponent(mode.me)}` : ""}` : undefined}
-          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && result.data.status !== "cancelled" && result.data.current_revision ? (
+          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && personal.works_today !== false && result.data.status !== "cancelled" && result.data.current_revision ? (
             <ConfirmRevision
               apiBase={mode.api}
               sheetId={mode.sheet}

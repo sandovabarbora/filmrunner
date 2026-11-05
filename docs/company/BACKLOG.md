@@ -2143,3 +2143,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the Crew tab says suppliers belong there, so they get a link and a place on the list with no new concept
   - failure case: an actor not called today is told so, never shown the crew call, and is not chased; push stays crew-only, with no toggle that would fail on an actor's link
 
+## FR-206 · security · A read-only member gets no personal links; an actor not called cannot skew the count
+- state: done
+- gated: no
+- why: once a personal link can confirm a revision (FR-202), a viewer reading the crew list could confirm on someone's behalf and the AD would stop chasing a person who does not know
+- dod:
+  - crew list, cast list and the seen report return `personal_token` only to members who can edit the crew or publish; the editor hides what needs a link
+  - an actor with no call on a day cannot confirm it, and opening it does not add to the day's count
+  - failure case: a viewer still sees the names, departments and who has confirmed, just no link; the sweep test fails if a read route starts returning a token to them
+

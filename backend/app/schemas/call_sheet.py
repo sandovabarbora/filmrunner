@@ -311,7 +311,7 @@ class SeenEntry(BaseModel):
     department: str
     position: str
     phone: str | None
-    personal_token: str
+    personal_token: str | None  # FR-206: None for a read-only member
     seen_at: datetime | None
     confirmed_at: datetime | None = None
     subscribed: bool  # has a push subscription on this production
