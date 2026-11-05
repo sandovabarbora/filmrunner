@@ -53,7 +53,7 @@ function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHre
     return (
       <li data-field={c.field}>
         <span className="k">{t(lang, "change.shoot_date")}</span>
-        <span className="v">{c.before && <><s>{fmtDate(lang, c.before)}</s><span className="to" aria-hidden="true"> → </span></>}<b>{fmtDate(lang, c.after ?? "")}</b></span>
+        <span className="v">{c.before && <><s>{fmtDate(lang, c.before)}</s>{" "}<Icon name="right" />{" "}</>}<b>{fmtDate(lang, c.after ?? "")}</b></span>
       </li>
     );
   }
@@ -81,7 +81,7 @@ function ChangeRow({ c, lang, dayHref }: { c: RevisionChange; lang: Lang; dayHre
   return (
     <li data-field={c.field} className={DATA_FIELDS.has(c.field) ? "data" : undefined}>
       <span className="k">{label}</span>
-      <span className="v">{showBefore && <><s>{c.before}</s><span className="to" aria-hidden="true"> → </span></>}<b>{after}</b></span>
+      <span className="v">{showBefore && <><s>{c.before}</s>{" "}<Icon name="right" />{" "}</>}<b>{after}</b></span>
     </li>
   );
 }
@@ -287,7 +287,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       </section>
 
       {rev?.safety_notes && (
-        <section className="safety" id="safetyBox" aria-label={L("safety")}>
+        <section className={`safety${first.some((c) => c.field === "safety_notes") && !alreadyConfirmed ? " in-hero" : ""}`} id="safetyBox" aria-label={L("safety")}>
           <div className="label">{L("safety")}</div>
           <p id="safetyText">{rev.safety_notes}</p>
         </section>

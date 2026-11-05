@@ -186,7 +186,7 @@ export function App() {
             <p>{L("home.runningText")}</p>
             <a className="button primary" id="openEditor" href="editor.html">{L("home.editor")}</a>
           </div>
-          <p className="home-about"><a id="openLanding" href="landing.html">What is FilmRunner?</a></p>
+          <p className="home-about"><a id="openLanding" href="landing.html">{L("home.about")}</a></p>
         </section>
       )}
 
