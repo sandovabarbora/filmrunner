@@ -137,3 +137,9 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: `.confirm` stays after the change list and is `position: sticky; bottom: 0`, not above the list. Margin asterisks are removed. The revision colour stays on the badge and the change block.
 - Why: above the list it would invite a confirmation before reading, which is the thing confirming exists to prevent. Asterisks sat inline, their key was far away and they skipped changed times, while the list already says what changed.
 - Revisit when: pilot data shows people confirm without opening "more changes" and then miss something that was folded.
+
+## 2026-11-05: the visual world is a film still with the time as its title
+- Decision: dark graded ground, one still per day, Archivo as the only typeface, revision colour only on the label and the confirm action. Replaces the cream paper and the revision-coloured change block. Stills are generated and must not be presented as real locations.
+- Why: the founder rejected the paper look outright. The first round of three flat directions was also rejected; the chosen direction came from their saved references (A24, Kookie, Secret Level).
+- Revisit when: crew report the dark screen is hard to read in daylight, or a production wants its own location photos.
+

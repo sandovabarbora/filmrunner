@@ -1,4 +1,4 @@
-/* Editor: same paper world as the viewer; forms sized for thumbs. */
+/* Editor: the same graded ground as the viewer, no still behind working screens; forms sized for thumbs. */
 
 .block { padding: 18px 0 6px; border-bottom: 1px solid var(--rule); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
@@ -6,7 +6,7 @@
 .field .label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
 input, select, textarea {
   width: 100%; min-height: var(--control); padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius);
-  background: #fff; color: var(--ink); font: inherit; font-size: 16px; /* 16px stops iOS zooming into fields */
+  background: var(--card); color: var(--ink); font: inherit; font-size: 16px; /* 16px stops iOS zooming into fields */
 }
 input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; }
 input.mono { font-family: var(--mono); }
@@ -67,7 +67,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 #logo { cursor: default; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .role-chip { margin-left: auto; align-self: center; font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .subhead { margin: 16px 0 8px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-2); }
-.row.editing { background: #fff; outline: var(--frame); outline-offset: -1px; border-radius: var(--radius); padding-left: 8px; padding-right: 8px; }
+.row.editing { background: var(--card); outline: var(--frame); outline-offset: -1px; border-radius: var(--radius); padding-left: 8px; padding-right: 8px; }
 .crew-name { display: flex; align-items: center; gap: 10px; }
 .photo-field { align-items: center; margin-bottom: 12px; }
 
@@ -89,14 +89,14 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .share-text-actions { margin-top: 10px; align-items: center; }
 .share-preview { margin-top: 10px; }
 .share-preview textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; }
-.quiet-link.whatsapp { color: #0d7a3a; }
+.quiet-link.whatsapp { color: var(--ok-ink); }
 
 /* FR-31: paste the crew list. */
 .paste-crew { margin-top: 12px; }
 .paste-crew textarea { width: 100%; font-family: var(--mono); font-size: 0.8125rem; line-height: 1.45; }
 .paste-crew .preview { margin-top: 8px; }
 .paste-crew .row.warn { background: var(--warn-bg); }
-.warn-text { color: #8a5a00; }
+.warn-text { color: var(--warn-ink); }
 /* FR-30: tomorrow starts as today. */
 .next-day { margin-top: 12px; align-items: center; flex-wrap: wrap; }
 
@@ -111,7 +111,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 
 /* FR-36: who has opened the current revision. */
 .seen { margin: 14px 0 0; }
-.replan { margin: 8px 0 0; padding: 10px 12px; border: var(--frame); border-radius: var(--radius); background: #fff; }
+.replan { margin: 8px 0 0; padding: 10px 12px; border: var(--frame); border-radius: var(--radius); background: var(--card); }
 .replan .hint { margin: 0 0 8px; }
 .item-actions select.move-to { min-height: var(--control-sm); margin-left: auto; width: auto; max-width: 60%; font-size: var(--fs-small); }
 .seen-count { margin: 0; font-size: 1.125rem; font-weight: 700; }
@@ -120,6 +120,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .waiting { list-style: none; margin: 10px 0; padding: 0; border-top: 1px solid var(--rule); }
 .waiting li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .seen-urgent { margin: 2px 0 0; font-size: 1.125rem; font-weight: 700; color: var(--err-ink); }
+.remind-next, .remind-next:hover { background: var(--ink); color: var(--paper); }
 .remind-next { width: 100%; margin-top: 10px; min-height: 52px; white-space: normal; text-align: center; }
 .waiting li > details { width: 100%; }
 .waiting summary { min-height: var(--control); padding: 0; color: var(--ink); cursor: pointer; }
@@ -155,7 +156,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 /* FR-45: pick a person already in FilmRunner. */
 .picker { position: relative; }
 .picker input { width: 100%; }
-.picker-list { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 0; list-style: none; border: var(--frame); border-radius: var(--radius); background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 220px; overflow: auto; }
+.picker-list { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 0; list-style: none; border: var(--frame); border-radius: var(--radius); background: var(--card); box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 220px; overflow: auto; }
 .picker-item { display: block; width: 100%; min-height: 0; text-align: left; padding: 8px 10px; border: 0; border-radius: 0; background: none; color: var(--ink); font: inherit; white-space: normal; cursor: pointer; }
 .picker-item:hover, .picker-item:focus { background: var(--paper-2); }
 .picker-item .name { display: block; font-weight: 600; }
@@ -181,3 +182,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .crew-filter input { flex: 1 1 12rem; }
 /* Inline muted text next to a name — never the sheet's light/weather row. */
 .row .meta, .chip .meta, .picker-item .meta { font-weight: 400; color: var(--muted); font-size: var(--fs-small); }
+
+/* Sign-in: the one editor screen with a still, since nothing else competes with it yet. */
+.block.sign-in { margin-top: 44svh; border: 0; }
+.block.sign-in h2 { margin: 0 0 8px; font-size: 2.25rem; line-height: 1; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); }

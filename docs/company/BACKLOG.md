@@ -2195,3 +2195,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - someone who already confirmed sees the list folded
   - the AD sees how many have not opened and one next person to remind, because each message carries its own link
   - failure case: the shared link folds nothing, since it has no personal block to lead with
+
+## FR-210 · frontend · Replace the cream-paper look with a film still and the person's time as its title
+- state: done
+- gated: no
+- note: delivered 2026-11-05 (feat/fr-210-viewfinder-visual-world). The founder rejected the paper look and chose this direction from two rounds of sketches. The landing and privacy pages keep the old look; only generated stills exist, so a production cannot use its own location photo yet.
+- why: the founder found the look template-like, empty and without character, and their saved references all put type directly on a film frame
+- dod:
+  - crew sheet, home and sign-in show a still with the time or name at display size; the editor uses the same ground and colours
+  - revision colour survives only as the label and the confirm action; every revision letter stays readable on it
+  - stills and the font are precached, so the first screen works offline; print stays black on white with no still
+  - failure case: a still that fails to load leaves the solid ground, and all text stays readable
+

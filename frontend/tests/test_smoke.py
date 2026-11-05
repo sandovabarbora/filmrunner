@@ -298,7 +298,7 @@ def test_czech_browser_gets_a_czech_sheet_and_the_toggle_switches(browser, front
     assert "7. den z 24" in page.locator("#dayLabel").inner_text()
     assert page.locator("#dateLabel").inner_text().strip() == "út 22. 9. 2026"
     assert "REV B nahrazuje A" in page.locator("#revReplaces").inner_text()
-    assert page.locator(".calls .label").first.text_content().strip() == "Sraz štábu"  # CSS uppercases it
+    assert page.locator(".you.shared .label").first.text_content().strip() == "Sraz štábu"
     assert page.locator("#locations h2").text_content().strip() == "Kde"
     assert page.locator("#contacts h2").text_content().strip() == "Komu volat"
     assert page.locator("#castTable th").first.text_content().strip() == "Herci"
