@@ -42,11 +42,24 @@ const EN = {
   "rev.replaces": "REV {rev} replaces {prev}",
   "rev.issued": ", issued {time}",
   "rev.changes": "What changed",
+  "rev.also": "Also changed, see below: {list}.",
+  "rev.mark": "* changed in this revision",
+  "rev.markLabel": "changed in this revision",
+  "rev.same": "Republished; nothing on the sheet changed.",
   "change.crew_call": "Crew call",
   "change.shooting_call": "Shooting call",
-  "change.scene_order": "Scenes",
+  "change.location": "Location",
+  "change.scenes_added": "Scenes added",
+  "change.scenes_removed": "Scenes removed",
+  "change.scene_detail": "Scene",
+  "change.scene_order": "Scene order",
   "change.safety_notes": "Safety",
+  "change.cast_calls": "Cast calls changed",
   "change.personal_calls": "Personal calls",
+  "change.head_of_day": "Head of day",
+  "change.weather": "Weather",
+  "change.sunrise": "Sunrise",
+  "change.sunset": "Sunset",
   "change.personalCount": "{n} changed",
   "you.call": "Your call",
   "you.pickup": "Pickup",
@@ -136,11 +149,24 @@ const CS: Partial<Record<Key, string>> = {
   "rev.replaces": "REV {rev} nahrazuje {prev}",
   "rev.issued": ", vydáno {time}",
   "rev.changes": "Co se změnilo",
+  "rev.also": "Změnilo se také, viz níže: {list}.",
+  "rev.mark": "* změněno v této revizi",
+  "rev.markLabel": "změněno v této revizi",
+  "rev.same": "Vydáno znovu; na dispozicích se nic nezměnilo.",
   "change.crew_call": "Sraz štábu",
   "change.shooting_call": "Začátek natáčení",
-  "change.scene_order": "Obrazy",
+  "change.location": "Lokace",
+  "change.scenes_added": "Přidané obrazy",
+  "change.scenes_removed": "Vypadlé obrazy",
+  "change.scene_detail": "Obraz",
+  "change.scene_order": "Pořadí obrazů",
   "change.safety_notes": "Bezpečnost",
+  "change.cast_calls": "Změna u herců",
   "change.personal_calls": "Osobní srazy",
+  "change.head_of_day": "Vedoucí dne",
+  "change.weather": "Počasí",
+  "change.sunrise": "Východ",
+  "change.sunset": "Západ",
   "change.personalCount": "změn: {n}",
   "you.call": "Tvůj sraz",
   "you.pickup": "Vyzvednutí",
@@ -210,7 +236,8 @@ export function rememberLang(lang: Lang): void {
 
 /** The label for `key` in `lang`, with `{name}` placeholders filled; Czech falls back to English text. */
 export function t(lang: Lang, key: Key, vars: Record<string, string | number> = {}): string {
-  const raw = (lang === "cs" ? CS[key] : undefined) ?? EN[key];
+  // A key we do not know comes back as itself: an API newer than this cached bundle must never take the sheet down.
+  const raw = (lang === "cs" ? CS[key] : undefined) ?? EN[key] ?? key;
   return raw.replace(/\{(\w+)\}/g, (_, name: string) => (vars[name] !== undefined ? String(vars[name]) : `{${name}}`));
 }
 

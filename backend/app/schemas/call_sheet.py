@@ -186,10 +186,13 @@ class RevisionSummary(BaseModel):
 class RevisionChange(BaseModel):
     """One line of "what changed" between the last two revisions (FR-23)."""
 
-    field: str  # crew_call | shooting_call | scene_order | safety_notes | personal_calls
-    label: str  # "Crew call"
+    # crew_call | shooting_call | location | scenes_added | scenes_removed | scene_detail | scene_order
+    # | safety_notes | cast_calls | personal_calls | head_of_day | weather | sunrise | sunset
+    field: str
+    label: str  # "Crew call"; complete on its own for the push and the AD's history
     before: str | None
     after: str | None
+    scenes: list[str] = []  # which scenes this row is about, so the sheet can mark them in the margin
 
 
 class OpenedSummary(BaseModel):
@@ -241,6 +244,7 @@ class CallSheetRead(BaseModel):
     unit_name: str
     status: CallSheetStatus
     created_at: datetime
+    production_title: str | None = None  # the sheet's headline; the unit alone says nothing to a freelancer on three shoots
     current_revision: CallSheetRevisionRead | None = None
     contacts: CallSheetContacts | None = None
     personal_calls: list[PersonalCallRow] = []

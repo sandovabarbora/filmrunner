@@ -77,7 +77,7 @@ def test_demo_mode_renders_bundled_call_sheet(page: Page, frontend_url: str) -> 
     # The demo is the first thing a prospect sees: it shows every block the sheet has.
     assert page.locator("#locations .location").count() == 2
     assert page.locator("#castTable tbody tr").count() == 3
-    assert page.locator("#revChanges li").count() == 3
+    assert page.locator("#revChanges li").count() == 4
     assert "replaces A" in page.locator("#revReplaces").inner_text()
     assert page.locator("#cancelledBanner").count() == 0
 

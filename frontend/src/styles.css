@@ -15,8 +15,9 @@
   --err-bg: #f9dcd8;
   --err-ink: #6b1d16;
   --ok-ink: #1f5c3a;
-  /* Revision paper colours, as printed on set: A white, B blue, C pink, D yellow, E green. */
+  /* Revision paper colours, as printed on set: A white, B blue, C pink, D yellow, E green, F goldenrod, G buff, H salmon, I cherry. */
   --rev-a: #ffffff; --rev-b: #cfe3f7; --rev-c: #f8d3dc; --rev-d: #f8ec9e; --rev-e: #cfeacb;
+  --rev-f: #f5d78a; --rev-g: #f1e4c4; --rev-h: #f7cdb8; --rev-i: #efbcc4;
   --rev: var(--rev-a);
   --sans: -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -135,20 +136,32 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .day { margin: 4px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
 .day .date { color: var(--muted); }
 .rev-badge {
-  flex: none; display: inline-block; padding: 5px 10px; border: var(--frame); border-radius: var(--radius);
+  flex: none; display: inline-block; white-space: nowrap; padding: 5px 10px; border: var(--frame); border-radius: var(--radius);
   background: var(--rev); font-family: var(--mono); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em;
 }
-.rev-badge[data-rev="B"] { --rev: var(--rev-b); }
-.rev-badge[data-rev="C"] { --rev: var(--rev-c); }
-.rev-badge[data-rev="D"] { --rev: var(--rev-d); }
-.rev-badge[data-rev="E"] { --rev: var(--rev-e); }
+[data-rev="B"] { --rev: var(--rev-b); }
+[data-rev="C"] { --rev: var(--rev-c); }
+[data-rev="D"] { --rev: var(--rev-d); }
+[data-rev="E"] { --rev: var(--rev-e); }
+[data-rev="F"] { --rev: var(--rev-f); }
+[data-rev="G"] { --rev: var(--rev-g); }
+[data-rev="H"] { --rev: var(--rev-h); }
+[data-rev="I"] { --rev: var(--rev-i); }
 
-.rev-replaces { margin: 2px 0 0; font-size: 0.8125rem; color: var(--muted); }
-.rev-replaces p { margin: 0; }
-.rev-changes { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--ink-2); }
-.rev-changes .k { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.6875rem; }
-.rev-changes s { color: var(--muted); }
-.rev-changes b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+/* FR-200: what changed is printed on the revision's own coloured paper, the way a revised page reaches the set.
+   Text stays ink on the tint: the greys are for paper, and fall under AA on these colours. */
+.rev-block { margin: 10px 0 0; padding: 12px 14px; border: var(--frame); border-radius: var(--radius); background: var(--rev); color: var(--ink); }
+.rev-line { margin: 0; font-size: var(--fs-small); font-weight: 600; }
+.rev-same { margin: 6px 0 0; font-size: var(--fs-body); }
+.rev-changes { margin: 8px 0 0; padding: 0; list-style: none; }
+.rev-changes li { padding-top: 6px; margin-top: 6px; border-top: 1px solid rgba(23, 21, 15, 0.25); }
+.rev-changes .k { display: block; font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.rev-changes .v { display: block; margin-top: 1px; font-size: var(--fs-body); line-height: 1.3; overflow-wrap: anywhere; }
+.rev-changes b { font-weight: 700; }
+.rev-changes .data .v { font-family: var(--mono); font-size: 1.0625rem; }
+.rev-changes .also { font-size: var(--fs-small); }
+.rev-legend { margin: 10px 0 0; font-size: var(--fs-small); }
+.rev-mark { margin-left: 2px; font-family: var(--mono); font-weight: 700; color: var(--ink); }
 
 /* FR-16: opt in to push notifications from a personal link. */
 .notify { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
@@ -326,6 +339,11 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   .production { font-size: 16pt; }
   .day { font-size: 10pt; color: #222; }
   .rev-badge { border: 1pt solid #000; padding: 2pt 6pt; font-size: 9pt; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rev-block { margin-top: 6pt; padding: 5pt 8pt; border: 1pt solid #000; background: #fff; page-break-inside: avoid; }
+  .rev-line, .rev-legend { font-size: 8.5pt; }
+  .rev-changes li { padding-top: 3pt; margin-top: 3pt; border-top: 0.5pt solid #999; }
+  .rev-changes .k { display: inline; font-size: 7.5pt; margin-right: 6pt; }
+  .rev-changes .v { display: inline; font-size: 9.5pt; }
 
   .you { border: 1.5pt solid #000; padding: 6pt 8pt; margin-top: 6pt; }
   .you .value { font-size: 22pt; }

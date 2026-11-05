@@ -2083,3 +2083,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - correct the "Revisit when" section's "FR-12 lands (Connect screen goes away)" line to state the real outcome (narrowed to admin/fallback, not removed), so it stops reading as a prediction that came true when it did not
   - re-read the rest of the file directly against current `EditorApp.tsx`/`session.ts`/`api.ts`/`drafts.ts` while in there (Decision #2 "draft lives on the phone", Decision #5 "network loss"); correct any second drift found and name it explicitly, or say none found
   - failure case: if a code path is found where the Connect/bearer-token screen is in fact still reachable as a normal (non-admin, sign-in-configured) user flow in production — not just admin/fallback — say so plainly as a real regression and file it as its own tech-lead/security item, rather than describing the ADR as if Connect were purely incidental today
+
+## FR-200 · tech-lead · The change line covers every field; "no changes" only when true
+- state: done
+- gated: no
+- why: outreach to production companies names a sudden plan change as the biggest pain, and on 2026-11-05 a location change published with an empty diff and a push saying "no changes to calls or scenes": the one message that must not lie
+- dod:
+  - `revision_changes` compares every field a revision carries: location, added and removed scenes, scene content, cast calls, head of day, weather, sun, plus what it already covered
+  - a test mutates each field in turn and fails on an empty diff; it also pins the schema's field list, so a new field cannot silently skip the diff
+  - the crew's sheet prints changes on the revision's own paper colour, with the screenplay asterisk on changed scenes, the location and the safety note; the person's own call stays above it
+  - failure case: republishing identical content says "republished, content unchanged"; an API field this cached bundle does not know renders from `label` and never takes the sheet down
+

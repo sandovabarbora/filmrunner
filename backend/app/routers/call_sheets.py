@@ -215,6 +215,7 @@ def _actuals_of(call_sheet: CallSheet) -> Actuals:
 def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID, *, public: bool = False) -> CallSheetRead:
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     read = CallSheetRead.model_validate(call_sheet)
+    read.production_title = call_sheet.production.name
     if not public:
         read.actuals = _actuals_of(call_sheet)
     read.contacts = build_contacts(db, call_sheet)
