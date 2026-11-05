@@ -163,6 +163,29 @@ call sheet are refused, that the Web Push key is configured, that CORS allows th
 all four pages serve, and that a handful of requests is not rate-limited. The run summary carries a
 pass/fail table. **Read its last run instead of repeating a blocked `curl`.**
 
+### FR-164 (2026-10-13): the "Deploy matches main" row used to report ✅ even when it had never checked anything
+
+The 2026-10-12 scheduled run's "Deploy matches main (FR-109)" row read
+`✅ cannot verify — deployed build predates commit reporting (FR-109)` — the same
+glyph a genuine, verified pass gets. `deploy_staleness_message()`/`deploy_matches_main()`
+in `scripts/check_live_stack.py` returned a plain `bool` (`True` for "cannot verify" as
+well as for "verified up to date", `False` only for "verified behind"), so the table
+renderer could not tell the two `True` cases apart — the exact false-confidence shape
+this week's axe-core work found and fixed for `identical-links-same-purpose` (FR-162/163).
+Concretely, the live deploy predated FR-109's own `git_sha` reporting for the eleven days
+since FR-109 shipped (2026-10-02), through three backend merges in that window (FR-100,
+FR-117, FR-144) each carrying "backend changed: deploy needed" — and every scheduled run
+in that span rendered green regardless of whether a deploy had actually followed.
+
+Fixed by making the decision three-valued (`"ok" | "warn" | "fail"`, not `bool`):
+`deploy_staleness_message` and `deploy_matches_main` now return `"warn"` for the
+cannot-verify case, which renders as `⚠️` (`MARKS` in `check_live_stack.py`), distinct
+from `✅` (`"ok"`, a real pass) and `❌` (`"fail"`, verified behind). `main()`'s exit code
+still only counts `"fail"` — a missing `git_sha` is not itself a live-stack outage, so the
+job does not go red on this alone, it just stops lying that it checked. Every other check
+in `CHECKS` is unchanged (still plain pass/fail `bool`, normalised to `"ok"`/`"fail"` by
+`_status()`). Covered by `scripts/tests/test_check_live_stack.py`.
+
 ## For the founder's phone (step-by-step)
 
 1. Safari → https://sandovabarbora.github.io/filmrunner/editor.html → email → code from the mail (needs INBOX #3) → Productions visible.

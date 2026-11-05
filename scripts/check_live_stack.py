@@ -14,7 +14,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from typing import Callable
+from typing import Callable, Literal
 
 API = os.environ.get("API", "https://filmrunner-api.fly.dev").rstrip("/")
 PAGES = os.environ.get("PAGES", "https://sandovabarbora.github.io/filmrunner").rstrip("/")
@@ -23,7 +23,20 @@ GITHUB_API = os.environ.get("GITHUB_API", "https://api.github.com/repos/sandovab
 PAGES_ORIGIN = "://".join(PAGES.split("://")[:1] + [PAGES.split("://", 1)[1].split("/", 1)[0]])
 TIMEOUT = 20
 
-Result = tuple[str, bool, str]
+# "warn" is FR-164: a check that was never able to verify anything (e.g. no SHA reported
+# yet) must not render the same as "ok" — only "ok" means something was actually checked
+# and passed. Only "fail" counts toward the job's exit code; "warn" does not.
+Status = Literal["ok", "warn", "fail"]
+MARKS: dict[Status, str] = {"ok": "✅", "warn": "⚠️", "fail": "❌"}
+Result = tuple[str, Status, str]
+
+
+def _status(result: bool | Status) -> Status:
+    if isinstance(result, bool):
+        return "ok" if result else "fail"
+    if result not in ("ok", "warn", "fail"):
+        raise ValueError(f"unknown check status {result!r}")
+    return result
 
 
 def fetch(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes, dict[str, str]]:
@@ -35,36 +48,39 @@ def fetch(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes, 
         return exc.code, exc.read(), {k.lower(): v for k, v in exc.headers.items()}
 
 
-def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: dict) -> tuple[bool, str]:
+def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: dict) -> tuple[Status, str]:
     """Pure formatting/decision logic, unit-tested without a network call.
 
     `compare` is a GitHub "compare two commits" API response
     (https://docs.github.com/en/rest/commits/commits#compare-two-commits) for
     `deployed_sha...main_sha`: `ahead_by` counts commits on `main_sha` not yet
     reachable from `deployed_sha`, and `commits[0]` is the oldest of those.
+
+    Three distinct outcomes, not two (FR-164): "cannot verify" (no SHA reported yet) is
+    neither a verified pass nor a verified failure, and must not collapse into either.
     """
     if deployed_sha is None:
-        return True, "cannot verify — deployed build predates commit reporting (FR-109)"
+        return "warn", "cannot verify — deployed build predates commit reporting (FR-109)"
     if deployed_sha == main_sha:
-        return True, f"up to date ({deployed_sha[:7]})"
+        return "ok", f"up to date ({deployed_sha[:7]})"
     ahead_by = compare.get("ahead_by", 0)
     commits = compare.get("commits") or []
     since = commits[0]["commit"]["committer"]["date"] if commits else "unknown"
-    return False, f"{ahead_by} commits behind main, since {since} (deployed {deployed_sha[:7]}, main {main_sha[:7]})"
+    return "fail", f"{ahead_by} commits behind main, since {since} (deployed {deployed_sha[:7]}, main {main_sha[:7]})"
 
 
-def deploy_matches_main() -> tuple[bool, str]:
+def deploy_matches_main() -> tuple[Status, str]:
     status, body, _ = fetch(f"{API}/healthz")
     deployed_sha = json.loads(body or b"{}").get("git_sha")
     if status != 200:
-        return False, f"healthz returned {status}"
+        return "fail", f"healthz returned {status}"
     if deployed_sha is None:
         return deploy_staleness_message(None, "", {})
     gh_headers = {"Accept": "application/vnd.github+json"}
     _, main_body, _ = fetch(f"{GITHUB_API}/commits/main", headers=gh_headers)
     main_sha = json.loads(main_body or b"{}").get("sha", "")
     if not main_sha:
-        return False, f"could not read main's HEAD sha from {GITHUB_API}/commits/main"
+        return "fail", f"could not read main's HEAD sha from {GITHUB_API}/commits/main"
     if deployed_sha == main_sha:
         return deploy_staleness_message(deployed_sha, main_sha, {})
     _, compare_body, _ = fetch(f"{GITHUB_API}/compare/{deployed_sha}...{main_sha}", headers=gh_headers)
@@ -72,13 +88,13 @@ def deploy_matches_main() -> tuple[bool, str]:
     return deploy_staleness_message(deployed_sha, main_sha, compare)
 
 
-def check(name: str, fn: Callable[[], tuple[bool, str]]) -> Result:
+def check(name: str, fn: Callable[[], tuple[bool | Status, str]]) -> Result:
     """Any exception is a failure with its text — never a silent 'not verified'."""
     try:
-        ok, detail = fn()
+        result, detail = fn()
     except Exception as exc:  # noqa: BLE001
-        return name, False, f"{exc.__class__.__name__}: {exc}"
-    return name, ok, detail
+        return name, "fail", f"{exc.__class__.__name__}: {exc}"
+    return name, _status(result), detail
 
 
 def api_health() -> tuple[bool, str]:
@@ -148,7 +164,7 @@ def rate_limit_headers_on_refusal() -> tuple[bool, str]:
     return all(s == 200 for s in statuses), f"5 requests → {statuses}"
 
 
-CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
+CHECKS: list[tuple[str, Callable[[], tuple[bool | Status, str]]]] = [
     ("API health", api_health),
     ("API serves this week's routes", api_openapi_has_the_current_surface),
     ("Unknown personal token → 404", unknown_token_is_refused),
@@ -166,11 +182,11 @@ CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
 
 def main() -> int:
     results = [check(name, fn) for name, fn in CHECKS]
-    failed = [r for r in results if not r[1]]
+    failed = [r for r in results if r[1] == "fail"]
     lines = [f"## Live stack — {'all good' if not failed else f'{len(failed)} failing'}", "",
              f"API `{API}` · Pages `{PAGES}`", "", "| Check | Result | Detail |", "|---|---|---|"]
-    for name, ok, detail in results:
-        lines.append(f"| {name} | {'✅' if ok else '❌'} | `{detail}` |")
+    for name, status, detail in results:
+        lines.append(f"| {name} | {MARKS[status]} | `{detail}` |")
     report = "\n".join(lines)
     print(report)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
