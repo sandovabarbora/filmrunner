@@ -187,6 +187,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you .value { font-family: var(--mono); font-weight: 700; font-size: 3.25rem; letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
 .you-call { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 /* The old time sits beside the new one, large enough to read at arm's length; struck, so it can never be mistaken for it. */
+.you-off { margin: 8px 0 0; font-size: 1.125rem; font-weight: 600; }
 .you .was { font-size: 1.25rem; color: var(--ink-2); }
 .you .was .k { font-size: var(--fs-small); }
 .you .was s { font-family: var(--mono); font-weight: 600; }

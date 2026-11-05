@@ -118,6 +118,7 @@ class CastMember(Base):
     contact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("contacts.id"), nullable=False)
     character_name: Mapped[str] = mapped_column(String(255), nullable=False)
     standard_pickup_time: Mapped[str | None] = mapped_column(String(10))
+    personal_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, default=new_personal_token)
 
     production: Mapped["Production"] = relationship(back_populates="cast_members")
     contact: Mapped["Contact"] = relationship()

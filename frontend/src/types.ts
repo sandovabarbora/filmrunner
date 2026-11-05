@@ -71,6 +71,10 @@ export interface PersonalSheet {
   pickup_before?: string | null;
   revision_letter?: string | null;
   confirmed_at?: string | null;
+  is_cast?: boolean;
+  works_today?: boolean;
+  makeup_hair_time?: string | null;
+  on_set_time?: string | null;
   since_letter?: string | null;
   changes_since?: RevisionChange[] | null;
   department_head: ContactCard | null;
@@ -295,6 +299,7 @@ export interface CastMember extends CastMemberCreate {
   id: string;
   production_id: string;
   contact: Contact;
+  personal_token: string;
 }
 
 export interface CastCallEntry {
@@ -332,6 +337,7 @@ export interface SeenEntry {
   personal_token: string;
   seen_at: string | null;
   confirmed_at?: string | null;
+  is_cast?: boolean;
   subscribed: boolean;
 }
 

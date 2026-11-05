@@ -2133,3 +2133,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - scene moves across the skipped revisions are all listed
   - failure case: opening a newer revision without confirming does not move the baseline past what they confirmed; someone who never read anything, or is caught up, gets the normal view
 
+## FR-205 · tech-lead · Actors get a personal link and count on the confirmation list; suppliers are crew
+- state: done
+- gated: no
+- why: the person who phones actors at night had nothing in the product: an actor could not get their own times, and nobody could see whether they knew; suppliers (catering, rental, transport) had no visible place either
+- dod:
+  - each cast member has a personal link with pickup, make-up, call and on-set times; it works with the stable link, the "was" line and confirmations; the Cast tab copies it
+  - an actor called on a day appears on that day's confirmation list; the message written for them carries their times, because many will not open a link
+  - the Crew tab says suppliers belong there, so they get a link and a place on the list with no new concept
+  - failure case: an actor not called today is told so, never shown the crew call, and is not chased; push stays crew-only, with no toggle that would fail on an actor's link
+

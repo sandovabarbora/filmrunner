@@ -344,7 +344,7 @@ def personal_changes(before: CallSheetRevision | None, after: CallSheetRevision,
     return changes
 
 
-def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember) -> CallSheetRevision | None:
+def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember | CastMember) -> CallSheetRevision | None:
     """FR-204: what this person actually knows, when that is older than the revision before the current one. Someone
     who read REV B and opens REV D needs B to D, or C's change never reaches them. The last one they confirmed if
     any, since that is their own word; otherwise the last they opened. None when the normal diff already covers it."""
@@ -352,9 +352,10 @@ def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember) 
     previous = previous_revision(call_sheet)
     if current is None or previous is None:
         return None
-    if db.query(RevisionView).filter(RevisionView.revision_id == current.id, RevisionView.crew_member_id == member.id, RevisionView.confirmed_at.is_not(None)).first():
+    current_view = _view_of(db, current, member)
+    if current_view is not None and current_view.confirmed_at is not None:
         return None
-    views = {v.revision_id: v for v in db.query(RevisionView).filter(RevisionView.crew_member_id == member.id).all()}
+    views = {v.revision_id: v for v in db.query(RevisionView).filter(_view_column(member) == member.id).all()}
     earlier = [r for r in call_sheet.revisions if r.revision_letter < current.revision_letter and r.id in views]
     confirmed = [r for r in earlier if views[r.id].confirmed_at is not None]
     known = (confirmed or earlier)
@@ -364,15 +365,68 @@ def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember) 
     return baseline if baseline.id != previous.id else None
 
 
+def _person_on_production(db: Session, production_id, token: str) -> CrewMember | CastMember | None:
+    """Whoever this personal link belongs to on this production. A token from another production is nobody here."""
+    crew = db.query(CrewMember).filter(CrewMember.personal_token == token, CrewMember.production_id == production_id).first()
+    if crew is not None:
+        return crew
+    return db.query(CastMember).filter(CastMember.personal_token == token, CastMember.production_id == production_id).first()
+
+
+def _view_column(person: CrewMember | CastMember):
+    return RevisionView.cast_member_id if isinstance(person, CastMember) else RevisionView.crew_member_id
+
+
+def _view_of(db: Session, revision: CallSheetRevision, person: CrewMember | CastMember) -> RevisionView | None:
+    return db.query(RevisionView).filter(RevisionView.revision_id == revision.id, _view_column(person) == person.id).first()
+
+
+def _new_view(revision: CallSheetRevision, person: CrewMember | CastMember) -> RevisionView:
+    if isinstance(person, CastMember):
+        return RevisionView(revision_id=revision.id, cast_member_id=person.id)
+    return RevisionView(revision_id=revision.id, crew_member_id=person.id)
+
+
+def _build_cast_personal(db: Session, call_sheet: CallSheet, actor: CastMember) -> PersonalSheet:
+    """An actor's block: their own times from the day's cast call. Never the crew call: that is not when they are due."""
+    revision = call_sheet.current_revision
+
+    def entry_on(rev: CallSheetRevision | None) -> CastCallEntry | None:
+        return next((e for e in rev.cast_calls if e.cast_member_id == actor.id), None) if rev is not None else None
+
+    entry = entry_on(revision)
+    caught_up_from = _last_read_revision(db, call_sheet, actor) if revision is not None else None
+    before = caught_up_from or previous_revision(call_sheet)
+    was = entry_on(before)
+    view = _view_of(db, revision, actor) if revision is not None else None
+    call, pickup = entry.call_time if entry else None, entry.pickup_time if entry else None
+    return PersonalSheet(
+        name=actor.contact.name,
+        department="Cast",
+        position=actor.character_name,
+        personal_call=call,
+        pickup_time=pickup,
+        makeup_hair_time=entry.makeup_hair_time if entry else None,
+        on_set_time=entry.on_set_time if entry else None,
+        is_cast=True,
+        works_today=entry is not None,
+        call_before=was.call_time if was is not None and was.call_time != call else None,
+        pickup_before=was.pickup_time if was is not None and was.pickup_time != pickup else None,
+        revision_letter=revision.revision_letter if revision is not None else None,
+        confirmed_at=view.confirmed_at if view is not None else None,
+        since_letter=caught_up_from.revision_letter if caught_up_from is not None else None,
+        changes_since=revision_changes(caught_up_from, revision) if caught_up_from is not None else None,
+        department_head=None,
+    )
+
+
 def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSheet | None:
     """The personal block for `?me=<token>`: None when the token is not a crew member of this production."""
-    member = (
-        db.query(CrewMember)
-        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
-        .first()
-    )
+    member = _person_on_production(db, call_sheet.production_id, token)
     if member is None:
         return None
+    if isinstance(member, CastMember):
+        return _build_cast_personal(db, call_sheet, member)
     revision = call_sheet.current_revision
     general = revision.general_crew_call if revision is not None else None
     head = (
@@ -393,7 +447,7 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     call = effective_call(revision, member) if revision is not None else (member.standard_call_time or general)
     was_call = effective_call(before, member) if before is not None else call
     pickup = entry.pickup_time if entry else None
-    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first() if revision is not None else None
+    view = _view_of(db, revision, member) if revision is not None else None
     before_entry = _crew_entry(before, member) if before is not None else None
     was_pickup = before_entry.pickup_time if before_entry else None
     return PersonalSheet(
@@ -660,7 +714,7 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
     shoot is over, the last sheet is still the useful one). None for an
     unknown token; a production with no days yet gives call_sheet_id None
     so the viewer can say "no day published yet" instead of 404-ing."""
-    member = db.query(CrewMember).filter(CrewMember.personal_token == token).first()
+    member = db.query(CrewMember).filter(CrewMember.personal_token == token).first() or db.query(CastMember).filter(CastMember.personal_token == token).first()
     if member is None:
         return None
     sheets = (
@@ -697,16 +751,12 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
 def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
     """FR-36: a crew member's personal link loaded the current revision live. False for an unknown token."""
     revision = call_sheet.current_revision
-    member = (
-        db.query(CrewMember)
-        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
-        .first()
-    )
-    if revision is None or member is None:
+    person = _person_on_production(db, call_sheet.production_id, token)
+    if revision is None or person is None:
         return False
-    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first()
+    view = _view_of(db, revision, person)
     if view is None:
-        db.add(RevisionView(revision_id=revision.id, crew_member_id=member.id))
+        db.add(_new_view(revision, person))
     else:
         view.last_seen_at = datetime.now(timezone.utc)
     db.commit()
@@ -724,18 +774,14 @@ def record_confirmed(db: Session, call_sheet: CallSheet, token: str, revision_le
         RevisionNoLongerCurrent: `revision_letter` is not the current revision, so "I know" would be about an old plan.
     """
     revision = call_sheet.current_revision
-    member = (
-        db.query(CrewMember)
-        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
-        .first()
-    )
-    if revision is None or member is None:
+    person = _person_on_production(db, call_sheet.production_id, token)
+    if revision is None or person is None:
         return None
     if revision.revision_letter != revision_letter:
         raise RevisionNoLongerCurrent(f"REV {revision_letter} has been replaced by REV {revision.revision_letter}")
-    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first()
+    view = _view_of(db, revision, person)
     if view is None:
-        view = RevisionView(revision_id=revision.id, crew_member_id=member.id)
+        view = _new_view(revision, person)
         db.add(view)
     if view.confirmed_at is None:
         view.confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -749,8 +795,8 @@ def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
     if revision is None:
         return None
     rows = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).all()
-    views = {v.crew_member_id: v.first_seen_at for v in rows}
-    confirmed = {v.crew_member_id: v.confirmed_at for v in rows}
+    views = {v.crew_member_id or v.cast_member_id: v.first_seen_at for v in rows}
+    confirmed = {v.crew_member_id or v.cast_member_id: v.confirmed_at for v in rows}
     subscribed = {s.crew_member_id for s in db.query(PushSubscription).join(CrewMember, CrewMember.id == PushSubscription.crew_member_id)
                   .filter(CrewMember.production_id == call_sheet.production_id).all()}
     crew = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).all()
@@ -759,6 +805,13 @@ def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
         SeenEntry(crew_member_id=m.id, name=m.contact.name, department=m.department, position=m.position, phone=m.contact.phone,
                   personal_token=m.personal_token, seen_at=views.get(m.id), confirmed_at=confirmed.get(m.id), subscribed=m.id in subscribed)
         for m in crew
+    ]
+    # An actor is on the list for the days they are called, not for the whole shoot.
+    called = sorted((e.cast_member for e in revision.cast_calls), key=lambda a: a.contact.name.lower())
+    entries += [
+        SeenEntry(crew_member_id=a.id, name=a.contact.name, department="Cast", position=a.character_name, phone=a.contact.phone,
+                  personal_token=a.personal_token, seen_at=views.get(a.id), confirmed_at=confirmed.get(a.id), subscribed=False, is_cast=True)
+        for a in called
     ]
     return SeenReport(revision_letter=revision.revision_letter,
                       seen=[e for e in entries if e.seen_at is not None], not_seen=[e for e in entries if e.seen_at is None])
@@ -813,7 +866,7 @@ def build_opened_summary(db: Session, call_sheet: CallSheet) -> OpenedSummary | 
         return None
     seen = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).count()
     confirmed = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.confirmed_at.is_not(None)).count()
-    total = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).count()
+    total = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).count() + len(revision.cast_calls)
     first = next((i for i in sorted(revision.schedule_items, key=lambda i: i.order_index) if i.location_id is not None), None)
     loc = db.get(Location, first.location_id) if first is not None else None
     return OpenedSummary(seen=seen, confirmed=confirmed, total=total, first_location_name=loc.name if loc is not None else None)

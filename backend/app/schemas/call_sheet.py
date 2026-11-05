@@ -134,6 +134,11 @@ class PersonalSheet(BaseModel):
     # FR-202: which revision this block describes, and whether this person has confirmed that one.
     revision_letter: str | None = None
     confirmed_at: datetime | None = None
+    # FR-205: an actor's link; their times come from the day's cast call, and only someone called today has one.
+    is_cast: bool = False
+    works_today: bool = True
+    makeup_hair_time: str | None = None
+    on_set_time: str | None = None
     # FR-204: set when this person last read something older than the previous revision: the diff from there.
     since_letter: str | None = None
     changes_since: list["RevisionChange"] | None = None
@@ -310,6 +315,7 @@ class SeenEntry(BaseModel):
     seen_at: datetime | None
     confirmed_at: datetime | None = None
     subscribed: bool  # has a push subscription on this production
+    is_cast: bool = False  # FR-205; crew_member_id then holds the cast member's id
 
 
 class MoveSceneRequest(BaseModel):
