@@ -103,7 +103,8 @@ class CrewMemberRead(CrewMemberCreate):
     id: uuid.UUID
     production_id: uuid.UUID
     contact: ContactRead
-    personal_token: str
+    # The link can confirm a revision on its owner's behalf, so it goes only to those who can edit the crew: None for a viewer.
+    personal_token: str | None
 
 
 class CastMemberCreate(BaseModel):
@@ -117,7 +118,8 @@ class CastMemberRead(CastMemberCreate):
     id: uuid.UUID
     production_id: uuid.UUID
     contact: ContactRead
-    personal_token: str
+    # The link can confirm a revision on its owner's behalf, so it goes only to those who can edit the crew: None for a viewer.
+    personal_token: str | None
 
 
 class CastMemberUpdate(BaseModel):

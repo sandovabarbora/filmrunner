@@ -232,7 +232,8 @@ export interface CrewMember extends CrewMemberCreate {
   id: string;
   production_id: string;
   contact: Contact;
-  personal_token: string;
+  /** FR-206: null for a read-only member; a personal link can confirm on its owner's behalf. */
+  personal_token: string | null;
 }
 
 export interface LocationCreate {
@@ -299,7 +300,8 @@ export interface CastMember extends CastMemberCreate {
   id: string;
   production_id: string;
   contact: Contact;
-  personal_token: string;
+  /** FR-206: null for a read-only member; a personal link can confirm on its owner's behalf. */
+  personal_token: string | null;
 }
 
 export interface CastCallEntry {
@@ -334,7 +336,8 @@ export interface SeenEntry {
   department: string;
   position: string;
   phone: string | null;
-  personal_token: string;
+  /** FR-206: null for a read-only member; a personal link can confirm on its owner's behalf. */
+  personal_token: string | null;
   seen_at: string | null;
   confirmed_at?: string | null;
   is_cast?: boolean;

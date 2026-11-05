@@ -94,3 +94,14 @@ def test_removing_an_actor_removes_their_receipts(client: TestClient) -> None:
     assert client.delete(f"/api/v1/productions/{pid}/cast-members/{actor['id']}", headers=AUTH).status_code == 204
     report = client.get(f"/api/v1/call-sheets/{sheet['id']}/seen", headers=AUTH).json()
     assert report["seen"] == [] and report["not_seen"] == []
+
+
+def test_an_actor_not_called_today_cannot_skew_the_ads_count(client: TestClient) -> None:
+    """Failure case: "opened 1 of 0" tells the AD nothing; only people on the day's list count."""
+    pid, actor = _setup(client)
+    sheet = _day(client, pid, None)
+    assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/seen/{actor['personal_token']}").status_code == 204
+    assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/{actor['personal_token']}", json={"revision_letter": "A"}).status_code == 409
+    days = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()
+    assert (days[0]["opened"]["seen"], days[0]["opened"]["confirmed"], days[0]["opened"]["total"]) == (0, 0, 0)
+

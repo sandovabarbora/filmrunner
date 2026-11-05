@@ -754,6 +754,8 @@ def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
     person = _person_on_production(db, call_sheet.production_id, token)
     if revision is None or person is None:
         return False
+    if not _is_called(revision, person):
+        return True  # a real link, but counting it would push the AD's "opened" past the number of people on the list
     view = _view_of(db, revision, person)
     if view is None:
         db.add(_new_view(revision, person))
@@ -761,6 +763,15 @@ def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
         view.last_seen_at = datetime.now(timezone.utc)
     db.commit()
     return True
+
+
+class NotCalledToday(ValueError):
+    """An actor with no call on this day has nothing to confirm, and is not on the AD's list for it."""
+
+
+def _is_called(revision: CallSheetRevision, person: CrewMember | CastMember) -> bool:
+    """Crew are on every day's list; an actor only on the days they are called."""
+    return not isinstance(person, CastMember) or any(e.cast_member_id == person.id for e in revision.cast_calls)
 
 
 class RevisionNoLongerCurrent(ValueError):
@@ -779,6 +790,8 @@ def record_confirmed(db: Session, call_sheet: CallSheet, token: str, revision_le
         return None
     if revision.revision_letter != revision_letter:
         raise RevisionNoLongerCurrent(f"REV {revision_letter} has been replaced by REV {revision.revision_letter}")
+    if not _is_called(revision, person):
+        raise NotCalledToday("You are not called on this day; there is nothing to confirm")
     view = _view_of(db, revision, person)
     if view is None:
         view = _new_view(revision, person)
