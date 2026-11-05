@@ -24,8 +24,8 @@ export default defineConfig({
         description: "Offline-capable shoot-day call sheet viewer",
         start_url: ".",
         display: "standalone",
-        background_color: "#f7f4ee",
-        theme_color: "#f7f4ee",
+        background_color: "#0a0e11",
+        theme_color: "#0a0e11",
         // PNGs from scripts/make_icons.py: Android needs 192/512 and a full-bleed "maskable" it can cut to its own shape.
         icons: [
           { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
@@ -38,7 +38,7 @@ export default defineConfig({
         // App shell and the bundled demo are precached; API reads are
         // network-first with a cache fallback (second offline layer under
         // the IndexedDB store in cache.ts).
-        globPatterns: ["**/*.{js,css,html,svg,json}"],
+        globPatterns: ["**/*.{js,css,html,svg,json,woff2,webp}"],
         // generateSW cannot add custom event listeners itself; push-sw.js
         // (self.addEventListener('push', ...)) is imported into the
         // generated service worker instead (FR-16, ADR-007).

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import { StillBackground } from "../CallSheetView";
 import { api, ApiError, saveConnection, type Connection } from "./api";
 import { API_BASE, connectionFromSession, requestCode, serviceConnection, signInConfigured, signOut, supabase, verifyCode } from "./session";
 import { href, navigate, useRoute } from "./route";
@@ -156,7 +157,8 @@ function SignIn({ onSignedIn, onLogoTap }: { onSignedIn: () => void; onLogoTap: 
   return (
     <div className="wrap">
       <header className="masthead"><h1 id="logo" onClick={onLogoTap}>FilmRunner</h1><p className="sub">{L("Editor")} · <LangToggle /></p></header>
-      <main className="block" id="main" aria-label={L("Sign in")}>
+      <StillBackground />
+      <main className="block sign-in" id="main" aria-label={L("Sign in")}>
         <h2>{L("Sign in")}</h2>
         {error && <div id="notice" className="status error" role="status">{error}</div>}
         {!sent ? (

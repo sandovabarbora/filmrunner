@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CallSheetView } from "./CallSheetView";
+import { CallSheetView, StillBackground } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
 import { NotificationToggle } from "./NotificationToggle";
 import { ConfirmRevision } from "./ConfirmRevision";
@@ -174,6 +174,8 @@ export function App() {
 
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
+          <StillBackground />
+          <p className="home-mark" aria-hidden="true">FilmRunner</p>
           <div className="home-card">
             <h2>{L("home.crew")}</h2>
             <p>{L("home.crewText")}</p>

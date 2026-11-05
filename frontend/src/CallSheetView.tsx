@@ -132,6 +132,11 @@ function ScheduleRow({ item, locationName }: { item: ScheduleItem; locationName?
   );
 }
 
+/** A generated mood frame, never a claim about the real location: night for a night start, otherwise the stage. */
+export function StillBackground({ name = "hall" }: { name?: "hall" | "night" }) {
+  return <div className="hero-bg" aria-hidden="true"><img src={`${import.meta.env.BASE_URL}stills/${name}.webp`} alt="" /></div>;
+}
+
 export interface CallSheetViewProps {
   callSheet: CallSheet;
   personal?: PersonalSheet | null;
@@ -181,83 +186,94 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   const rest = personal ? changes.filter((c) => !leads(c)) : [];
   const otherPlaces = sheetLocations.length - 1;
   return (
-    <article id="sheet" className="sheet visible" aria-label="Call sheet">
-      <header className="sheet-header">
-        <div>
-          <h2 className="production">{title}</h2>
-          <p className="day" id="dayLabel">
-            {L("day.of", { n: callSheet.day_number, count: callSheet.day_count })} — {callSheet.unit_name}
-            {" "}<span className="date" id="dateLabel">{fmtDate(lang, callSheet.shoot_date)}</span>
-          </p>
-        </div>
-        <div id="revBadgeWrap">
-          {rev && <span className="rev-badge" data-rev={rev.revision_letter}>REV {rev.revision_letter}</span>}
-        </div>
-      </header>
-
-      {callSheet.status === "cancelled" && (
-        <div className="cancelled" id="cancelledBanner" role="alert">
-          <strong>{L("cancelled")}</strong> — {L("cancelled.text", { n: callSheet.day_number, date: fmtDate(lang, callSheet.shoot_date) })}
-        </div>
-      )}
-
-      {personal && (
-        <section className="you" id="you" aria-label={L("you.call")}>
-          <div className="you-head">
-            <div className="label">{L("you.call")}</div>
-            <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.is_cast ? personal.position : `${personal.department} · ${personal.position}`}</span></div>
-          </div>
-          <div className="you-call">
+    <article id="sheet" className="sheet visible" aria-label="Call sheet" data-rev={rev?.revision_letter}>
+      <div className="hero">
+        <StillBackground name={items[0]?.day_night === "NIGHT" ? "night" : "hall"} />
+        {personal ? (
+          <section className="you" id="you" aria-label={L("you.call")}>
             {/* An actor's day starts at their own pickup; the crew call is never their time, and someone not called has none. */}
             {personalBehind
               ? <p className="you-off" id="yourCallBehind" role="status">{L("you.behind", { rev: rev!.revision_letter })}</p>
               : personal.is_cast && !personal.works_today
               ? <p className="you-off" id="yourCallOff">{L("you.notToday")}</p>
-              : <div className="value" id="yourCall">{personal.personal_call || (personal.is_cast ? personal.pickup_time : rev?.general_crew_call) || "—"}</div>}
-            {!personalBehind && personal.call_before && <div className="was" id="yourCallWas"><span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></div>}
-          </div>
-          {!personalBehind && (personal.pickup_time || personal.note || personal.makeup_hair_time || personal.on_set_time) && (
-            <div className="you-extra" id="yourExtra">
-              {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
-              {personal.makeup_hair_time && <span><span className="k">{L("th.mh")} </span><span className="v">{personal.makeup_hair_time}</span></span>}
-              {personal.on_set_time && <span><span className="k">{L("th.onSet")} </span><span className="v">{personal.on_set_time}</span></span>}
-              {personal.note && <span className="note">{personal.note}</span>}
+              : <div className="value hero-time" id="yourCall">{personal.personal_call || (personal.is_cast ? personal.pickup_time : rev?.general_crew_call) || "—"}</div>}
+            <div className="hero-sub">
+              <div className="you-call">
+                <span className="label">{L("you.call")}</span>
+                {!personalBehind && personal.call_before && <span className="was" id="yourCallWas">{" · "}<span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></span>}
+                {!personalBehind && personal.note && <span className="note">{" · "}{personal.note}</span>}
+              </div>
+              <div id="revBadgeWrap">{rev && <span className="rev-badge" data-rev={rev.revision_letter}>REV {rev.revision_letter}</span>}</div>
+            </div>
+            <div className="who"><span className="name">{personal.name}</span><span className="role">{" · "}{personal.is_cast ? personal.position : `${personal.department} · ${personal.position}`}</span></div>
+            {!personalBehind && (personal.pickup_time || personal.makeup_hair_time || personal.on_set_time) && (
+              <div className="you-extra" id="yourExtra">
+                {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
+                {personal.makeup_hair_time && <span><span className="k">{L("th.mh")} </span><span className="v">{personal.makeup_hair_time}</span></span>}
+                {personal.on_set_time && <span><span className="k">{L("th.onSet")} </span><span className="v">{personal.on_set_time}</span></span>}
+              </div>
+            )}
+          </section>
+        ) : (
+          <section className="you shared" aria-label={L("crewCall")}>
+            <div className="value hero-time" id="crewCall">{rev?.general_crew_call || "—"}</div>
+            <div className="hero-sub">
+              <div className="you-call"><span className="label">{L("crewCall")}</span></div>
+              <div id="revBadgeWrap">{rev && <span className="rev-badge" data-rev={rev.revision_letter}>REV {rev.revision_letter}</span>}</div>
+            </div>
+          </section>
+        )}
+
+        <div className="frame" aria-hidden="true"><i /><i /><i /><i /></div>
+
+        <div className="hero-foot">
+          <header className="sheet-header">
+            <h2 className="production">{title}</h2>
+            <p className="day" id="dayLabel">
+              {L("day.of", { n: callSheet.day_number, count: callSheet.day_count })} · {callSheet.unit_name}
+              {" "}<span className="date" id="dateLabel">{fmtDate(lang, callSheet.shoot_date)}</span>
+            </p>
+          </header>
+
+          {callSheet.status === "cancelled" && (
+            <div className="cancelled" id="cancelledBanner" role="alert">
+              <strong>{L("cancelled")}</strong> — {L("cancelled.text", { n: callSheet.day_number, date: fmtDate(lang, callSheet.shoot_date) })}
             </div>
           )}
+
           {showsPlace && firstPlace && (
             <div className="you-where" id="yourPlace">
-              <div className="label">{L("you.where")}</div>
-              <div className="place">
-                <b>{firstPlace.name}</b>
-                {firstPlaceBefore && <div className="was" id="yourPlaceWas">{L("you.was")} <s>{firstPlaceBefore}</s></div>}
-              </div>
+              <div className="place">{firstPlace.name}</div>
+              {firstPlaceBefore && <div className="was" id="yourPlaceWas">{L("you.was")} <s>{firstPlaceBefore}</s></div>}
               {firstPlace.address && (firstPlaceUrl ? <a className="address-link" href={firstPlaceUrl} target="_blank" rel="noreferrer">{firstPlace.address}</a> : <div>{firstPlace.address}</div>)}
               {otherPlaces > 0 && <div className="more-places">{L("you.morePlaces", { n: otherPlaces })}</div>}
             </div>
           )}
-        </section>
-      )}
 
-      {rev && rev.revision_letter !== "A" && (
-        <section className="rev-block" id="revReplaces" data-rev={rev.revision_letter} aria-label={L("rev.changes")}>
-          <p className="rev-line">
-            {L("rev.replaces", { rev: rev.revision_letter, prev: callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1) })}
-            {rev.created_at && L("rev.issued", { time: issuedAt(rev.created_at) })}
-          </p>
-          {catchingUp?.since_letter && <p className="rev-since" id="revSince">{L("rev.since", { rev: catchingUp.since_letter })}</p>}
-          {changes.length === 0 && allChanges.length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
-          {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
-          {changes.length > 0 && <RevChanges key={rev.revision_letter} first={first} rest={rest} foldAll={alreadyConfirmed} lang={lang} dayHref={dayHref} />}
-        </section>
-      )}
+          {rev && rev.revision_letter !== "A" && (
+            <section className="rev-block" id="revReplaces" aria-label={L("rev.changes")}>
+              <p className="rev-line">
+                {L("rev.replaces", { rev: rev.revision_letter, prev: callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1) })}
+                {rev.created_at && L("rev.issued", { time: issuedAt(rev.created_at) })}
+              </p>
+              {catchingUp?.since_letter && <p className="rev-since" id="revSince">{L("rev.since", { rev: catchingUp.since_letter })}</p>}
+              {changes.length === 0 && allChanges.length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
+              {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
+              {changes.length > 0 && <RevChanges key={rev.revision_letter} first={first} rest={rest} foldAll={alreadyConfirmed} lang={lang} dayHref={dayHref} />}
+            </section>
+          )}
+        </div>
+      </div>
 
       {confirm}
 
       <section className="calls" aria-label="Call times">
-        <div className="call crew">
-          <div className="label">{L("crewCall")}</div>
-          <div className="value" id="crewCall">{rev?.general_crew_call || "—"}</div>
-        </div>
+        {personal && (
+          <div className="call crew">
+            <div className="label">{L("crewCall")}</div>
+            <div className="value" id="crewCall">{rev?.general_crew_call || "—"}</div>
+          </div>
+        )}
         <div className="call shoot">
           <div className="label">{L("shootingCall")}</div>
           <div className="value" id="shootingCall">{rev?.shooting_call || "—"}</div>

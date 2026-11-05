@@ -383,7 +383,7 @@ def test_personal_call_for_the_day_beats_standing_time_and_carries_forward(page:
     v = page.context.new_page()
     v.goto(link); v.wait_for_selector("#you", timeout=15_000)
     assert v.locator("#yourCall").inner_text().strip() == "05:15"
-    assert "04:45" in v.locator("#yourExtra").inner_text() and "generator first" in v.locator("#yourExtra").inner_text()
+    assert "04:45" in v.locator("#yourExtra").inner_text() and "generator first" in v.locator("#you").inner_text()
     v.emulate_media(media="print")
     assert v.locator("#personalCallsTable").is_visible()
     v.close()

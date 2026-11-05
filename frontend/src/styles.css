@@ -1,35 +1,36 @@
-/* FilmRunner call sheet: paper, print typography, one accent (revision colour). */
+/* FilmRunner: a film still with the person's time as its title. Graded dark ground, bleached type, the revision colour as the one accent. */
 
 :root {
-  color-scheme: light;
-  --paper: #f7f4ee;
-  --paper-2: #efeae1;
-  --ink: #17150f;
-  --ink-2: #4d4842;
-  /* FR-63: 5.0:1 on paper, 4.6:1 on the shaded panels — AA for the small text it carries (hints, meta, labels). */
-  --muted: #6e685f;
-  --rule: #d8d1c4;
-  --rule-strong: #17150f;
-  --warn-bg: #fff2cc;
-  --warn-ink: #5a4300;
-  --err-bg: #f9dcd8;
-  --err-ink: #6b1d16;
-  --ok-ink: #1f5c3a;
-  /* Revision paper colours, as printed on set: A white, B blue, C pink, D yellow, E green, F goldenrod, G buff, H salmon, I cherry. */
-  --rev-a: #ffffff; --rev-b: #cfe3f7; --rev-c: #f8d3dc; --rev-d: #f8ec9e; --rev-e: #cfeacb;
-  --rev-f: #f5d78a; --rev-g: #f1e4c4; --rev-h: #f7cdb8; --rev-i: #efbcc4;
+  color-scheme: dark;
+  --paper: #0a0e11;
+  --paper-2: #182026;
+  --card: #12181d;
+  --ink: #f5f7f7;
+  --ink-2: #ccd4d7;
+  --muted: #a3aeb3;
+  --rule: #2d363c;
+  --rule-strong: #566169;
+  --on-rev: #07121f;
+  --warn-bg: #3a2c05;
+  --warn-ink: #ffd873;
+  --err-bg: #3f1612;
+  --err-ink: #ffb4a8;
+  --ok-ink: #84e0ab;
+  /* Revision colours as set convention names them: A white, B blue, C pink, D yellow, E green, F goldenrod, G buff, H salmon, I cherry. */
+  --rev-a: #ffffff; --rev-b: #7db8ff; --rev-c: #ff9ec0; --rev-d: #ffe14d; --rev-e: #7ee08a;
+  --rev-f: #f5bf3c; --rev-g: #dcc892; --rev-h: #ff9d7a; --rev-i: #f77f92;
   --rev: var(--rev-a);
-  --sans: -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Archivo Variable", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: var(--sans);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   /* One size for every control, one frame for every box — viewer and editor share these. */
   --control: 44px;       /* a wet thumb on set */
   --control-sm: 36px;    /* row actions in dense lists */
-  --radius: 4px;
-  --frame: 1.5px solid var(--rule-strong);
-  --fs-label: 0.75rem;
-  --fs-small: 0.8125rem;
-  --fs-body: 0.9375rem;
+  --radius: 0;
+  --frame: 1px solid var(--rule);
+  --fs-label: 0.8125rem;
+  --fs-small: 0.875rem;
+  --fs-body: 1rem;
 }
 
 * { box-sizing: border-box; }
@@ -41,7 +42,7 @@ body {
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.45;
-  font-feature-settings: "tnum" 1, "ss01" 1;
+  font-feature-settings: "tnum" 1;
 }
 button { font: inherit; }
 a { color: var(--ink); }
@@ -50,7 +51,7 @@ a { color: var(--ink); }
 .eyebrow, .block h2, .schedule h2, .contacts h2, .locations h2, .checklist h2,
 .share .label, .seen .label, .actuals .label, .safety .label, .you .label, .contacts .hod .label,
 .history summary, .other-days .label, .tomorrow .k, .call .label {
-  font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  font-size: var(--fs-label); font-weight: 600; color: var(--muted);
 }
 .block h2, .schedule h2, .contacts h2, .locations h2, .checklist h2 { margin: 0 0 8px; }
 .safety .label, .you .label, .contacts .hod .label, .share .label, .seen .label, .actuals .label { color: var(--ink); }
@@ -58,7 +59,7 @@ a { color: var(--ink); }
 /* Boxes: white card, one frame. */
 .card, .safety, .location, .tomorrow, .contacts .hod, .home-card,
 .share, .seen, .actuals, .history, .checklist, .paste-crew {
-  padding: 12px 14px; border: var(--frame); border-radius: var(--radius); background: #fff;
+  padding: 12px 14px; border: var(--frame); border-radius: var(--radius); background: var(--card);
 }
 
 /* Controls: one height, one radius; primary (default), secondary, quiet, danger. */
@@ -67,12 +68,12 @@ button, a.button, .quiet-link {
   min-height: var(--control); padding: 0 14px; box-sizing: border-box;
   border: 1px solid var(--rule-strong); border-radius: var(--radius);
   background: var(--ink); color: var(--paper);
-  font-family: var(--sans); font-size: var(--fs-body); font-weight: 600; line-height: 1.2;
+  font-family: var(--sans); font-size: var(--fs-body); font-weight: 700; line-height: 1.2;
   text-decoration: none; white-space: nowrap; cursor: pointer;
 }
-button:hover:not(:disabled) { background: #2a2620; }
+button:hover:not(:disabled) { background: #dfe4e6; }
 button:active:not(:disabled) { transform: translateY(1px); }
-button.secondary, a.button { background: #fff; color: var(--ink); }
+button.secondary, a.button { background: var(--card); color: var(--ink); }
 a.button.primary { background: var(--ink); color: var(--paper); }
 button.quiet, .quiet-link { background: transparent; color: var(--ink); border-color: var(--rule); }
 button.secondary:hover:not(:disabled), button.quiet:hover:not(:disabled), .quiet-link:hover, a.button:hover { background: var(--paper-2); }
@@ -97,18 +98,14 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .masthead {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px;
   padding: 14px 0 10px;
-  border-bottom: 2px solid var(--rule-strong);
 }
-.masthead h1 {
-  margin: 0; font-size: 0.8125rem; font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase;
-}
-.masthead .sub { margin: 0; font-size: 0.8125rem; color: var(--muted); text-align: right; }
+.masthead h1 { margin: 0; font-size: 0.9375rem; font-weight: 800; font-stretch: 112%; letter-spacing: -0.02em; }
+.masthead .sub { margin: 0; font-size: 0.8125rem; color: var(--ink-2); text-align: right; }
 
 /* Freshness strip: honest, quiet, always visible when it matters. */
 .status { display: none; margin: 10px 0 0; padding: 8px 12px; font-size: var(--fs-small); border-radius: var(--radius); }
 /* The normal state stays a quiet line: only a problem earns a band across the top of the sheet. */
-.status.online { display: block; margin-top: 6px; padding: 0; color: var(--ok-ink); }
+.status.online { display: block; margin-top: 0; padding: 0; color: var(--ok-ink); }
 .status.offline { display: block; color: var(--warn-ink); background: var(--warn-bg); }
 .status.error { display: block; color: var(--err-ink); background: var(--err-bg); }
 
@@ -116,7 +113,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .lookup { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
 .lookup input {
   padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--radius);
-  background: #fff; color: var(--ink); font: inherit;
+  background: var(--card); color: var(--ink); font: inherit;
 }
 .lookup input:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media (min-width: 480px) { .lookup { grid-template-columns: 1fr 1fr auto; } }
@@ -130,18 +127,45 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 
 /* The sheet itself. */
 .sheet { display: none; }
-.sheet.visible { display: block; animation: settle 220ms var(--ease) both; }
-@keyframes settle { from { opacity: 0.6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.sheet.visible { display: block; }
 
-.sheet-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 0 6px; }
-.sheet-header > :first-child { flex: 1 1 10rem; min-width: 0; }
-.production { margin: 0; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
-.day { margin: 4px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
-.day .date { display: block; color: var(--muted); }
+/* The first screen: the still runs behind everything up to the bottom of the viewport, and its grade falls to the page ground so any overflow lands on solid colour. */
+.hero { display: flex; flex-direction: column; min-height: calc(100svh - 158px); }
+.hero-bg { position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100svh; overflow: hidden; }
+.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; }
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.72) 0, rgba(10, 14, 17, 0.28) 32%, rgba(10, 14, 17, 0.34) 48%, rgba(10, 14, 17, 0.94) 70%, var(--paper) 100%); }
+.hero-time { font-weight: 800; font-stretch: 125%; font-size: min(26vw, 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
+.hero-sub { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 8px; }
+.you-call { font-size: 1.0625rem; font-weight: 600; }
+.you-call s { text-decoration-thickness: 2px; }
+.you-call .label { color: inherit; font-size: inherit; font-weight: inherit; }
+.you .who { margin-top: 3px; font-size: var(--fs-small); color: var(--ink-2); }
+.you .who .name { font-weight: 600; color: var(--ink); }
+.you-off { margin: 8px 0 0; font-size: 1.75rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; }
+.you-extra { display: flex; gap: 4px 16px; flex-wrap: wrap; margin-top: 6px; font-size: 0.9375rem; color: var(--ink-2); }
+.you-extra .v { font-weight: 700; color: var(--ink); }
+/* Viewfinder corners: the frame the still sits in. */
+.frame { position: relative; flex: 1 0 96px; margin: 14px 0; }
+.frame i { position: absolute; width: 18px; height: 18px; border: 0 solid var(--ink); }
+.frame i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
+.frame i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
+.frame i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
+.frame i:nth-child(4) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
+.sheet-header { display: block; }
+.production { display: inline; margin: 0; font-size: var(--fs-small); font-weight: 700; }
+.day { display: inline; margin: 0 0 0 6px; font-size: var(--fs-small); color: var(--ink-2); }
+.day .date { display: block; color: inherit; white-space: nowrap; }
 .rev-badge {
-  flex: none; display: inline-block; white-space: nowrap; padding: 5px 10px; border: var(--frame); border-radius: var(--radius);
-  background: var(--rev); font-family: var(--mono); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em;
+  flex: none; display: inline-block; white-space: nowrap; padding: 4px 9px;
+  background: var(--rev); color: var(--on-rev); font-size: 0.875rem; font-weight: 800;
 }
+.you-where { margin-top: 2px; }
+.you-where .place { font-size: min(9.8vw, 2.75rem); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; overflow-wrap: anywhere; }
+.you-where .was { margin-top: 5px; font-size: 0.9375rem; color: var(--ink-2); }
+.you-where .address-link, .location .address a { display: inline-flex; align-items: center; min-height: var(--control); }
+.you-where .address-link { font-weight: 500; }
+.you-where .more-places { font-size: var(--fs-small); color: var(--ink-2); }
+[data-rev="A"] { --rev: var(--rev-a); }
 [data-rev="B"] { --rev: var(--rev-b); }
 [data-rev="C"] { --rev: var(--rev-c); }
 [data-rev="D"] { --rev: var(--rev-d); }
@@ -151,63 +175,41 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 [data-rev="H"] { --rev: var(--rev-h); }
 [data-rev="I"] { --rev: var(--rev-i); }
 
-/* FR-200: what changed is printed on the revision's own coloured paper, the way a revised page reaches the set.
-   Text stays ink on the tint: the greys are for paper, and fall under AA on these colours. */
-.rev-block { margin: 10px 0 0; padding: 12px 14px; border: var(--frame); border-radius: var(--radius); background: var(--rev); color: var(--ink); }
-.rev-line { margin: 0; font-size: var(--fs-small); font-weight: 600; }
+/* FR-200: what changed. Only rules separate the rows, so the frame above stays one picture. */
+.rev-block { margin: 4px 0 0; color: var(--ink); }
+.rev-line { margin: 0; font-size: var(--fs-small); color: var(--ink-2); }
 .rev-same { margin: 6px 0 0; font-size: var(--fs-body); }
 .rev-since { margin: 4px 0 0; font-size: var(--fs-small); font-weight: 700; }
-.rev-changes { margin: 8px 0 0; padding: 0; list-style: none; }
-.rev-changes li { padding-top: 6px; margin-top: 6px; border-top: 1px solid rgba(23, 21, 15, 0.25); }
-.rev-changes .k { display: block; font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.rev-changes .v { display: block; margin-top: 1px; font-size: var(--fs-body); line-height: 1.3; overflow-wrap: anywhere; }
+.rev-changes { margin: 0; padding: 0; list-style: none; }
+.rev-changes li { padding: 9px 0; border-top: 1px solid rgba(255, 255, 255, 0.28); }
+#revChanges { margin-top: 8px; }
+.rev-changes .k { display: block; font-size: var(--fs-label); font-weight: 600; color: var(--ink-2); }
+.rev-changes .v { display: block; margin-top: 1px; font-size: var(--fs-body); line-height: 1.28; overflow-wrap: anywhere; font-weight: 500; }
 .rev-changes b { font-weight: 700; }
-.rev-changes .data .v { font-family: var(--mono); font-size: 1.0625rem; }
 .rev-changes a { color: inherit; }
-.rev-changes .also { font-size: var(--fs-small); }
-.rev-toggle, .rev-toggle:hover:not(:disabled) { width: 100%; justify-content: flex-start; margin-top: 8px; padding: 0; border: 0; border-top: 1px solid rgba(23, 21, 15, 0.25); border-radius: 0; background: none; color: var(--ink); }
+.rev-changes .also { font-size: var(--fs-small); color: var(--ink-2); }
+.rev-toggle, .rev-toggle:hover:not(:disabled) { width: 100%; justify-content: space-between; flex-direction: row-reverse; padding: 0; border: 0; border-top: 1px solid rgba(255, 255, 255, 0.28); border-radius: 0; background: none; color: var(--ink); }
 .rev-changes[hidden] { display: none; }
 @media print { .rev-toggle { display: none; } .rev-changes[hidden] { display: block; } }
 
-/* FR-202: the crew member's own word that they know. It follows what it confirms, and rests at the bottom of the screen until
+/* FR-202: the crew member's own word that they know, in the revision's colour. It follows what it confirms, and rests at the bottom of the screen until
    the reader reaches that point: under the thumb from the first second, without inviting a confirmation above the changes. */
-.confirm { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: var(--paper); }
+.confirm { position: sticky; bottom: 0; z-index: 2; margin: 0 -20px; padding: 10px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--paper); }
 .confirm.offline { position: static; }
-.confirm button { width: 100%; min-height: 52px; font-size: 1rem; }
+.confirm button, .confirm button:hover:not(:disabled) { width: 100%; min-height: 56px; white-space: normal; border: 0; background: var(--rev); color: var(--on-rev); font-size: 1.125rem; font-weight: 800; letter-spacing: -0.015em; }
+.confirm button:disabled { background: var(--paper-2); color: var(--muted); }
 .confirm-note { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
-.confirm-done { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 12px 14px; border: 1.5px solid var(--ok-ink); border-radius: var(--radius); background: #e5f0e8; font-size: 1rem; font-weight: 600; color: var(--ok-ink); }
+.confirm-done { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 12px 0; border-top: 1px solid var(--ok-ink); border-bottom: 1px solid var(--ok-ink); font-size: 1rem; font-weight: 700; color: var(--ok-ink); }
 @media print { .confirm, .confirm-done { display: none; } }
 
 /* FR-16: opt in to push notifications from a personal link. */
-.notify { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
+/* Above the hero: its time has a line height under 1, so its box reaches up over whatever sits on top of it. */
+.notify { position: relative; z-index: 3; display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
 .notify-on { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--ink-2); }
-.notify button.quiet { min-height: 0; border: 0; background: none; color: var(--muted); font-size: var(--fs-small); font-weight: 400; text-decoration: underline; padding: 0; }
+.notify button.quiet { min-height: var(--control); border: 0; background: none; color: var(--muted); font-size: var(--fs-small); font-weight: 400; text-decoration: underline; padding: 0; }
 
-/* Personal block: the one number this person wakes up for. */
-/* The one deliberately heavier frame: this person's own call. */
-.you { margin-top: 14px; padding: 12px 14px; border: 2px solid var(--rule-strong); border-radius: var(--radius); background: #fff; }
-.you-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.you .who { text-align: right; display: flex; flex-direction: column; }
-.you .name { font-weight: 600; }
-.you .role { font-size: 0.8125rem; color: var(--muted); }
-.you .value { font-family: var(--mono); font-weight: 700; font-size: min(3.25rem, 19vw); letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
-.you-call { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-/* The old time sits beside the new one, large enough to read at arm's length; struck, so it can never be mistaken for it. */
-.you-off { margin: 8px 0 0; font-size: 1.125rem; font-weight: 600; }
-.you .was { font-size: 1.25rem; color: var(--ink-2); }
-.you .was .k { font-size: var(--fs-small); }
-.you .was s { font-family: var(--mono); font-weight: 600; }
+.you { margin-top: 2px; }
 .contacts .hod.mine { border-width: 1px; }
-.you-extra { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 0.875rem; color: var(--ink-2); }
-.you-extra .k { color: var(--muted); }
-.you-extra .v { font-family: var(--mono); }
-.you-extra .note { font-style: italic; }
-.you-where { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); }
-.you-where .place { margin-top: 2px; font-size: 1.125rem; line-height: 1.25; overflow-wrap: anywhere; }
-.you .you-where .place .was { margin-top: 2px; font-size: var(--fs-small); color: var(--ink-2); }
-.you .you-where .place .was s { font-family: inherit; font-weight: 400; }
-.you-where .address-link, .location .address a { display: inline-flex; align-items: center; min-height: var(--control); }
-.you-where .more-places { font-size: var(--fs-small); color: var(--ink-2); }
 .print-only { display: none; }
 .pcalls h2 { margin: 12pt 0 4pt; font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; }
 .others summary { cursor: pointer; padding: 10px 0; font-size: 0.875rem; color: var(--ink-2); }
@@ -215,14 +217,12 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 /* Calls: the two numbers a crew member wakes up for. */
 .calls {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr)); gap: 12px 16px;
-  margin: 14px 0 0; padding: 14px 0; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule);
+  margin: 6px 0 0; padding: 14px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
 }
 .call .value { font-family: var(--mono); font-weight: 700; letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
-.call.crew .value { font-size: min(3.25rem, 19vw); }
-.call.shoot .value { font-size: 2rem; margin-top: 12px; }
-/* Under a personal block the crew call is someone else's number: it must not look like this person's. */
-.you ~ .calls .call.crew .value { font-size: 2rem; }
-.you ~ .calls .call.shoot .value { margin-top: 4px; }
+.call .value { font-weight: 800; font-stretch: 112%; }
+.call.crew .value { font-size: 2rem; }
+.call.shoot .value { font-size: 2rem; }
 
 /* Light and weather on one line. */
 section.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; color: var(--ink-2); }
@@ -312,12 +312,12 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   min-height: var(--control); min-width: var(--control); padding: 0 10px; box-sizing: border-box;
   border: 1px solid var(--rule); border-radius: var(--radius); white-space: nowrap;
-  background: #fff; color: var(--ink); text-decoration: none;
+  background: var(--card); color: var(--ink); text-decoration: none;
   font-family: var(--sans); font-size: 0.8125rem; font-weight: 600;
   cursor: pointer;
 }
 .contact-btn.phone { font-family: var(--mono); }
-.contact-btn.wa { color: #0d7a3a; }
+.contact-btn.wa { color: var(--ok-ink); }
 .contact .phone.none { color: var(--muted); font-family: var(--sans); font-size: 0.8125rem; }
 .hospital { margin: 10px 0 0; font-size: 0.875rem; color: var(--ink-2); }
 .hospital .k { color: var(--muted); }
@@ -328,12 +328,12 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .hint { font-size: 0.8125rem; color: var(--muted); }
 
 /* Entry page: two doors, no marketing. */
-.home { display: grid; gap: 14px; margin-top: 22px; }
-.home-card { padding: 16px; }
-.home-card h2 { margin: 0 0 6px; font-size: 1rem; }
+.home { display: flex; flex-direction: column; min-height: calc(100svh - 120px); }
+.home-mark { margin: 0 0 auto -0.04em; font-size: min(15vw, 6.5rem); line-height: 0.95; font-weight: 800; font-stretch: 112%; letter-spacing: -0.065em; white-space: nowrap; }
+.home-card { padding: 16px 0; border: 0; border-top: 1px solid rgba(255, 255, 255, 0.28); background: none; }
+.home-card h2 { margin: 0 0 4px; font-size: 1.625rem; font-weight: 800; letter-spacing: -0.03em; }
 .home-card p { margin: 0 0 12px; color: var(--ink-2); font-size: 0.9375rem; }
-@media (min-width: 560px) { .home { grid-template-columns: 1fr 1fr; } }
-.home-about { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; font-size: 0.875rem; }
+.home-about { margin: 8px 0 0; font-size: 0.875rem; }
 .home-about a { color: var(--ink-2); }
 
 /* Error state with a way out. */
@@ -355,10 +355,19 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
       color: #444;
     }
   }
-  html, body { background: #fff; color: #000; font-size: 10.5pt; line-height: 1.35; }
+  :root {
+    color-scheme: light; --paper: #FFF; --paper-2: #eee; --card: #FFF; --ink: #000; --ink-2: #222; --muted: #444; --rule: #999; --rule-strong: #000;
+    --on-rev: #000; --err-ink: #000; --ok-ink: #000; --warn-ink: #000; --rev: #FFF;
+  }
+  html, body { background: #FFF; color: #000; font-size: 10.5pt; line-height: 1.35; }
+  .hero-bg, .frame { display: none !important; }
+  .hero { display: block; min-height: 0; }
+  .hero-time { font-size: 26pt; font-stretch: 100%; letter-spacing: 0; margin: 0; }
+  .you-where .place { font-size: 15pt; }
+  .you-where .address-link { min-height: 0; }
+  .rev-changes li { border-top-color: #999; }
   .wrap { max-width: none; padding: 0; }
   .status, .actions, .hint, .lookup, .cached-at, .skeleton, .home, .others summary { display: none !important; }
-  .sheet.visible { animation: none; }
 
   .masthead { border-bottom: 1.5pt solid #000; padding: 0 0 4pt; }
   .masthead h1 { font-size: 9pt; }
@@ -366,20 +375,19 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   .print-meta { display: block !important; font-size: 8.5pt; color: #444; margin: 2pt 0 0; }
 
   .sheet-header { padding: 8pt 0 4pt; }
-  .production { font-size: 16pt; }
-  .day { font-size: 10pt; color: #222; }
+  .production { display: block; font-size: 16pt; }
+  .day { display: block; margin: 0; font-size: 10pt; color: #222; }
   .rev-badge { border: 1pt solid #000; padding: 2pt 6pt; font-size: 9pt; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .rev-block { margin-top: 6pt; padding: 5pt 8pt; border: 1pt solid #000; background: #fff; page-break-inside: avoid; }
+  .rev-block { margin-top: 6pt; padding: 5pt 8pt; border: 1pt solid #000; background: var(--card); page-break-inside: avoid; }
   .rev-line, .rev-legend { font-size: 8.5pt; }
   .rev-changes li { padding-top: 3pt; margin-top: 3pt; border-top: 0.5pt solid #999; }
   .rev-changes .k { display: inline; font-size: 7.5pt; margin-right: 6pt; }
   .rev-changes .v { display: inline; font-size: 9.5pt; }
 
   .you { border: 1.5pt solid #000; padding: 6pt 8pt; margin-top: 6pt; }
-  .you .value { font-size: 22pt; }
   .calls { grid-template-columns: 1fr 1fr 1fr 1fr; padding: 8pt 0; border-top: 1pt solid #000; border-bottom: 0.5pt solid #999; }
-  .call.crew .value { font-size: 26pt; }
-  .call.shoot .value { font-size: 18pt; margin-top: 6pt; }
+  .call.crew .value { font-size: 18pt; }
+  .call.shoot .value { font-size: 18pt; }
   section.meta { padding: 5pt 0; border-bottom: 0.5pt solid #999; font-size: 9.5pt; }
   section.meta .weather { flex-basis: auto; }
 
@@ -455,13 +463,13 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .tomorrow .k { margin-right: 6px; }
 .tomorrow a { color: var(--ink); }
 .tomorrow b { font-family: var(--mono); }
-.tomorrow[data-kind="cancelled"] strong { color: #b3261e; letter-spacing: 0.06em; }
+.tomorrow[data-kind="cancelled"] strong { color: var(--err-ink); letter-spacing: 0.06em; }
 @media print { .tomorrow { border-color: #000; } }
 
 /* FR-48: language toggle in the masthead. */
 .masthead .sub { flex: 1; }
 /* Text-sized links with a full thumb's reach; the negative margin keeps the line where the text sits. */
-.lang-toggle { all: unset; display: inline-block; padding-block: 13px; margin-block: -13px; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: var(--fs-small); }
+.lang-toggle { all: unset; font-family: var(--sans); display: inline-block; padding-block: 13px; margin-block: -13px; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: var(--fs-small); }
 .lang-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media print { .lang-toggle { display: none; } }
 
