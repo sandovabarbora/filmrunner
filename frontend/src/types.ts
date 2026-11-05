@@ -71,6 +71,8 @@ export interface PersonalSheet {
   pickup_before?: string | null;
   revision_letter?: string | null;
   confirmed_at?: string | null;
+  since_letter?: string | null;
+  changes_since?: RevisionChange[] | null;
   department_head: ContactCard | null;
 }
 

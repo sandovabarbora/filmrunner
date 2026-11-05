@@ -117,8 +117,12 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   const items = [...(rev?.schedule_items ?? [])].sort((a, b) => a.order_index - b.order_index);
   const title = callSheet.production_title ?? callSheet.unit_name;
   // On a personal link the person's own call block answers "did mine move"; a count of other people's says nothing.
-  const changes = (callSheet.changes ?? []).filter((c) => !personal || c.field !== "personal_calls");
-  const notAboutYou = !!personal && changes.length === 0 && (callSheet.changes ?? []).length > 0 && !personal.call_before && !personal.pickup_before;
+  // FR-204: someone who skipped revisions is shown everything since what they last read, not only the newest step.
+  // The block and the sheet refresh separately, so catching up only applies to the revision on screen.
+  const catchingUp = personal?.changes_since && personal.revision_letter === rev?.revision_letter ? personal : null;
+  const allChanges = catchingUp?.changes_since ?? callSheet.changes ?? [];
+  const changes = allChanges.filter((c) => !personal || c.field !== "personal_calls");
+  const notAboutYou = !!personal && changes.length === 0 && allChanges.length > 0 && !personal.call_before && !personal.pickup_before;
   const minorChanges = changes.filter((c) => MINOR_FIELDS.has(c.field));
   const changedScenes = new Set(changes.flatMap((c) => c.scenes ?? []));
   const revMark = <RevMark label={L("rev.markLabel")} />;
@@ -168,7 +172,8 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             {L("rev.replaces", { rev: rev.revision_letter, prev: callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1) })}
             {rev.created_at && L("rev.issued", { time: issuedAt(rev.created_at) })}
           </p>
-          {changes.length === 0 && (callSheet.changes ?? []).length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
+          {catchingUp?.since_letter && <p className="rev-since" id="revSince">{L("rev.since", { rev: catchingUp.since_letter })}</p>}
+          {changes.length === 0 && allChanges.length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
           {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
           {changes.length > 0 && (
             <ul className="rev-changes" id="revChanges">

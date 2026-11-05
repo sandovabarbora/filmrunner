@@ -153,6 +153,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .rev-block { margin: 10px 0 0; padding: 12px 14px; border: var(--frame); border-radius: var(--radius); background: var(--rev); color: var(--ink); }
 .rev-line { margin: 0; font-size: var(--fs-small); font-weight: 600; }
 .rev-same { margin: 6px 0 0; font-size: var(--fs-body); }
+.rev-since { margin: 4px 0 0; font-size: var(--fs-small); font-weight: 700; }
 .rev-changes { margin: 8px 0 0; padding: 0; list-style: none; }
 .rev-changes li { padding-top: 6px; margin-top: 6px; border-top: 1px solid rgba(23, 21, 15, 0.25); }
 .rev-changes .k { display: block; font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
