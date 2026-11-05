@@ -20,18 +20,18 @@ deletes the `crew_members` row. Verified live against a local Postgres
   revision, FR-24) and `RevisionView` rows (read receipts, FR-36).
   `privacy.html`'s claim that removal "drops your personal times [and]
   open records" is correct.
-- **NOT deleted, contrary to what the removal implicitly promises**: if
-  the crew member has an active `PushSubscription` (FR-16), the delete
-  fails outright. `push_subscriptions.crew_member_id` has a plain foreign
-  key with no `ON DELETE` clause (`alembic/versions/c2a1f9e7b3d4_push_subscriptions.py:31`),
-  so Postgres raises `ForeignKeyViolation` and the whole removal is
-  rejected — reproduced directly against a local database this shift, not
-  inferred from reading the migration. An AD who removes someone who has
-  push notifications turned on gets a 500, not a removed crew member, and
-  `privacy.html`'s "removal also drops... your push odběr" is false for
-  that case today. **Filed as FR-79** (tech-lead, `ready`) to add the
-  missing `ON DELETE CASCADE` — a one-line model/migration fix, not
-  attempted in this doc-only item.
+- **Deleted with it, fixed 2026-09-24 (FR-79)**: if the crew member has an
+  active `PushSubscription` (FR-16), it is dropped along with them.
+  `push_subscriptions.crew_member_id` originally had a plain foreign key
+  with no `ON DELETE` clause (`alembic/versions/c2a1f9e7b3d4_push_subscriptions.py:31`),
+  so Postgres raised `ForeignKeyViolation` and the whole removal was
+  rejected — reproduced directly against a local database on 2026-09-23.
+  Migration `d8f4b1c9a2e6` (FR-79) added `ON DELETE CASCADE`; a crew
+  member with an active push subscription has succeeded, not 500'd, on
+  removal since that merge — reconfirmed live 2026-10-19 (FR-184) and
+  covered by a regression test
+  (`backend/tests/test_push.py::TestRemovalWithActiveSubscription`).
+  `privacy.html`'s "removal also drops... your push odběr" is correct.
 - **Kept, not deleted, and not claimed to be deleted**: the shared
   `Contact` row (name, phone, e-mail, photo) survives crew-member removal
   — confirmed live (delete a crew member, the `contacts` row is still
@@ -90,9 +90,9 @@ account needed. Lists, against the real database:
   not time-since-wrap, per the gap above), and counts of its contacts,
   crew members, push subscriptions and revision views that the proposed
   policy would eventually delete
-- crew members with an active push subscription whose removal would hit
-  the FR-79 bug today, so the founder can see the blast radius before
-  FR-79 ships
+- crew members with an active push subscription, as plain informational
+  context (removal cascades their subscription cleanly since FR-79,
+  shipped 2026-09-24)
 - contacts orphaned (no crew or cast membership on any production) as of
   today, which nothing currently cleans up
 

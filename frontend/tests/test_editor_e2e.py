@@ -716,6 +716,14 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     expect(page.locator("#unconfirmed li")).to_have_count(2)
     assert page.get_by_label("Nudge Tomáš Novák on WhatsApp").get_attribute("href").startswith("https://wa.me/420777123456?text=")
     assert page.get_by_label("Nudge Eva Malá on WhatsApp").count() == 0  # no phone, no broken link
+    # FR-209: every message carries its own link, so the AD gets one next person at a time, and only people a message can reach.
+    expect(page.locator("#notOpenedCount")).to_contain_text("Not opened: 2")
+    remind = page.locator("#remindNext")
+    expect(remind).to_contain_text("Remind Tomáš Novák (1 left)")
+    assert remind.get_attribute("href").startswith("https://wa.me/420777123456?text=")
+    remind.evaluate("a => { a.addEventListener('click', (e) => e.preventDefault()); a.click(); }")
+    expect(remind).to_have_count(0)
+    expect(page.locator("#remindedAll")).to_contain_text("Reminded 1")
 
     eva_link = page.locator("#personalLinks li", has_text="Eva Malá").get_by_role("link", name="Open").get_attribute("href")
     v = page.context.new_page(); v.goto(eva_link); v.wait_for_selector("#you", timeout=15_000); v.close()

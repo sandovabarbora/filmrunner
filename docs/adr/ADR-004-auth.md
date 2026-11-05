@@ -43,8 +43,13 @@ minutes; the shared HS256 secret is discouraged and not used.
 - Without those variables (CI, local), the editor shows the old Connect
   screen for the service token; the end-to-end tests inject that
   connection through localStorage, so they run against both builds.
-- Authorisation is still "any signed-in user may do anything"; per
-  production roles are FR-15.
+- Authorisation is per-production roles (owner/editor/viewer), enforced
+  in `app/authz.py`'s `require`/`require_on` dependencies against the
+  `production_members` table — see ADR-005-roles.md (FR-15, delivered
+  2026-09-14). A signed-in user with no membership on a production gets
+  403; a member's role bounds which permissions (`production:read`,
+  `production:edit`, `production:manage_members`, `day:publish`,
+  `crew:edit`) they hold.
 
 ## Admin access (founder's gesture)
 

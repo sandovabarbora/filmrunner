@@ -125,3 +125,21 @@ def test_contact_edit_is_scoped_to_productions_where_the_caller_can_edit_crew(cl
     loose = client.post("/api/v1/contacts", json={"name": "Loose"}, headers=ada).json()["id"]
     assert client.patch(f"/api/v1/contacts/{loose}", json={"name": "x"}, headers=ada).status_code == 403
     assert client.patch(f"/api/v1/contacts/{loose}", json={"name": "x"}, headers=SERVICE).status_code == 200
+
+
+def test_a_viewer_sees_the_crew_but_not_their_personal_links(client: TestClient, users) -> None:
+    """FR-206: a personal link can confirm a revision on its owner's behalf, so read-only access must not hand it out."""
+    owner, viewer = users("o2@example.com"), users("v2@example.com")
+    pid = client.post("/api/v1/productions", json={"name": "Links"}, headers=owner).json()["id"]
+    client.post(f"/api/v1/productions/{pid}/members", json={"email": "v2@example.com", "role": "viewer"}, headers=owner)
+    contact = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=owner).json()["id"]
+    member = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Grip", "position": "Key"}, headers=owner).json()
+    client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": contact, "character_name": "MARTA"}, headers=owner)
+    sheet = client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": "2026-11-10", "day_number": 1, "day_count": 1, "initial_revision": {}}, headers=owner).json()
+
+    for path, row in ((f"/productions/{pid}/crew-members", lambda b: b[0]), (f"/productions/{pid}/cast-members", lambda b: b[0]), (f"/call-sheets/{sheet['id']}/seen", lambda b: b["not_seen"][0])):
+        assert row(client.get(f"/api/v1{path}", headers=owner).json())["personal_token"], path
+        seen_by_viewer = row(client.get(f"/api/v1{path}", headers=viewer).json())
+        assert seen_by_viewer["personal_token"] is None, path
+    assert member["personal_token"]
+
