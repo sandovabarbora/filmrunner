@@ -344,6 +344,26 @@ def personal_changes(before: CallSheetRevision | None, after: CallSheetRevision,
     return changes
 
 
+def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember) -> CallSheetRevision | None:
+    """FR-204: what this person actually knows, when that is older than the revision before the current one. Someone
+    who read REV B and opens REV D needs B to D, or C's change never reaches them. The last one they confirmed if
+    any, since that is their own word; otherwise the last they opened. None when the normal diff already covers it."""
+    current = call_sheet.current_revision
+    previous = previous_revision(call_sheet)
+    if current is None or previous is None:
+        return None
+    if db.query(RevisionView).filter(RevisionView.revision_id == current.id, RevisionView.crew_member_id == member.id, RevisionView.confirmed_at.is_not(None)).first():
+        return None
+    views = {v.revision_id: v for v in db.query(RevisionView).filter(RevisionView.crew_member_id == member.id).all()}
+    earlier = [r for r in call_sheet.revisions if r.revision_letter < current.revision_letter and r.id in views]
+    confirmed = [r for r in earlier if views[r.id].confirmed_at is not None]
+    known = (confirmed or earlier)
+    if not known:
+        return None
+    baseline = max(known, key=lambda r: r.revision_letter)
+    return baseline if baseline.id != previous.id else None
+
+
 def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSheet | None:
     """The personal block for `?me=<token>`: None when the token is not a crew member of this production."""
     member = (
@@ -368,7 +388,8 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     if head is not None:
         head_card = ContactCard(name=head.contact.name, department=head.department, position=head.position, phone=head.contact.phone, email=head.contact.email, photo_url=head.contact.photo_url)
     entry = _crew_entry(revision, member) if revision is not None else None
-    before = previous_revision(call_sheet)
+    caught_up_from = _last_read_revision(db, call_sheet, member) if revision is not None else None
+    before = caught_up_from or previous_revision(call_sheet)
     call = effective_call(revision, member) if revision is not None else (member.standard_call_time or general)
     was_call = effective_call(before, member) if before is not None else call
     pickup = entry.pickup_time if entry else None
@@ -386,6 +407,8 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
         pickup_before=was_pickup if before is not None and was_pickup != pickup else None,
         revision_letter=revision.revision_letter if revision is not None else None,
         confirmed_at=view.confirmed_at if view is not None else None,
+        since_letter=caught_up_from.revision_letter if caught_up_from is not None else None,
+        changes_since=revision_changes(caught_up_from, revision) if caught_up_from is not None else None,
         department_head=head_card,
     )
 
@@ -469,11 +492,15 @@ def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> li
         changes.append(RevisionChange(field="location", label=f"Location, sc {', '.join(scenes)}", before=was_name, after=now_name or "no location", scenes=scenes))
 
     # A recorded move says where the scene went; it is not also a scene that appeared or vanished.
-    moved_out = {m.scene_number for m in after.moves_out}
-    moved_in = {m.scene_number for m in after.moves_in}
-    for move in after.moves_out:
+    # Every revision since `before`, not only the last: someone catching up across several must still see each move.
+    between = [r for r in after.call_sheet.revisions if before.revision_letter < r.revision_letter <= after.revision_letter]
+    moves_out = [m for r in between for m in r.moves_out]
+    moves_in = [m for r in between for m in r.moves_in]
+    moved_out = {m.scene_number for m in moves_out}
+    moved_in = {m.scene_number for m in moves_in}
+    for move in moves_out:
         changes.append(_move_change("scene_moved_out", f"Scene {move.scene_number} moved to", move.scene_number, move.to_revision))
-    for move in after.moves_in:
+    for move in moves_in:
         changes.append(_move_change("scene_moved_in", f"Scene {move.scene_number} moved from", move.scene_number, move.from_revision))
 
     added = [k[0] for k in new if k not in old and k[0] not in moved_in]

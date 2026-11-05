@@ -134,6 +134,9 @@ class PersonalSheet(BaseModel):
     # FR-202: which revision this block describes, and whether this person has confirmed that one.
     revision_letter: str | None = None
     confirmed_at: datetime | None = None
+    # FR-204: set when this person last read something older than the previous revision: the diff from there.
+    since_letter: str | None = None
+    changes_since: list["RevisionChange"] | None = None
     department_head: ContactCard | None
 
 

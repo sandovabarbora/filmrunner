@@ -2124,3 +2124,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a planned (draft) day stays invisible to the crew when a scene moves onto it
   - failure case: a stale screen, a cancelled day, a taken date (which points at swapping) or a 27th revision is refused with the reason and changes nothing on either day; a day with unpublished edits cannot be moved
 
+## FR-204 · tech-lead · A person who skipped a revision sees everything since what they last read
+- state: done
+- gated: no
+- why: the diff compared the last two revisions only, so someone who read REV B and opened REV D never learned what C changed: on a night with several revisions that is the exact person who gets lost, and their confirmation would have meant nothing
+- dod:
+  - a personal link shows the diff from the last revision this person confirmed, else the last they opened, when that is older than the previous revision; the old call in "was" follows the same baseline
+  - scene moves across the skipped revisions are all listed
+  - failure case: opening a newer revision without confirming does not move the baseline past what they confirmed; someone who never read anything, or is caught up, gets the normal view
+

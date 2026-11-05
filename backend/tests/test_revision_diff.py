@@ -267,3 +267,61 @@ def test_confirm_needs_a_real_token_and_a_live_day(client: TestClient) -> None:
     assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/nobody", json={"revision_letter": "A"}).status_code == 404
     client.post(f"/api/v1/call-sheets/{sheet['id']}/cancel", headers=AUTH)
     assert _confirm(client, sheet["id"], gaffer, "A").status_code == 409
+
+
+def _seen(client: TestClient, sheet_id: str, member: dict) -> None:
+    assert client.post(f"/api/v1/public/call-sheets/{sheet_id}/seen/{member['personal_token']}").status_code == 204
+
+
+def _skip_to_rev_c(client: TestClient, sheet_id: str) -> None:
+    """B moves the crew call, C only a safety note, so "what changed in C" alone would hide the new call."""
+    _publish(client, sheet_id, {"general_crew_call": "06:00", "schedule_items": []})
+    _publish(client, sheet_id, {"general_crew_call": "06:00", "safety_notes": "Ice", "schedule_items": []})
+
+
+def test_someone_who_confirmed_an_old_revision_sees_everything_since(client: TestClient) -> None:
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    assert _confirm(client, sheet["id"], member, "A").status_code == 200
+    _skip_to_rev_c(client, sheet["id"])
+    me = _me(client, sheet["id"], member)
+    assert me["since_letter"] == "A"
+    assert [(c["field"], c["before"], c["after"]) for c in me["changes_since"] if c["field"] == "crew_call"] == [("crew_call", "07:00", "06:00")]
+    assert me["call_before"] == "07:00"  # the time they actually know
+
+
+def test_opening_counts_when_nothing_was_confirmed(client: TestClient) -> None:
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _seen(client, sheet["id"], member)
+    _skip_to_rev_c(client, sheet["id"])
+    assert _me(client, sheet["id"], member)["since_letter"] == "A"
+
+
+def test_a_confirmation_beats_a_later_open(client: TestClient) -> None:
+    """Failure case: opening REV B without confirming must not move the baseline past what they said they know."""
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _confirm(client, sheet["id"], member, "A")
+    _publish(client, sheet["id"], {"general_crew_call": "06:00", "schedule_items": []})
+    _seen(client, sheet["id"], member)
+    _publish(client, sheet["id"], {"general_crew_call": "06:00", "safety_notes": "Ice", "schedule_items": []})
+    assert _me(client, sheet["id"], member)["since_letter"] == "A"
+
+
+def test_no_catching_up_when_the_normal_diff_covers_it(client: TestClient) -> None:
+    pid = _production(client)
+    member, stranger = _crew_full(client, pid, "Tomáš"), _crew_full(client, pid, "Nový")
+    sheet = _sheet(client, pid, {"general_crew_call": "07:00", "schedule_items": []})
+    _confirm(client, sheet["id"], member, "A")
+    _publish(client, sheet["id"], {"general_crew_call": "06:00", "schedule_items": []})
+    me = _me(client, sheet["id"], member)
+    assert me["since_letter"] is None and me["changes_since"] is None
+    _publish(client, sheet["id"], {"general_crew_call": "05:00", "schedule_items": []})
+    assert _me(client, sheet["id"], stranger)["since_letter"] is None  # never read anything: the current revision is news as a whole
+    _confirm(client, sheet["id"], member, "C")
+    assert _me(client, sheet["id"], member)["since_letter"] is None  # caught up
+
