@@ -401,15 +401,23 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               <p className="hint">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}</p>
               {waiting.length === 0
                 ? <p className="hint">{L("Everyone on the crew has confirmed.")}</p>
-                : <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
+                // With a whole crew still to confirm the list would bury the form the AD also came for; a few names stay in view.
+                : <details className="others" id="waitingList" open={waiting.length <= 8}>
+                  <summary>{L("Not confirmed yet ({n})", { n: waiting.length })}</summary>
+                  <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
                     {waiting.map((e) => {
                       const number = whatsappNumber(e.phone);
                       const link = personalLink(conn.apiBase, e.personal_token);
-                      const nudge = L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link });
+                      const castCall = e.is_cast ? draft.castCalls?.[e.crew_member_id] : undefined;
+                      // Someone who will not open a link should still get their times from the message itself.
+                      const castTimes = castCall ? [castCall.pickup && `${L("pickup")} ${castCall.pickup}`, castCall.call && `${L("call")} ${castCall.call}`, castCall.makeup && `M/H ${castCall.makeup}`, castCall.onSet && `${L("on set")} ${castCall.onSet}`].filter(Boolean).join(", ") : "";
+                      const nudge = castCall
+                        ? L("REV {rev} for Day {n} is out. Your times: {times}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, times: castTimes || "—", link })
+                        : L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link });
                       return (
                         <li key={e.crew_member_id} data-state={e.seen_at ? "opened" : "unopened"}>
                           <div className="waiting-who">
-                            <span className="name">{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
+                            <span className="name">{e.name}</span><span className="meta"> · {e.is_cast ? e.position : e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
                             <div className="waiting-state">{e.seen_at ? L("opened {time}, not confirmed", { time: time(e.seen_at) }) : L("not opened")}</div>
                           </div>
                           <div className="row-actions">
@@ -420,12 +428,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                         </li>
                       );
                     })}
-                  </ul>}
+                  </ul>
+                </details>}
               {confirmed.length > 0 && (
                 <details className="others" id="confirmedList">
                   <summary>{L("Confirmed ({n})", { n: confirmed.length })}</summary>
                   <ul className="confirmed-list">
-                    {confirmed.map((e) => <li key={e.crew_member_id}>{e.name}<span className="meta"> · {e.department} · {time(e.confirmed_at!)}</span></li>)}
+                    {confirmed.map((e) => <li key={e.crew_member_id}>{e.name}<span className="meta"> · {e.is_cast ? e.position : e.department} · {time(e.confirmed_at!)}</span></li>)}
                   </ul>
                 </details>
               )}

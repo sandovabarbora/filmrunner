@@ -659,6 +659,7 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
       )}
       {canEdit && (<>
       <h3 className="subhead" id="crewFormTitle">{editing ? L("Editing {name}", { name: editing.contact.name }) : L("Add a person")}</h3>
+      {!editing && <p className="hint" id="suppliersHint">{L("Suppliers and anyone else who needs the plan (catering, rental, transport, location owner) go here too: they get their own link, no sign-in, and appear on your confirmation list.")}</p>}
       {editing && (
         <div className="inline photo-field" id="crewPhotoField">
           <Avatar name={editing.contact.name} photoUrl={editing.contact.photo_url} size={48} />
@@ -914,6 +915,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
               </span>
               {canEdit && (
                 <span className="row-actions">
+                  <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, a.personal_token)); setNotice({ kind: "ok", text: L("Link for {name} copied.", { name: a.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: a.contact.name })}><Icon name="copy" />{L("Link")}</button>
                   <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={L("Edit {name}", { name: a.contact.name })}>{L("Edit")}</button>
                   <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={L("Remove {name}", { name: a.contact.name })}>{L("Remove")}</button>
                 </span>

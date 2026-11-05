@@ -151,15 +151,20 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
         <section className="you" id="you" aria-label={L("you.call")}>
           <div className="you-head">
             <div className="label">{L("you.call")}</div>
-            <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.department} · {personal.position}</span></div>
+            <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.is_cast ? personal.position : `${personal.department} · ${personal.position}`}</span></div>
           </div>
           <div className="you-call">
-            <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
+            {/* An actor's day starts at their own pickup; the crew call is never their time, and someone not called has none. */}
+            {personal.is_cast && !personal.works_today
+              ? <p className="you-off" id="yourCallOff">{L("you.notToday")}</p>
+              : <div className="value" id="yourCall">{personal.personal_call || (personal.is_cast ? personal.pickup_time : rev?.general_crew_call) || "—"}</div>}
             {personal.call_before && <div className="was" id="yourCallWas"><span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></div>}
           </div>
-          {(personal.pickup_time || personal.note) && (
+          {(personal.pickup_time || personal.note || personal.makeup_hair_time || personal.on_set_time) && (
             <div className="you-extra" id="yourExtra">
               {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
+              {personal.makeup_hair_time && <span><span className="k">{L("th.mh")} </span><span className="v">{personal.makeup_hair_time}</span></span>}
+              {personal.on_set_time && <span><span className="k">{L("th.onSet")} </span><span className="v">{personal.on_set_time}</span></span>}
               {personal.note && <span className="note">{personal.note}</span>}
             </div>
           )}
