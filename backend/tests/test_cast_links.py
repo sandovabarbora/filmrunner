@@ -101,7 +101,7 @@ def test_an_actor_not_called_today_cannot_skew_the_ads_count(client: TestClient)
     pid, actor = _setup(client)
     sheet = _day(client, pid, None)
     assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/seen/{actor['personal_token']}").status_code == 204
-    assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/{actor['personal_token']}", json={"revision_letter": "A"}).status_code == 409
+    assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/{actor['personal_token']}", json={"revision_letter": "A"}).status_code == 403
     days = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()
     assert (days[0]["opened"]["seen"], days[0]["opened"]["confirmed"], days[0]["opened"]["total"]) == (0, 0, 0)
 

@@ -17,6 +17,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, selectinload
 
 from app.auth import Principal, require_api_token, require_principal
@@ -28,7 +29,7 @@ from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevi
 from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
 from app.services.call_sheets import NotCalledToday, RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
-from app.services.replan import ReplanConflict, move_scene, reschedule_day, swap_days
+from app.services.replan import move_scene, reschedule_day, swap_days
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +155,9 @@ def _replan(call_sheet_id: uuid.UUID, background_tasks: BackgroundTasks, db: Ses
     """Run a change spanning days; everything refused for a reason the AD can act on is a 409 that says why."""
     try:
         published = change()
-    except ReplanConflict as exc:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except ValueError as exc:  # 26 revisions on one of the days
+    except ValidationError:
+        raise  # a bug, not something the AD can act on; it must not read as a conflict
+    except ValueError as exc:  # ReplanConflict, or 26 revisions on one of the days
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     for sheet, revision in published:
@@ -335,11 +335,14 @@ def confirm_public(call_sheet_id: uuid.UUID, token: str, payload: ConfirmRequest
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     if call_sheet.status == CallSheetStatus.DRAFT:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
+    # 409 means "a newer revision exists" and the sheet reloads; these two have nothing to do with that.
     if call_sheet.status == CallSheetStatus.CANCELLED:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This day is cancelled; there is nothing to confirm")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This day is cancelled; there is nothing to confirm")
     try:
         confirmed_at = record_confirmed(db, call_sheet, token, payload.revision_letter)
-    except (RevisionNoLongerCurrent, NotCalledToday) as exc:
+    except NotCalledToday as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except RevisionNoLongerCurrent as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if confirmed_at is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")

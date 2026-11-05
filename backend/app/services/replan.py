@@ -6,9 +6,9 @@ names the revision it was looking at, so a change made from a stale screen is
 refused instead of overwriting one published in the meantime.
 """
 
-import uuid
 from datetime import date
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, SceneMove
@@ -21,7 +21,7 @@ class ReplanConflict(ValueError):
 
 
 def _payload(revision: CallSheetRevision, items: list[ScheduleItemCreate] | None = None, *, new_date: bool = False) -> CallSheetRevisionCreate:
-    """The revision as a new one, optionally with other scenes. Sun and weather depend on the date, so a new date recomputes them."""
+    """The revision as a new one, optionally with other scenes. `new_date` recomputes sun and weather, which depend on the date and the first location."""
     return CallSheetRevisionCreate(
         general_crew_call=revision.general_crew_call,
         shooting_call=revision.shooting_call,
@@ -63,15 +63,29 @@ def _current(sheet: CallSheet, expected_letter: str) -> CallSheetRevision:
 def _publish(db: Session, sheet: CallSheet, payload: CallSheetRevisionCreate, created_by: str | None) -> CallSheetRevision:
     """Publish without committing. A planned day stays planned: replanning around it must not reveal it to the crew."""
     was_draft = sheet.status == CallSheetStatus.DRAFT
-    revision, _ = publish_revision(db, sheet, payload, created_by=created_by, commit=False)
+    revision, is_new = publish_revision(db, sheet, payload, created_by=created_by, commit=False)
+    if not is_new:
+        raise ReplanConflict(f"Day {sheet.day_number} was published by someone else just now; reload and try again")
     if was_draft:
         sheet.status = CallSheetStatus.DRAFT
     return revision
 
 
 def _ordered(*sheets: CallSheet) -> list[CallSheet]:
-    """A stable order, so two simultaneous moves between the same days take their locks the same way round."""
     return sorted(sheets, key=lambda s: str(s.id))
+
+
+def _lock(db: Session, *sheets: CallSheet) -> None:
+    """Take every day's publish lock before looking at it, in a stable order so two changes between the same days cannot
+    deadlock. Without this the letter check could pass, then a publish slip in, and the scene end up on both days. The
+    same key publish_revision uses, and advisory locks are reentrant, so its own attempt then succeeds at once."""
+    for sheet in _ordered(*sheets):
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": str(sheet.id)})
+        db.expire(sheet)
+
+
+def _first_location(items: list[ScheduleItemCreate]):
+    return next((i.location_id for i in items if i.location_id is not None), None)
 
 
 def move_scene(
@@ -83,18 +97,23 @@ def move_scene(
         raise ReplanConflict("The scene is already on this day")
     if source.production_id != target.production_id:
         raise ReplanConflict("That day belongs to another production")
+    _lock(db, source, target)
     source_rev, target_rev = _current(source, expected_letter), _current(target, expected_target_letter)
     items = _items(source_rev)
     matching = [i for i, item in enumerate(items) if item.scene_number == scene_number]
     if occurrence >= len(matching):
         raise ReplanConflict(f"Scene {scene_number} is not on Day {source.day_number}")
+    target_items = _items(target_rev)
+    was_first = {source.id: _first_location(items), target.id: _first_location(target_items)}
     moved = items.pop(matching[occurrence])
+    target_items.append(moved)
+    # Sun and weather come from the first location: when a day starts somewhere else they are stale.
     payloads = {
-        source.id: _payload(source_rev, _renumbered(items)),
-        target.id: _payload(target_rev, _renumbered([*_items(target_rev), moved])),
+        source.id: _payload(source_rev, _renumbered(items), new_date=_first_location(items) != was_first[source.id]),
+        target.id: _payload(target_rev, _renumbered(target_items), new_date=_first_location(target_items) != was_first[target.id]),
     }
     published = {sheet.id: _publish(db, sheet, payloads[sheet.id], created_by) for sheet in _ordered(source, target)}
-    db.add(SceneMove(id=uuid.uuid4(), scene_number=scene_number, from_revision_id=published[source.id].id, to_revision_id=published[target.id].id))
+    db.add(SceneMove(scene_number=scene_number, from_revision_id=published[source.id].id, to_revision_id=published[target.id].id))
     db.commit()
     return [(sheet, published[sheet.id]) for sheet in (source, target) if sheet.status != CallSheetStatus.DRAFT]
 
@@ -110,6 +129,7 @@ def _unit_day_on(db: Session, sheet: CallSheet, shoot_date: date) -> CallSheet |
 
 def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_letter: str, created_by: str | None) -> list[tuple[CallSheet, CallSheetRevision]]:
     """Move a whole shoot day to another date."""
+    _lock(db, sheet)
     revision = _current(sheet, expected_letter)
     if sheet.shoot_date == shoot_date:
         raise ReplanConflict(f"Day {sheet.day_number} is already on {shoot_date.isoformat()}")
@@ -128,6 +148,7 @@ def swap_days(db: Session, a: CallSheet, b: CallSheet, expected_letter: str, exp
         raise ReplanConflict("Pick another day to swap with")
     if a.production_id != b.production_id:
         raise ReplanConflict("That day belongs to another production")
+    _lock(db, a, b)
     rev_a, rev_b = _current(a, expected_letter), _current(b, expected_other_letter)
     payloads = {a.id: _payload(rev_a, new_date=True), b.id: _payload(rev_b, new_date=True)}
     a.shoot_date, b.shoot_date = b.shoot_date, a.shoot_date

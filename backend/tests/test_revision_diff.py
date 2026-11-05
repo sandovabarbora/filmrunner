@@ -266,7 +266,7 @@ def test_confirm_needs_a_real_token_and_a_live_day(client: TestClient) -> None:
     sheet = _sheet(client, pid, {"schedule_items": []})
     assert client.post(f"/api/v1/public/call-sheets/{sheet['id']}/confirm/nobody", json={"revision_letter": "A"}).status_code == 404
     client.post(f"/api/v1/call-sheets/{sheet['id']}/cancel", headers=AUTH)
-    assert _confirm(client, sheet["id"], gaffer, "A").status_code == 409
+    assert _confirm(client, sheet["id"], gaffer, "A").status_code == 403
 
 
 def _seen(client: TestClient, sheet_id: str, member: dict) -> None:
@@ -324,4 +324,36 @@ def test_no_catching_up_when_the_normal_diff_covers_it(client: TestClient) -> No
     assert _me(client, sheet["id"], stranger)["since_letter"] is None  # never read anything: the current revision is news as a whole
     _confirm(client, sheet["id"], member, "C")
     assert _me(client, sheet["id"], member)["since_letter"] is None  # caught up
+
+
+def test_times_on_the_wire_say_they_are_utc(client: TestClient) -> None:
+    """A browser reads a zoneless time as local: "issued 21:40" for a revision out at 22:40 in Prague."""
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"schedule_items": []})
+    read = client.get(f"/api/v1/public/call-sheets/{sheet['id']}").json()
+    assert read["current_revision"]["created_at"].endswith(("Z", "+00:00"))
+    assert _confirm(client, sheet["id"], member, "A").json()["confirmed_at"].endswith(("Z", "+00:00"))
+    assert _me(client, sheet["id"], member)["confirmed_at"].endswith(("Z", "+00:00"))
+
+
+def test_a_removed_note_is_a_change_for_that_person(client: TestClient) -> None:
+    """Failure case found in review: "nothing changes for you" while their pre-rig note had just gone."""
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"schedule_items": [], "crew_calls": [{"crew_member_id": member["id"], "note": "Pre-rig"}]})
+    _publish(client, sheet["id"], {"schedule_items": [], "crew_calls": []})
+    assert _me(client, sheet["id"], member)["note_changed"] is True
+
+
+def test_confirming_works_with_or_without_a_prior_receipt_and_twice(client: TestClient) -> None:
+    pid = _production(client)
+    member = _crew_full(client, pid, "Tomáš")
+    sheet = _sheet(client, pid, {"schedule_items": []})
+    _seen(client, sheet["id"], member)
+    _seen(client, sheet["id"], member)
+    assert _confirm(client, sheet["id"], member, "A").status_code == 200
+    _seen(client, sheet["id"], member)
+    entries = _report(client, sheet["id"])
+    assert entries["Tomáš"]["confirmed_at"] and entries["Tomáš"]["seen_at"]
 

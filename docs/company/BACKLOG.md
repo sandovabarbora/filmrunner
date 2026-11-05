@@ -2162,3 +2162,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - an actor with no call on a day cannot confirm it, and opening it does not add to the day's count
   - failure case: a viewer still sees the names, departments and who has confirmed, just no link; the sweep test fails if a read route starts returning a token to them
 
+## FR-207 · qa · Findings from the independent review of FR-200 to FR-206
+- state: done
+- gated: no
+- why: a separate adversarial review of the stack found ways the same plan change could still mislead someone: on a sheet that exists to prevent exactly that
+- dod:
+  - a day change takes the locks before checking the revision, so racing a publish is refused instead of leaving a scene on both days (real two-connection test)
+  - every time on the wire says it is UTC: until now "issued 21:40" was shown for a revision out at 22:40 in Prague, on every sheet
+  - a personal block older than the sheet shows no time at all and says so; refreshes cannot overwrite a newer answer with a slower one
+  - a planned day leaves no trace on a crew's sheet; a removed personal note counts as a change; the page-load receipt and a quick confirm cannot collide
+  - failure case: confirming a cancelled day or as an actor not called reads as a failure to send, not as "a newer revision came out"
+
