@@ -109,6 +109,20 @@ class TestSubscribe:
         assert rows == []
 
 
+class TestRemovalWithActiveSubscription:
+    def test_removing_a_crew_member_with_an_active_push_subscription_succeeds_fr79(
+        self, client: TestClient, db_session
+    ) -> None:
+        """FR-79 added ON DELETE CASCADE on push_subscriptions.crew_member_id
+        (migration d8f4b1c9a2e6); this used to 500 with a ForeignKeyViolation.
+        See FR-184, which found retention_report.py still claimed otherwise."""
+        pid, member = _setup(client)
+        client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json=_subscribe_payload())
+        resp = client.delete(f"/api/v1/productions/{pid}/crew-members/{member['id']}", headers=AUTH)
+        assert resp.status_code == 204, resp.text
+        assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 0
+
+
 class TestNotifySubscribers:
     def test_no_subscribers_is_a_silent_no_op(self, client: TestClient, db_session, vapid_configured) -> None:
         pid, member = _setup(client)
