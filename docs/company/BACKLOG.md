@@ -2114,3 +2114,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the personal block refreshes with the sheet, so a revision that arrives by polling never sits above yesterday's call time
   - failure case: confirming a replaced revision is refused and the sheet reloads; offline the action is disabled and says why; a failed send says so and keeps the button
 
+## FR-203 · tech-lead · Move a scene, move a day, swap two days: one action, a revision on each day
+- state: done
+- gated: no
+- why: a location falling through two days out means swapping days and moving scenes; until now that was two unrelated manual publishes, and a date could not move at all
+- dod:
+  - from the day screen the AD moves a scene to another day, moves the day to a new date, or swaps it with another day; each asks first and publishes everything in one transaction
+  - the sheet says where a scene went and links to that day; a moved date shows old and new; the push does the same
+  - a planned (draft) day stays invisible to the crew when a scene moves onto it
+  - failure case: a stale screen, a cancelled day, a taken date (which points at swapping) or a 27th revision is refused with the reason and changes nothing on either day; a day with unpublished edits cannot be moved
+

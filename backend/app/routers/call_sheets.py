@@ -25,9 +25,10 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
+from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
 from app.services.call_sheets import RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
+from app.services.replan import ReplanConflict, move_scene, reschedule_day, swap_days
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,59 @@ def publish_revision_endpoint(
     if is_new:
         background_tasks.add_task(notify_subscribers_in_background, call_sheet.id, revision.id)
     return CallSheetRevisionRead.model_validate(revision)
+
+
+def _replan(call_sheet_id: uuid.UUID, background_tasks: BackgroundTasks, db: Session, change) -> CallSheetRead:
+    """Run a change spanning days; everything refused for a reason the AD can act on is a 409 that says why."""
+    try:
+        published = change()
+    except ReplanConflict as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ValueError as exc:  # 26 revisions on one of the days
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    for sheet, revision in published:
+        background_tasks.add_task(notify_subscribers_in_background, sheet.id, revision.id)
+    return _read_with_contacts(db, call_sheet_id)
+
+
+@router.post("/call-sheets/{call_sheet_id}/move-scene", response_model=CallSheetRead)
+def move_scene_endpoint(
+    call_sheet_id: uuid.UUID, payload: MoveSceneRequest, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db), principal: Principal = Depends(require_principal),
+) -> CallSheetRead:
+    """FR-203: one scene to another day, one action, a new revision on both."""
+    source = _get_call_sheet_or_404(db, call_sheet_id)
+    target = _get_call_sheet_or_404(db, payload.target_call_sheet_id)
+    require_on(db, principal, source.production_id, DAY_PUBLISH)
+    require_on(db, principal, target.production_id, DAY_PUBLISH)
+    return _replan(call_sheet_id, background_tasks, db, lambda: move_scene(
+        db, source, target, payload.scene_number, payload.occurrence, payload.expected_revision_letter, payload.expected_target_revision_letter, principal.label))
+
+
+@router.post("/call-sheets/{call_sheet_id}/reschedule", response_model=CallSheetRead)
+def reschedule_endpoint(
+    call_sheet_id: uuid.UUID, payload: RescheduleRequest, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db), principal: Principal = Depends(require_principal),
+) -> CallSheetRead:
+    """FR-203: the whole day moves to another date."""
+    sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    require_on(db, principal, sheet.production_id, DAY_PUBLISH)
+    return _replan(call_sheet_id, background_tasks, db, lambda: reschedule_day(db, sheet, payload.shoot_date, payload.expected_revision_letter, principal.label))
+
+
+@router.post("/call-sheets/{call_sheet_id}/swap-with", response_model=CallSheetRead)
+def swap_endpoint(
+    call_sheet_id: uuid.UUID, payload: SwapDaysRequest, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db), principal: Principal = Depends(require_principal),
+) -> CallSheetRead:
+    """FR-203: two days trade date and day number, each keeping its scenes and calls."""
+    sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    other = _get_call_sheet_or_404(db, payload.other_call_sheet_id)
+    require_on(db, principal, sheet.production_id, DAY_PUBLISH)
+    require_on(db, principal, other.production_id, DAY_PUBLISH)
+    return _replan(call_sheet_id, background_tasks, db, lambda: swap_days(db, sheet, other, payload.expected_revision_letter, payload.expected_other_revision_letter, principal.label))
 
 
 @router.post("/call-sheets/{call_sheet_id}/cancel", response_model=CallSheetRead)

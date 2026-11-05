@@ -110,6 +110,9 @@ export interface RevisionChange {
   before: string | null;
   after: string | null;
   scenes?: string[];
+  other_call_sheet_id?: string | null;
+  other_day_number?: number | null;
+  other_date?: string | null;
 }
 
 /* Create payloads (backend/app/schemas). */
