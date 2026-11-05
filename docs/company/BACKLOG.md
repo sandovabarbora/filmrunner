@@ -2094,3 +2094,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the crew's sheet prints changes on the revision's own paper colour, with the screenplay asterisk on changed scenes, the location and the safety note; the person's own call stays above it
   - failure case: republishing identical content says "republished, content unchanged"; an API field this cached bundle does not know renders from `label` and never takes the sheet down
 
+## FR-201 · tech-lead · "Was → now" on a person's own call; no noise for people a change does not touch
+- state: done
+- gated: no
+- why: the gaffer whose call moved saw 05:00 with no trace of 07:00, while the unaffected DoP saw "personal calls: 1 changed" and would phone to ask; a channel that cries wolf gets ignored
+- dod:
+  - the personal block shows the old call and pickup struck through beside the new ones, computed with the same precedence as the call itself
+  - a personal link drops the "N personal calls changed" row and says plainly when a revision does not concern this person
+  - the push leads with the person's own change, and is not sent at all to someone only another person's call concerns
+  - failure case: a crew-call change does not read as "your call moved" for someone on a standing time; identical republishing (a restored day) still reaches everyone
+

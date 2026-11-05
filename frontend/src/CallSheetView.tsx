@@ -95,7 +95,9 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   const others = myDept ? heads.filter((c) => c.department !== myDept) : heads;
   const items = [...(rev?.schedule_items ?? [])].sort((a, b) => a.order_index - b.order_index);
   const title = callSheet.production_title ?? callSheet.unit_name;
-  const changes = callSheet.changes ?? [];
+  // On a personal link the person's own call block answers "did mine move"; a count of other people's says nothing.
+  const changes = (callSheet.changes ?? []).filter((c) => !personal || c.field !== "personal_calls");
+  const notAboutYou = !!personal && changes.length === 0 && (callSheet.changes ?? []).length > 0 && !personal.call_before && !personal.pickup_before;
   const minorChanges = changes.filter((c) => MINOR_FIELDS.has(c.field));
   const changedScenes = new Set(changes.flatMap((c) => c.scenes ?? []));
   const revMark = <RevMark label={L("rev.markLabel")} />;
@@ -126,10 +128,13 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             <div className="label">{L("you.call")}</div>
             <div className="who"><span className="name">{personal.name}</span><span className="role">{personal.department} · {personal.position}</span></div>
           </div>
-          <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
+          <div className="you-call">
+            <div className="value" id="yourCall">{personal.personal_call || rev?.general_crew_call || "—"}</div>
+            {personal.call_before && <div className="was" id="yourCallWas"><span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></div>}
+          </div>
           {(personal.pickup_time || personal.note) && (
             <div className="you-extra" id="yourExtra">
-              {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span></span>}
+              {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
               {personal.note && <span className="note">{personal.note}</span>}
             </div>
           )}
@@ -142,7 +147,8 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
             {L("rev.replaces", { rev: rev.revision_letter, prev: callSheet.previous_revision?.revision_letter ?? String.fromCharCode(rev.revision_letter.charCodeAt(0) - 1) })}
             {rev.created_at && L("rev.issued", { time: issuedAt(rev.created_at) })}
           </p>
-          {changes.length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
+          {changes.length === 0 && (callSheet.changes ?? []).length === 0 && <p className="rev-same" id="revSame">{L("rev.same")}</p>}
+          {notAboutYou && <p className="rev-same" id="revNotYou">{L("rev.notYou")}</p>}
           {changes.length > 0 && (
             <ul className="rev-changes" id="revChanges">
               {changes.filter((c) => !MINOR_FIELDS.has(c.field)).map((c, i) => <ChangeRow key={`${c.field}-${i}`} c={c} lang={lang} />)}
