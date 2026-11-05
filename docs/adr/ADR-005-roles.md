@@ -17,8 +17,13 @@ crew member sees only their own sheet (FR-13).
   request (email match, case-insensitive), so people can be invited before
   they ever sign in. Whoever creates a production becomes its owner.
 - **Roles map to explicit permissions**, not to endpoint names:
-  `owner` → `production:read`, `production:manage_members`, `day:publish`,
-  `crew:edit`; `editor` → all but `manage_members`; `viewer` → `read`.
+  `owner` → `production:read`, `production:manage_members`,
+  `production:edit`, `day:publish`, `crew:edit`; `editor` → all but
+  `manage_members`; `viewer` → `read`. `production:edit` (a production's
+  name and lifecycle status) was added to both `owner` and `editor` by
+  FR-34 (2026-09-21), a week after this ADR was written; this list is
+  kept matching `app/authz.py`'s `ROLE_PERMISSIONS` directly, not restated
+  from memory.
   Every production-scoped endpoint declares the one permission it needs
   (`Depends(require("day:publish"))`, or `require_on` when the path carries
   a call-sheet id). Adding a role or a permission touches one table in
