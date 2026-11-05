@@ -24,5 +24,7 @@ class RevisionView(Base):
     crew_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), nullable=False, index=True)
     first_seen_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    # FR-202: the person said "I know", not just that a page loaded.
+    confirmed_at: Mapped[datetime | None] = mapped_column()
 
     crew_member = relationship("CrewMember", passive_deletes=True)

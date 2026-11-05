@@ -365,6 +365,7 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
     call = effective_call(revision, member) if revision is not None else (member.standard_call_time or general)
     was_call = effective_call(before, member) if before is not None else call
     pickup = entry.pickup_time if entry else None
+    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first() if revision is not None else None
     before_entry = _crew_entry(before, member) if before is not None else None
     was_pickup = before_entry.pickup_time if before_entry else None
     return PersonalSheet(
@@ -376,6 +377,8 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
         note=entry.note if entry else None,
         call_before=was_call if before is not None and was_call != call else None,
         pickup_before=was_pickup if before is not None and was_pickup != pickup else None,
+        revision_letter=revision.revision_letter if revision is not None else None,
+        confirmed_at=view.confirmed_at if view is not None else None,
         department_head=head_card,
     )
 
@@ -657,19 +660,51 @@ def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
     return True
 
 
+class RevisionNoLongerCurrent(ValueError):
+    """The person confirmed a revision that a newer one has replaced: they have not read the current one."""
+
+
+def record_confirmed(db: Session, call_sheet: CallSheet, token: str, revision_letter: str) -> datetime | None:
+    """FR-202: a crew member confirms the revision they are looking at. Keeps the first confirmation; None for an unknown token.
+
+    Raises:
+        RevisionNoLongerCurrent: `revision_letter` is not the current revision, so "I know" would be about an old plan.
+    """
+    revision = call_sheet.current_revision
+    member = (
+        db.query(CrewMember)
+        .filter(CrewMember.personal_token == token, CrewMember.production_id == call_sheet.production_id)
+        .first()
+    )
+    if revision is None or member is None:
+        return None
+    if revision.revision_letter != revision_letter:
+        raise RevisionNoLongerCurrent(f"REV {revision_letter} has been replaced by REV {revision.revision_letter}")
+    view = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.crew_member_id == member.id).first()
+    if view is None:
+        view = RevisionView(revision_id=revision.id, crew_member_id=member.id)
+        db.add(view)
+    if view.confirmed_at is None:
+        view.confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.commit()
+    return view.confirmed_at
+
+
 def build_seen_report(db: Session, call_sheet: CallSheet) -> SeenReport | None:
     """Who has opened the current revision and who has not, so the AD chases the right people (FR-36)."""
     revision = call_sheet.current_revision
     if revision is None:
         return None
-    views = {v.crew_member_id: v.first_seen_at for v in db.query(RevisionView).filter(RevisionView.revision_id == revision.id).all()}
+    rows = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).all()
+    views = {v.crew_member_id: v.first_seen_at for v in rows}
+    confirmed = {v.crew_member_id: v.confirmed_at for v in rows}
     subscribed = {s.crew_member_id for s in db.query(PushSubscription).join(CrewMember, CrewMember.id == PushSubscription.crew_member_id)
                   .filter(CrewMember.production_id == call_sheet.production_id).all()}
     crew = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).all()
     crew.sort(key=lambda m: (m.department.lower(), m.contact.name.lower()))
     entries = [
         SeenEntry(crew_member_id=m.id, name=m.contact.name, department=m.department, position=m.position, phone=m.contact.phone,
-                  personal_token=m.personal_token, seen_at=views.get(m.id), subscribed=m.id in subscribed)
+                  personal_token=m.personal_token, seen_at=views.get(m.id), confirmed_at=confirmed.get(m.id), subscribed=m.id in subscribed)
         for m in crew
     ]
     return SeenReport(revision_letter=revision.revision_letter,
@@ -724,7 +759,8 @@ def build_opened_summary(db: Session, call_sheet: CallSheet) -> OpenedSummary | 
     if revision is None:
         return None
     seen = db.query(RevisionView).filter(RevisionView.revision_id == revision.id).count()
+    confirmed = db.query(RevisionView).filter(RevisionView.revision_id == revision.id, RevisionView.confirmed_at.is_not(None)).count()
     total = db.query(CrewMember).filter(CrewMember.production_id == call_sheet.production_id).count()
     first = next((i for i in sorted(revision.schedule_items, key=lambda i: i.order_index) if i.location_id is not None), None)
     loc = db.get(Location, first.location_id) if first is not None else None
-    return OpenedSummary(seen=seen, total=total, first_location_name=loc.name if loc is not None else None)
+    return OpenedSummary(seen=seen, confirmed=confirmed, total=total, first_location_name=loc.name if loc is not None else None)

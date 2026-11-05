@@ -163,6 +163,13 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .rev-legend { margin: 10px 0 0; font-size: var(--fs-small); }
 .rev-mark { margin-left: 2px; font-family: var(--mono); font-weight: 700; color: var(--ink); }
 
+/* FR-202: the crew member's own word that they know. One full-width action, right after what it confirms. */
+.confirm { margin: 10px 0 0; }
+.confirm button { width: 100%; min-height: 52px; font-size: 1rem; }
+.confirm-note { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
+.confirm-done { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: var(--fs-body); font-weight: 600; color: var(--ok-ink); }
+@media print { .confirm, .confirm-done { display: none; } }
+
 /* FR-16: opt in to push notifications from a personal link. */
 .notify { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; }
 .notify-on { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--ink-2); }

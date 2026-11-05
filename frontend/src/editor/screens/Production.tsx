@@ -186,7 +186,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
                   <span className="meta day-glance">
                     {d.current_revision?.general_crew_call && <>{L("call")} <b>{d.current_revision.general_crew_call}</b></>}
                     {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
-                    {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>{L("opened {seen}/{total}", { seen: d.opened.seen, total: d.opened.total })}</span></>}
+                    {d.opened && d.opened.total > 0 && <> · <span className={d.opened.seen === d.opened.total ? "seen-all" : ""}>{L("opened {seen}/{total}", { seen: d.opened.seen, total: d.opened.total })}</span> · <span className={d.opened.confirmed === d.opened.total ? "seen-all" : ""}>{L("confirmed {n}/{total}", { n: d.opened.confirmed ?? 0, total: d.opened.total })}</span></>}
                     {d.actuals?.wrap && <> · {L("wrap")} <b>{d.actuals.wrap}</b></>}
                   </span>
                 </span>

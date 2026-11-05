@@ -57,5 +57,5 @@ def test_days_list_carries_opened_count_and_first_location(client: TestClient) -
     pid, (tomas, _), sheet = _setup(client)
     client.post(f"/api/v1/public/call-sheets/{sheet['id']}/seen/{tomas['personal_token']}")
     days = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()
-    assert days[0]["opened"] == {"seen": 1, "total": 2, "first_location_name": None}
+    assert days[0]["opened"] == {"seen": 1, "confirmed": 0, "total": 2, "first_location_name": None}
     assert client.get(f"/api/v1/public/call-sheets/{sheet['id']}").json()["opened"] is None  # not on the crew's read

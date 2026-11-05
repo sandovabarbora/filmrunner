@@ -5,7 +5,7 @@ import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
-import { canWebShare, daySummaryText, personalMessageText, whatsappNumber, whatsappUrl } from "../shareText";
+import { canWebShare, daySummaryText, personalMessageText, smsUrl, whatsappNumber, whatsappUrl } from "../shareText";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
@@ -340,6 +340,51 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   return (
     <>
+      {/* At 23:00 the question is who still does not know, not the form: it comes first, above everything that can be edited. */}
+        {published && seen && (() => {
+          const everyone = [...seen.seen, ...seen.not_seen];
+          const confirmed = everyone.filter((e) => e.confirmed_at);
+          // Whoever has not even opened it is the one to chase first.
+          const waiting = everyone.filter((e) => !e.confirmed_at).sort((a, b) => Number(!!a.seen_at) - Number(!!b.seen_at));
+          const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          return (
+            <div className="seen" id="seenPanel">
+              <p className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</p>
+              <p className="hint">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}</p>
+              {waiting.length === 0
+                ? <p className="hint">{L("Everyone on the crew has confirmed.")}</p>
+                : <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
+                    {waiting.map((e) => {
+                      const number = whatsappNumber(e.phone);
+                      const link = personalLink(conn.apiBase, e.personal_token);
+                      const nudge = L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link });
+                      return (
+                        <li key={e.crew_member_id} data-state={e.seen_at ? "opened" : "unopened"}>
+                          <div className="waiting-who">
+                            <span className="name">{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
+                            <div className="waiting-state">{e.seen_at ? L("opened {time}, not confirmed", { time: time(e.seen_at) }) : L("not opened")}</div>
+                          </div>
+                          <div className="row-actions">
+                            {e.phone && <a className="quiet-link" href={`tel:${e.phone.replace(/[^+\d]/g, "")}`} aria-label={L("Call {name}", { name: e.name })}><Icon name="phone" />{L("Call")}</a>}
+                            {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />WhatsApp</a>}
+                            {number && shareable && <a className="quiet-link" href={smsUrl(number, nudge)} aria-label={L("SMS {name}", { name: e.name })}>SMS</a>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>}
+              {confirmed.length > 0 && (
+                <details className="others" id="confirmedList">
+                  <summary>{L("Confirmed ({n})", { n: confirmed.length })}</summary>
+                  <ul className="confirmed-list">
+                    {confirmed.map((e) => <li key={e.crew_member_id}>{e.name}<span className="meta"> · {e.department} · {time(e.confirmed_at!)}</span></li>)}
+                  </ul>
+                </details>
+              )}
+              <p className="hint">{L("Opening a link counts as opened, not confirmed; a copy shown offline counts as neither. Refreshes every minute.")}</p>
+            </div>
+          );
+        })()}
       <section className="block" aria-label={L("Shoot day")}>
         <h2>{L("Shoot day")}</h2>
         <div className="grid2">
@@ -528,27 +573,6 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         {planned && !readOnly && (
           <div className="inline">
             <button type="button" className="quiet danger" id="deleteDraftDay" disabled={busy} onClick={() => void deleteDraft()}>{L("Delete this planned day")}</button>
-          </div>
-        )}
-        {published && seen && (
-          <div className="seen" id="seenPanel">
-            <div className="label">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: seen.seen.length + seen.not_seen.length })}</div>
-            {seen.not_seen.length === 0
-              ? <p className="hint">{L("Everyone on the crew has opened it through their personal link.")}</p>
-              : <ul className="chips" id="notSeen" aria-label={L("Not opened yet")}>
-                  {seen.not_seen.map((e) => {
-                    const number = whatsappNumber(e.phone);
-                    const link = personalLink(conn.apiBase, e.personal_token);
-                    const nudge = `Did you see REV ${seen.revision_letter} for Day ${draft.day_number}? Crew call ${draft.general_crew_call || "—"}. Your call sheet: ${link}`;
-                    return (
-                      <li key={e.crew_member_id} className="chip">
-                        <span>{e.name}</span><span className="meta"> · {e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
-                        {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />{L("nudge")}</a>}
-                      </li>
-                    );
-                  })}
-                </ul>}
-            <p className="hint">{L("Counts a personal link opened live; a copy shown offline does not count. Refreshes every minute.")}</p>
           </div>
         )}
         {published && dayStatus !== "cancelled" && (

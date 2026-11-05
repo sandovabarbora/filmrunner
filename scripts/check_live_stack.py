@@ -94,6 +94,7 @@ def api_openapi_has_the_current_surface() -> tuple[bool, str]:
     wanted = {
         "/api/v1/public/crew/{token}/next",                       # FR-32 stable link
         "/api/v1/public/call-sheets/{call_sheet_id}/seen/{token}",  # FR-36 read receipts
+        "/api/v1/public/call-sheets/{call_sheet_id}/confirm/{token}",  # FR-202 confirmations
         "/api/v1/call-sheets/{call_sheet_id}/actuals",             # FR-65 actual times
         "/api/v1/productions/{production_id}/import/call-sheet-pdf",  # FR-57 PDF import
     }
