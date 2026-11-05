@@ -134,7 +134,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .hero-bg { position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100svh; overflow: hidden; }
 .hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; }
 .hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.72) 0, rgba(10, 14, 17, 0.28) 32%, rgba(10, 14, 17, 0.34) 48%, rgba(10, 14, 17, 0.94) 70%, var(--paper) 100%); }
-.hero-time { font-weight: 800; font-stretch: 125%; font-size: min(26vw, 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
+.hero-time { font-weight: 800; font-stretch: 125%; font-size: min(calc((100vw - 40px) / 3.2), 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
 .hero-sub { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 8px; }
 .you-call { font-size: 1.0625rem; font-weight: 600; }
 .you-call s { text-decoration-thickness: 2px; }
@@ -232,6 +232,9 @@ section.meta .weather { flex-basis: 100%; }
 
 /* Safety: framed, not shouted. */
 .safety { margin: 16px 0 0; }
+/* Already said in the frame above; paper still gets it in its own box. */
+.safety.in-hero { display: none; }
+@media print { .safety.in-hero { display: block; } }
 .safety p { margin: 6px 0 0; font-size: 0.9375rem; }
 
 /* Schedule as a set table: scene in mono, description wraps, pages right. */
@@ -396,6 +399,8 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 
   .schedule { margin-top: 10pt; }
   .schedule h2, .contacts h2 { font-size: 8pt; color: #444; }
+  .schedule h2 { break-after: avoid; page-break-after: avoid; }
+  .schedule thead { break-before: avoid; }
   thead { display: table-header-group; }
   thead th { font-size: 7.5pt; padding: 3pt 8pt 3pt 0; border-bottom: 1pt solid #000; }
   tbody td { padding: 4pt 8pt 4pt 0; font-size: 9.5pt; border-bottom: 0.5pt solid #bbb; }
@@ -419,12 +424,8 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   .print-only { display: block; page-break-inside: avoid; }
   .print-foot { display: block !important; margin-top: 12pt; padding-top: 4pt; border-top: 0.5pt solid #999; font-size: 8pt; color: #444; }
 
-  /* Fixed position repeats on every printed page in Chromium/WebKit; the page-number counter
-     above lives in the opposite corner so the two never overlap. */
-  .print-footer-bar {
-    display: flex; align-items: center; gap: 6pt;
-    position: fixed; left: 14mm; right: 34mm; bottom: 6mm;
-  }
+  /* At the end of the sheet, not fixed: a fixed bar overprints the content on every page, and Chromium clips one placed in the margin. */
+  .print-footer-bar { display: flex; align-items: center; gap: 6pt; margin-top: 8pt; break-inside: avoid; }
   .print-footer-bar svg { width: 13mm; height: 13mm; flex: none; }
   .print-footer-bar .url { font-size: 7.5pt; color: #444; word-break: break-all; }
 
@@ -477,3 +478,13 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .privacy-line { margin: 18px 0 0; font-size: 0.8125rem; color: var(--muted); }
 .privacy-line a { display: inline-block; padding-block: 13px; margin-block: -13px; color: inherit; }
 @media print { .privacy-line { display: none; } }
+
+/* Below the frame the sheet is a reference: titled sections on the ground, no boxes, so the first screen's type carries on down the page. */
+@media screen {
+  .sheet .safety, .sheet .location, .sheet .contacts .hod, .tomorrow { padding: 12px 0; border: 0; border-top: 1px solid var(--rule); background: none; }
+  .schedule h2, .contacts h2, .locations h2 { overflow-wrap: anywhere; margin: 0 0 10px; font-size: 1.75rem; line-height: 1.05; font-weight: 800; letter-spacing: -0.035em; color: var(--ink); }
+  .schedule, .contacts, .locations { margin-top: 34px; }
+  .sheet .safety .label { font-size: 1.125rem; font-weight: 800; letter-spacing: -0.02em; }
+  .sheet .contacts .hod .label { color: var(--ink-2); }
+  .location-head .name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+}
