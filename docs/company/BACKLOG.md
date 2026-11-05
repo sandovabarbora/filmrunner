@@ -13,6 +13,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the three metrics in `docs/pilot/pilot-plan.md` reported per shoot day (FR-96)
   - failure case: if the kill criteria trigger after week 1, no pilot is run and BRIEF.md is re-framed instead; if a pilot day breaks (sign-in, push, offline), the AD falls back to their usual PDF that same day and the break becomes the top backlog item
 
+## FR-208 · pm · Find out which part of a plan change actually hurts
+- state: ready
+- gated: yes
+- why: outreach named a sudden plan change as the biggest pain, but that sentence covers deciding, replanning, telling and paying, and FR-200 to FR-207 only address telling; the FR-3 script cannot tell them apart (`docs/research/plan-change-interviews.md`)
+- dod:
+  - the guide's decision table and the founder's prediction are written down before the first conversation
+  - five or six conversations held across the guide's role slots, one notes file each under `docs/research/interviews/`
+  - one paragraph in `DECISIONS.md` says which row of the table applied, with the split by role
+  - failure case: if fewer than five people agree to talk, widen through referrals and the channels in `discovery-plan.md` rather than deciding on fewer; if no pattern appears, run three more in the thinnest role
+
 ## FR-96 · tech-lead · Read-only pilot metrics report per shoot day
 - state: done
 - note: delivered 2026-09-25 (feat/fr-96-pilot-metrics): `python -m scripts.pilot_metrics <production_id>`; call times are Prague wall clock converted to UTC to match `now()`-stored timestamps; draft days skipped, cancelled days listed with their status; 4 tests in `backend/tests/test_pilot_metrics.py` (real Postgres), full backend suite 153/153
@@ -2143,3 +2153,34 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the Crew tab says suppliers belong there, so they get a link and a place on the list with no new concept
   - failure case: an actor not called today is told so, never shown the crew call, and is not chased; push stays crew-only, with no toggle that would fail on an actor's link
 
+## FR-206 · security · A read-only member gets no personal links; an actor not called cannot skew the count
+- state: done
+- gated: no
+- why: once a personal link can confirm a revision (FR-202), a viewer reading the crew list could confirm on someone's behalf and the AD would stop chasing a person who does not know
+- dod:
+  - crew list, cast list and the seen report return `personal_token` only to members who can edit the crew or publish; the editor hides what needs a link
+  - an actor with no call on a day cannot confirm it, and opening it does not add to the day's count
+  - failure case: a viewer still sees the names, departments and who has confirmed, just no link; the sweep test fails if a read route starts returning a token to them
+
+## FR-207 · qa · Findings from the independent review of FR-200 to FR-206
+- state: done
+- gated: no
+- why: a separate adversarial review of the stack found ways the same plan change could still mislead someone: on a sheet that exists to prevent exactly that
+- dod:
+  - a day change takes the locks before checking the revision, so racing a publish is refused instead of leaving a scene on both days (real two-connection test)
+  - every time on the wire says it is UTC: until now "issued 21:40" was shown for a revision out at 22:40 in Prague, on every sheet
+  - a personal block older than the sheet shows no time at all and says so; refreshes cannot overwrite a newer answer with a slower one
+  - a planned day leaves no trace on a crew's sheet; a removed personal note counts as a change; the page-load receipt and a quick confirm cannot collide
+  - failure case: confirming a cancelled day or as an actor not called reads as a failure to send, not as "a newer revision came out"
+
+## FR-209 · frontend · The first screen after a plan change answers when, where and what to do
+- state: done
+- gated: no
+- note: delivered 2026-11-05 (feat/fr-209-plan-change-first-screen). Critique snapshot scored the screens 21/40; the founder chose all five priority issues. Not done: the AD still appears on their own list, weather text stays English, no real crew has seen it.
+- why: the design critique found the confirm action below the fold, no place on the personal card, one identical change list for everyone, and margin asterisks that did not work
+- dod:
+  - a personal link shows call, place and confirm within the first 390x844 screen; only date, shooting call, safety and moved scenes stay open above the fold, the rest behind one tap; a printed sheet carries all of it
+  - asterisks are gone; the revision colour stays
+  - someone who already confirmed sees the list folded
+  - the AD sees how many have not opened and one next person to remind, because each message carries its own link
+  - failure case: the shared link folds nothing, since it has no personal block to lead with

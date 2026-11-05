@@ -184,3 +184,79 @@ def test_both_days_are_pushed_when_a_scene_moves(client: TestClient, monkeypatch
     bodies = [c.kwargs["data"] for c in mocked.call_args_list]
     assert len(bodies) == 2
     assert any("scene 42 moved to Day 8, 2026-11-11" in b for b in bodies) and any("scene 42 moved from Day 7, 2026-11-10" in b for b in bodies)
+
+
+def test_a_move_racing_a_publish_is_refused_not_merged() -> None:
+    """Failure case found in review: the check had to happen under the lock, or the scene ends up on both days."""
+    import threading
+
+    from sqlalchemy import text
+
+    from app.database import SessionLocal
+    from app.models.call_sheet import CallSheet
+    from app.models.production import Production
+    from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate, ScheduleItemCreate
+    from app.services.call_sheets import create_call_sheet, publish_revision
+    from app.services.replan import ReplanConflict, move_scene
+
+    setup = SessionLocal()
+    production = Production(name="Race")
+    setup.add(production)
+    setup.flush()
+    scene = ScheduleItemCreate(order_index=1, scene_number="42", int_ext="INT", day_night="DAY", set_description="Set", page_count_eighths=8)
+    source = create_call_sheet(setup, production.id, CallSheetCreate(shoot_date="2031-01-01", day_number=1, day_count=2, initial_revision=CallSheetRevisionCreate(schedule_items=[scene])))
+    target = create_call_sheet(setup, production.id, CallSheetCreate(shoot_date="2031-01-02", day_number=2, day_count=2, initial_revision=CallSheetRevisionCreate()))
+    source_id, target_id = source.id, target.id
+    setup.commit()
+    setup.close()
+
+    publisher = SessionLocal()
+    publisher.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": str(source_id)})
+    outcome: dict = {}
+
+    def mover() -> None:
+        db = SessionLocal()
+        try:
+            move_scene(db, db.get(CallSheet, source_id), db.get(CallSheet, target_id), "42", 0, "A", "A", "ad")
+            outcome["result"] = "moved"
+        except ReplanConflict as exc:
+            db.rollback()
+            outcome["result"] = str(exc)
+        finally:
+            db.close()
+
+    thread = threading.Thread(target=mover)
+    thread.start()
+    thread.join(0.5)  # the move is now waiting on the publisher's lock
+    assert thread.is_alive()
+    publish_revision(publisher, publisher.get(CallSheet, source_id), CallSheetRevisionCreate(schedule_items=[scene], general_crew_call="06:00"))
+    publisher.close()
+    thread.join(10)
+
+    assert "REV B" in outcome["result"]
+    check = SessionLocal()
+    assert [i.scene_number for i in check.get(CallSheet, source_id).current_revision.schedule_items] == ["42"]
+    assert check.get(CallSheet, target_id).current_revision.schedule_items == []
+    check.close()
+
+
+def test_a_move_onto_a_planned_day_leaves_no_trace_of_it_for_the_crew(client: TestClient) -> None:
+    pid = _production(client)
+    d7 = _day(client, pid, 7, "2026-11-10", [_scene("42", 1), _scene("43", 2)])
+    planned = _day(client, pid, 8, "2026-11-11", [], draft=True)
+    assert _move(client, d7, planned, "42").status_code == 200
+    public = client.get(f"/api/v1/public/call-sheets/{d7['id']}").json()
+    assert [(c["field"], c["after"], c["other_call_sheet_id"]) for c in public["changes"]] == [("scenes_removed", "42", None)]
+
+
+def test_moving_the_first_scene_refreshes_what_depends_on_where_the_day_starts(client: TestClient) -> None:
+    pid = _production(client)
+    a = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "A"}, headers=AUTH).json()["id"]
+    b = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "B"}, headers=AUTH).json()["id"]
+    d7 = _day(client, pid, 7, "2031-11-10", [{**_scene("42", 1), "location_id": a}, {**_scene("43", 2), "location_id": b}])
+    d8 = _day(client, pid, 8, "2031-11-11", [])
+    client.post(f"/api/v1/call-sheets/{d7['id']}/revisions", json={"sunrise": "07:00", "sunset": "16:00", "weather_forecast": "Rain", "schedule_items": [{**_scene("42", 1), "location_id": a}, {**_scene("43", 2), "location_id": b}]}, headers=AUTH)
+    assert _move(client, d7, d8, "42", letter="B").status_code == 200
+    rev = _read(client, d7)["current_revision"]
+    assert (rev["sunrise"], rev["weather_forecast"]) == (None, None)  # B has no coordinates here: blank, not A's old values
+

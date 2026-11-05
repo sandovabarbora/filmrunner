@@ -296,6 +296,14 @@ async def import_call_sheet_pdf(
 # --- Cast (FR-33): the people in front of the camera; per-day times live on the revision as cast calls.
 
 
+def _with_links_for(access: Access, people: list) -> list:
+    """FR-206: a personal link is a key to its owner's confirmation; a read-only member sees the crew, not their keys."""
+    if CREW_EDIT not in access.permissions:
+        for person in people:
+            person.personal_token = None
+    return people
+
+
 @router.post("/productions/{production_id}/cast-members", response_model=CastMemberRead, status_code=status.HTTP_201_CREATED)
 def create_cast_member(
     production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
@@ -310,8 +318,8 @@ def create_cast_member(
 
 
 @router.get("/productions/{production_id}/cast-members", response_model=list[CastMemberRead])
-def list_cast_members(production_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))) -> list[CastMember]:
-    return list(db.query(CastMember).filter(CastMember.production_id == production_id).all())
+def list_cast_members(production_id: uuid.UUID, db: Session = Depends(get_db), access: Access = Depends(require(PRODUCTION_READ))) -> list[CastMemberRead]:
+    return _with_links_for(access, [CastMemberRead.model_validate(a) for a in db.query(CastMember).filter(CastMember.production_id == production_id).all()])
 
 
 def _cast_member_of_production_or_404(db: Session, production_id: uuid.UUID, cast_member_id: uuid.UUID) -> CastMember:
@@ -386,8 +394,8 @@ def create_crew_member(
 
 
 @router.get("/productions/{production_id}/crew-members", response_model=list[CrewMemberRead])
-def list_crew_members(production_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))) -> list[CrewMember]:
-    return list(db.query(CrewMember).filter(CrewMember.production_id == production_id).all())
+def list_crew_members(production_id: uuid.UUID, db: Session = Depends(get_db), access: Access = Depends(require(PRODUCTION_READ))) -> list[CrewMemberRead]:
+    return _with_links_for(access, [CrewMemberRead.model_validate(m) for m in db.query(CrewMember).filter(CrewMember.production_id == production_id).all()])
 
 
 def _member_of_production_or_404(db: Session, production_id: uuid.UUID, member_id: uuid.UUID) -> CrewMember:

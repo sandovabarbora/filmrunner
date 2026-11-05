@@ -85,6 +85,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [shareText, setShareText] = useState<string | null>(null);
   const [nextDayClash, setNextDayClash] = useState(false);  // an unpublished new day already exists on this phone
   const [seen, setSeen] = useState<SeenReport | null>(null);  // FR-36: who opened the current revision
+  const [reminded, setReminded] = useState<Set<string>>(new Set());  // this sitting only: "{letter}:{id}", so a new revision starts over
   const [history, setHistory] = useState<HistoryEntry[]>([]);  // FR-50: who published each revision, when, what changed
   const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
   // FR-65: the production's numbers after the day; saved on their own, no revision, never on the crew's sheet.
@@ -395,10 +396,33 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           // Whoever has not even opened it is the one to chase first.
           const waiting = everyone.filter((e) => !e.confirmed_at).sort((a, b) => Number(!!a.seen_at) - Number(!!b.seen_at));
           const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const notOpened = waiting.filter((e) => !e.seen_at).length;
+          const linkOf = (e: typeof waiting[number]) => (e.personal_token ? personalLink(conn.apiBase, e.personal_token) : null);
+          const nudgeOf = (e: typeof waiting[number]) => {
+            const link = linkOf(e);
+            const castCall = e.is_cast ? draft.castCalls?.[e.crew_member_id] : undefined;
+            // Someone who will not open a link should still get their times from the message itself.
+            const castTimes = castCall ? [castCall.pickup && `${L("pickup")} ${castCall.pickup}`, castCall.call && `${L("call")} ${castCall.call}`, castCall.makeup && `M/H ${castCall.makeup}`, castCall.onSet && `${L("on set")} ${castCall.onSet}`].filter(Boolean).join(", ") : "";
+            return castCall
+              ? L("REV {rev} for Day {n} is out. Your times: {times}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, times: castTimes || "—", link: link ?? "" })
+              : L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link: link ?? "" });
+          };
+          // Every message carries that person's own link, so one bulk message cannot exist. The AD gets one next step instead, worst first.
+          const reachable = shareable ? waiting.filter((e) => whatsappNumber(e.phone) && linkOf(e)) : [];
+          const remindKey = (e: typeof waiting[number]) => `${seen.revision_letter}:${e.crew_member_id}`;
+          const toRemind = reachable.filter((e) => !reminded.has(remindKey(e)));
+          const next = toRemind[0];
           return (
             <div className="seen" id="seenPanel">
               <p className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</p>
+              {notOpened > 0 && <p className="seen-urgent" id="notOpenedCount">{L("Not opened: {n}", { n: notOpened })}</p>}
               <p className="hint">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}</p>
+              {next && (
+                <a className="button primary remind-next" id="remindNext" href={whatsappUrl(whatsappNumber(next.phone)!, nudgeOf(next))} target="_blank" rel="noreferrer" onClick={() => setReminded(new Set(reminded).add(remindKey(next)))}>
+                  <Icon name="chat" />{L("Remind {name} ({left} left)", { name: next.name, left: toRemind.length })}
+                </a>
+              )}
+              {!next && reachable.length > 0 && waiting.length > 0 && <p className="hint" id="remindedAll">{L("Reminded {n} in this sitting. Call whoever still does not answer.", { n: reachable.length })}</p>}
               {waiting.length === 0
                 ? <p className="hint">{L("Everyone on the crew has confirmed.")}</p>
                 // With a whole crew still to confirm the list would bury the form the AD also came for; a few names stay in view.
@@ -407,24 +431,21 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
                     {waiting.map((e) => {
                       const number = whatsappNumber(e.phone);
-                      const link = personalLink(conn.apiBase, e.personal_token);
-                      const castCall = e.is_cast ? draft.castCalls?.[e.crew_member_id] : undefined;
-                      // Someone who will not open a link should still get their times from the message itself.
-                      const castTimes = castCall ? [castCall.pickup && `${L("pickup")} ${castCall.pickup}`, castCall.call && `${L("call")} ${castCall.call}`, castCall.makeup && `M/H ${castCall.makeup}`, castCall.onSet && `${L("on set")} ${castCall.onSet}`].filter(Boolean).join(", ") : "";
-                      const nudge = castCall
-                        ? L("REV {rev} for Day {n} is out. Your times: {times}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, times: castTimes || "—", link })
-                        : L("REV {rev} for Day {n} is out, crew call {call}. Please read it and confirm: {link}", { rev: seen.revision_letter, n: draft.day_number, call: draft.general_crew_call || "—", link });
+                      const link = linkOf(e);
+                      const nudge = nudgeOf(e);
                       return (
                         <li key={e.crew_member_id} data-state={e.seen_at ? "opened" : "unopened"}>
-                          <div className="waiting-who">
+                          <details>
+                          <summary className="waiting-who">
                             <span className="name">{e.name}</span><span className="meta"> · {e.is_cast ? e.position : e.department}{e.subscribed ? ` ${L("· push on")}` : ""}</span>
                             <div className="waiting-state">{e.seen_at ? L("opened {time}, not confirmed", { time: time(e.seen_at) }) : L("not opened")}</div>
-                          </div>
+                          </summary>
                           <div className="row-actions">
                             {e.phone && <a className="quiet-link" href={`tel:${e.phone.replace(/[^+\d]/g, "")}`} aria-label={L("Call {name}", { name: e.name })}><Icon name="phone" />{L("Call")}</a>}
-                            {number && shareable && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />WhatsApp</a>}
-                            {number && shareable && <a className="quiet-link" href={smsUrl(number, nudge)} aria-label={L("SMS {name}", { name: e.name })}>SMS</a>}
+                            {number && shareable && link && <a className="quiet-link whatsapp" href={whatsappUrl(number, nudge)} target="_blank" rel="noreferrer" aria-label={L("Nudge {name} on WhatsApp", { name: e.name })}><Icon name="chat" />WhatsApp</a>}
+                            {number && shareable && link && <a className="quiet-link" href={smsUrl(number, nudge)} aria-label={L("SMS {name}", { name: e.name })}>SMS</a>}
                           </div>
+                          </details>
                         </li>
                       );
                     })}
@@ -779,13 +800,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             </div>
           </div>
         )}
-        {published && crew.length > 0 && (
+        {published && canPublish && crew.length > 0 && (
           <div className="share" id="personalLinks">
             <div className="label">{L("Personal links · one per person, for the whole shoot")}</div>
             <p className="hint">{L("Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.")}</p>
             <ul className="list">
               {crew.map((m) => {
-                const link = personalLink(conn.apiBase, m.personal_token);  // stable for the whole shoot (FR-32)
+                const link = personalLink(conn.apiBase, m.personal_token!);  // stable for the whole shoot (FR-32)
                 const number = whatsappNumber(m.contact.phone);
                 const message = () => personalMessageText(draft, m, locations, link);
                 return (

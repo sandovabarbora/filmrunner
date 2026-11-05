@@ -116,15 +116,21 @@ export function App() {
     // visibilitychange listener covers the common case of picking the phone
     // back up, without waiting out the full interval.
     if (mode.kind !== "share") return;
-    const refresh = () => {
-      void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
-      // The person's own call moves with the sheet: refreshing one without the other would show a new revision under an old call time.
-      if (mode.me) void loadPersonal(mode.api, mode.sheet, mode.me).then((p) => { if (p !== "invalid") setPersonal(p); });
+    let latest = 0;
+    const refresh = async () => {
+      const mine = ++latest;
+      // The block first: a block newer than the sheet for a moment is harmless, a new revision over an old call time is not.
+      if (mode.me) {
+        const p = await loadPersonal(mode.api, mode.sheet, mode.me);
+        if (mine !== latest) return;  // a slower answer from an earlier refresh must not overwrite a newer one
+        if (p !== "invalid") setPersonal(p);
+      }
+      if (mine === latest) await load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
     };
-    refreshRef.current = refresh;
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    refreshRef.current = () => void refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", onVisible);
-    const timer = window.setInterval(refresh, 60_000);
+    const timer = window.setInterval(() => void refresh(), 60_000);
     return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
   }, [mode]);
 
@@ -213,7 +219,7 @@ export function App() {
           shareUrl={shareUrl}
           lang={lang}
           dayHref={mode.kind === "share" ? (id) => `?api=${encodeURIComponent(mode.api)}&sheet=${id}${mode.me ? `&me=${encodeURIComponent(mode.me)}` : ""}` : undefined}
-          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && result.data.status !== "cancelled" && result.data.current_revision ? (
+          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && personal.works_today !== false && result.data.status !== "cancelled" && result.data.current_revision ? (
             <ConfirmRevision
               apiBase={mode.api}
               sheetId={mode.sheet}

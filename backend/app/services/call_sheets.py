@@ -13,6 +13,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.models.production import CastMember, CrewMember, Location
@@ -339,8 +340,8 @@ def personal_changes(before: CallSheetRevision | None, after: CallSheetRevision,
     if was_pickup != now_pickup:
         changes.append(RevisionChange(field="your_pickup", label="Your pickup", before=was_pickup, after=now_pickup or "none"))
     was_note, now_note = old.note if old else None, new.note if new else None
-    if was_note != now_note and now_note:
-        changes.append(RevisionChange(field="your_note", label="Note for you", before=None, after=now_note))
+    if was_note != now_note:
+        changes.append(RevisionChange(field="your_note", label="Note for you", before=was_note, after=now_note or "removed"))
     return changes
 
 
@@ -355,10 +356,11 @@ def _last_read_revision(db: Session, call_sheet: CallSheet, member: CrewMember |
     current_view = _view_of(db, current, member)
     if current_view is not None and current_view.confirmed_at is not None:
         return None
-    views = {v.revision_id: v for v in db.query(RevisionView).filter(_view_column(member) == member.id).all()}
+    day_revisions = [r.id for r in call_sheet.revisions]
+    views = {v.revision_id: v for v in db.query(RevisionView).filter(_view_column(member) == member.id, RevisionView.revision_id.in_(day_revisions)).all()}
     earlier = [r for r in call_sheet.revisions if r.revision_letter < current.revision_letter and r.id in views]
     confirmed = [r for r in earlier if views[r.id].confirmed_at is not None]
-    known = (confirmed or earlier)
+    known = confirmed or earlier
     if not known:
         return None
     baseline = max(known, key=lambda r: r.revision_letter)
@@ -381,10 +383,14 @@ def _view_of(db: Session, revision: CallSheetRevision, person: CrewMember | Cast
     return db.query(RevisionView).filter(RevisionView.revision_id == revision.id, _view_column(person) == person.id).first()
 
 
-def _new_view(revision: CallSheetRevision, person: CrewMember | CastMember) -> RevisionView:
-    if isinstance(person, CastMember):
-        return RevisionView(revision_id=revision.id, cast_member_id=person.id)
-    return RevisionView(revision_id=revision.id, crew_member_id=person.id)
+def _ensure_view(db: Session, revision: CallSheetRevision, person: CrewMember | CastMember) -> RevisionView:
+    """The person's receipt, created if needed. The page load's receipt and a quick tap on confirm arrive together,
+    so "look, then insert" would fail on the unique constraint; the insert itself has to tolerate losing that race."""
+    who = {"cast_member_id": person.id} if isinstance(person, CastMember) else {"crew_member_id": person.id}
+    db.execute(insert(RevisionView).values(id=uuid.uuid4(), revision_id=revision.id, **who).on_conflict_do_nothing())
+    view = _view_of(db, revision, person)
+    assert view is not None  # just inserted, or the row that won the race
+    return view
 
 
 def _build_cast_personal(db: Session, call_sheet: CallSheet, actor: CastMember) -> PersonalSheet:
@@ -459,6 +465,7 @@ def build_personal(db: Session, call_sheet: CallSheet, token: str) -> PersonalSh
         note=entry.note if entry else None,
         call_before=was_call if before is not None and was_call != call else None,
         pickup_before=was_pickup if before is not None and was_pickup != pickup else None,
+        note_changed=before is not None and (before_entry.note if before_entry else None) != (entry.note if entry else None),
         revision_letter=revision.revision_letter if revision is not None else None,
         confirmed_at=view.confirmed_at if view is not None else None,
         since_letter=caught_up_from.revision_letter if caught_up_from is not None else None,
@@ -548,8 +555,9 @@ def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> li
     # A recorded move says where the scene went; it is not also a scene that appeared or vanished.
     # Every revision since `before`, not only the last: someone catching up across several must still see each move.
     between = [r for r in after.call_sheet.revisions if before.revision_letter < r.revision_letter <= after.revision_letter]
-    moves_out = [m for r in between for m in r.moves_out]
-    moves_in = [m for r in between for m in r.moves_in]
+    # A planned day does not exist for the crew: no link to it and no trace of it. To them the scene simply left or arrived.
+    moves_out = [m for r in between for m in r.moves_out if m.to_revision.call_sheet.status != CallSheetStatus.DRAFT]
+    moves_in = [m for r in between for m in r.moves_in if m.from_revision.call_sheet.status != CallSheetStatus.DRAFT]
     moved_out = {m.scene_number for m in moves_out}
     moved_in = {m.scene_number for m in moves_in}
     for move in moves_out:
@@ -754,13 +762,20 @@ def record_seen(db: Session, call_sheet: CallSheet, token: str) -> bool:
     person = _person_on_production(db, call_sheet.production_id, token)
     if revision is None or person is None:
         return False
-    view = _view_of(db, revision, person)
-    if view is None:
-        db.add(_new_view(revision, person))
-    else:
-        view.last_seen_at = datetime.now(timezone.utc)
+    if not _is_called(revision, person):
+        return True  # a real link, but counting it would push the AD's "opened" past the number of people on the list
+    _ensure_view(db, revision, person).last_seen_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     return True
+
+
+class NotCalledToday(ValueError):
+    """An actor with no call on this day has nothing to confirm, and is not on the AD's list for it."""
+
+
+def _is_called(revision: CallSheetRevision, person: CrewMember | CastMember) -> bool:
+    """Crew are on every day's list; an actor only on the days they are called."""
+    return not isinstance(person, CastMember) or any(e.cast_member_id == person.id for e in revision.cast_calls)
 
 
 class RevisionNoLongerCurrent(ValueError):
@@ -779,10 +794,9 @@ def record_confirmed(db: Session, call_sheet: CallSheet, token: str, revision_le
         return None
     if revision.revision_letter != revision_letter:
         raise RevisionNoLongerCurrent(f"REV {revision_letter} has been replaced by REV {revision.revision_letter}")
-    view = _view_of(db, revision, person)
-    if view is None:
-        view = _new_view(revision, person)
-        db.add(view)
+    if not _is_called(revision, person):
+        raise NotCalledToday("You are not called on this day; there is nothing to confirm")
+    view = _ensure_view(db, revision, person)
     if view.confirmed_at is None:
         view.confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()

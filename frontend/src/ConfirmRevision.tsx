@@ -28,7 +28,7 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
     return <p className="confirm-done" id="confirmDone"><Icon name="check" />{L("confirm.done", { rev: letter, time })}</p>;
   }
   return (
-    <div className="confirm" id="confirm">
+    <div className={`confirm${offline ? " offline" : ""}`} id="confirm">
       <button type="button" id="confirmBtn" disabled={busy || offline} onClick={() => void confirm()}>
         {busy ? L("confirm.busy") : L("confirm.action", { rev: letter })}
       </button>

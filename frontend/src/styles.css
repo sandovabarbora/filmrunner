@@ -27,7 +27,7 @@
   --control-sm: 36px;    /* row actions in dense lists */
   --radius: 4px;
   --frame: 1.5px solid var(--rule-strong);
-  --fs-label: 0.6875rem;
+  --fs-label: 0.75rem;
   --fs-small: 0.8125rem;
   --fs-body: 0.9375rem;
 }
@@ -77,7 +77,8 @@ a.button.primary { background: var(--ink); color: var(--paper); }
 button.quiet, .quiet-link { background: transparent; color: var(--ink); border-color: var(--rule); }
 button.secondary:hover:not(:disabled), button.quiet:hover:not(:disabled), .quiet-link:hover, a.button:hover { background: var(--paper-2); }
 button.quiet.danger { color: var(--err-ink); }
-button:disabled { opacity: 0.45; cursor: default; }
+/* A disabled control still has to be readable: no opacity, muted on the shaded panel is 4.6:1. */
+button:disabled { background: var(--paper-2); color: var(--muted); border-color: var(--rule); cursor: default; }
 .row-actions button, .row-actions .quiet-link, .chip .quiet-link, .item-actions button {
   min-height: var(--control-sm); padding: 0 10px; font-size: var(--fs-small);
 }
@@ -94,7 +95,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 
 /* Masthead: what this is, at a glance. */
 .masthead {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px;
   padding: 14px 0 10px;
   border-bottom: 2px solid var(--rule-strong);
 }
@@ -106,7 +107,8 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 
 /* Freshness strip: honest, quiet, always visible when it matters. */
 .status { display: none; margin: 10px 0 0; padding: 8px 12px; font-size: var(--fs-small); border-radius: var(--radius); }
-.status.online { display: block; color: var(--ok-ink); background: #e5f0e8; }
+/* The normal state stays a quiet line: only a problem earns a band across the top of the sheet. */
+.status.online { display: block; margin-top: 6px; padding: 0; color: var(--ok-ink); }
 .status.offline { display: block; color: var(--warn-ink); background: var(--warn-bg); }
 .status.error { display: block; color: var(--err-ink); background: var(--err-bg); }
 
@@ -131,10 +133,11 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .sheet.visible { display: block; animation: settle 220ms var(--ease) both; }
 @keyframes settle { from { opacity: 0.6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-.sheet-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 0 6px; }
+.sheet-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 0 6px; }
+.sheet-header > :first-child { flex: 1 1 10rem; min-width: 0; }
 .production { margin: 0; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
 .day { margin: 4px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
-.day .date { color: var(--muted); }
+.day .date { display: block; color: var(--muted); }
 .rev-badge {
   flex: none; display: inline-block; white-space: nowrap; padding: 5px 10px; border: var(--frame); border-radius: var(--radius);
   background: var(--rev); font-family: var(--mono); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em;
@@ -162,14 +165,17 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .rev-changes .data .v { font-family: var(--mono); font-size: 1.0625rem; }
 .rev-changes a { color: inherit; }
 .rev-changes .also { font-size: var(--fs-small); }
-.rev-legend { margin: 10px 0 0; font-size: var(--fs-small); }
-.rev-mark { margin-left: 2px; font-family: var(--mono); font-weight: 700; color: var(--ink); }
+.rev-toggle, .rev-toggle:hover:not(:disabled) { width: 100%; justify-content: flex-start; margin-top: 8px; padding: 0; border: 0; border-top: 1px solid rgba(23, 21, 15, 0.25); border-radius: 0; background: none; color: var(--ink); }
+.rev-changes[hidden] { display: none; }
+@media print { .rev-toggle { display: none; } .rev-changes[hidden] { display: block; } }
 
-/* FR-202: the crew member's own word that they know. One full-width action, right after what it confirms. */
-.confirm { margin: 10px 0 0; }
+/* FR-202: the crew member's own word that they know. It follows what it confirms, and rests at the bottom of the screen until
+   the reader reaches that point: under the thumb from the first second, without inviting a confirmation above the changes. */
+.confirm { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: var(--paper); }
+.confirm.offline { position: static; }
 .confirm button { width: 100%; min-height: 52px; font-size: 1rem; }
 .confirm-note { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
-.confirm-done { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: var(--fs-body); font-weight: 600; color: var(--ok-ink); }
+.confirm-done { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 12px 14px; border: 1.5px solid var(--ok-ink); border-radius: var(--radius); background: #e5f0e8; font-size: 1rem; font-weight: 600; color: var(--ok-ink); }
 @media print { .confirm, .confirm-done { display: none; } }
 
 /* FR-16: opt in to push notifications from a personal link. */
@@ -184,7 +190,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you .who { text-align: right; display: flex; flex-direction: column; }
 .you .name { font-weight: 600; }
 .you .role { font-size: 0.8125rem; color: var(--muted); }
-.you .value { font-family: var(--mono); font-weight: 700; font-size: 3.25rem; letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
+.you .value { font-family: var(--mono); font-weight: 700; font-size: min(3.25rem, 19vw); letter-spacing: -0.02em; line-height: 1; margin-top: 6px; }
 .you-call { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 /* The old time sits beside the new one, large enough to read at arm's length; struck, so it can never be mistaken for it. */
 .you-off { margin: 8px 0 0; font-size: 1.125rem; font-weight: 600; }
@@ -196,18 +202,27 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you-extra .k { color: var(--muted); }
 .you-extra .v { font-family: var(--mono); }
 .you-extra .note { font-style: italic; }
+.you-where { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.you-where .place { margin-top: 2px; font-size: 1.125rem; line-height: 1.25; overflow-wrap: anywhere; }
+.you .you-where .place .was { margin-top: 2px; font-size: var(--fs-small); color: var(--ink-2); }
+.you .you-where .place .was s { font-family: inherit; font-weight: 400; }
+.you-where .address-link, .location .address a { display: inline-flex; align-items: center; min-height: var(--control); }
+.you-where .more-places { font-size: var(--fs-small); color: var(--ink-2); }
 .print-only { display: none; }
 .pcalls h2 { margin: 12pt 0 4pt; font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; }
 .others summary { cursor: pointer; padding: 10px 0; font-size: 0.875rem; color: var(--ink-2); }
 
 /* Calls: the two numbers a crew member wakes up for. */
 .calls {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr)); gap: 12px 16px;
   margin: 14px 0 0; padding: 14px 0; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule);
 }
 .call .value { font-family: var(--mono); font-weight: 700; letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
-.call.crew .value { font-size: 3.25rem; }
+.call.crew .value { font-size: min(3.25rem, 19vw); }
 .call.shoot .value { font-size: 2rem; margin-top: 12px; }
+/* Under a personal block the crew call is someone else's number: it must not look like this person's. */
+.you ~ .calls .call.crew .value { font-size: 2rem; }
+.you ~ .calls .call.shoot .value { margin-top: 4px; }
 
 /* Light and weather on one line. */
 section.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; color: var(--ink-2); }
@@ -222,7 +237,7 @@ section.meta .weather { flex-basis: 100%; }
 /* Schedule as a set table: scene in mono, description wraps, pages right. */
 .schedule { margin-top: 22px; }
 table { width: 100%; border-collapse: collapse; }
-thead th { text-align: left; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--rule-strong); white-space: nowrap; }
+thead th { text-align: left; font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--rule-strong); white-space: nowrap; }
 thead th:last-child { text-align: right; padding-right: 0; }
 tbody td { padding: 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; font-size: 0.9375rem; }
 td.n { width: 2ch; color: var(--muted); font-family: var(--mono); font-size: 0.8125rem; padding-right: 8px; }
@@ -308,7 +323,7 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .hospital .k { color: var(--muted); }
 
 .cached-at { margin-top: 12px; font-size: 0.8125rem; color: var(--muted); }
-.actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; }
 .actions button { flex: none; }
 .hint { font-size: 0.8125rem; color: var(--muted); }
 
@@ -433,7 +448,7 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .location .line { margin-top: 4px; font-size: 0.875rem; color: var(--ink-2); }
 .location .line .k { color: var(--muted); }
 .schedule .set .loc { color: var(--muted); font-size: 0.8125rem; }
-@media print { .location { break-inside: avoid; } .location .address a { text-decoration: none; } }
+@media print { .location { break-inside: avoid; } .location .address a { min-height: 0; text-decoration: none; } }
 
 /* FR-42: tomorrow at a glance, under the sheet; prints too. */
 .tomorrow { margin: 14px 0 0; font-size: var(--fs-body); }
@@ -445,11 +460,12 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 
 /* FR-48: language toggle in the masthead. */
 .masthead .sub { flex: 1; }
-.lang-toggle { all: unset; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: var(--fs-small); }
+/* Text-sized links with a full thumb's reach; the negative margin keeps the line where the text sits. */
+.lang-toggle { all: unset; display: inline-block; padding-block: 13px; margin-block: -13px; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: var(--fs-small); }
 .lang-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media print { .lang-toggle { display: none; } }
 
 /* FR-59: one tap to "what is stored about me". */
 .privacy-line { margin: 18px 0 0; font-size: 0.8125rem; color: var(--muted); }
-.privacy-line a { color: inherit; }
+.privacy-line a { display: inline-block; padding-block: 13px; margin-block: -13px; color: inherit; }
 @media print { .privacy-line { display: none; } }
