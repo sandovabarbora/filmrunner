@@ -145,7 +145,7 @@ def test_every_field_of_a_revision_shows_up_in_the_diff(client: TestClient) -> N
         "crew_pickup": {"crew_calls": [{**crew, "pickup_time": "03:30"}]}, "crew_note": {"crew_calls": [{**crew, "note": "Rig"}]},
     }
     from app.schemas.call_sheet import CallSheetRevisionCreate, CastCallEntryCreate, CrewCallEntryCreate, ScheduleItemCreate
-    assert set(CallSheetRevisionCreate.model_fields) == {"general_crew_call", "shooting_call", "sunrise", "sunset", "weather_forecast", "safety_notes", "created_by", "head_of_day_crew_member_id", "schedule_items", "cast_calls", "crew_calls"}
+    assert set(CallSheetRevisionCreate.model_fields) == {"general_crew_call", "shooting_call", "sunrise", "sunset", "weather_forecast", "safety_notes", "created_by", "expected_revision_letter", "head_of_day_crew_member_id", "schedule_items", "cast_calls", "crew_calls"}
     assert set(ScheduleItemCreate.model_fields) == {"order_index", "scene_number", "int_ext", "day_night", "set_description", "location_id", "page_count_eighths"}
     assert set(CastCallEntryCreate.model_fields) == {"cast_member_id", "status_code", "pickup_time", "call_time", "makeup_hair_time", "on_set_time"}
     assert set(CrewCallEntryCreate.model_fields) == {"crew_member_id", "call_time", "pickup_time", "note"}

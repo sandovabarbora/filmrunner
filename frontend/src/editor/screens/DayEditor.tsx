@@ -33,6 +33,20 @@ function revisionPayload(d: Draft): RevisionCreate {
   };
 }
 
+/** What a draft held that the newer revision does not, so an edit someone overtook is said out loud instead of vanishing. */
+function unpublishedEdits(mine: Draft, server: Draft, L: (text: string) => string): string[] {
+  const fields: [string, string, string][] = [
+    [L("Crew call"), mine.general_crew_call, server.general_crew_call],
+    [L("Shooting call"), mine.shooting_call, server.shooting_call],
+    [L("Weather"), mine.weather_forecast, server.weather_forecast],
+    [L("Safety notes"), mine.safety_notes, server.safety_notes],
+  ];
+  const edits = fields.filter(([, a, b]) => a.trim() !== b.trim()).map(([label, a]) => `${label} ${a.trim() || "–"}`);
+  if (JSON.stringify(mine.items) !== JSON.stringify(server.items)) edits.push(L("the schedule"));
+  if (JSON.stringify(mine.crewCalls) !== JSON.stringify(server.crewCalls) || JSON.stringify(mine.castCalls) !== JSON.stringify(server.castCalls)) edits.push(L("personal calls"));
+  return edits;
+}
+
 /** The server's current revision, poured into an editable draft (server is the source of truth once published). */
 function draftFromServer(productionId: string, productionName: string | null, sheet: CallSheetCreated): Draft {
   const rev = sheet.current_revision;
@@ -122,7 +136,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           const fromServer = draftFromServer(productionId, productionName, sheet);
           // Keep unpublished local edits if they are newer than the last publish.
           const keepLocal = local && local.dirtySincePublish && local.lastPublishedLetter === fromServer.lastPublishedLetter;
-          if (!cancelled) { setDraft(keepLocal ? local : fromServer); setReadOnly(false); }
+          const overtaken = local && local.dirtySincePublish && local.lastPublishedLetter && !keepLocal ? unpublishedEdits(local, fromServer, L) : [];
+          if (!cancelled) {
+            setDraft(keepLocal ? local : fromServer); setReadOnly(false);
+            if (overtaken.length) setNotice({ kind: "warn", text: L("REV {rev} came out while you were editing, so your changes did not go out: {edits}. Make them again if they still apply.", { rev: fromServer.lastPublishedLetter ?? "", edits: overtaken.join("; ") }) });
+          }
         } catch (err) {
           if (cancelled) return;
           if (local) { setDraft(local); setReadOnly(true); setNotice({ kind: "warn", text: L("Offline: showing the last copy on this phone. Reconnect to publish.") }); }
@@ -250,12 +268,14 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: letter }) });
         window.location.hash = href({ screen: "day", productionId, callSheetId: created.id });
       } else {
-        const rev = await api.publishRevision(conn, draft.callSheetId, revisionPayload(draft));
+        const rev = await api.publishRevision(conn, draft.callSheetId, { ...revisionPayload(draft), expected_revision_letter: draft.lastPublishedLetter });
         update({ lastPublishedLetter: rev.revision_letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
         setDayStatus("published");  // publishing puts a cancelled day back on, and makes a planned day real
         setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: rev.revision_letter }) });
       }
     } catch (err) {
+      // A newer revision exists: show it, and the load below says what of this draft did not go out.
+      if (err instanceof ApiError && err.status === 409) setReloadTick((t) => t + 1);
       setNotice(err instanceof ApiError && err.status === 0
         ? { kind: "warn", text: L("No connection. Your draft is safe on this phone; publish when you are back in signal.") }
         : noticeFromError(err, L("Publish failed")));

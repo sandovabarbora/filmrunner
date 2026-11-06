@@ -84,6 +84,8 @@ class CallSheetRevisionCreate(BaseModel):
     weather_forecast: str | None = None
     safety_notes: str | None = None
     created_by: str | None = None
+    # The revision this edit was made from; a different current one means someone else published in between.
+    expected_revision_letter: str | None = Field(default=None, max_length=1)
     head_of_day_crew_member_id: uuid.UUID | None = None
     schedule_items: list[ScheduleItemCreate] = Field(default_factory=list)
     # None = copy the previous revision's cast calls forward (same rule as crew_calls); [] = clear them.

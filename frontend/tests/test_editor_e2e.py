@@ -6,7 +6,9 @@ connect, create a production, fill a day, publish A, change the crew
 call, publish B, open the crew link and see REV B.
 """
 
+import json
 import re
+import urllib.request
 import uuid
 
 from playwright.sync_api import Page, expect
@@ -1216,3 +1218,32 @@ def test_a_day_with_unpublished_edits_cannot_be_moved(page: Page, frontend_url: 
     page.fill("#general_crew_call", "06:00")
     expect(page.locator("#moveDay")).to_be_disabled()
 
+
+
+def test_a_publish_overtaken_by_another_editor_says_so_and_keeps_the_newer_revision(page: Page, frontend_url: str, api_url: str) -> None:
+    """FR-219: this editor opened REV A, someone else published REV B; publishing here must not undo it."""
+    def call(path: str, body: dict | None = None) -> dict:
+        request = urllib.request.Request(
+            f"{api_url}/api/v1{path}", data=json.dumps(body).encode() if body is not None else None,
+            headers={"authorization": f"Bearer {E2E_TOKEN}", "content-type": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return json.loads(response.read())
+
+    production = call("/productions", {"name": f"E2E {uuid.uuid4().hex[:6]}", "status": "prep"})
+    sheet = call(f"/productions/{production['id']}/call-sheets", {
+        "shoot_date": "2031-03-10", "day_number": 1, "day_count": 5, "initial_revision": {"general_crew_call": "06:30", "schedule_items": []},
+    })
+    _connect(page, frontend_url, api_url)
+    page.goto(f"{frontend_url}/editor.html#/p/{production['id']}/day/{sheet['id']}")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#safety_notes", "Mokrá podlaha")
+
+    call(f"/call-sheets/{sheet['id']}/revisions", {"general_crew_call": "04:44", "schedule_items": []})
+    page.click("#publish")
+
+    expect(page.locator("#notice")).to_contain_text("REV B", timeout=10_000)
+    expect(page.locator("#notice")).to_contain_text("Mokrá podlaha")
+    expect(page.locator("#general_crew_call")).to_have_value("04:44")
+    current = call(f"/call-sheets/{sheet['id']}")["current_revision"]
+    assert current["revision_letter"] == "B" and current["general_crew_call"] == "04:44"

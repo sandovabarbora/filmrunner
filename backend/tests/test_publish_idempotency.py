@@ -10,10 +10,12 @@ overlapping requests from a flaky client actually would.
 """
 
 import threading
+import time
 import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.models.call_sheet import CallSheet
@@ -21,7 +23,7 @@ from app.models.production import Contact, CrewMember, Production
 from app.models.push import PushSubscription
 from app.schemas.call_sheet import CallSheetRevisionCreate
 from app.services import push as push_service
-from app.services.call_sheets import create_call_sheet, publish_revision
+from app.services.call_sheets import StaleRevision, create_call_sheet, publish_revision
 from app.services.notifications import notify_subscribers
 
 from .test_call_sheets import _minimal_call_sheet_payload
@@ -168,3 +170,59 @@ def test_sequential_publishes_are_unaffected_by_the_lock(real_call_sheet):
         assert revision_c.revision_letter == "C"
     finally:
         db.close()
+
+
+def _publish_while_another_holds_the_lock(call_sheet_id, winner, loser):
+    """Deterministic race: the loser is parked on the advisory lock until the winner commits."""
+    holder = SessionLocal()
+    outcome = {}
+
+    def _lose() -> None:
+        db = SessionLocal()
+        try:
+            outcome["result"] = publish_revision(db, db.get(CallSheet, call_sheet_id), loser)
+        except Exception as exc:  # noqa: BLE001 - the test asserts on what was raised
+            db.rollback()
+            outcome["error"] = exc
+        finally:
+            db.close()
+
+    try:
+        sheet = holder.get(CallSheet, call_sheet_id)
+        holder.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": str(call_sheet_id)})
+        thread = threading.Thread(target=_lose)
+        thread.start()
+        time.sleep(0.5)
+        publish_revision(holder, sheet, winner)
+    finally:
+        holder.close()
+    thread.join(timeout=10)
+    assert not thread.is_alive(), "the waiting publish hung"
+    return outcome
+
+
+def _revision_letters_and_calls(call_sheet_id):
+    db = SessionLocal()
+    try:
+        sheet = db.get(CallSheet, call_sheet_id)
+        return [(r.revision_letter, r.general_crew_call) for r in sorted(sheet.revisions, key=lambda r: r.revision_letter)]
+    finally:
+        db.close()
+
+
+def test_a_different_publish_that_lost_the_race_is_refused_and_never_reported_as_published(real_call_sheet):
+    outcome = _publish_while_another_holds_the_lock(
+        real_call_sheet, CallSheetRevisionCreate(general_crew_call="05:15"), CallSheetRevisionCreate(general_crew_call="09:45")
+    )
+    assert isinstance(outcome.get("error"), StaleRevision), outcome
+    assert "REV B" in str(outcome["error"])
+    letters = _revision_letters_and_calls(real_call_sheet)
+    assert letters[-1] == ("B", "05:15") and len(letters) == 2
+
+
+def test_the_same_publish_that_lost_the_race_collapses_into_the_winner(real_call_sheet):
+    same = CallSheetRevisionCreate(general_crew_call="05:15")
+    outcome = _publish_while_another_holds_the_lock(real_call_sheet, same, same)
+    revision, is_new = outcome["result"]
+    assert revision.revision_letter == "B" and is_new is False
+    assert len(_revision_letters_and_calls(real_call_sheet)) == 2
