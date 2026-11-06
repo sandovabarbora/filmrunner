@@ -92,7 +92,8 @@ button.icon-only { padding: 0; min-width: var(--control); }
 /* Text links that sit inside a sentence stay text. */
 button.linklike { all: unset; cursor: pointer; text-decoration: underline; color: var(--muted); font-size: inherit; }
 
-.wrap { max-width: 40rem; margin: 0 auto; padding: 0 20px 56px; }
+/* viewport-fit=cover hands the notch to the page, so the page keeps its content out of it. */
+.wrap { max-width: 40rem; margin: 0 auto; padding: env(safe-area-inset-top) max(20px, env(safe-area-inset-right)) 56px max(20px, env(safe-area-inset-left)); }
 
 /* Masthead: what this is, at a glance. */
 .masthead {
@@ -108,6 +109,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .status.online { display: block; margin-top: 0; padding: 0; color: var(--ok-ink); }
 .status.offline { display: block; color: var(--warn-ink); background: var(--warn-bg); }
 .status.error { display: block; color: var(--err-ink); background: var(--err-bg); }
+.status-line { margin: 0 0 8px; }
 
 /* Dev lookup, only with ?dev=1. */
 .lookup { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 16px 0; }
@@ -124,6 +126,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .skeleton i:first-child { width: 55%; height: 44px; }
 .skeleton i:nth-child(2) { width: 80%; }
 .skeleton i:last-child { width: 65%; }
+.slow-load { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
 
 /* The sheet itself. */
 .sheet { display: none; }
@@ -216,7 +219,8 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .contacts .hod.mine { border-width: 1px; }
 .print-only { display: none; }
 .pcalls h2 { margin: 12pt 0 4pt; font-size: 8pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; }
-.others summary { cursor: pointer; padding: 10px 0; font-size: 0.875rem; color: var(--ink-2); }
+/* 44 px to tap; the negative margin keeps the text where 10 px of padding put it. */
+.others summary { cursor: pointer; padding: 12px 0; margin-block: -2px; font-size: 0.875rem; color: var(--ink-2); }
 
 /* Calls: the two numbers a crew member wakes up for. */
 .calls {
@@ -440,8 +444,10 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .print-meta, .print-foot { display: none; }
 
 /* FR-32: one link for the whole shoot — the other days under the sheet. */
-.other-days { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin: 14px 0 0; font-size: 0.8125rem; }
-.other-days .day { color: var(--ink-2); }
+/* Each link is 44 px to tap, and the margins give the padding back so one row sits where it did. Rows that wrap stand 44 px apart: closer, and their targets would overlap.
+   The bottom gives back less than the link took, for the same reason: the privacy link below reaches up too. */
+.other-days { display: flex; flex-wrap: wrap; gap: 0 12px; align-items: baseline; margin: 2px 0 -5px; font-size: 0.8125rem; }
+.other-days .day { color: var(--ink-2); padding-block: calc((var(--control) + 1px - 1.45em) / 2); }
 .other-days .day.on { color: var(--ink); font-weight: 700; }
 @media print { .other-days { display: none; } }
 
@@ -467,6 +473,7 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .tomorrow { margin: 14px 0 0; font-size: var(--fs-body); }
 .tomorrow .k { margin-right: 6px; }
 .tomorrow a { color: var(--ink); }
+@media screen { .tomorrow a { position: relative; display: inline-block; padding-block: calc((var(--control) + 1px - 1.45em) / 2); margin-block: calc((1.45em - var(--control) - 1px) / 2); } }
 .tomorrow b { font-family: var(--mono); }
 .tomorrow[data-kind="cancelled"] strong { color: var(--err-ink); letter-spacing: 0.06em; }
 @media print { .tomorrow { border-color: #000; } }
@@ -494,7 +501,7 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 }
 
 /* The test environment announces itself on every screen, in a colour nothing real uses at this size. */
-.sandbox-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 2px 12px; padding: 6px 0; background: var(--rev-d); box-shadow: 0 0 0 100vmax var(--rev-d); clip-path: inset(0 -100vmax); color: var(--on-rev); font-size: var(--fs-small); }
+.sandbox-bar { position: sticky; top: env(safe-area-inset-top); z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 2px 12px; padding: 6px 0; background: var(--rev-d); box-shadow: 0 0 0 100vmax var(--rev-d); clip-path: inset(0 -100vmax); color: var(--on-rev); font-size: var(--fs-small); }
 .sandbox-bar b { font-weight: 800; }
 .sandbox-actions { display: flex; align-items: center; gap: 12px; }
 .sandbox-bar a { display: inline-block; padding-block: 4px; color: inherit; font-weight: 600; }
