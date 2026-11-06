@@ -2271,3 +2271,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - five taps followed by a pause still open admin access
   - failure case: a tap on the name in the editor still only goes home, and fewer than five taps do nothing
 
+## FR-217 · frontend · Say what we want from a person, and turn on notifications with the same tap
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-217-clear-ask-and-push). The founder found the background distracting and asked for notifications to come with confirming. Push stays crew-only, and an iPhone gets it only from a page added to the home screen, so that case shows instructions. Not tried on a real phone.
+- why: the first screen did not say what was being asked, the picture ran behind the text, and notifications were an extra opt-in few people would find
+- dod:
+  - the still sits dimmed and slightly blurred behind the crew sheet, chosen by the founder over a picture in a frame
+  - one sentence above the button says what is asked and why
+  - tapping confirm also asks for notification permission; the outcome is stated after confirming
+  - failure case: refusing or failing notifications never blocks or undoes the confirmation, and it can be tried again
+

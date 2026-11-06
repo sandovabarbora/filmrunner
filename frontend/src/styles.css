@@ -132,12 +132,9 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 /* The first screen: the still runs behind everything up to the bottom of the viewport, and its grade falls to the page ground so any overflow lands on solid colour. */
 .hero { display: flex; flex-direction: column; min-height: calc(100svh - 158px); }
 .hero-bg { position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100svh; overflow: hidden; }
-.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; }
-.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.72) 0, rgba(10, 14, 17, 0.28) 32%, rgba(10, 14, 17, 0.34) 48%, rgba(10, 14, 17, 0.94) 70%, var(--paper) 100%); }
+.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; filter: brightness(0.45) saturate(0.6) blur(1.5px); }
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.55) 0, rgba(10, 14, 17, 0.45) 45%, rgba(10, 14, 17, 0.96) 72%, var(--paper) 100%); }
 .hero-time { font-weight: 800; font-stretch: 125%; font-size: min(calc((100vw - 40px) / 3.2), 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
-/* Small type crosses the bright part of the still, so it carries its own shade. */
-.you .who, .you-extra, .hero-sub, .sheet-header, .you-where .was, .you-where .more-places { text-shadow: 0 1px 8px rgba(10, 14, 17, 0.95); }
-.hero-sub .rev-badge { text-shadow: none; }
 .hero-sub { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 8px; }
 .you-call { font-size: 1.0625rem; font-weight: 600; }
 .you-call s { text-decoration-thickness: 2px; }
@@ -149,11 +146,11 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you-extra .v { font-weight: 700; color: var(--ink); }
 /* Viewfinder corners: the frame the still sits in. */
 .frame { position: relative; flex: 1 0 40px; margin: 12px 0; }
-.frame i { position: absolute; width: 18px; height: 18px; border: 0 solid var(--ink); }
-.frame i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
-.frame i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
-.frame i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
-.frame i:nth-child(4) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
+.frame i { position: absolute; z-index: 1; width: 18px; height: 18px; border: 0 solid var(--ink); }
+.frame i:nth-of-type(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
+.frame i:nth-of-type(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
+.frame i:nth-of-type(3) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
+.frame i:nth-of-type(4) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
 .sheet-header { display: block; }
 .production { display: inline; margin: 0; font-size: var(--fs-small); font-weight: 700; }
 .day { display: inline; margin: 0 0 0 6px; font-size: var(--fs-small); color: var(--ink-2); }
@@ -201,8 +198,12 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .confirm.offline { position: static; }
 .confirm button, .confirm button:hover:not(:disabled) { width: 100%; min-height: 56px; white-space: normal; border: 0; background: var(--rev); color: var(--on-rev); font-size: 1.125rem; font-weight: 800; letter-spacing: -0.015em; }
 .confirm button:disabled { background: var(--paper-2); color: var(--muted); }
+.confirm-ask { margin: 0 0 8px; font-size: 1.0625rem; line-height: 1.25; font-weight: 700; }
 .confirm-note { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
-.confirm-done { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 12px 0; border-top: 1px solid var(--ok-ink); border-bottom: 1px solid var(--ok-ink); font-size: 1rem; font-weight: 700; color: var(--ok-ink); }
+.confirm-done { margin: 12px 0 0; padding: 12px 0; border-top: 1px solid var(--ok-ink); border-bottom: 1px solid var(--ok-ink); }
+.confirm-done-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.0625rem; font-weight: 700; color: var(--ok-ink); }
+.confirm-push { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
+.confirm-done button { margin-top: 10px; }
 @media print { .confirm, .confirm-done { display: none; } }
 
 /* FR-16: opt in to push notifications from a personal link. */
@@ -500,7 +501,6 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 .sandbox-bar button.sandbox-exit, .sandbox-bar button.sandbox-exit:hover:not(:disabled) { min-height: 0; padding: 4px 0; border: 0; background: none; color: inherit; font-size: inherit; font-weight: 600; text-decoration: underline; }
 @media print { .sandbox-bar { display: none; } }
 
-@media print { .hero-sub, .you .who, .you-extra, .sheet-header { text-shadow: none; } }
 
 /* Repeated taps on the name must stay taps: no double-tap zoom, no text selection. */
 .masthead h1, .home-mark { touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: default; }

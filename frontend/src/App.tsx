@@ -217,10 +217,6 @@ export function App() {
       {personal === "invalid" && (
         <div className="status offline" id="personalInvalid" role="status">{L("personal.invalid")}</div>
       )}
-      {/* Push is crew-only: an actor's phone hears from the AD by SMS or WhatsApp, with the times in the message. */}
-      {mode.kind === "share" && mode.me && personal && personal !== "invalid" && !personal.is_cast && (
-        <NotificationToggle apiBase={mode.api} token={mode.me} lang={lang} />
-      )}
       {result && result.kind !== "error" && result.kind !== "not_found" && (
         <CallSheetView
           callSheet={result.data}
@@ -240,9 +236,15 @@ export function App() {
               offline={result.kind !== "live"}
               lang={lang}
               onStale={() => refreshRef.current()}
+              pushable={!personal.is_cast}
+              changed={result.data.current_revision.revision_letter !== "A"}
             />
           ) : null}
         />
+      )}
+      {/* Push is crew-only: an actor's phone hears from the AD by SMS or WhatsApp, with the times in the message. */}
+      {mode.kind === "share" && mode.me && personal && personal !== "invalid" && !personal.is_cast && (
+        <NotificationToggle apiBase={mode.api} token={mode.me} lang={lang} />
       )}
       {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {
         const t = tomorrowLine(mine.days, mode.sheet);

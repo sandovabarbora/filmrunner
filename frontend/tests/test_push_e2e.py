@@ -249,3 +249,26 @@ def test_open_personal_link_tab_picks_up_a_published_revision_without_a_manual_r
     page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
     expect(page.locator("#crewCall")).to_have_text("07:15", timeout=10_000)
     expect(page.locator("#revReplaces")).to_contain_text("REV B replaces A")
+
+
+def test_confirming_also_turns_on_notifications(page: Page, frontend_url: str, api_url: str) -> None:
+    link = _publish_a_sheet_with_one_crew_member(page, frontend_url, api_url)
+    page.add_init_script(_STUB_PUSH_API)
+    page.goto(link)
+    page.wait_for_selector("#confirmPushNote", timeout=15_000)
+    expect(page.locator("#confirmAsk")).to_contain_text("Confirm you know")
+    page.click("#confirmBtn")
+    expect(page.locator("#confirmDone")).to_contain_text("your AD can see", timeout=15_000)
+    expect(page.locator("#confirmPushOn")).to_be_visible(timeout=15_000)
+    expect(page.locator("#notifyToggle")).to_contain_text("Notifications on", timeout=10_000)
+
+
+def test_refusing_notifications_never_blocks_confirming(page: Page, frontend_url: str, api_url: str) -> None:
+    link = _publish_a_sheet_with_one_crew_member(page, frontend_url, api_url)
+    page.add_init_script(_STUB_PUSH_API)
+    page.add_init_script("Notification.requestPermission = async () => 'default';")
+    page.goto(link)
+    page.wait_for_selector("#confirmPushNote", timeout=15_000)
+    page.click("#confirmBtn")
+    expect(page.locator("#confirmDone")).to_contain_text("your AD can see", timeout=15_000)
+    expect(page.locator("#confirmPushEnable")).to_contain_text("Try notifications again", timeout=10_000)

@@ -17,6 +17,18 @@ function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/** The sheet takes its API from the link, so a crafted link could otherwise sign someone up for notifications from a stranger's server. */
+export function isOurApi(apiBase: string): boolean {
+  try {
+    const { origin, hostname } = new URL(apiBase);
+    const configured = import.meta.env.VITE_API_BASE ? new URL(import.meta.env.VITE_API_BASE as string).origin : null;
+    // Loopback stays for tests and development: reaching it would already mean running on the person's own phone.
+    return origin === "https://filmrunner-api.fly.dev" || origin === configured || hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 export function browserSupportsPush(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
@@ -38,6 +50,9 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.ready;
   return registration.pushManager.getSubscription();
 }
+
+/** Two places on the sheet can turn notifications on, and they must not disagree about the result. */
+export const PUSH_CHANGED = "filmrunner:push-changed";
 
 export async function subscribe(apiBase: string, token: string, vapidPublicKey: string): Promise<void> {
   const permission = await Notification.requestPermission();
@@ -62,6 +77,7 @@ export async function subscribe(apiBase: string, token: string, vapidPublicKey: 
     await subscription.unsubscribe();
     throw new Error(`Could not save the subscription (HTTP ${resp.status})`);
   }
+  window.dispatchEvent(new Event(PUSH_CHANGED));
 }
 
 export async function unsubscribe(apiBase: string, token: string): Promise<void> {
