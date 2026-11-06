@@ -158,3 +158,18 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: when a person who is head of day on no current revision is removed, the revisions they headed before are set to no head of day, so the history can read "(none) → Karel". Accepted for the pilot.
 - Why: the foreign key has no ON DELETE, so the delete is refused otherwise; their personal calls on those revisions already go with them. It does mean revisions are not strictly immutable: this, and the cascades, are the exceptions.
 - Revisit when: the history must keep names after removals; then store the name on the revision instead of a reference.
+
+## 2026-11-06: a night shoot stays current until 06:00 only if it was called at noon or later
+- Decision: before 06:00 Prague, a crew link stays on the day dated yesterday when its crew call was at 12:00 or later. Otherwise it opens today's day as before.
+- Why: a bare "yesterday until 06:00" shows a finished sheet to someone called at 05:30 today. Turnaround rules means nobody called after noon yesterday is called that early today, so the two cases cannot collide.
+- Revisit when: a real pilot has a split day or a call before noon that runs past midnight.
+
+## 2026-11-06: a cancelled day remembers it was a draft, in a new column
+- Decision: `call_sheets.cancelled_from_draft`, added by a migration. Restoring returns the day to what it was, and the crew cannot reach a cancelled draft by any public route. A day cancelled before this migration counts as published.
+- Why: status "cancelled" alone loses whether the crew ever saw the day, and no existing row can tell: a day with no push log may simply have had no subscribers.
+- Revisit when: cancel and restore get an event history (`build_history` notes none exists), which could replace the column.
+
+## 2026-11-06: duplicate days are refused by an advisory lock and a check, not a unique index
+- Decision: creating a day takes a lock on production, date, day number and unit, then compares with what exists. An identical payload returns the existing day with a 200 and no push; anything else is a 409. A cancelled day does not count.
+- Why: a unique index cannot be added while older duplicates may exist, and it could not tell a retry from a conflict anyway. No migration needed.
+- Revisit when: the read-only duplicate query in the FR-222 PR shows none in production; an index would then add a guarantee for writers outside this path.
