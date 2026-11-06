@@ -386,6 +386,7 @@ export const CS: Record<string, string> = {
   "Crew call is required; the crew wakes up for that number.": "Sraz štábu je povinný; na to číslo štáb vstává.",
   "No connection. Your draft is safe on this phone; publish when you are back in signal.": "Bez připojení. Koncept je v bezpečí v telefonu; vydej ho, až budeš mít signál.",
   "Publish failed": "Vydání se nezdařilo",
+  "The server had a problem; it is not your connection. What you typed is still here. Try again in a moment.": "Problém je na serveru, ne ve tvém připojení. Co jsi zadal/a, tu zůstává. Zkus to za chvíli znovu.",
   "{field}: \"{value}\" is not a time. Write it like 06:30.": "{field}: „{value}“ není čas. Napiš ho třeba 06:30.",
   "Copied. Paste it into the WhatsApp group.": "Zkopírováno. Vlož to do skupiny na WhatsAppu.",
   "Could not copy; select the text below.": "Nepodařilo se zkopírovat; označ text níže.",
