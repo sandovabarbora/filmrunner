@@ -1338,3 +1338,30 @@ def test_after_rev_z_publishing_is_off_and_says_why(page: Page, frontend_url: st
     expect(page.locator("#publish")).to_be_disabled()
     expect(page.locator("#publish")).not_to_contain_text("[")
     expect(page.locator("#publish")).to_contain_text("No revisions left")
+
+
+def test_a_new_day_starts_on_pragues_date_in_a_browser_elsewhere(browser, frontend_url: str, api_url: str) -> None:
+    context = browser.new_context(timezone_id="America/New_York")
+    page = context.new_page()
+    page.clock.set_fixed_time("2026-11-09T23:30:00Z")  # 18:30 on the 9th in New York, 00:30 on the 10th in Prague
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E prague date {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#shoot_date", timeout=10_000)
+    assert page.locator("#shoot_date").input_value() == "2026-11-10"
+    context.close()
+
+
+def test_a_published_day_with_nobody_on_it_is_on_the_dashboard(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    name = f"E2E empty {uuid.uuid4().hex[:6]}"
+    _create_production(page, name)
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.goto(f"{frontend_url}/editor.html")
+    item = page.locator("#dashItems .dash-item", has_text=name)
+    expect(item).to_contain_text("Nobody is on this call sheet", timeout=10_000)
+    expect(item).to_contain_text("today 06:30")
