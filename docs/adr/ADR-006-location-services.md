@@ -28,7 +28,7 @@ party (dod's own failure-case bullet):
   request/second, a real `User-Agent` identifying the app (stock
   library user agents get permanently banned), no autocomplete/bulk
   geocoding. We call it once per location save, sequentially (no bulk),
-  with `User-Agent: FilmRunner/1.0 (contact: sandovabarb@gmail.com)`
+  with `User-Agent: FilmRunner/1.0 (+https://github.com/sandovabarbora/filmrunner)`
   and a 5s timeout. `app/services/geocoding.py`.
 - **Sunrise/sunset — computed in-process**, no external call. The
   well-known NOAA/Astronomical-Almanac sunrise equation (reference:

@@ -19,7 +19,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_USER_AGENT = "FilmRunner/1.0 (contact: sandovabarb@gmail.com)"
+_USER_AGENT = "FilmRunner/1.0 (+https://github.com/sandovabarbora/filmrunner)"
 _TIMEOUT = 5.0
 
 
@@ -45,7 +45,8 @@ def geocode(address: str) -> GeocodeResult | None:
         response.raise_for_status()
         results = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Geocoding failed for %r: %s", address, exc)
+        # Only the class: an address is personal data, and httpx puts it in the message through the URL.
+        logger.warning("Geocoding failed: %s", exc.__class__.__name__)
         return None
 
     if not results:
@@ -54,5 +55,5 @@ def geocode(address: str) -> GeocodeResult | None:
     try:
         return GeocodeResult(lat=float(top["lat"]), lng=float(top["lon"]), display_name=top["display_name"])
     except (KeyError, TypeError, ValueError) as exc:
-        logger.warning("Geocoding returned an unexpected shape for %r: %s", address, exc)
+        logger.warning("Geocoding returned an unexpected shape: %s", exc.__class__.__name__)
         return None
