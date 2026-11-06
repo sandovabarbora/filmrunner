@@ -2261,3 +2261,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the Lighthouse gate passes on `main` without changing its baseline
   - failure case: a character outside the subset falls back to a system font rather than showing nothing
 
+## FR-216 · frontend · Seven taps work at the pace a person actually taps
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-216-forgiving-logo-taps). The founder reported the gesture did not work; reproduced on the live site.
+- why: seven taps had to fit in three seconds, the large name on the home screen did not respond at all, and unhurried taps in the editor landed on admin
+- dod:
+  - seven taps about 700 ms apart open the test environment from the small name, the large name and the editor
+  - five taps followed by a pause still open admin access
+  - failure case: a tap on the name in the editor still only goes home, and fewer than five taps do nothing
+
