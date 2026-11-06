@@ -440,3 +440,12 @@ this run (`pip-audit`/`npm audit` both exited with their normal non-error
 status and returned real report bodies, not empty output coinciding with
 a silent network failure); `npm view` against the live registry succeeded
 directly rather than being assumed from a cached local value.
+
+## FR-220, 2026-11-06
+
+`pip-audit --no-deps --disable-pip` against a single pinned line: `pypdf==6.19.0`
+reports 18 known vulnerabilities, the newest fixed in 6.21.4; `pypdf==6.21.4`
+reports none. Pinned to 6.21.4 in `backend/requirements.txt` and
+`frontend/tests/requirements.txt`, and moved out of the testing block because
+`app/services/call_sheet_pdf.py` imports it in production. 7.0.0 exists and was
+not taken: a major version is not needed to clear the advisories.

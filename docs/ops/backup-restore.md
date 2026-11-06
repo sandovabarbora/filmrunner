@@ -59,12 +59,27 @@ Keep the dumps outside the repo (they contain phone numbers) — an encrypted fo
 3. `fly secrets set -a filmrunner-api FILMRUNNER_DATABASE_URL="postgresql+psycopg://…"` — Fly redeploys; check `curl https://filmrunner-api.fly.dev/healthz` and one sheet.
 4. Update the local `backend/.env` if it points at the hosted database (it should not: local dev uses Docker).
 
+## Rotating the service token
+
+The sandbox signing key is derived from this token, so rotating it also signs out anyone in the test environment. Scripts, the editor's admin path and any CI copy of the token (`FILMRUNNER_CI_TOKEN`, see `INBOX.md`) need the new value.
+
+```sh
+openssl rand -hex 32 > ~/.config/filmrunner/api_token
+fly secrets set -a filmrunner-api FILMRUNNER_API_BEARER_TOKEN="$(cat ~/.config/filmrunner/api_token)"
+```
+
+To check the length of the current one without printing it (machine must be running; `curl` `/healthz` first to wake it):
+
+```sh
+fly ssh console -a filmrunner-api -C 'sh -c "printf %s \"\$FILMRUNNER_API_BEARER_TOKEN\" | wc -c"'
+```
+
 ## Secrets: what is recoverable and how
 
 | Secret | Lost → | Recreate |
 |---|---|---|
 | `FILMRUNNER_DATABASE_URL` | API down | Reset the DB password (above), set again. |
-| `FILMRUNNER_API_BEARER_TOKEN` | scripts and the admin path stop | Generate a new random string, `fly secrets set`, update `~/.config/filmrunner/api_token`. |
+| `FILMRUNNER_API_BEARER_TOKEN` | scripts and the admin path stop | See "Rotating the service token" below. Under 32 characters the API refuses to boot outside development (FR-220). |
 | `FILMRUNNER_VAPID_PUBLIC_KEY` / `_PRIVATE_KEY` | push stops | `python -m scripts.generate_vapid_keys`, set both; every phone must re-enable notifications. |
 | `FILMRUNNER_ANTHROPIC_API_KEY` | PDF import falls back to heuristics (still works) | New key in the Anthropic console, set. |
 | Supabase anon key / URL (GitHub Actions variables) | sign-in stops on Pages | Project Settings → API → copy; update the repository variables. |

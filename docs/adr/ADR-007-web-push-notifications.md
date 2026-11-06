@@ -50,6 +50,15 @@ was opened with, so the notification's tap-through works without the
 backend having to know the frontend's deployed origin — GitHub Pages
 today, something else later), `created_at`.
 
+Subscribing needs no login and the server later POSTs to `endpoint`, so
+FR-220 restricts it: `https`, default port, no userinfo, and a host under
+`fcm.googleapis.com`, `push.services.mozilla.com`, `push.apple.com` or
+`notify.windows.com`. `send()` applies the same check, and a stored row that
+fails it is deleted rather than sent to. A member keeps at most 5
+subscriptions; a sixth replaces the oldest. A browser whose push service is
+not on the list gets a 422 and cannot subscribe: add the domain to
+`_PUSH_SERVICE_DOMAINS` in `app/services/push.py`.
+
 `DistributionLog` gains a `push` value on its existing `channel` enum and
 a new nullable `error` column. Every notification attempt — success or
 failure — writes one row, keyed to the crew member's `contact_id` and the

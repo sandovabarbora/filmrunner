@@ -175,7 +175,7 @@ def test_both_days_are_pushed_when_a_scene_moves(client: TestClient, monkeypatch
     contact = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=AUTH).json()["id"]
     member = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Grip", "position": "Key grip"}, headers=AUTH).json()
     client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json={
-        "endpoint": "https://push.example.com/a", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake"}, "link_url": "https://example.com/x",
+        "endpoint": "https://fcm.googleapis.com/fcm/send/a", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake"}, "link_url": "https://example.com/x",
     })
     d7 = _day(client, pid, 7, "2026-11-10", [_scene("42", 1)])
     d8 = _day(client, pid, 8, "2026-11-11", [])

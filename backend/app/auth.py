@@ -12,6 +12,7 @@ References:
 
 from __future__ import annotations
 
+import hmac
 import logging
 from dataclasses import dataclass
 from functools import lru_cache
@@ -86,7 +87,8 @@ def require_principal(
     if credentials is None:
         raise _unauthorized("Missing bearer token")
     token = credentials.credentials
-    if token == get_settings().api_bearer_token:
+    # Bytes on both sides: compare_digest raises TypeError on a non-ASCII str, and the token comes from the caller.
+    if hmac.compare_digest(token.encode(), get_settings().api_bearer_token.encode()):
         return Principal(kind="service", subject="service", email=None)
     # A test persona is an ordinary signed-in user who is a member of test productions only, so every access rule applies unchanged.
     sandbox = sandbox_tokens.read_token(token) if get_settings().sandbox_enabled else None

@@ -51,7 +51,7 @@ def test_removing_a_member_with_an_active_push_subscription_succeeds(client: Tes
     resp = client.post(
         f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
         json={
-            "endpoint": "https://push.example.com/ep1",
+            "endpoint": "https://fcm.googleapis.com/fcm/send/ep1",
             "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"},
             "link_url": "https://filmrunner.example/?sheet=abc&api=https://api.example&me=tok",
         },

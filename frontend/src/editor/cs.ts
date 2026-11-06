@@ -412,5 +412,6 @@ export const CS: Record<string, string> = {
   "Use: {text}": "Použít: {text}",
   "People already in FilmRunner": "Lidé, kteří už ve FilmRunneru jsou",
   "no number": "bez čísla",
+  "This person is also on a production you cannot edit, so their name, phone and photo cannot be changed from here": "Tento člověk je i na produkci, kterou upravovat nemůžeš, takže jeho jméno, telefon ani fotku tady změnit nejde",
   "Add a location to this day to get sunrise, sunset, weather and the nearest hospital. ": "Přidej tomuto dni lokaci a dostaneš východ, západ, počasí a nejbližší nemocnici. ",
 };

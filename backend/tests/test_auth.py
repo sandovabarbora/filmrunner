@@ -78,3 +78,22 @@ def test_service_token_still_works_and_is_labelled(client: TestClient, keys) -> 
         headers=SERVICE,
     ).json()
     assert sheet["current_revision"]["created_by"] == "service:seed_demo.py"
+
+
+def test_the_service_token_is_compared_in_constant_time(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[bytes, bytes]] = []
+    real = auth.hmac.compare_digest
+
+    def spy(a: bytes, b: bytes) -> bool:
+        calls.append((a, b))
+        return real(a, b)
+
+    monkeypatch.setattr(auth.hmac, "compare_digest", spy)
+    assert client.get("/api/v1/productions", headers=SERVICE).status_code == 200
+    assert calls
+
+
+def test_a_non_ascii_bearer_token_is_a_401_not_a_crash(client: TestClient) -> None:
+    """Failure case: compare_digest raises TypeError on a non-ASCII str, so both sides go in as bytes."""
+    resp = client.get("/api/v1/productions", headers={"Authorization": "Bearer žluťoučký".encode()})
+    assert resp.status_code == 401

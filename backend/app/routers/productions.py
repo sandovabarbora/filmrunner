@@ -53,12 +53,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_api_token)])
 
 
-def _contact_for(db: Session, contact_id: uuid.UUID, production: Production) -> Contact:
-    """A contact can join only a production of its own world, so a test persona can never pull in a real person by id."""
+def _productions_using_contact(db: Session, contact_id: uuid.UUID) -> set[uuid.UUID]:
+    crew = db.query(CrewMember.production_id).filter(CrewMember.contact_id == contact_id)
+    cast = db.query(CastMember.production_id).filter(CastMember.contact_id == contact_id)
+    return {production_id for (production_id,) in crew.union(cast)}
+
+
+def _contact_for(db: Session, contact_id: uuid.UUID, access: Access) -> Contact:
+    """A contact can join only a production of its own world, so a test persona can never pull in a real person by id.
+
+    Attaching returns the person's phone and email and then opens editing, so a contact already
+    in use must be on a production the caller can see: an id alone proves nothing, and sign-up is
+    open. A contact nobody uses yet is the picker's create-then-attach. Refused looks like unknown,
+    so the answer does not confirm that an id belongs to someone.
+    """
     contact = db.get(Contact, contact_id)
-    if contact is None or contact.sandbox_session != production.sandbox_session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    if contact is None or contact.sandbox_session != access.production.sandbox_session:
+        raise not_found
+    if access.principal.kind == "service":
+        return contact
+    used_on = _productions_using_contact(db, contact_id)
+    if used_on and not used_on & {p.id for p in visible_productions(db, access.principal)}:
+        raise not_found
     return contact
+
+
+async def _read_capped(file: UploadFile, limit: int, too_large: str) -> bytes:
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=too_large)
+    return data
 
 
 def _refuse_in_test_world(principal: Principal, what: str) -> None:
@@ -310,7 +335,7 @@ async def import_call_sheet_pdf(
 ) -> CallSheetPdfExtraction:
     """FR-57: contacts out of an old call sheet PDF, as a preview. Nothing is created here; the PDF is not stored."""
     _refuse_in_test_world(access.principal, "PDF import")
-    data = await file.read()
+    data = await _read_capped(file, call_sheet_pdf.MAX_PDF_BYTES, "The PDF is over 10 MB; export a lighter one")
     if not data.startswith(b"%PDF"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="That file is not a PDF")
     try:
@@ -339,7 +364,7 @@ def _with_links_for(access: Access, people: list) -> list:
 def create_cast_member(
     production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CastMember:
-    _contact_for(db, payload.contact_id, access.production)
+    _contact_for(db, payload.contact_id, access)
     actor = CastMember(production_id=production_id, **payload.model_dump())
     db.add(actor)
     db.commit()
@@ -416,7 +441,7 @@ def get_hospital_suggestion(
 def create_crew_member(
     production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CrewMember:
-    _contact_for(db, payload.contact_id, access.production)
+    _contact_for(db, payload.contact_id, access)
     member = CrewMember(production_id=production_id, **payload.model_dump())
     db.add(member)
     db.commit()
@@ -472,13 +497,15 @@ def remove_crew_member(
 
 
 def _require_contact_edit(db: Session, principal: Principal, contact_id: uuid.UUID) -> None:
-    """Contacts are shared rows; editing one needs crew:edit on a production that has this person in its crew."""
+    """Contacts are shared rows and a change shows on every sheet using them, so it takes crew:edit on all of those productions."""
     if principal.kind == "service":
         return
-    production_ids = {m.production_id for m in db.query(CrewMember).filter(CrewMember.contact_id == contact_id)}
-    allowed = any(CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in production_ids)
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person in its crew")
+    used_on = _productions_using_contact(db, contact_id)
+    if not used_on:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: it is not on any production you edit")
+    if not all(CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in used_on):
+        # Does not name the other production: the caller may not be allowed to know it exists.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This person is also on a production you cannot edit, so their name, phone and photo cannot be changed from here")
 
 
 @router.patch("/contacts/{contact_id}", response_model=ContactRead)
@@ -513,9 +540,7 @@ async def upload_contact_photo_endpoint(
     _require_contact_edit(db, principal, contact_id)
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"Photo must be JPEG or PNG, got {file.content_type!r}")
-    data = await file.read()
-    if len(data) > MAX_PHOTO_BYTES:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
+    data = await _read_capped(file, MAX_PHOTO_BYTES, f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
     try:
         contact.photo_url = store_contact_photo(db, str(contact_id), data, file.content_type)
     except PhotoUploadNotConfigured as exc:

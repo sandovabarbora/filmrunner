@@ -27,6 +27,8 @@ vi.mock("../../api", async () => {
       searchContacts: vi.fn().mockResolvedValue([]),
       updateContact: vi.fn(),
       updateCrewMember: vi.fn(),
+      createCrewMember: vi.fn(),
+      createContact: vi.fn(),
     },
   };
 });
@@ -101,5 +103,65 @@ describe("Crew edit form", () => {
       contactId: "contact-1",
       patch: { phone: "+420 999 888 777" },
     }));
+  });
+
+  describe("FR-220: a person shared with a production this AD cannot edit", () => {
+    const refused = new ApiError(403, "This person is also on a production you cannot edit, so their name, phone and photo cannot be changed from here");
+
+    it("changing only the role never touches the contact, so the shared person does not block the save", async () => {
+      const setNotice = vi.fn();
+      vi.mocked(api.updateContact).mockRejectedValue(refused);
+      vi.mocked(api.updateCrewMember).mockResolvedValue({ ...member, position: "2nd AC" });
+
+      const user = userEvent.setup();
+      render(<Crew conn={conn} productionId="prod-1" productionName="Test Production" canEdit setNotice={setNotice} />);
+      await user.click(await screen.findByRole("button", { name: "Edit Jana Nováková" }));
+      const position = await screen.findByLabelText("Position");
+      await user.clear(position);
+      await user.type(position, "2nd AC");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => expect(api.updateCrewMember).toHaveBeenCalled());
+      expect(api.updateContact).not.toHaveBeenCalled();
+      await waitFor(() => expect(setNotice).toHaveBeenCalledWith(expect.objectContaining({ kind: "ok" })));
+    });
+
+    it("changing the phone says why it was refused and keeps the form open", async () => {
+      const setNotice = vi.fn();
+      vi.mocked(api.updateContact).mockRejectedValue(refused);
+
+      const user = userEvent.setup();
+      render(<Crew conn={conn} productionId="prod-1" productionName="Test Production" canEdit setNotice={setNotice} />);
+      await user.click(await screen.findByRole("button", { name: "Edit Jana Nováková" }));
+      const phone = await screen.findByLabelText("Phone");
+      await user.clear(phone);
+      await user.type(phone, "602 000 111");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => expect(setNotice).toHaveBeenCalledWith({ kind: "error", text: expect.stringContaining("production you cannot edit") }));
+      expect(api.updateCrewMember).not.toHaveBeenCalled();
+      expect(savePendingCrewEdit).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+    });
+
+    it("picking them unchanged attaches them without an edit the server would refuse", async () => {
+      const setNotice = vi.fn();
+      vi.mocked(api.listCrew).mockResolvedValue([]);
+      vi.mocked(api.searchContacts).mockResolvedValue([{ id: "contact-9", name: "Petr Dvořák", phone: "602 000 111", email: null, photo_url: null, last_production_name: "Last film", last_position: "Gaffer" }]);
+      vi.mocked(api.updateContact).mockRejectedValue(refused);
+      vi.mocked(api.createCrewMember).mockResolvedValue({ ...member, id: "member-9", contact_id: "contact-9" });
+
+      const user = userEvent.setup();
+      render(<Crew conn={conn} productionId="prod-1" productionName="Test Production" canEdit setNotice={setNotice} />);
+      await user.type(await screen.findByLabelText("Name"), "Petr");
+      await user.click(await screen.findByRole("button", { name: /Petr Dvořák/ }));
+      await user.type(screen.getByLabelText("Department"), "Electric");
+      await user.type(screen.getByLabelText("Position"), "Gaffer");
+      await user.click(screen.getByRole("button", { name: /^Add/ }));
+
+      await waitFor(() => expect(api.createCrewMember).toHaveBeenCalledWith(conn, "prod-1", expect.objectContaining({ contact_id: "contact-9" })));
+      expect(api.updateContact).not.toHaveBeenCalled();
+      expect(api.createContact).not.toHaveBeenCalled();
+    });
   });
 });

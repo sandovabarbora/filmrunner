@@ -54,7 +54,7 @@ def test_cancel_tells_every_subscriber(client: TestClient, vapid_configured) -> 
     cid = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=AUTH).json()["id"]
     member = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": cid, "department": "Camera", "position": "AC"}, headers=AUTH).json()
     client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
-                json={"endpoint": "https://push.example/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
+                json={"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
     with patch("app.services.push.webpush"):
         day = _day(client, pid, "2026-09-23", 1)
     with patch("app.services.push.webpush") as mock_webpush:

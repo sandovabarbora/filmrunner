@@ -73,7 +73,9 @@ docker compose up --build
   outside your own machine).
 
 Without Docker: create a Postgres DB, copy `backend/.env.example` to
-`backend/.env` and adjust `FILMRUNNER_DATABASE_URL`, then:
+`backend/.env` and adjust `FILMRUNNER_DATABASE_URL`, then (the copied file
+sets `FILMRUNNER_ENVIRONMENT=development`; without it the app assumes
+production and refuses the dev token):
 
 ```bash
 cd backend

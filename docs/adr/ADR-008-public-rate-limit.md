@@ -29,3 +29,4 @@ The photo route is a separate case (FR-128): `GET /public/contacts/{id}/photo` i
 - One Fly machine, one process: the counters live in memory and reset on deploy. Fine at pilot scale. The day `filmrunner-api` runs on two machines, the windows must move to a shared store (Postgres would do; a `rate_limit_hits` table with a periodic delete) — or Fly's own edge limits — and this ADR gets an addendum.
 - The counters do not distinguish a NAT with 300 phones behind it from an attacker; a large studio Wi-Fi will be the first to notice. The number is a setting, not a constant.
 - Nothing is logged per hit; a 429 is not an incident, just a wall.
+- The window counts requests, not bytes. `app/bodylimit.py` (FR-220) caps bodies at 256 KB, 12 MB on the PDF import and photo upload routes, on every route rather than only the public ones, because FastAPI reads a body before auth runs. It sits inside this middleware and inside CORS.

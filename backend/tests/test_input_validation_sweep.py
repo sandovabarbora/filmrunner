@@ -174,7 +174,7 @@ def _valid_body(model: type[BaseModel], ids: dict) -> dict:
     if model is CallSheetCreate:
         return {"shoot_date": "2026-01-01", "day_number": 1, "day_count": 1, "initial_revision": {}}
     if model is PushSubscriptionCreate:
-        return {"endpoint": "https://push.example/abc", "keys": {"p256dh": "p", "auth": "a"}, "link_url": "https://example.com/sheet"}
+        return {"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "p", "auth": "a"}, "link_url": "https://example.com/sheet"}
     if model is ConfirmRequest:
         return {"revision_letter": "A"}
     if model is MoveSceneRequest:

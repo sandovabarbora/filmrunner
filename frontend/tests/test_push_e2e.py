@@ -48,8 +48,8 @@ _STUB_PUSH_API = """
   // stub is re-injected fresh by add_init_script on every navigation.
   const KEY = '__fr_e2e_subscribed';
   const fakeSub = {
-    endpoint: 'https://fake-push.example.com/e2e-endpoint',
-    toJSON: () => ({ endpoint: 'https://fake-push.example.com/e2e-endpoint', keys: { p256dh: 'fake-p256dh-key', auth: 'fake-auth-key' } }),
+    endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-endpoint',
+    toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-endpoint', keys: { p256dh: 'fake-p256dh-key', auth: 'fake-auth-key' } }),
     unsubscribe: async () => { localStorage.removeItem(KEY); return true; },
   };
   const registration = {

@@ -12,6 +12,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.bodylimit import BodyLimitMiddleware
 from app.ratelimit import RateLimitMiddleware
 
 from app.config import get_settings
@@ -36,6 +37,7 @@ app = FastAPI(
 # FILMRUNNER_CORS_ORIGINS; "*" is the local-dev default.
 # FR-51: the abuse guard sits inside CORS (added first = innermost), so a 429 still carries CORS headers
 # and the browser can show the message instead of a blocked request.
+app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(
     RateLimitMiddleware,
     per_ip=settings.public_rate_limit_per_ip,

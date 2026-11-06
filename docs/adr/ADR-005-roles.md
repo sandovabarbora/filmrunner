@@ -51,9 +51,22 @@ notes to exist first), audit log of role changes, SSO groups.
   is added with the service token once after deploy.
 - `POST /contacts` is not production-scoped (address book rows); any
   signed-in user can create a contact. `PATCH /contacts/{id}` is guarded:
-  the caller needs `crew:edit` on a production that has the person in its
-  crew (a contact used nowhere is editable only by the service token).
-  Found by the automated commit review on 2026-09-14 as an IDOR.
+  the caller needs `crew:edit` on every production that has the person in
+  its crew or cast (a contact used nowhere is editable only by the service
+  token). Found by the automated commit review on 2026-09-14 as an IDOR;
+  tightened from "any production" to "every production" by FR-220, because
+  a change shows on all of their live sheets.
+- Attaching a contact (`POST .../crew-members`, `.../cast-members`) needs
+  the contact to be on a production the caller can see, or on none at all
+  (the picker's create-then-attach). Anything else is the same 404 as an
+  unknown id (FR-213, FR-220): the attach response carries the person's
+  phone and email, and contact ids are public in photo URLs.
+- Consequence of the two rules together: an editor who is only a viewer on
+  another production using the same person can reuse them, but cannot
+  correct their phone, and reusing a person on a new production makes them
+  read-only for anyone who cannot edit that new production. The editor
+  does not send a contact edit unless the name or phone really changed, so
+  role edits and picking someone unchanged are never blocked by this.
 
 ## Revisit when
 

@@ -3,6 +3,8 @@
 # platform (`fly secrets set`), never in this file:
 #   FILMRUNNER_DATABASE_URL, FILMRUNNER_API_BEARER_TOKEN,
 #   FILMRUNNER_ENVIRONMENT=production, FILMRUNNER_CORS_ORIGINS
+# Outside development the app refuses to start with a bearer token under
+# 32 characters (FR-220); the release command fails the same way.
 app = "filmrunner-api"
 primary_region = "fra"
 

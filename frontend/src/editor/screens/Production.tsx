@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
-import { clearPendingCrewEdit, diffCrewEditFields, loadAllPendingCrewEdits, mergeCrewEdit, savePendingCrewEdit, type CrewEditableFields, type PendingCrewEdit } from "../crewEdits";
+import { clearPendingCrewEdit, contactChanges, diffCrewEditFields, loadAllPendingCrewEdits, mergeCrewEdit, savePendingCrewEdit, type CrewEditableFields, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
 import { columnLetter, detectColumns, rowsToCrew, type ColumnMap, type Role } from "../crewFileImport";
@@ -11,15 +11,20 @@ import { allLinksText, onboardingMessageText, whatsappNumber, whatsappUrl } from
 import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
-import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
+import type { CallSheetCreated, CastMember, Contact, ContactMatch, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
 import { fmtDate } from "../../i18n";
 import { useLang, useL } from "../lang";
 import { Icon } from "../../Icon";
 
 /** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
-async function reuseOrCreateContact(conn: Connection, contactId: string | null, name: string, phone: string | null) {
-  if (!contactId) return api.createContact(conn, { name, phone, email: null });
-  return api.updateContact(conn, contactId, { name, phone });
+async function reuseOrCreateContact(conn: Connection, picked: ContactMatch | null, name: string, phone: string | null): Promise<Contact> {
+  if (!picked) return api.createContact(conn, { name, phone, email: null });
+  return saveContactChanges(conn, picked, name, phone);
+}
+
+async function saveContactChanges(conn: Connection, current: Contact, name: string, phone: string | null): Promise<Contact> {
+  const changes = contactChanges(current, name, phone);
+  return Object.keys(changes).length > 0 ? api.updateContact(conn, current.id, changes) : current;
 }
 
 export function crewLink(apiBase: string, sheetId: string): string {
@@ -250,8 +255,8 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
   );
 }
 
-type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean; contactId: string | null };
-const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false, contactId: null };
+type CrewForm = { name: string; phone: string; department: string; position: string; call: string; hod: boolean; picked: ContactMatch | null };
+const EMPTY_FORM: CrewForm = { name: "", phone: "", department: "", position: "", call: "", hod: false, picked: null };
 
 function crewEditableFields(m: CrewMember): CrewEditableFields {
   return {
@@ -415,7 +420,7 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
 
   function startEdit(m: CrewMember) {
     setEditing(m);
-    setForm({ name: m.contact.name, phone: m.contact.phone ?? "", department: m.department, position: m.position, call: m.standard_call_time ?? "", hod: m.is_head_of_department, contactId: m.contact_id });
+    setForm({ name: m.contact.name, phone: m.contact.phone ?? "", department: m.department, position: m.position, call: m.standard_call_time ?? "", hod: m.is_head_of_department, picked: null });
   }
   function cancelEdit() { setEditing(null); setForm({ ...EMPTY_FORM, department: form.department }); }
 
@@ -423,7 +428,8 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
     setBusy(true);
     try {
       if (editing) {
-        const contact = await api.updateContact(conn, editing.contact_id, { name: form.name.trim(), phone: form.phone.trim() || null });
+        // Against the server's copy: `editing` may carry an unsynced offline patch that this save still has to send.
+        const contact = await saveContactChanges(conn, crew?.find((x) => x.id === editing.id)?.contact ?? editing.contact, form.name.trim(), form.phone.trim() || null);
         const member = await api.updateCrewMember(conn, productionId, editing.id, {
           department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
         });
@@ -436,7 +442,7 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
         cancelEdit();
       } else {
         // FR-45: a picked person is reused (their phone corrected if edited here); otherwise a new contact.
-        const contact = await reuseOrCreateContact(conn, form.contactId, form.name.trim(), form.phone.trim() || null);
+        const contact = await reuseOrCreateContact(conn, form.picked, form.name.trim(), form.phone.trim() || null);
         const member = await api.createCrewMember(conn, productionId, {
           contact_id: contact.id, department: form.department.trim(), position: form.position.trim(), standard_call_time: form.call.trim() || null, is_head_of_department: form.hod,
         });
@@ -689,8 +695,8 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
         <label className="field" htmlFor="crewName"><span className="label">{L("Name")}</span>
           {editing
             ? <input id="crewName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            : <PersonPicker conn={conn} id="crewName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
-                onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
+            : <PersonPicker conn={conn} id="crewName" value={form.name} onChange={(name) => setForm({ ...form, name, picked: null })}
+                onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", picked: c })} />}
         </label>
         <label className="field" htmlFor="crewPhone"><span className="label">{L("Phone")}</span><input id="crewPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
         <label className="field" htmlFor="crewDept"><span className="label">{L("Department")}</span><input id="crewDept" placeholder="Camera" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></label>
@@ -840,8 +846,8 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
   );
 }
 
-type CastForm = { name: string; phone: string; character: string; pickup: string; contactId: string | null };
-const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: "", contactId: null };
+type CastForm = { name: string; phone: string; character: string; pickup: string; picked: ContactMatch | null };
+const EMPTY_CAST_FORM: CastForm = { name: "", phone: "", character: "", pickup: "", picked: null };
 
 /** FR-33: the people in front of the camera. Per-day times are set on the day (status, pickup, M/H, on set). */
 function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; productionId: string; canEdit: boolean; setNotice: (n: Notice) => void }) {
@@ -859,7 +865,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
 
   function startEdit(a: CastMember) {
     setEditing(a);
-    setForm({ name: a.contact.name, phone: a.contact.phone ?? "", character: a.character_name, pickup: a.standard_pickup_time ?? "", contactId: a.contact_id });
+    setForm({ name: a.contact.name, phone: a.contact.phone ?? "", character: a.character_name, pickup: a.standard_pickup_time ?? "", picked: null });
   }
   function cancelEdit() { setEditing(null); setForm(EMPTY_CAST_FORM); }
 
@@ -867,13 +873,13 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
     setBusy(true);
     try {
       if (editing) {
-        const contact = await api.updateContact(conn, editing.contact_id, { name: form.name.trim(), phone: form.phone.trim() || null });
+        const contact = await saveContactChanges(conn, editing.contact, form.name.trim(), form.phone.trim() || null);
         const actor = await api.updateCastMember(conn, productionId, editing.id, { character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
         setCast((c) => (c ?? []).map((x) => (x.id === actor.id ? { ...actor, contact } : x)));
         setNotice({ kind: "ok", text: L("{name} updated.", { name: contact.name }) });
         cancelEdit();
       } else {
-        const contact = await reuseOrCreateContact(conn, form.contactId, form.name.trim(), form.phone.trim() || null);
+        const contact = await reuseOrCreateContact(conn, form.picked, form.name.trim(), form.phone.trim() || null);
         const actor = await api.createCastMember(conn, productionId, { contact_id: contact.id, character_name: form.character.trim(), standard_pickup_time: form.pickup.trim() || null });
         setCast((c) => [...(c ?? []), actor]);
         setForm(EMPTY_CAST_FORM);
@@ -932,8 +938,8 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
           <label className="field" htmlFor="castName"><span className="label">{L("Name")}</span>
             {editing
               ? <input id="castName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              : <PersonPicker conn={conn} id="castName" value={form.name} onChange={(name) => setForm({ ...form, name, contactId: null })}
-                  onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", contactId: c.id })} />}
+              : <PersonPicker conn={conn} id="castName" value={form.name} onChange={(name) => setForm({ ...form, name, picked: null })}
+                  onPick={(c) => setForm({ ...form, name: c.name, phone: c.phone ?? "", picked: c })} />}
           </label>
           <label className="field" htmlFor="castCharacter"><span className="label">{L("Character")}</span><input id="castCharacter" placeholder="MARTA" value={form.character} onChange={(e) => setForm({ ...form, character: e.target.value })} /></label>
           <label className="field" htmlFor="castPhone"><span className="label">{L("Phone")}</span><input id="castPhone" className="mono" inputMode="tel" placeholder="+420 …" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>

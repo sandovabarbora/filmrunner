@@ -50,6 +50,7 @@ jobs:
           --health-retries 10
     env:
       FILMRUNNER_DATABASE_URL: postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test
+      FILMRUNNER_ENVIRONMENT: development
       FILMRUNNER_API_BEARER_TOKEN: ci-only-token
       RUN_HEAVY: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_only != 'true' }}
     steps:
