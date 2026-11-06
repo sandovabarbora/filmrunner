@@ -2309,7 +2309,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - note: code in the pull request from feat/fr-220-security. Merging, the backend deploy and checking the production service token's length are the founder's. Open: the sandbox signing key is still derived from the service token.
 - why: an audit found, and tests confirmed, that any signed-up user could read and rewrite another production's contact by id, that bodies of any size were buffered before auth on a 256 MB machine, that the server would POST to any URL handed to the open push endpoint, and that a crafted link could show a fake sheet
 - dod:
-  - attaching a contact needs crew edit on a production using it, or being its creator if unused; editing needs crew edit on any production using it; the picker, paste import and role edits keep working, and a viewer sees why they cannot reuse someone
+  - attaching a contact needs crew edit on a production using it, or, once, being its creator if it was never used; editing needs crew edit on any production using it; the picker, paste import and role edits keep working, and a viewer sees why they cannot reuse someone
   - bodies are capped at 256 KB, 12 MB on PDF import and photo upload, by header and by counted bytes, with CORS headers on the 413
   - push endpoints must be https on a known push service; a sixth new endpoint is refused, nothing is evicted, and confirming is never blocked by it
   - `environment` defaults to production, a service token under 32 characters refuses to boot outside development, the comparison is constant time

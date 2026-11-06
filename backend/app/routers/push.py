@@ -23,7 +23,7 @@ router = APIRouter()
 
 # Subscribing needs only a personal link, so without a cap one leaked link can grow the table and every publish's fan-out.
 # A new device is refused rather than replacing the oldest: replacing would let that same link push the real phone off.
-# Fake endpoints do not stay: the push service answers 404/410 on the next publish and they are pruned.
+# A row is pruned only when the push service answers 404 or 410, so a made-up endpoint it answers differently stays and holds its place.
 MAX_SUBSCRIPTIONS_PER_MEMBER = 5
 
 

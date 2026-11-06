@@ -67,6 +67,8 @@ def _contact_for(db: Session, contact_id: uuid.UUID, access: Access) -> Contact:
     Attaching returns the person's phone and email and opens editing, and an id proves nothing:
     ids are public in photo URLs and sign-up is open. So a contact in use needs crew:edit on a
     production using it, and an unused one needs its creator (the picker's create-then-attach).
+    The caller clears created_by on attaching: others may edit the person from then on, so having
+    once created the row must not reach them again if they fall out of use.
     A stranger's refusal looks like an unknown id, so it does not confirm the id belongs to someone.
     """
     contact = db.get(Contact, contact_id)
@@ -377,7 +379,7 @@ def _with_links_for(access: Access, people: list) -> list:
 def create_cast_member(
     production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CastMember:
-    _contact_for(db, payload.contact_id, access)
+    _contact_for(db, payload.contact_id, access).created_by = None
     actor = CastMember(production_id=production_id, **payload.model_dump())
     db.add(actor)
     db.commit()
@@ -454,7 +456,7 @@ def get_hospital_suggestion(
 def create_crew_member(
     production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CrewMember:
-    _contact_for(db, payload.contact_id, access)
+    _contact_for(db, payload.contact_id, access).created_by = None
     member = CrewMember(production_id=production_id, **payload.model_dump())
     db.add(member)
     db.commit()

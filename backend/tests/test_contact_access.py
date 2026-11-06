@@ -144,6 +144,45 @@ class TestAttach:
         with signed_in_as(AD):
             assert _attach_crew(client, mine, person).status_code == 201
 
+    def test_the_creators_right_is_spent_on_the_first_attach(self, client: TestClient, db_session) -> None:
+        """Failure case: someone later edited in by others must not stay reachable through having once typed their name."""
+        mine = _production(client, "Mine")
+        _member(client, mine, AD, "editor")
+        with signed_in_as(AD):
+            person = client.post("/api/v1/contacts", json={"name": "New Person", "phone": "602 000 111"}).json()["id"]
+            member = _attach_crew(client, mine, person)
+            assert member.status_code == 201
+            assert db_session.get(Contact, uuid.UUID(person)).created_by is None
+            assert client.delete(f"/api/v1/productions/{mine}/crew-members/{member.json()['id']}").status_code == 204
+            assert _attach_crew(client, mine, person).status_code == 404
+        assert client.post(f"/api/v1/productions/{mine}/crew-members", json={"contact_id": person, "department": "Grip", "position": "Key grip"}, headers=AUTH).status_code == 201
+
+    def test_the_creators_right_is_spent_on_a_cast_attach_too(self, client: TestClient, db_session) -> None:
+        mine = _production(client, "Mine")
+        _member(client, mine, AD, "editor")
+        with signed_in_as(AD):
+            person = client.post("/api/v1/contacts", json={"name": "New Actor"}).json()["id"]
+            actor = _attach_cast(client, mine, person)
+            assert actor.status_code == 201
+            assert client.delete(f"/api/v1/productions/{mine}/cast-members/{actor.json()['id']}").status_code == 204
+            assert _attach_cast(client, mine, person).status_code == 404
+
+    def test_a_new_person_can_still_go_on_both_crew_and_cast(self, client: TestClient) -> None:
+        mine = _production(client, "Mine")
+        _member(client, mine, AD, "editor")
+        with signed_in_as(AD):
+            person = client.post("/api/v1/contacts", json={"name": "Both"}).json()["id"]
+            assert _attach_crew(client, mine, person).status_code == 201
+            assert _attach_cast(client, mine, person).status_code == 201
+
+    def test_a_bulk_import_of_new_people_still_attaches_each_one(self, client: TestClient) -> None:
+        mine = _production(client, "Mine")
+        _member(client, mine, AD, "editor")
+        with signed_in_as(AD):
+            for i in range(5):
+                person = client.post("/api/v1/contacts", json={"name": f"Imported {i}", "phone": f"60200000{i}"}).json()["id"]
+                assert _attach_crew(client, mine, person).status_code == 201
+
     def test_create_then_attach_works_for_cast_too(self, client: TestClient) -> None:
         mine = _production(client, "Mine")
         _member(client, mine, AD, "editor")
