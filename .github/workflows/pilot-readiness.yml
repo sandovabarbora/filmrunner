@@ -11,7 +11,7 @@ name: pilot readiness (live)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "10 5 * * *" # 07:10 Prague in summer, 06:10 in winter — before a Czech crew call
+    - cron: "23 1 * * *" # 02:23 Prague in winter, 03:23 in summer: done before the T-1h check of a 05:00 call; off the hour because GitHub delays those runs
 
 permissions:
   contents: read
@@ -22,6 +22,7 @@ jobs:
     env:
       API: ${{ vars.VITE_API_BASE || 'https://filmrunner-api.fly.dev' }}
       PAGES: https://sandovabarbora.github.io/filmrunner
+      GITHUB_TOKEN: ${{ github.token }}
       # FR-68: a dedicated write-capable token, set once the founder files INBOX (FR-68's own
       # gated item). Empty until then, which is exactly what the next step's guard checks for.
       FILMRUNNER_CI_TOKEN: ${{ secrets.FILMRUNNER_CI_TOKEN }}

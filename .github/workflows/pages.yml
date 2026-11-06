@@ -13,10 +13,14 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # A cancelled deployment can leave Pages between versions while a crew is opening the app; let it finish, the next one queues.
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Set the repository variable PILOT_FREEZE to true around a shoot day; docs/ops/pilot-day.md.
+    if: vars.PILOT_FREEZE != 'true'
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     environment:
       name: github-pages

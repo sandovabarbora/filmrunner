@@ -48,13 +48,14 @@ def fetch(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes, 
         return exc.code, exc.read(), {k.lower(): v for k, v in exc.headers.items()}
 
 
-def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: dict) -> tuple[Status, str]:
+def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: dict, backend_commits: list[dict] | None = None) -> tuple[Status, str]:
     """Pure formatting/decision logic, unit-tested without a network call.
 
     `compare` is a GitHub "compare two commits" API response
     (https://docs.github.com/en/rest/commits/commits#compare-two-commits) for
-    `deployed_sha...main_sha`: `ahead_by` counts commits on `main_sha` not yet
-    reachable from `deployed_sha`, and `commits[0]` is the oldest of those.
+    `deployed_sha...main_sha`. `backend_commits` is GitHub's commit list for `path=backend`
+    since the deployed commit, newest first. FR-223: only those make the API stale; a frontend
+    or docs commit changes nothing the deployed image serves.
 
     Three distinct outcomes, not two (FR-164): "cannot verify" (no SHA reported yet) is
     neither a verified pass nor a verified failure, and must not collapse into either.
@@ -63,10 +64,13 @@ def deploy_staleness_message(deployed_sha: str | None, main_sha: str, compare: d
         return "warn", "cannot verify — deployed build predates commit reporting (FR-109)"
     if deployed_sha == main_sha:
         return "ok", f"up to date ({deployed_sha[:7]})"
-    ahead_by = compare.get("ahead_by", 0)
-    commits = compare.get("commits") or []
-    since = commits[0]["commit"]["committer"]["date"] if commits else "unknown"
-    return "fail", f"{ahead_by} commits behind main, since {since} (deployed {deployed_sha[:7]}, main {main_sha[:7]})"
+    if compare.get("status") not in ("ahead", "identical"):
+        return "fail", f"deployed {deployed_sha[:7]} is not on main ({compare.get('status') or compare.get('message') or 'compare failed'})"
+    behind = [c for c in backend_commits or [] if c["sha"] != deployed_sha]
+    if not behind:
+        return "ok", f"backend up to date ({deployed_sha[:7]}); main is {compare.get('ahead_by', 0)} commits ahead outside backend/"
+    since = behind[-1]["commit"]["committer"]["date"]
+    return "fail", f"{len(behind)} backend commits behind main, since {since} (deployed {deployed_sha[:7]}, main {main_sha[:7]})"
 
 
 def deploy_matches_main() -> tuple[Status, str]:
@@ -77,6 +81,9 @@ def deploy_matches_main() -> tuple[Status, str]:
     if deployed_sha is None:
         return deploy_staleness_message(None, "", {})
     gh_headers = {"Accept": "application/vnd.github+json"}
+    # Unauthenticated GitHub calls share a low per-IP limit with every other job on the runner's address.
+    if os.environ.get("GITHUB_TOKEN"):
+        gh_headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
     _, main_body, _ = fetch(f"{GITHUB_API}/commits/main", headers=gh_headers)
     main_sha = json.loads(main_body or b"{}").get("sha", "")
     if not main_sha:
@@ -85,7 +92,13 @@ def deploy_matches_main() -> tuple[Status, str]:
         return deploy_staleness_message(deployed_sha, main_sha, {})
     _, compare_body, _ = fetch(f"{GITHUB_API}/compare/{deployed_sha}...{main_sha}", headers=gh_headers)
     compare = json.loads(compare_body or b"{}")
-    return deploy_staleness_message(deployed_sha, main_sha, compare)
+    if compare.get("status") not in ("ahead", "identical"):
+        return deploy_staleness_message(deployed_sha, main_sha, compare)
+    since = compare["base_commit"]["commit"]["committer"]["date"]
+    list_status, commits_body, _ = fetch(f"{GITHUB_API}/commits?sha={main_sha}&path=backend&since={since}&per_page=100", headers=gh_headers)
+    if list_status != 200:
+        return "fail", f"could not list backend commits: {list_status}"
+    return deploy_staleness_message(deployed_sha, main_sha, compare, json.loads(commits_body))
 
 
 def check(name: str, fn: Callable[[], tuple[bool | Status, str]]) -> Result:
@@ -101,6 +114,14 @@ def api_health() -> tuple[bool, str]:
     status, body, _ = fetch(f"{API}/healthz")
     data = json.loads(body or b"{}")
     return status == 200 and data.get("status") == "ok", f"{status} {data}"
+
+
+def api_ready() -> tuple[Status, str]:
+    """FR-223: can the API reach its database? /healthz cannot tell, it never touches it."""
+    status, _, _ = fetch(f"{API}/readyz")
+    if status == 404:
+        return "warn", "/readyz is not deployed yet"
+    return ("ok" if status == 200 else "fail"), str(status)
 
 
 def api_openapi_has_the_current_surface() -> tuple[bool, str]:
@@ -166,6 +187,7 @@ def rate_limit_headers_on_refusal() -> tuple[bool, str]:
 
 CHECKS: list[tuple[str, Callable[[], tuple[bool | Status, str]]]] = [
     ("API health", api_health),
+    ("API reaches its database", api_ready),
     ("API serves this week's routes", api_openapi_has_the_current_surface),
     ("Unknown personal token → 404", unknown_token_is_refused),
     ("Unknown call sheet → 404", unknown_sheet_is_refused),
