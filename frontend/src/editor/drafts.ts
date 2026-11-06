@@ -28,6 +28,10 @@ export interface Draft {
   weather_forecast: string;
   safety_notes: string;
   items: ScheduleItemCreate[];
+  /** The server revision this draft was opened from: a different one means someone else published in between. */
+  baseRevisionId?: string | null;
+  /** That revision's content, so what this person changed can be told from what the other person did. */
+  base?: Record<string, string>;
   crewCalls: Record<string, { call: string; pickup: string; note: string }>;
   /** FR-33: cast working today, by cast member id. Absent = not on today's sheet. */
   castCalls: Record<string, CastCallDraft>;
