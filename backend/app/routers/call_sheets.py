@@ -26,7 +26,7 @@ from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
-from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
+from app.schemas.call_sheet import Actuals, ActualsUpdate, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
 from app.services.call_sheets import LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
 from app.services.replan import move_scene, reschedule_day, swap_days
@@ -85,7 +85,7 @@ def create_call_sheet_endpoint(
 
 
 @router.put("/call-sheets/{call_sheet_id}/actuals", response_model=CallSheetRead)
-def set_actuals(call_sheet_id: uuid.UUID, payload: Actuals, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
+def set_actuals(call_sheet_id: uuid.UUID, payload: ActualsUpdate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
     """FR-65: what actually happened. Only on a published day: a draft has not happened and a cancelled one did not."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)

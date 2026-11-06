@@ -391,6 +391,7 @@ export const CS: Record<string, string> = {
   "Crew call is required; the crew wakes up for that number.": "Sraz štábu je povinný; na to číslo štáb vstává.",
   "No connection. Your draft is safe on this phone; publish when you are back in signal.": "Bez připojení. Koncept je v bezpečí v telefonu; vydej ho, až budeš mít signál.",
   "Publish failed": "Vydání se nezdařilo",
+  "{field}: \"{value}\" is not a time. Write it like 06:30.": "{field}: „{value}“ není čas. Napiš ho třeba 06:30.",
   "Copied. Paste it into the WhatsApp group.": "Zkopírováno. Vlož to do skupiny na WhatsAppu.",
   "Could not copy; select the text below.": "Nepodařilo se zkopírovat; označ text níže.",
   "REV {rev} came out while you were editing, so your changes did not go out: {edits}. Make them again if they still apply.": "Mezitím vyšla REV {rev}, takže tvoje změny neodešly: {edits}. Pokud pořád platí, udělej je znovu.",
