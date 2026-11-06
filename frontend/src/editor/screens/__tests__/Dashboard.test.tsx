@@ -47,3 +47,23 @@ describe("a day with nobody on it", () => {
     expect(screen.getByText("4. den · Přidej štáb nebo svolej herce, jinak dispozice nikdo nedostane")).toBeTruthy();
   });
 });
+
+describe("today and tomorrow", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("are Prague's, whatever zone the browser is in", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-09T23:30:00Z"));  // 00:30 on the 10th in Prague
+    vi.mocked(api.dashboard).mockResolvedValue({ on_track: [], items: [
+      { ...board.items[0], call_sheet_id: "a", shoot_date: "2026-11-10", crew_call: "07:00" },
+      { ...board.items[0], call_sheet_id: "b", shoot_date: "2026-11-11", crew_call: "08:00" },
+    ] });
+    render(
+      <LangContext.Provider value={{ lang: "en", L: (text, vars) => translate("en", text, vars), toggle: () => undefined }}>
+        <DashboardPanel conn={conn} />
+      </LangContext.Provider>,
+    );
+    expect(await screen.findByText("today 07:00")).toBeTruthy();
+    expect(screen.getByText("tomorrow 08:00")).toBeTruthy();
+  });
+});

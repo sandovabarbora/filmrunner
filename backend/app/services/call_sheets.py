@@ -10,12 +10,13 @@ Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html
 import logging
 import string
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import or_, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.clock import prague_today
 from app.models.production import CastMember, CrewMember, Location
 from app.models.push import PushSubscription
 from app.models.seen import RevisionView
@@ -100,7 +101,7 @@ def _fill_computed_sunrise_sunset(db: Session, revision: CallSheetRevision, shoo
 def _weather_target(db: Session, revision: CallSheetRevision) -> tuple[float, float, date] | None:
     # Open-Meteo forecasts 16 days ahead and nothing in the past; outside that window the call can only
     # fail (FR-52 found a 400 per publish on a 30-day schedule import), so it is not made.
-    horizon = (revision.shoot_date - date.today()).days
+    horizon = (revision.shoot_date - prague_today()).days
     if horizon < 0 or horizon > 16:
         return None
     ordered = sorted((i for i in revision.schedule_items if i.location_id is not None), key=lambda i: i.order_index)
@@ -840,13 +841,28 @@ def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCal
     return rows
 
 
-def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | None:
+NIGHT_ENDS_AT_HOUR = 6
+
+
+def _called_after_noon(call: str | None) -> bool:
+    """Stored calls can predate validation, so anything that is not a time is simply not a late call."""
+    hour = (call or "").partition(":")[0]
+    return hour.isascii() and hour.isdigit() and int(hour) >= 12
+
+
+def next_day_for_token(db: Session, token: str, today: date, *, before_dawn: bool = False) -> CrewNextDay | None:
     """FR-32: one link per person for the whole shoot. Resolves the personal
     token to its crew member and picks the day that link should open: the
     earliest shoot day on or after `today`, else the most recent one (the
     shoot is over, the last sheet is still the useful one). None for an
     unknown token; a production with no days yet gives call_sheet_id None
-    so the viewer can say "no day published yet" instead of 404-ing."""
+    so the viewer can say "no day published yet" instead of 404-ing.
+
+    FR-222: `before_dawn` (before 06:00) keeps a day dated yesterday open if
+    its crew call was at noon or later: at 01:00 that shoot is still running.
+    A morning call does not qualify. It wrapped long ago, and someone called
+    at 05:30 today must not open yesterday's sheet at 05:00; turnaround rules
+    out someone called after noon yesterday being called that early today."""
     member = db.query(CrewMember).filter(CrewMember.personal_token == token).first() or db.query(CastMember).filter(CastMember.personal_token == token).first()
     if member is None:
         return None
@@ -877,6 +893,9 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
     live = [d for d in days if d.status != "cancelled"]
     upcoming = [d for d in live if d.shoot_date >= today]
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))
+    if before_dawn:
+        running = [d for d in live if d.shoot_date == today - timedelta(days=1) and _called_after_noon(d.general_crew_call)]
+        chosen = running[-1] if running else chosen
     return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
                        call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)
 
