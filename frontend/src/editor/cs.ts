@@ -290,6 +290,8 @@ export const CS: Record<string, string> = {
   "{n} people still have not confirmed": "{n} lidí nepotvrdilo",
   "{c} of {t} confirmed": "potvrdilo {c} z {t}",
   "Call sheet is not published": "Dispozice nejsou vydané",
+  "Nobody is on this call sheet": "Na dispozicích nikdo není",
+  "Add crew or call cast, or nobody gets this sheet": "Přidej štáb nebo svolej herce, jinak dispozice nikdo nedostane",
   "Everything is on track": "Všechno jede podle plánu",
   "On track": "Jede podle plánu",
   "No days ahead": "Žádné další dny",

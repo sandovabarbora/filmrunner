@@ -40,6 +40,11 @@ function Item({ item, L }: { item: DashboardItem; L: L }) {
             <span className="dash-what">{L(byCount(missing, "{n} person has not confirmed", "{n} people have not confirmed", "{n} people still have not confirmed"), { n: missing })}</span>
             <span className="dash-detail">{L("{c} of {t} confirmed", { c: item.confirmed, t: item.total })}{item.not_opened > 0 ? ` · ${L("Not opened: {n}", { n: item.not_opened })}` : ""}</span>
           </>
+        ) : item.kind === "no_crew" ? (
+          <>
+            <span className="dash-what">{L("Nobody is on this call sheet")}</span>
+            <span className="dash-detail">{L("Day {n}", { n: item.day_number })} · {L("Add crew or call cast, or nobody gets this sheet")}</span>
+          </>
         ) : (
           <>
             <span className="dash-what">{L("Call sheet is not published")}</span>
