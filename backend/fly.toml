@@ -1,5 +1,5 @@
-# Fly.io app for the FilmRunner API. Deployed from this directory
-# (`fly deploy` here, or the fly.yml workflow). Secrets are set on the
+# Fly.io app for the FilmRunner API. Deployed by the founder with
+# scripts/deploy_api.sh; there is no deploy workflow (ADR-002). Secrets are set on the
 # platform (`fly secrets set`), never in this file:
 #   FILMRUNNER_DATABASE_URL, FILMRUNNER_API_BEARER_TOKEN,
 #   FILMRUNNER_ENVIRONMENT=production, FILMRUNNER_CORS_ORIGINS
@@ -24,8 +24,9 @@ primary_region = "fra"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
+  # /healthz, not /readyz: with /readyz a paused database takes the only machine out of routing, so the crew gets the proxy's error, not the API's.
   [[http_service.checks]]
     interval = "30s"
     timeout = "5s"

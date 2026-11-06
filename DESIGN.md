@@ -60,6 +60,9 @@ versioned — the content lives in revisions.
 general_crew_call, shooting_call, sunrise, sunset, weather_forecast,
 safety_notes, is_current (bool), created_at, created_by.
 Immutable once created — a correction creates revision B, it never edits A.
+One exception (FR-223): a blank weather_forecast on the current revision is
+filled once just after its publish commits, since the provider is called
+outside the publish lock.
 
 **ScheduleItem** — id, revision_id (FK), order_index, scene_number,
 int_ext (INT/EXT), day_night (DAY/NIGHT), set_description, location_id (FK),

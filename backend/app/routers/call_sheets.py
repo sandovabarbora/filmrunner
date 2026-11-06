@@ -218,7 +218,7 @@ def cancel_call_sheet(
     if call_sheet.status != CallSheetStatus.CANCELLED:
         call_sheet.status = CallSheetStatus.CANCELLED
         db.commit()
-        logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.label)
+        logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.kind)
     background_tasks.add_task(notify_day_cancelled_in_background, call_sheet.id)
     return _read_with_contacts(db, call_sheet_id)
 
@@ -231,7 +231,7 @@ def restore_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), 
     if call_sheet.status == CallSheetStatus.CANCELLED:
         call_sheet.status = CallSheetStatus.PUBLISHED
         db.commit()
-        logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.label)
+        logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.kind)
     return _read_with_contacts(db, call_sheet_id)
 
 

@@ -230,6 +230,9 @@ def test_open_personal_link_tab_picks_up_a_published_revision_without_a_manual_r
     page.goto(share)
     page.wait_for_selector("#sheet.visible", timeout=15_000)
     expect(page.locator("#crewCall")).to_have_text("06:00")
+    # FR-221: the worker taking control re-reads once, which would pick up REV B and race the "still REV A" check below.
+    page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=10_000)
+    page.wait_for_load_state("networkidle")
 
     # Publish REV B while the viewer tab sits untouched, exactly like an AD's late-night fix.
     editor.fill("#general_crew_call", "07:15")

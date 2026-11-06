@@ -8,8 +8,8 @@ type PushState = "unknown" | "offer" | "on" | "blocked" | "failed" | "limit" | "
 
 /** Opening a link is not reading it. This is the person's own word that they know, and the AD's list is built from it.
  *  The same tap turns on notifications: a browser only asks in response to a tap, and this is the moment the reason is obvious. */
-export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, offline, lang, onStale, pushable, changed }: {
-  apiBase: string; sheetId: string; token: string; letter: string; confirmedAt: string | null; offline: boolean; lang: Lang; onStale: () => void;
+export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, waitingFor, lang, onStale, pushable, changed }: {
+  apiBase: string; sheetId: string; token: string; letter: string; confirmedAt: string | null; waitingFor: "sheet" | "block" | null; lang: Lang; onStale: () => void;
   /** Push is crew-only today: an actor hears from the AD by message. */
   pushable: boolean;
   changed: boolean;
@@ -17,7 +17,7 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
   const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
   const [done, setDone] = useState(confirmedAt);
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<"stale" | "failed" | null>(null);
+  const [problem, setProblem] = useState<"stale" | "removed" | "refused" | "failed" | null>(null);
   const [push, setPush] = useState<PushState>("unknown");
   const [vapidKey, setVapidKey] = useState<string | null>(null);
   useEffect(() => { setDone(confirmedAt); setProblem(null); }, [letter, confirmedAt]);
@@ -54,8 +54,8 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
     const result = await confirmRevision(apiBase, sheetId, token, letter);
     setBusy(false);
     if (result.kind === "confirmed") setDone(result.confirmedAt);
-    else if (result.kind === "stale") { setProblem("stale"); onStale(); }
-    else setProblem("failed");
+    else if (result.kind === "failed") setProblem("failed");
+    else { setProblem(result.kind); onStale(); }  // the server knows something this screen does not, so read again
   }
 
   if (done) {
@@ -76,14 +76,17 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
     );
   }
   return (
-    <div className={`confirm${offline ? " offline" : ""}`} id="confirm">
+    <div className={`confirm${waitingFor ? " offline" : ""}`} id="confirm">
       <p className="confirm-ask" id="confirmAsk">{changed ? L("confirm.askChanged") : L("confirm.askFirst")}</p>
-      <button type="button" id="confirmBtn" disabled={busy || offline} onClick={() => void confirm()}>
+      <button type="button" id="confirmBtn" disabled={busy || !!waitingFor || problem === "removed" || problem === "refused"} onClick={() => void confirm()}>
         {busy ? L("confirm.busy") : L("confirm.action", { rev: letter })}
       </button>
-      {push === "offer" && !offline && <p className="confirm-note" id="confirmPushNote">{L("confirm.pushNote")}</p>}
-      {offline && <p className="confirm-note" id="confirmOffline">{L("confirm.offline")}</p>}
+      {push === "offer" && !waitingFor && <p className="confirm-note" id="confirmPushNote">{L("confirm.pushNote")}</p>}
+      {waitingFor === "sheet" && <p className="confirm-note" id="confirmOffline">{L("confirm.offline")}</p>}
+      {waitingFor === "block" && <p className="confirm-note" id="confirmBlockWaiting">{L("confirm.waitingBlock")}</p>}
       {problem === "stale" && <p className="confirm-note" role="alert" id="confirmStale">{L("confirm.stale")}</p>}
+      {problem === "removed" && <p className="confirm-note" role="alert" id="confirmRemoved">{L("confirm.removed")}</p>}
+      {problem === "refused" && <p className="confirm-note" role="alert" id="confirmRefused">{L("confirm.refused")}</p>}
       {problem === "failed" && <p className="confirm-note" role="alert" id="confirmFailed">{L("confirm.failed")}</p>}
     </div>
   );

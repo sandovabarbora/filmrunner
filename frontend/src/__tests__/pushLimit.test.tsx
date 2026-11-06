@@ -46,7 +46,7 @@ describe("FR-220: the device limit", () => {
 
   it.each<Lang>(["en", "cs"])("confirming still counts in %s, says why notifications are off and offers no pointless retry", async (lang) => {
     const user = userEvent.setup();
-    render(<ConfirmRevision apiBase={API} sheetId="s1" token="tok" letter="A" confirmedAt={null} offline={false} lang={lang} onStale={vi.fn()} pushable changed={false} />);
+    render(<ConfirmRevision apiBase={API} sheetId="s1" token="tok" letter="A" confirmedAt={null} waitingFor={null} lang={lang} onStale={vi.fn()} pushable changed={false} />);
     await waitFor(() => expect(document.querySelector("#confirmPushNote")).not.toBeNull());
     await user.click(screen.getByRole("button"));
     await waitFor(() => expect(document.querySelector("#confirmDone")).not.toBeNull());

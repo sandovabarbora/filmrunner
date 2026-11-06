@@ -135,7 +135,7 @@ def create_production(
                                 role=ProductionRole.OWNER, invited_by=principal.email))
     db.commit()
     db.refresh(production)
-    logger.info("Created production %s (%s) by %s", production.id, production.name, principal.label)
+    logger.info("Created production %s (%s) by %s", production.id, production.name, principal.kind)
     return _with_access(production, ProductionRole.OWNER)
 
 

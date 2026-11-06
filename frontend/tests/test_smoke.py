@@ -209,7 +209,8 @@ def test_going_offline_after_a_live_load_shows_cached_status_with_timestamp(page
     )
     status = page.locator("#status")
     assert status.get_attribute("class") == "status offline"
-    assert "Offline" in status.inner_text()
+    assert "Not live" in status.inner_text()
+    assert "REV A" in status.inner_text()
     assert "saved" in status.inner_text()
     assert "Day 3 of 9" in page.locator("#dayLabel").inner_text()
 
@@ -254,7 +255,7 @@ def test_worker_without_the_freshness_stamp_shows_unknown_not_live(page: Page, f
 
         page.wait_for_selector("#sheet.visible", timeout=10_000)
         status = page.locator("#status")
-        assert "Unknown freshness" in status.inner_text()
+        assert "Could not check" in status.inner_text()
         assert "Live" not in status.inner_text()
     finally:
         sw_path.write_text(original_sw)

@@ -3,7 +3,7 @@ import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { whatsappNumber, whatsappUrl } from "./editor/shareText";
 import type { CallSheet, ContactCard, PersonalSheet, RevisionChange, ScheduleItem, SheetLocation } from "./types";
-import { fmtDate, t, type Key, type Lang } from "./i18n";
+import { fmtDate, fmtSavedAt, t, type Key, type Lang } from "./i18n";
 
 // FR-84: qrcode-generator (~52 KB minified) is only needed for the print-only
 // footer, never for the on-screen sheet crew actually read. Code-split so it
@@ -397,7 +397,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
 
       {freshness.fromCache && (
         <p className="cached-at" id="cachedAt">
-          {L("cached.note", { time: new Date(freshness.fetchedAt).toLocaleString() })}
+          {L("cached.note", { time: fmtSavedAt(lang, freshness.fetchedAt) })}
         </p>
       )}
 

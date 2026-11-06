@@ -103,12 +103,13 @@ def send(*, endpoint: str, p256dh: str, auth: str, payload: dict) -> None:
     except WebPushException as exc:
         status_code = exc.response.status_code if exc.response is not None else None
         gone = status_code in (404, 410)
-        reason = f"push service returned {status_code}" if status_code else str(exc)
-        logger.warning("Push delivery failed for endpoint %s…: %s", endpoint[:60], reason)
+        reason = f"push service returned {status_code}" if status_code else "push service unreachable"
+        logger.warning("Push delivery failed via %s: %s", urlsplit(endpoint).hostname, reason)
         raise PushDeliveryError(reason, gone=gone, status_code=status_code) from exc
     except Exception as exc:  # noqa: BLE001 — network/timeout errors from `requests`, not worth enumerating
-        reason = str(exc) or exc.__class__.__name__
-        logger.warning("Push delivery failed for endpoint %s…: %s", endpoint[:60], reason)
+        # The class, not the text: `requests` errors quote the endpoint URL, a bearer capability for this person's pushes.
+        reason = exc.__class__.__name__
+        logger.warning("Push delivery failed via %s: %s", urlsplit(endpoint).hostname, reason)
         raise PushDeliveryError(reason) from exc
 
 

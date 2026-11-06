@@ -19,4 +19,5 @@ ARG FILMRUNNER_GIT_SHA=""
 ENV FILMRUNNER_GIT_SHA=$FILMRUNNER_GIT_SHA
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# No access log: personal tokens are in URL paths. app/request_log.py logs the route template instead.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

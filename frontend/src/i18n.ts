@@ -13,14 +13,19 @@ const EN = {
   "sub.dev": "Development",
   "sub.home": "The living call sheet",
   "status.live": "Live · saved on this phone for offline use.",
-  "status.cached": "Offline · showing the copy saved {when}. Times may have changed since.",
-  "status.unknown": "Unknown freshness · this phone's saved app could not confirm whether this is live. Reinstall it (close and reopen) if this keeps happening.",
+  "status.cached": "Not live · REV {rev}, saved on this phone {when}. The server cannot be reached right now, so times may have changed. If unsure, ask your AD.",
+  "status.unknown": "Could not check that this is the latest version. Times may have changed. If unsure, ask your AD.",
+  "status.slow": "Still loading. The first open can take a few seconds.",
   "status.notfound": "This call sheet does not exist or is not available any more.",
   "status.error": "Could not load this call sheet ({reason}).",
   "status.invalidToken": "This personal link is not on any crew list. Ask your AD for a new one.",
   "status.unreachable": "Could not reach the server and no day is saved on this phone yet. Open this link once in signal.",
   "status.noDay": "{production}: no shoot day published yet. Keep this link; it will open your next day.",
   "personal.invalid": "This personal link is not on the crew list any more. Showing the general call sheet.",
+  "personal.unreachable": "Your own times could not be loaded because the server did not answer. This is the general call sheet.",
+  "personal.retry": "Try again",
+  "personal.retrying": "Trying…",
+  "personal.saved": "Your own times are from the copy saved {when}, because the server did not answer. They may have changed. If unsure, ask your AD.",
   "empty.notCached": "This call sheet is not on this phone yet and the server could not be reached. Get back in signal and reload; it will be saved for offline use after the first load.",
   "empty.notFound": "This call sheet does not exist or is not available any more. Check the link with whoever sent it — reloading will not help.",
   "home.crew": "Crew",
@@ -73,7 +78,7 @@ const EN = {
   "change.scenes_added.one": "Scene {n} added",
   "change.scenes_added.many": "Scenes {n} added",
   "change.cast_calls.sentence": "Cast calls changed: {names}",
-  "cached.note": "Copy saved {time}. You are offline; times may have changed since.",
+  "cached.note": "Copy saved {time}. Times may have changed since.",
   "you.where": "Where",
   "you.morePlaces": "and {n} more below",
   "you.call": "Your call",
@@ -92,7 +97,10 @@ const EN = {
   "confirm.pushInstall": "To get notifications on an iPhone, add this page to your home screen: Share, then Add to Home Screen.",
   "confirm.pushEnable": "Turn on notifications",
   "confirm.pushRetry": "Try notifications again",
-  "confirm.offline": "You can confirm once you are back in signal.",
+  "confirm.offline": "You can confirm once the current version loads.",
+  "confirm.waitingBlock": "You can confirm once your own times for this revision load.",
+  "confirm.removed": "This personal link is not on the crew list any more. Ask your AD.",
+  "confirm.refused": "There is nothing for you to confirm on this day. If unsure, ask your AD.",
   "confirm.stale": "A newer revision has just come out. Read it, then confirm that one.",
   "confirm.failed": "That did not go through. Try again, or tell your AD directly.",
   "crewCall": "Crew call",
@@ -153,14 +161,19 @@ const CS: Partial<Record<Key, string>> = {
   "sub.dev": "Vývoj",
   "sub.home": "Živé denní dispozice",
   "status.live": "Živě · uloženo v telefonu pro čtení bez signálu.",
-  "status.cached": "Offline · zobrazena kopie uložená {when}. Časy se od té doby mohly změnit.",
-  "status.unknown": "Neznámá čerstvost · uložená aplikace nedokázala ověřit, jestli je tohle živá verze. Pokud se to opakuje, zavři ji a otevři znovu.",
+  "status.cached": "Není to živá verze · REV {rev}, uložená v telefonu {when}. Server teď není dostupný, časy se mohly změnit. Při pochybnostech se zeptej AD.",
+  "status.unknown": "Nepodařilo se ověřit, že je to nejnovější verze. Časy se mohly změnit. Při pochybnostech se zeptej AD.",
+  "status.slow": "Pořád se načítá. První otevření může chvíli trvat.",
   "status.notfound": "Tyhle dispozice neexistují nebo už nejsou dostupné.",
   "status.error": "Dispozice se nepodařilo načíst ({reason}).",
   "status.invalidToken": "Tenhle osobní odkaz není na žádném seznamu štábu. Požádej AD o nový.",
   "status.unreachable": "Server je nedostupný a v telefonu ještě není uložený žádný den. Otevři odkaz jednou se signálem.",
   "status.noDay": "{production}: zatím není zveřejněný žádný natáčecí den. Odkaz si nech, otevře tvůj další den.",
   "personal.invalid": "Tenhle osobní odkaz už není na seznamu štábu. Zobrazuji obecné dispozice.",
+  "personal.unreachable": "Tvoje časy se teď nepodařilo načíst, server neodpověděl. Tohle jsou obecné dispozice.",
+  "personal.retry": "Zkusit znovu",
+  "personal.retrying": "Zkouším…",
+  "personal.saved": "Tvoje časy jsou z kopie uložené {when}, server neodpověděl. Mohly se změnit. Při pochybnostech se zeptej AD.",
   "empty.notCached": "Tyhle dispozice ještě nejsou v telefonu a server je nedostupný. Vrať se do signálu a načti znovu; po prvním načtení zůstanou uložené i offline.",
   "empty.notFound": "Tyhle dispozice neexistují nebo už nejsou dostupné. Ověř odkaz u toho, kdo ti ho poslal — obnovení stránky nepomůže.",
   "home.crew": "Štáb",
@@ -213,7 +226,7 @@ const CS: Partial<Record<Key, string>> = {
   "change.scenes_added.one": "Přibyl obraz {n}",
   "change.scenes_added.many": "Přibyly obrazy {n}",
   "change.cast_calls.sentence": "Změna u herců: {names}",
-  "cached.note": "Kopie uložena {time}. Jsi offline, časy se mezitím mohly změnit.",
+  "cached.note": "Kopie uložena {time}. Časy se mezitím mohly změnit.",
   "you.where": "Kde",
   "you.morePlaces": "a další ({n}) níže",
   "you.call": "Tvůj sraz",
@@ -232,7 +245,10 @@ const CS: Partial<Record<Key, string>> = {
   "confirm.pushInstall": "Na iPhonu přijdou upozornění, až si tuhle stránku přidáš na plochu: Sdílet, pak Přidat na plochu.",
   "confirm.pushEnable": "Zapnout upozornění",
   "confirm.pushRetry": "Zkusit upozornění znovu",
-  "confirm.offline": "Potvrdit půjde, až budeš mít signál.",
+  "confirm.offline": "Potvrdit půjde, až se načte aktuální verze.",
+  "confirm.waitingBlock": "Potvrdit půjde, až se načtou tvoje časy pro tuhle revizi.",
+  "confirm.removed": "Tenhle osobní odkaz už není na seznamu štábu. Zeptej se AD.",
+  "confirm.refused": "Pro tebe na tenhle den není co potvrzovat. Při pochybnostech se zeptej AD.",
   "confirm.stale": "Právě vyšla novější revize. Přečti si ji a potvrď tu.",
   "confirm.failed": "Nepovedlo se odeslat. Zkus to znovu, nebo dej vědět AD napřímo.",
   "crewCall": "Sraz štábu",
@@ -310,6 +326,13 @@ export function t(lang: Lang, key: Key, vars: Record<string, string | number> = 
 const WEEKDAYS_CS = ["ne", "po", "út", "st", "čt", "pá", "so"];
 const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** When a copy was saved, in the language on screen rather than the phone's own locale. */
+export function fmtSavedAt(lang: Lang, iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(lang === "cs" ? "cs-CZ" : "en-GB", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 /** "st 23. 9. 2026" / "Wed 23 Sep 2026" from an ISO date; the raw string when it does not parse. */
 export function fmtDate(lang: Lang, iso: string): string {

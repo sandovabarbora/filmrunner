@@ -39,7 +39,8 @@ def nearest_hospital_suggestion(lat: float, lng: float) -> str | None:
         response.raise_for_status()
         elements = response.json().get("elements", [])
     except (httpx.HTTPError, ValueError) as exc:
-        logger.warning("Nearest-hospital lookup failed for (%s, %s): %s", lat, lng, exc)
+        # Only the class: coordinates show where a shoot is.
+        logger.warning("Nearest-hospital lookup failed: %s", exc.__class__.__name__)
         return None
 
     candidates = []

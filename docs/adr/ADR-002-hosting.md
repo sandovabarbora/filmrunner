@@ -38,6 +38,12 @@ readiness (live)" run, flagging how many commits the live deploy is
 behind. A deploy run with the old command (no flag) simply omits
 `git_sha`; the check reports that as unverified, not as a failure.
 
+**Addendum 2026-11-06 (FR-223): ready for a 05:00 call.** The cold-start
+trigger below has fired: `min_machines_running = 1`, so one machine always runs
+and is billed (Fly has no free allowance for new organizations, so the Costs section is out of date for this
+line). Deploys go through `scripts/deploy_api.sh`. The Fly check stays on
+`/healthz`; `/readyz` is for monitors.
+
 Guardrail: the data model stays plain Postgres. No row-level security as
 business logic, no edge functions, no Supabase storage in the schema, so
 the database can move to any Postgres host.
