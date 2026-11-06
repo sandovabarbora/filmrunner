@@ -155,7 +155,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           const keepLocal = local && local.dirtySincePublish && sameRevision;
           const overtaken = local && local.dirtySincePublish && !sameRevision ? unpublishedEdits(local, L) : [];
           if (!cancelled) {
-            setDraft(keepLocal ? local : fromServer); setReadOnly(false);
+            // A draft saved before drafts remembered their revision takes it from here, so its publish is checked too.
+            setDraft(keepLocal ? { ...local, baseRevisionId: local.baseRevisionId ?? fromServer.baseRevisionId, base: local.base ?? fromServer.base } : fromServer); setReadOnly(false);
             if (overtaken.length) setNotice({ kind: "warn", text: L("REV {rev} came out while you were editing, so your changes did not go out: {edits}. Make them again if they still apply.", { rev: fromServer.lastPublishedLetter ?? "", edits: overtaken.join("; ") }) });
           }
         } catch (err) {
