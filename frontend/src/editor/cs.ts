@@ -389,6 +389,8 @@ export const CS: Record<string, string> = {
   "Copied. Paste it into the WhatsApp group.": "Zkopírováno. Vlož to do skupiny na WhatsAppu.",
   "Could not copy; select the text below.": "Nepodařilo se zkopírovat; označ text níže.",
   "REV {rev} came out while you were editing, so your changes did not go out: {edits}. Make them again if they still apply.": "Mezitím vyšla REV {rev}, takže tvoje změny neodešly: {edits}. Pokud pořád platí, udělej je znovu.",
+  "Someone else published this day first, so nothing went out. Showing their revision.": "Tenhle den vydal mezitím někdo jiný, takže nic neodešlo. Ukazuju jeho revizi.",
+  "the head of day": "vedoucího dne",
   "the schedule": "harmonogram",
   "personal calls": "osobní srazy",
   "Published REV {rev}. Everyone with the link sees it now.": "Vydáno REV {rev}. Všichni s odkazem to teď vidí.",

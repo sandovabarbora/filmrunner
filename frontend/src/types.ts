@@ -153,7 +153,7 @@ export interface PersonalCallRow {
 }
 
 export interface RevisionCreate {
-  expected_revision_letter?: string | null;
+  expected_revision_id?: string | null;
   crew_calls?: CrewCallEntry[];
   /** FR-33: omitted = copy the previous revision's cast calls forward; [] = clear. */
   cast_calls?: CastCallEntry[];

@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy import text
 
 from app.database import SessionLocal
-from app.models.call_sheet import CallSheet
+from app.models.call_sheet import CallSheet, CallSheetStatus
 from app.models.production import Contact, CrewMember, Production
 from app.models.push import PushSubscription
 from app.schemas.call_sheet import CallSheetRevisionCreate
@@ -226,3 +226,18 @@ def test_the_same_publish_that_lost_the_race_collapses_into_the_winner(real_call
     revision, is_new = outcome["result"]
     assert revision.revision_letter == "B" and is_new is False
     assert len(_revision_letters_and_calls(real_call_sheet)) == 2
+
+
+def test_racing_publishes_of_a_planned_day_are_one_revision(real_call_sheet):
+    db = SessionLocal()
+    sheet = db.get(CallSheet, real_call_sheet)
+    sheet.status = CallSheetStatus.DRAFT
+    db.commit()
+    db.close()
+
+    outcome = _publish_while_another_holds_the_lock(
+        real_call_sheet, CallSheetRevisionCreate(general_crew_call="05:15"), CallSheetRevisionCreate(general_crew_call="09:45")
+    )
+
+    assert isinstance(outcome.get("error"), StaleRevision), outcome
+    assert _revision_letters_and_calls(real_call_sheet) == [("A", "05:15")]

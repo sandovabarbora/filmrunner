@@ -2276,8 +2276,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - gated: no
 - why: QA reproduced an editor with an older page publishing over a newer revision, reverting a crew call with nobody told, and two different publishes at the same moment both reporting success while one was lost
 - dod:
-  - a publish prepared from an older revision is refused with 409 and nothing reaches the crew
-  - two different publishes racing give one revision and one 409, never a 201 carrying someone else's content
+  - a publish prepared from another revision is refused with 412 and nothing reaches the crew, on a planned day too
+  - two different publishes racing give one revision and one refusal, never a 201 carrying someone else's content
   - a retry of the same content still collapses into one revision and one push
   - failure case: the editor says which of its changes did not go out, rather than dropping them without a word
 

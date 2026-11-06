@@ -33,25 +33,40 @@ function revisionPayload(d: Draft): RevisionCreate {
   };
 }
 
-/** What a draft held that the newer revision does not, so an edit someone overtook is said out loud instead of vanishing. */
-function unpublishedEdits(mine: Draft, server: Draft, L: (text: string) => string): string[] {
-  const fields: [string, string, string][] = [
-    [L("Crew call"), mine.general_crew_call, server.general_crew_call],
-    [L("Shooting call"), mine.shooting_call, server.shooting_call],
-    [L("Weather"), mine.weather_forecast, server.weather_forecast],
-    [L("Safety notes"), mine.safety_notes, server.safety_notes],
+/** One comparable value per thing an AD can edit, taken from what publishing would send, so empty rows and key order do not count. */
+function editableContent(d: Draft): Record<string, string> {
+  const p = revisionPayload(d);
+  const byPerson = (rows: { crew_member_id?: string; cast_member_id?: string }[] | null | undefined) =>
+    JSON.stringify([...(rows ?? [])].sort((a, b) => (a.crew_member_id ?? a.cast_member_id ?? "").localeCompare(b.crew_member_id ?? b.cast_member_id ?? "")));
+  return {
+    general_crew_call: p.general_crew_call ?? "", shooting_call: p.shooting_call ?? "", sunrise: p.sunrise ?? "", sunset: p.sunset ?? "",
+    weather_forecast: p.weather_forecast ?? "", safety_notes: p.safety_notes ?? "", head_of_day: p.head_of_day_crew_member_id ?? "",
+    schedule: JSON.stringify(p.schedule_items), personal: byPerson(p.crew_calls) + byPerson(p.cast_calls),
+  };
+}
+
+/** What this person changed since opening the day, so an edit someone overtook is said out loud instead of vanishing. */
+function unpublishedEdits(mine: Draft, L: (text: string) => string): string[] {
+  const base = mine.base;
+  if (!base) return [];
+  const now = editableContent(mine);
+  const named: [string, string][] = [
+    ["general_crew_call", L("Crew call")], ["shooting_call", L("Shooting call")], ["sunrise", L("Sunrise")], ["sunset", L("Sunset")],
+    ["weather_forecast", L("Weather")], ["safety_notes", L("Safety notes")],
   ];
-  const edits = fields.filter(([, a, b]) => a.trim() !== b.trim()).map(([label, a]) => `${label} ${a.trim() || "–"}`);
-  if (JSON.stringify(mine.items) !== JSON.stringify(server.items)) edits.push(L("the schedule"));
-  if (JSON.stringify(mine.crewCalls) !== JSON.stringify(server.crewCalls) || JSON.stringify(mine.castCalls) !== JSON.stringify(server.castCalls)) edits.push(L("personal calls"));
+  const edits = named.filter(([k]) => now[k] !== base[k]).map(([k, label]) => `${label} ${now[k] || "–"}`);
+  if (now.head_of_day !== base.head_of_day) edits.push(L("the head of day"));
+  if (now.schedule !== base.schedule) edits.push(L("the schedule"));
+  if (now.personal !== base.personal) edits.push(L("personal calls"));
   return edits;
 }
 
 /** The server's current revision, poured into an editable draft (server is the source of truth once published). */
 function draftFromServer(productionId: string, productionName: string | null, sheet: CallSheetCreated): Draft {
   const rev = sheet.current_revision;
-  return {
+  const draft: Draft = {
     ...emptyDraft(productionId, productionName),
+    baseRevisionId: rev?.id ?? null,
     id: draftKey(productionId, sheet.id),
     callSheetId: sheet.id,
     headOfDayId: rev?.head_of_day_crew_member_id ?? null,
@@ -74,6 +89,7 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     crewCalls: Object.fromEntries((rev?.crew_calls ?? []).map((e) => [e.crew_member_id, { call: e.call_time ?? "", pickup: e.pickup_time ?? "", note: e.note ?? "" }])),
     castCalls: Object.fromEntries((rev?.cast_calls ?? []).map((e) => [e.cast_member_id, { status: e.status_code, pickup: e.pickup_time ?? "", call: e.call_time ?? "", makeup: e.makeup_hair_time ?? "", onSet: e.on_set_time ?? "" }])),
   };
+  return { ...draft, base: editableContent(draft) };
 }
 
 function nextLetter(letter: string): string {
@@ -135,8 +151,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           if (!cancelled) { setDayStatus(sheet.status ?? "published"); setActuals(sheet.actuals ?? EMPTY_ACTUALS); setActualsDirty(false); }
           const fromServer = draftFromServer(productionId, productionName, sheet);
           // Keep unpublished local edits if they are newer than the last publish.
-          const keepLocal = local && local.dirtySincePublish && local.lastPublishedLetter === fromServer.lastPublishedLetter;
-          const overtaken = local && local.dirtySincePublish && local.lastPublishedLetter && !keepLocal ? unpublishedEdits(local, fromServer, L) : [];
+          const sameRevision = local?.baseRevisionId ? local.baseRevisionId === fromServer.baseRevisionId : local?.lastPublishedLetter === fromServer.lastPublishedLetter;
+          const keepLocal = local && local.dirtySincePublish && sameRevision;
+          const overtaken = local && local.dirtySincePublish && !sameRevision ? unpublishedEdits(local, L) : [];
           if (!cancelled) {
             setDraft(keepLocal ? local : fromServer); setReadOnly(false);
             if (overtaken.length) setNotice({ kind: "warn", text: L("REV {rev} came out while you were editing, so your changes did not go out: {edits}. Make them again if they still apply.", { rev: fromServer.lastPublishedLetter ?? "", edits: overtaken.join("; ") }) });
@@ -264,19 +281,21 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         });
         await clearDraft(key);
         const letter = created.current_revision?.revision_letter ?? "A";
-        await saveDraft({ ...draft, id: draftKey(productionId, created.id), callSheetId: created.id, lastPublishedLetter: letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
+        await saveDraft({ ...draft, id: draftKey(productionId, created.id), callSheetId: created.id, baseRevisionId: created.current_revision?.id ?? null, base: editableContent(draft), lastPublishedLetter: letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
         setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: letter }) });
         window.location.hash = href({ screen: "day", productionId, callSheetId: created.id });
       } else {
-        const rev = await api.publishRevision(conn, draft.callSheetId, { ...revisionPayload(draft), expected_revision_letter: draft.lastPublishedLetter });
-        update({ lastPublishedLetter: rev.revision_letter, publishedAt: new Date().toISOString(), dirtySincePublish: false });
+        const rev = await api.publishRevision(conn, draft.callSheetId, { ...revisionPayload(draft), expected_revision_id: draft.baseRevisionId });
+        update({ lastPublishedLetter: rev.revision_letter, baseRevisionId: rev.id, base: editableContent(draft), publishedAt: new Date().toISOString(), dirtySincePublish: false });
         setDayStatus("published");  // publishing puts a cancelled day back on, and makes a planned day real
         setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: rev.revision_letter }) });
       }
     } catch (err) {
-      // A newer revision exists: show it, and the load below says what of this draft did not go out.
-      if (err instanceof ApiError && err.status === 409) setReloadTick((t) => t + 1);
-      setNotice(err instanceof ApiError && err.status === 0
+      // A newer revision exists: show it, and the load says what of this draft did not go out.
+      const overtaken = err instanceof ApiError && err.status === 412;
+      if (overtaken) setReloadTick((t) => t + 1);
+      setNotice(overtaken ? { kind: "warn", text: L("Someone else published this day first, so nothing went out. Showing their revision.") }
+        : err instanceof ApiError && err.status === 0
         ? { kind: "warn", text: L("No connection. Your draft is safe on this phone; publish when you are back in signal.") }
         : noticeFromError(err, L("Publish failed")));
     } finally {

@@ -43,14 +43,17 @@ def _rows_match(payload_rows, stored_rows, key) -> bool:
     )
 
 
-def _is_same_content(revision: CallSheetRevision, payload: CallSheetRevisionCreate) -> bool:
-    """Tells a retry of the same publish from a different edit. Fields the server fills in when left blank match anything."""
+def _is_same_content(revision: CallSheetRevision, previous: CallSheetRevision | None, payload: CallSheetRevisionCreate) -> bool:
+    """Tells a retry of the same publish from a different edit. The server fills some blank fields in, so a blank
+    matches a stored value, unless the revision before had a value: then the blank is someone clearing it."""
     for field in ("general_crew_call", "shooting_call", "safety_notes", "head_of_day_crew_member_id"):
         if getattr(revision, field) != getattr(payload, field):
             return False
     for field in ("sunrise", "sunset", "weather_forecast"):
-        sent = getattr(payload, field)
-        if sent and getattr(revision, field) != sent:
+        sent = getattr(payload, field) or None
+        stored = getattr(revision, field) or None
+        cleared = sent is None and previous is not None and getattr(previous, field)
+        if (sent is not None and stored != sent) or (cleared and stored is not None):
             return False
     if not _rows_match(payload.schedule_items, revision.schedule_items, key=lambda r: r.order_index):
         return False
@@ -132,14 +135,15 @@ def publish_revision(
     after a lost response sends the same content twice, and collapses into
     the revision already published, with is_new=False; the caller must not
     send a second push then. FR-219: anything else that lost the race, or
-    that was prepared from an older revision than `expected_revision_letter`
+    that was prepared from another revision than `expected_revision_id`
     says, is a different person's edit and raises StaleRevision, since
     publishing it would silently undo the change that won.
 
     `commit=False` leaves the transaction open for a change spanning several
     days (app/services/replan.py); its advisory lock is held until that commit.
     """
-    revision_count_before_lock = len(call_sheet.revisions)
+    # By id, not by count or letter: publishing a planned day replaces its REV A with a new REV A.
+    before_lock = call_sheet.current_revision.id if call_sheet.current_revision is not None else None
     lock_key = str(call_sheet.id)
     waited = not db.execute(
         text("SELECT pg_try_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": lock_key}
@@ -150,15 +154,12 @@ def publish_revision(
     # Only these two: a change spanning days has unflushed edits on this object, and the session does not autoflush.
     db.expire(call_sheet, ["revisions", "status"])
     current = call_sheet.current_revision
-    lost_the_race = len(call_sheet.revisions) != revision_count_before_lock
-    prepared_from_older = (
-        payload.expected_revision_letter is not None
-        and current is not None
-        and current.revision_letter != payload.expected_revision_letter
-    )
-    if lost_the_race or prepared_from_older:
-        assert current is not None  # a revision was just added, or one exists to compare with
-        if _is_same_content(current, payload):
+    current_id = current.id if current is not None else None
+    lost_the_race = current_id != before_lock
+    prepared_from_older = payload.expected_revision_id is not None and current_id != payload.expected_revision_id
+    if (lost_the_race or prepared_from_older) and current is not None:
+        earlier = sorted((r for r in call_sheet.revisions if r.id != current.id), key=lambda r: r.revision_letter)
+        if _is_same_content(current, earlier[-1] if earlier else None, payload):
             return current, False
         raise StaleRevision(f"REV {current.revision_letter} was published after this was prepared, so nothing was published. Reload the day and make the change again.")
 

@@ -1244,6 +1244,7 @@ def test_a_publish_overtaken_by_another_editor_says_so_and_keeps_the_newer_revis
 
     expect(page.locator("#notice")).to_contain_text("REV B", timeout=10_000)
     expect(page.locator("#notice")).to_contain_text("Mokrá podlaha")
+    assert "06:30" not in page.locator("#notice").inner_text(), "the other editor's change must not be reported as this one's"
     expect(page.locator("#general_crew_call")).to_have_value("04:44")
     current = call(f"/call-sheets/{sheet['id']}")["current_revision"]
     assert current["revision_letter"] == "B" and current["general_crew_call"] == "04:44"
