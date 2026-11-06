@@ -93,8 +93,10 @@ def test_production_rename_and_wrap_need_edit_permission(client: TestClient) -> 
 def _crew_with_push(client: TestClient, pid: str) -> dict:
     cid = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=AUTH).json()["id"]
     member = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": cid, "department": "Camera", "position": "AC"}, headers=AUTH).json()
-    client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
-                json={"endpoint": "https://push.example/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
+    # Asserted: without a subscriber, "nobody was told" would pass for the wrong reason.
+    subscribed = client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
+                             json={"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
+    assert subscribed.status_code < 300, subscribed.text
     return member
 
 

@@ -90,8 +90,9 @@ def test_a_retry_with_the_same_payload_returns_the_day_and_tells_nobody_again(cl
     pid = _production(client)
     contact = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=AUTH).json()["id"]
     member = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Camera", "position": "AC"}, headers=AUTH).json()
-    client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
-                json={"endpoint": "https://push.example/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
+    subscribed = client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
+                             json={"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"}, "link_url": "https://x/?me=t"})
+    assert subscribed.status_code < 300, subscribed.text
     with patch("app.services.push.webpush") as webpush:
         first = _create(client, pid)
         retry = _create(client, pid)
