@@ -26,7 +26,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         wrapped = db.scalars(
-            select(Production).where(Production.status == ProductionStatus.WRAPPED).order_by(Production.created_at)
+            select(Production).where(Production.status == ProductionStatus.WRAPPED, Production.sandbox_session.is_(None)).order_by(Production.created_at)
         ).all()
 
         print("== Wrapped productions (proposed 12-month policy would eventually affect these) ==")
@@ -69,6 +69,7 @@ def main() -> None:
             .join(Contact, Contact.id == CrewMember.contact_id)
             .join(Production, Production.id == CrewMember.production_id)
             .join(PushSubscription, PushSubscription.crew_member_id == CrewMember.id)
+            .where(Production.sandbox_session.is_(None))
             .distinct()
         ).all()
         if not subscribed:
@@ -82,7 +83,7 @@ def main() -> None:
         crew_contact_ids = select(CrewMember.contact_id)
         cast_contact_ids = select(CastMember.contact_id)
         orphaned = db.scalars(
-            select(Contact).where(Contact.id.notin_(crew_contact_ids), Contact.id.notin_(cast_contact_ids))
+            select(Contact).where(Contact.sandbox_session.is_(None), Contact.id.notin_(crew_contact_ids), Contact.id.notin_(cast_contact_ids))
         ).all()
         if not orphaned:
             print("(none)")

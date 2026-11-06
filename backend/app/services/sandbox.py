@@ -2,6 +2,7 @@ import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.sandbox_tokens import issue_token, sandbox_email
@@ -14,6 +15,8 @@ from app.schemas.sandbox import SandboxPersona, SandboxSession
 from app.services.call_sheets import create_call_sheet, publish_revision
 
 SESSION_HOURS = 24
+MAX_PRODUCTIONS_PER_SESSION = 12
+MAX_CONTACTS_PER_SESSION = 200
 
 
 def delete_production_rows(db: Session, production_ids: list[uuid.UUID]) -> None:
@@ -22,8 +25,7 @@ def delete_production_rows(db: Session, production_ids: list[uuid.UUID]) -> None
         return
     sheet_ids = [r[0] for r in db.query(CallSheet.id).filter(CallSheet.production_id.in_(production_ids))]
     revision_ids = [r[0] for r in db.query(CallSheetRevision.id).filter(CallSheetRevision.call_sheet_id.in_(sheet_ids))] if sheet_ids else []
-    contact_ids = {r[0] for r in db.query(CrewMember.contact_id).filter(CrewMember.production_id.in_(production_ids))}
-    contact_ids |= {r[0] for r in db.query(CastMember.contact_id).filter(CastMember.production_id.in_(production_ids))}
+    db.query(ScheduleItem).filter(ScheduleItem.location_id.in_(db.query(Location.id).filter(Location.production_id.in_(production_ids)))).update({"location_id": None}, synchronize_session=False)
     if revision_ids:
         db.query(CallSheetRevision).filter(CallSheetRevision.id.in_(revision_ids)).update({"head_of_day_crew_member_id": None}, synchronize_session=False)
         for model in (ScheduleItem, CastCallEntry, DistributionLog):
@@ -36,18 +38,22 @@ def delete_production_rows(db: Session, production_ids: list[uuid.UUID]) -> None
         db.query(CallSheet).filter(CallSheet.id.in_(sheet_ids)).delete(synchronize_session=False)
     db.query(Location).filter(Location.production_id.in_(production_ids)).delete(synchronize_session=False)
     db.query(ProductionMember).filter(ProductionMember.production_id.in_(production_ids)).delete(synchronize_session=False)
-    if contact_ids:
-        used = {r[0] for r in db.query(CrewMember.contact_id).filter(CrewMember.contact_id.in_(contact_ids))}
-        used |= {r[0] for r in db.query(CastMember.contact_id).filter(CastMember.contact_id.in_(contact_ids))}
-        if contact_ids - used:
-            db.query(Contact).filter(Contact.id.in_(contact_ids - used)).delete(synchronize_session=False)
     db.query(Production).filter(Production.id.in_(production_ids), Production.sandbox_session.is_not(None)).delete(synchronize_session=False)
 
 
 def purge_expired(db: Session) -> None:
+    """A whole world goes at once, measured from its oldest film. Contacts go by their own marker, never by looking unused."""
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=SESSION_HOURS)
-    stale = [r[0] for r in db.query(Production.id).filter(Production.sandbox_session.is_not(None), Production.created_at < cutoff)]
-    delete_production_rows(db, stale)
+    sessions = {r[0] for r in db.query(Production.sandbox_session).filter(Production.sandbox_session.is_not(None), Production.created_at < cutoff)}
+    if not sessions:
+        return
+    delete_production_rows(db, [r[0] for r in db.query(Production.id).filter(Production.sandbox_session.in_(sessions))])
+    db.query(Contact).filter(Contact.sandbox_session.in_(sessions)).delete(synchronize_session=False)
+
+
+def enforce_quota(db: Session, model: type, session: str, limit: int) -> None:
+    if db.query(model).filter(model.sandbox_session == session).count() >= limit:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="This test environment is full; start over with fresh data")
 
 
 def live_session_count(db: Session) -> int:
@@ -55,7 +61,7 @@ def live_session_count(db: Session) -> int:
 
 
 def _crew(db: Session, production: Production, name: str, phone: str, department: str, position: str, head: bool = False) -> CrewMember:
-    contact = Contact(name=name, phone=phone)
+    contact = Contact(name=name, phone=phone, sandbox_session=production.sandbox_session)
     db.add(contact)
     db.flush()
     member = CrewMember(production_id=production.id, contact_id=contact.id, department=department, position=position,
@@ -110,7 +116,7 @@ def create_session(db: Session, today: date) -> SandboxSession:
     sound = _crew(db, water, "Jana Bílá", "+420600000104", "Zvuk", "Mistr zvuku", head=True)
     catering = _crew(db, water, "Lída Horká", "+420600000105", "Catering", "Catering (dodavatel)")
     _crew(db, water, "Ivo Malý", "+420600000106", "Rekvizity", "Rekvizitář")
-    actress_contact = Contact(name="Anna Geislerová", phone="+420600000107")
+    actress_contact = Contact(name="Anna Geislerová", phone="+420600000107", sandbox_session=session)
     db.add(actress_contact)
     db.flush()
     actress = CastMember(production_id=water.id, contact_id=actress_contact.id, character_name="MARTA")

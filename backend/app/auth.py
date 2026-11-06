@@ -23,10 +23,12 @@ from jwt import PyJWKClient
 
 from app import sandbox_tokens
 from app.config import get_settings
+from app.ratelimit import SlidingWindow
 
 logger = logging.getLogger(__name__)
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+_sandbox_requests = SlidingWindow(300)  # per persona, per minute: generous for a person, a brake on a script
 _JWT_ALGORITHMS = ["ES256", "RS256"]
 _JWKS_LIFESPAN_SECONDS = 600  # Supabase: do not cache the JWKS longer than 10 minutes
 
@@ -89,6 +91,9 @@ def require_principal(
     # A test persona is an ordinary signed-in user who is a member of test productions only, so every access rule applies unchanged.
     sandbox = sandbox_tokens.read_token(token) if get_settings().sandbox_enabled else None
     if sandbox is not None:
+        allowed, retry_after = _sandbox_requests.hit(str(sandbox["sub"]))
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests", headers={"Retry-After": str(retry_after)})
         return Principal(kind="user", subject=str(sandbox["sub"]), email=sandbox["email"])
     return _principal_from_jwt(token)
 

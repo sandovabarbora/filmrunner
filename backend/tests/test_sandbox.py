@@ -3,10 +3,12 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import config
 from app.config import get_settings
 from app.models.production import Contact, Production
+from app.routers import productions as productions_router
 from app.routers import sandbox as sandbox_router
 from app.services.sandbox import purge_expired
 
@@ -154,3 +156,105 @@ def test_an_old_world_is_deleted_whole_and_real_data_stays(client: TestClient, d
     assert db_session.query(Production).filter(Production.sandbox_session.is_not(None)).count() == 0
     assert db_session.query(Contact).filter(Contact.name == "Tomáš Novák").count() == 0
     assert db_session.get(Production, pid) is not None and db_session.get(Contact, contact) is not None
+
+
+@pytest.mark.parametrize("kind,body", [("crew-members", {"department": "x", "position": "x"}), ("cast-members", {"character_name": "X"})])
+def test_a_persona_cannot_pull_a_real_contact_in_by_id(client: TestClient, kind: str, body: dict) -> None:
+    """A contact's id leaks through the photo URL on any sheet, so the id alone must not be enough."""
+    _, contact = _real_film(client)
+    owner = _as(_start(client)["produkcni"])
+    film = client.post("/api/v1/productions", json={"name": "Past"}, headers=owner).json()["id"]
+    response = client.post(f"/api/v1/productions/{film}/{kind}", json={"contact_id": contact, **body}, headers=owner)
+    assert response.status_code == 404
+    assert "777000999" not in response.text
+
+
+def test_a_test_contact_cannot_join_a_real_film(client: TestClient) -> None:
+    pid, _ = _real_film(client)
+    owner = _as(_start(client)["produkcni"])
+    contact = client.post("/api/v1/contacts", json={"name": "Testovací"}, headers=owner).json()["id"]
+    response = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "x", "position": "x"}, headers=SERVICE)
+    assert response.status_code == 404
+
+
+def test_purging_goes_by_ownership_and_takes_what_a_persona_added(client: TestClient, db_session) -> None:
+    pid, real = _real_film(client)
+    # Unused and real: it looks exactly like an orphan, and must survive.
+    lonely = client.post("/api/v1/contacts", json={"name": "Osamělý Skutečný"}, headers=SERVICE).json()["id"]
+    owner = _as(_start(client)["produkcni"])
+    added = client.post("/api/v1/contacts", json={"name": "Přidaný Testem"}, headers=owner).json()["id"]
+    client.post("/api/v1/productions", json={"name": "Nový test"}, headers=owner)
+    for world in db_session.query(Production).filter(Production.sandbox_session.is_not(None), Production.name == "Tichá voda"):
+        world.created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)
+    db_session.commit()
+
+    purge_expired(db_session)
+    db_session.commit()
+    db_session.expire_all()
+
+    assert db_session.get(Contact, added) is None
+    assert db_session.query(Production).filter(Production.name == "Nový test").count() == 0
+    assert db_session.get(Contact, real) is not None and db_session.get(Contact, lonely) is not None and db_session.get(Production, pid) is not None
+
+
+def test_a_world_cannot_grow_without_limit(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    owner = _as(_start(client)["produkcni"])
+    monkeypatch.setattr(productions_router, "MAX_CONTACTS_PER_SESSION", 0)
+    monkeypatch.setattr(productions_router, "MAX_PRODUCTIONS_PER_SESSION", 0)
+    assert client.post("/api/v1/contacts", json={"name": "Moc"}, headers=owner).status_code == 429
+    assert client.post("/api/v1/productions", json={"name": "Moc"}, headers=owner).status_code == 429
+
+
+def test_costly_features_are_closed_to_personas(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def must_not_be_called(*args, **kwargs):
+        raise AssertionError("a test world called an outside service")
+
+    monkeypatch.setattr(productions_router.geocoding, "geocode", must_not_be_called)
+    monkeypatch.setattr(productions_router.weather, "weather_suggestion", must_not_be_called)
+    monkeypatch.setattr(productions_router.hospitals, "nearest_hospital_suggestion", must_not_be_called)
+    monkeypatch.setattr(productions_router.call_sheet_pdf, "extract_contacts", must_not_be_called)
+    owner = _as(_start(client)["produkcni"])
+    film = client.post("/api/v1/productions", json={"name": "Drahé"}, headers=owner).json()["id"]
+    pdf = {"file": ("x.pdf", b"%PDF-1.4", "application/pdf")}
+    assert client.post(f"/api/v1/productions/{film}/import/call-sheet-pdf", files=pdf, headers=owner).status_code == 403
+    place = client.post(f"/api/v1/productions/{film}/locations", json={"name": "Tady", "address": "Někde 1", "geo_lat": 50.0, "geo_lng": 14.0}, headers=owner).json()
+    assert client.get(f"/api/v1/productions/{film}/locations/{place['id']}/weather-suggestion?shoot_date=2031-01-01", headers=owner).json()["suggestion"] is None
+    contact = client.post("/api/v1/contacts", json={"name": "Foto"}, headers=owner).json()["id"]
+    client.post(f"/api/v1/productions/{film}/crew-members", json={"contact_id": contact, "department": "x", "position": "x"}, headers=owner)
+    photo = {"file": ("x.png", b"x", "image/png")}
+    assert client.post(f"/api/v1/contacts/{contact}/photo", files=photo, headers=owner).status_code == 403
+
+
+def test_a_scene_cannot_borrow_a_location_from_another_film(client: TestClient) -> None:
+    """The public sheet prints a scene's location, so this was a way to read any location by id, real ones included."""
+    pid, _ = _real_film(client)
+    real = client.post(f"/api/v1/productions/{pid}/locations", json={"name": "Skutečné místo"}, headers=SERVICE).json()["id"]
+    personas = _start(client)
+    board = client.get("/api/v1/me/dashboard", headers=_as(personas["ad"])).json()
+    payload = {"general_crew_call": "06:00", "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "INT", "day_night": "DAY", "set_description": "x", "location_id": real, "page_count_eighths": 8}]}
+    response = client.post(f"/api/v1/call-sheets/{board['items'][0]['call_sheet_id']}/revisions", json=payload, headers=_as(personas["ad"]))
+    assert response.status_code == 422
+
+
+def test_a_test_world_never_sends_push(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import notifications
+
+    def must_not_be_called(**kwargs):
+        raise AssertionError("the server called an endpoint an anonymous visitor supplied")
+
+    monkeypatch.setattr(notifications, "is_configured", lambda: True)
+    monkeypatch.setattr(notifications, "send", must_not_be_called)
+    personas = _start(client)
+    gaffer = personas["gaffer"]
+    subscribe = client.post(f"/api/v1/public/crew/{gaffer['personal_token']}/push-subscription", json={"endpoint": "http://internal.test/", "keys": {"p256dh": "x", "auth": "y"}, "link_url": "x"})
+    assert subscribe.status_code in (200, 201, 204, 422)
+    response = client.post(f"/api/v1/call-sheets/{gaffer['call_sheet_id']}/revisions", json={"general_crew_call": "04:00", "schedule_items": []}, headers=_as(personas["ad"]))
+    assert response.status_code == 201
+
+
+def test_a_failing_purge_does_not_lock_everyone_out(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(db) -> None:
+        raise SQLAlchemyError("stuck")
+
+    monkeypatch.setattr(sandbox_router, "purge_expired", boom)
+    assert client.post("/api/v1/public/sandbox/sessions").status_code == 201

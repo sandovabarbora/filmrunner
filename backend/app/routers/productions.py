@@ -46,10 +46,25 @@ from app.services import call_sheet_pdf, geocoding, hospitals, weather
 from app.services.astronomy import sunrise_sunset
 
 from app.sandbox_tokens import session_of_email
+from app.services.sandbox import MAX_CONTACTS_PER_SESSION, MAX_PRODUCTIONS_PER_SESSION, enforce_quota
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_api_token)])
+
+
+def _contact_for(db: Session, contact_id: uuid.UUID, production: Production) -> Contact:
+    """A contact can join only a production of its own world, so a test persona can never pull in a real person by id."""
+    contact = db.get(Contact, contact_id)
+    if contact is None or contact.sandbox_session != production.sandbox_session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    return contact
+
+
+def _refuse_in_test_world(principal: Principal, what: str) -> None:
+    """Test personas are anonymous, so nothing that costs money, calls out or stores files is open to them."""
+    if session_of_email(principal.email) is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{what} is not available in the test environment")
 
 
 def _get_production_or_404(db: Session, production_id: uuid.UUID) -> Production:
@@ -71,7 +86,10 @@ def create_production(
     payload: ProductionCreate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
 ) -> ProductionRead:
     """Whoever creates a production owns it (service scripts own everything anyway)."""
-    production = Production(**payload.model_dump(), sandbox_session=session_of_email(principal.email))
+    session = session_of_email(principal.email)
+    if session is not None:
+        enforce_quota(db, Production, session, MAX_PRODUCTIONS_PER_SESSION)
+    production = Production(**payload.model_dump(), sandbox_session=session)
     db.add(production)
     db.flush()
     if principal.kind == "user" and principal.email:
@@ -184,8 +202,11 @@ def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Princ
 
 
 @router.post("/contacts", response_model=ContactRead, status_code=status.HTTP_201_CREATED)
-def create_contact(payload: ContactCreate, db: Session = Depends(get_db)) -> Contact:
-    contact = Contact(**payload.model_dump())
+def create_contact(payload: ContactCreate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> Contact:
+    session = session_of_email(principal.email)
+    if session is not None:
+        enforce_quota(db, Contact, session, MAX_CONTACTS_PER_SESSION)
+    contact = Contact(**payload.model_dump(), sandbox_session=session)
     db.add(contact)
     db.commit()
     db.refresh(contact)
@@ -217,10 +238,11 @@ def _geocode_into(location: Location, *, trust_coordinates: bool = False) -> Non
     status_code=status.HTTP_201_CREATED,
 )
 def create_location(
-    production_id: uuid.UUID, payload: LocationCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+    production_id: uuid.UUID, payload: LocationCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> Location:
     location = Location(production_id=production_id, **payload.model_dump())
-    _geocode_into(location, trust_coordinates=True)
+    if access.production.sandbox_session is None:
+        _geocode_into(location, trust_coordinates=True)
     db.add(location)
     db.commit()
     db.refresh(location)
@@ -242,7 +264,7 @@ def _location_of_production_or_404(db: Session, production_id: uuid.UUID, locati
 @router.patch("/productions/{production_id}/locations/{location_id}", response_model=LocationRead)
 def update_location(
     production_id: uuid.UUID, location_id: uuid.UUID, payload: LocationUpdate,
-    db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT)),
+    db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT)),
 ) -> Location:
     location = _location_of_production_or_404(db, production_id, location_id)
     changes = payload.model_dump(exclude_unset=True)
@@ -250,7 +272,8 @@ def update_location(
     for field, value in changes.items():
         setattr(location, field, value)
     if address_changed:
-        _geocode_into(location)
+        if access.production.sandbox_session is None:
+            _geocode_into(location)
     db.commit()
     db.refresh(location)
     return location
@@ -276,14 +299,17 @@ def get_weather_suggestion(
     location = _location_of_production_or_404(db, production_id, location_id)
     if location.geo_lat is None or location.geo_lng is None:
         return LocationSuggestion(suggestion=None)
+    if location.production.sandbox_session is not None:
+        return LocationSuggestion(suggestion=None)
     return LocationSuggestion(suggestion=weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date))
 
 
 @router.post("/productions/{production_id}/import/call-sheet-pdf", response_model=CallSheetPdfExtraction)
 async def import_call_sheet_pdf(
-    production_id: uuid.UUID, file: UploadFile = File(...), _: Access = Depends(require(CREW_EDIT))
+    production_id: uuid.UUID, file: UploadFile = File(...), access: Access = Depends(require(CREW_EDIT))
 ) -> CallSheetPdfExtraction:
     """FR-57: contacts out of an old call sheet PDF, as a preview. Nothing is created here; the PDF is not stored."""
+    _refuse_in_test_world(access.principal, "PDF import")
     data = await file.read()
     if not data.startswith(b"%PDF"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="That file is not a PDF")
@@ -311,10 +337,9 @@ def _with_links_for(access: Access, people: list) -> list:
 
 @router.post("/productions/{production_id}/cast-members", response_model=CastMemberRead, status_code=status.HTTP_201_CREATED)
 def create_cast_member(
-    production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+    production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CastMember:
-    if db.get(Contact, payload.contact_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    _contact_for(db, payload.contact_id, access.production)
     actor = CastMember(production_id=production_id, **payload.model_dump())
     db.add(actor)
     db.commit()
@@ -378,6 +403,8 @@ def get_hospital_suggestion(
     location = _location_of_production_or_404(db, production_id, location_id)
     if location.geo_lat is None or location.geo_lng is None:
         return LocationSuggestion(suggestion=None)
+    if location.production.sandbox_session is not None:
+        return LocationSuggestion(suggestion=None)
     return LocationSuggestion(suggestion=hospitals.nearest_hospital_suggestion(location.geo_lat, location.geo_lng))
 
 
@@ -387,10 +414,9 @@ def get_hospital_suggestion(
     status_code=status.HTTP_201_CREATED,
 )
 def create_crew_member(
-    production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db), _: Access = Depends(require(CREW_EDIT))
+    production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CrewMember:
-    if db.get(Contact, payload.contact_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    _contact_for(db, payload.contact_id, access.production)
     member = CrewMember(production_id=production_id, **payload.model_dump())
     db.add(member)
     db.commit()
@@ -480,6 +506,7 @@ async def upload_contact_photo_endpoint(
     never touches the contact's other fields, so an editor's name/phone/etc.
     change already saved stays saved.
     """
+    _refuse_in_test_world(principal, "Photo upload")
     contact = db.get(Contact, contact_id)
     if contact is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")

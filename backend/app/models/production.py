@@ -73,6 +73,8 @@ class Contact(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     # Set only via POST /contacts/{id}/photo (Supabase Storage public URL), never by direct PATCH.
     photo_url: Mapped[str | None] = mapped_column(String(500))
+    # Which test world owns this row, if any. Contacts are shared, so ownership must be stated, never inferred: it keeps real people out of test films and is what purging goes by.
+    sandbox_session: Mapped[str | None] = mapped_column(String(32), index=True)
 
 
 class Location(Base):

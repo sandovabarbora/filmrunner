@@ -2230,3 +2230,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - worlds are deleted after a day; starting one is limited per IP and capped in total
   - failure case: if the world cannot be created, the screen says so and the real app is untouched
 
+## FR-213 · security · A signed-in user can attach a real contact to their own film by id and read it
+- state: ready
+- gated: no
+- why: found while reviewing FR-212: `create_crew_member` and `create_cast_member` only check that the contact exists, contact ids appear in photo URLs on public sheets, and the response returns the phone; FR-212 closed this across the test boundary only
+- dod:
+  - attaching a contact needs the caller to already reach it through one of their productions, or to have just created it
+  - the picker flow (FR-45) and paste import keep working
+  - failure case: a refused contact returns 404 and reveals nothing about it
+
