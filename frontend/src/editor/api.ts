@@ -16,10 +16,19 @@ export class ApiError extends Error {
   }
 }
 
+/** FastAPI's 422 detail is a list of { loc, msg }; shown raw it would read "HTTP 422". */
+function readableDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (!Array.isArray(detail) || detail.length === 0) return fallback;
+  return detail
+    .map((problem: { loc?: unknown[]; msg?: string }) => `${String(problem.loc?.[problem.loc.length - 1] ?? "")}: ${(problem.msg ?? "").replace(/^Value error, /, "")}`)
+    .join("; ");
+}
+
 async function detailFromResponse(resp: Response, fallback: string): Promise<string> {
   try {
     const data = (await resp.json()) as { detail?: unknown };
-    return typeof data.detail === "string" ? data.detail : fallback;
+    return readableDetail(data.detail, fallback);
   } catch {
     return fallback;
   }
@@ -37,16 +46,7 @@ async function request<T>(conn: Connection, method: string, path: string, body?:
   } catch (err) {
     throw new ApiError(0, err instanceof Error ? err.message : "network error");
   }
-  if (!resp.ok) {
-    let detail = `HTTP ${resp.status}`;
-    try {
-      const data = (await resp.json()) as { detail?: unknown };
-      if (typeof data.detail === "string") detail = data.detail;
-    } catch {
-      /* body was not JSON; keep the status text */
-    }
-    throw new ApiError(resp.status, detail);
-  }
+  if (!resp.ok) throw new ApiError(resp.status, await detailFromResponse(resp, `HTTP ${resp.status}`));
   if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
 }

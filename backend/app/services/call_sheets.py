@@ -210,8 +210,9 @@ def publish_revision(
 
     if payload.crew_calls is None:
         # Copy forward: the AD edits yesterday's personal calls, they never retype them.
+        # model_construct, here and below: a stored value is not new input, and an old one must not block a publish that does not touch it.
         crew_calls = [
-            CrewCallEntryCreate(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
+            CrewCallEntryCreate.model_construct(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
             for e in (previous.crew_calls if previous is not None else (crew_calls_seed or []))
             if db.get(CrewMember, e.crew_member_id) is not None
         ]
@@ -224,7 +225,7 @@ def publish_revision(
 
     if payload.cast_calls is None:
         cast_calls = [
-            CastCallEntryCreate(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
+            CastCallEntryCreate.model_construct(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
                                 call_time=e.call_time, makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time)
             for e in (previous.cast_calls if previous is not None else (cast_calls_seed or []))
             if db.get(CastMember, e.cast_member_id) is not None

@@ -21,8 +21,10 @@ class ReplanConflict(ValueError):
 
 
 def _payload(revision: CallSheetRevision, items: list[ScheduleItemCreate] | None = None, *, new_date: bool = False) -> CallSheetRevisionCreate:
-    """The revision as a new one, optionally with other scenes. `new_date` recomputes sun and weather, which depend on the date and the first location."""
-    return CallSheetRevisionCreate(
+    """The revision as a new one, optionally with other scenes. `new_date` recomputes sun and weather, which depend on the date and the first location.
+
+    Built with model_construct: these are stored values, not new input, and an old one must not stop a day from moving."""
+    return CallSheetRevisionCreate.model_construct(
         general_crew_call=revision.general_crew_call,
         shooting_call=revision.shooting_call,
         sunrise=None if new_date else revision.sunrise,
@@ -31,15 +33,15 @@ def _payload(revision: CallSheetRevision, items: list[ScheduleItemCreate] | None
         safety_notes=revision.safety_notes,
         head_of_day_crew_member_id=revision.head_of_day_crew_member_id,
         schedule_items=items if items is not None else _items(revision),
-        cast_calls=[CastCallEntryCreate(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time, call_time=e.call_time,
+        cast_calls=[CastCallEntryCreate.model_construct(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time, call_time=e.call_time,
                                         makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time) for e in revision.cast_calls],
-        crew_calls=[CrewCallEntryCreate(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note) for e in revision.crew_calls],
+        crew_calls=[CrewCallEntryCreate.model_construct(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note) for e in revision.crew_calls],
     )
 
 
 def _items(revision: CallSheetRevision) -> list[ScheduleItemCreate]:
     return [
-        ScheduleItemCreate(order_index=i.order_index, scene_number=i.scene_number, int_ext=i.int_ext, day_night=i.day_night,
+        ScheduleItemCreate.model_construct(order_index=i.order_index, scene_number=i.scene_number, int_ext=i.int_ext, day_night=i.day_night,
                            set_description=i.set_description, location_id=i.location_id, page_count_eighths=i.page_count_eighths)
         for i in sorted(revision.schedule_items, key=lambda i: i.order_index)
     ]

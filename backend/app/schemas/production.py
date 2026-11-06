@@ -8,6 +8,7 @@ import uuid
 from pydantic import BaseModel, ConfigDict
 
 from app.models.production import ProductionStatus
+from app.schemas.fields import ClockTime
 
 
 class ContactCreate(BaseModel):
@@ -96,14 +97,20 @@ class CrewMemberCreate(BaseModel):
     contact_id: uuid.UUID
     department: str
     position: str
-    standard_call_time: str | None = None
+    standard_call_time: ClockTime = None
     is_head_of_department: bool = False
 
 
-class CrewMemberRead(CrewMemberCreate):
+# Does not extend the Create model: a stored standing time may predate its validation and must keep reading back.
+class CrewMemberRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     production_id: uuid.UUID
+    contact_id: uuid.UUID
+    department: str
+    position: str
+    standard_call_time: str | None = None
+    is_head_of_department: bool = False
     contact: ContactRead
     # The link can confirm a revision on its owner's behalf, so it goes only to those who can edit the crew: None for a viewer.
     personal_token: str | None
@@ -112,13 +119,16 @@ class CrewMemberRead(CrewMemberCreate):
 class CastMemberCreate(BaseModel):
     contact_id: uuid.UUID
     character_name: str
-    standard_pickup_time: str | None = None
+    standard_pickup_time: ClockTime = None
 
 
-class CastMemberRead(CastMemberCreate):
+class CastMemberRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     production_id: uuid.UUID
+    contact_id: uuid.UUID
+    character_name: str
+    standard_pickup_time: str | None = None
     contact: ContactRead
     # The link can confirm a revision on its owner's behalf, so it goes only to those who can edit the crew: None for a viewer.
     personal_token: str | None
@@ -126,7 +136,7 @@ class CastMemberRead(CastMemberCreate):
 
 class CastMemberUpdate(BaseModel):
     character_name: str | None = None
-    standard_pickup_time: str | None = None
+    standard_pickup_time: ClockTime = None
 
 
 class MemberCreate(BaseModel):
@@ -153,7 +163,7 @@ class ContactUpdate(BaseModel):
 class CrewMemberUpdate(BaseModel):
     department: str | None = None
     position: str | None = None
-    standard_call_time: str | None = None
+    standard_call_time: ClockTime = None
     is_head_of_department: bool | None = None
 
 
