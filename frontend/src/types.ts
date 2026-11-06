@@ -180,6 +180,33 @@ export interface CallSheetCreate {
 export type Permission = "production:read" | "production:manage_members" | "production:edit" | "day:publish" | "crew:edit";
 export type ProductionRole = "owner" | "editor" | "viewer";
 
+export interface DashboardItem {
+  kind: "unconfirmed" | "unpublished";
+  production_id: string;
+  production_name: string;
+  call_sheet_id: string;
+  shoot_date: string;
+  day_number: number;
+  revision_letter: string | null;
+  crew_call: string | null;
+  total: number;
+  confirmed: number;
+  not_opened: number;
+}
+
+export interface OnTrackProduction {
+  production_id: string;
+  production_name: string;
+  next_call_sheet_id: string | null;
+  next_shoot_date: string | null;
+  crew_call: string | null;
+}
+
+export interface Dashboard {
+  items: DashboardItem[];
+  on_track: OnTrackProduction[];
+}
+
 export interface Production {
   id: string;
   name: string;

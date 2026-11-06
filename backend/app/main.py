@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.ratelimit import RateLimitMiddleware
 
 from app.config import get_settings
-from app.routers import call_sheets, productions, push
+from app.routers import call_sheets, dashboard, productions, push
 
 settings = get_settings()
 
@@ -53,6 +53,7 @@ app.include_router(productions.router, prefix="/api/v1", tags=["productions"])
 app.include_router(productions.public_router, prefix="/api/v1", tags=["contacts-public"])
 app.include_router(call_sheets.router, prefix="/api/v1", tags=["call-sheets"])
 app.include_router(call_sheets.public_router, prefix="/api/v1", tags=["call-sheets-public"])
+app.include_router(dashboard.router, prefix="/api/v1", tags=["dashboard"])
 app.include_router(push.router, prefix="/api/v1", tags=["push"])
 
 
