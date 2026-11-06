@@ -120,6 +120,7 @@ function EditorAppInner() {
 export function EditorApp() {
   const [lang, setLang] = useState<Lang>(detectLang);
   setCurrentLang(lang);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const L = (text: string, vars?: Record<string, string | number>) => translate(lang, text, vars);
   const value = { lang, L, toggle: () => { const next: Lang = lang === "cs" ? "en" : "cs"; rememberLang(next); setCurrentLang(next); setLang(next); } };
   return <LangContext.Provider value={value}><EditorAppInner /></LangContext.Provider>;

@@ -2313,3 +2313,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a publish commits and releases its lock before the weather call, and the pool stays under the session pooler's limit
   - `scripts/deploy_api.sh` refuses anything but a clean, green main outside 22:00-07:00 Prague, and proves the new commit serves
   - failure case: a failing or slow weather call leaves the publish standing with a blank forecast
+
+## FR-221 · frontend · What a crew member sees on first opening their link
+- state: in-progress
+- gated: no
+- note: PR open 2026-11-06 (feat/fr-221-first-open). Checked in headless Chromium and WebKit with a real service worker; not tried on a real phone.
+- why: a first open read as unknown freshness with Confirm disabled while online, a server fault told a valid person their link was no longer on the crew list, and a cold server timed out at 5 s with nothing else to show
+- dod:
+  - a first open with the worker taking control mid-load reads live and can confirm, re-checks once on controllerchange, and Confirm is disabled only for a saved copy
+  - only a real 404 calls a personal link invalid; a 500, a 429 or a timeout shows the saved copy line or a retry
+  - with nothing saved a load waits 15 s behind a skeleton, with a saved copy 5 s
+  - the saved copy banner names the revision letter and when it was saved, and is true both offline and with the server down
+  - the crew sheet's day links, the tomorrow link and both folds are 44 px to tap, the document language follows the chosen language, and viewport-fit=cover leaves nothing under a notch
+  - Confirm works only when the person's own block is live and of the revision on screen, and says why when it does not
+  - failure case: a person removed while the page is open is told, loses the block and no saved copy brings it back; a server that never answers ends in a message, not a blank screen, or a stuck Confirm; a saved copy is never shown as live
