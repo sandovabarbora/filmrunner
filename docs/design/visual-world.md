@@ -14,8 +14,10 @@ The root `DESIGN.md` describes the data model, so the visual decisions live here
 | Below the first screen | Titled sections separated by rules; no boxes |
 | Editor | Same ground and colours, no still |
 | Print | Black on white, no still, nothing depends on colour |
+| Landing | The same world at full scale: the page reads as a call sheet addressed to the visitor, and the first screen ends in a ruled strip of Sraz, Kde and who has not confirmed. Sample people are labelled as a sample. Revision colour also marks the page's primary action |
+| Privacy | Same ground, type and rules, no still |
 
-The landing and privacy pages still use the previous look.
+Landing shots come from the deployed test environment with `frontend/scripts/take_landing_screenshots.py`, so they show invented data, and the first screen's sample uses the same values; re-run it after these screens change.
 
 Where a screen needs a decision, the person's own time and place win. See `PRODUCT.md`.
 
