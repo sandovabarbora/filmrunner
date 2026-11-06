@@ -6,20 +6,21 @@ on:
   pull_request:
 
 jobs:
+  # Not a paths filter on the trigger: GitHub leaves a required check skipped that way pending forever, which blocks
+  # docs PRs, and a main commit without a `ci` result could never pass the green check in scripts/deploy_api.sh.
   changes:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     outputs:
       docs_only: ${{ steps.check.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Determine if this PR touches only docs/
+      - name: Determine if this change touches only docs/
         id: check
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           echo "Changed files:"
@@ -51,7 +52,7 @@ jobs:
     env:
       FILMRUNNER_DATABASE_URL: postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test
       FILMRUNNER_API_BEARER_TOKEN: ci-only-token
-      RUN_HEAVY: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_only != 'true' }}
+      RUN_HEAVY: ${{ needs.changes.outputs.docs_only != 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

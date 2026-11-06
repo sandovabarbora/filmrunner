@@ -22,8 +22,8 @@ pages nobody has visited). This plan swaps that for one real production.
 1. INBOX #3: custom SMTP for sign-in. Without it nobody new can sign in, and
    the only fallback is the shared service token, which is owner on every
    production and must never sit on a pilot AD's phone.
-2. `fly deploy` from the Mac: FR-78 (background push) and FR-86 (push
-   delivery logging enum) merged on 2026-09-24 and are not live yet.
+2. Deploy from the Mac with `scripts/deploy_api.sh` (`docs/ops/pilot-day.md`).
+   FR-78 and FR-86, named here originally, have been live since then.
 3. FR-28: run `docs/research/manual-test-protocol-push-ios.md` on your own
    iPhone. Offline reload and push are the positioning; they must be seen on
    a real phone before a real crew relies on them.
