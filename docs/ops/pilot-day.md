@@ -11,11 +11,15 @@ For whoever keeps a shoot day running, written for a first-time reader. The call
    - The project is active, not paused. Free projects pause after a week of inactivity.
    - Take a backup: the Free plan has none. Follow "A full `pg_dump`" in `docs/ops/backup-restore.md`.
    - Database, Reports: connections are well below the pooler's limit of 15 (the API uses at most 10).
-5. **Monitors** are on, each alerting to a phone app push, not email, which nobody reads at 04:30:
-   - `healthz`: `GET https://filmrunner-api.fly.dev/healthz`, expect 200, every minute. Red: the API process is down.
-   - `readyz`: `GET https://filmrunner-api.fly.dev/readyz`, expect 200, every minute. Red: the API cannot reach the database.
-   - `pages`: `GET https://sandovabarbora.github.io/filmrunner/`, expect 200 containing `FilmRunner`, every 5 minutes. Red: the app does not load for anyone without a cached copy.
-6. `fly status -a filmrunner-api` shows exactly one started machine. The rate limiter and connection pool assume one.
+5. **Monitors** are on, each alerting to a phone app push, not email, which nobody reads at 04:30. Free options: [UptimeRobot](https://uptimerobot.com/pricing/) Free (50 monitors, 5-minute checks, keyword monitors, allowed for commercial use; push through its app, or Pushover or Pushbullet) or [Better Stack](https://betterstack.com/pricing) Free Tier (10 monitors; "personal projects"). Neither page confirms push on the free plan, so **prove it**: add a monitor on a URL that returns 404 and see the phone buzz, then delete it.
+
+   | Check | Monitor type, URL | Passes when | Interval, timeout | Red means |
+   |---|---|---|---|---|
+   | `healthz` | Keyword, `https://filmrunner-api.fly.dev/healthz` | 200 containing `"status":"ok"` | shortest free (5 min), 30 s | The API process is down |
+   | `readyz` | HTTP, `https://filmrunner-api.fly.dev/readyz` | 200 | shortest free (5 min), 30 s | The API cannot reach the database |
+   | `pages` | Keyword, `https://sandovabarbora.github.io/filmrunner/` | 200 containing `FilmRunner` | shortest free (5 min), 30 s | The app does not load without a cached copy |
+
+6. `fly status -a filmrunner-api` shows exactly one machine in total, started or stopped. A stopped second one would start under load, and the rate limiter and connection pool assume one.
 
 ## T-1h (04:00)
 
@@ -44,8 +48,14 @@ For whoever keeps a shoot day running, written for a first-time reader. The call
    | healthz | readyz | Means | Do |
    |---|---|---|---|
    | fails | fails | API down | `fly status -a filmrunner-api`, then `fly machine restart <id> -a filmrunner-api`. Started just after a deploy: roll back. |
-   | 200 | 503 | Database unreachable | Supabase dashboard: paused means Restore; otherwise check its status page. Restarting the API does not help. |
-   | 200 | 200 | API fine | Check Pages. Many 429s in the log mean one Wi-Fi hit the rate limit; many 500s since a deploy: roll back. |
+   | 200 | 503 | Database unreachable, or a wedged connection pool | Look at the Supabase dashboard: paused means Restore; down means its status page. If Supabase is healthy, restart the machine: `fly machine restart <id> -a filmrunner-api`. |
+   | 200 | 200 | API fine | Check Pages. Many 500s since a deploy: roll back. Many 429s: see below. |
+
+   **429s on one Wi-Fi:** the whole crew shares one address and hit the rate limit. The limiter lives in memory, so `fly machine restart <id> -a filmrunner-api` clears it at once, at the cost of a brief outage. Ask people to stop reloading, or to use mobile data, which has another address.
+
+   **One person's trouble:** tokens are absent from the logs by design, so the logs cannot show one person's requests. Check in the app: Crew has their number and link, and the day screen shows whether they opened the sheet. Have them open a fresh copy of their link.
+
+   **A fix has to ship:** the freeze stops it. For the API, `scripts/deploy_api.sh --force-window` overrides the freeze and the hour. For the app, `gh variable delete PILOT_FREEZE`, then `gh workflow run pages.yml`, then set the freeze again as in T-24h.
 
 4. **Not fixed 15 minutes after the report, or 30 minutes before the call, whichever comes first: go to the fallback.** Do not wait longer for a fix.
 

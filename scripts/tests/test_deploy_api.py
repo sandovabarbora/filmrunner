@@ -36,6 +36,8 @@ class World:
         (self.repo / "backend").mkdir()
         shutil.copy(SCRIPT, self.repo / "scripts" / "deploy_api.sh")
         (self.repo / "backend" / "fly.toml").write_text("app = 'x'\n")
+        (self.repo / "backend" / "app").mkdir()
+        (self.repo / "backend" / "app" / "main.py").write_text('@app.get("/readyz")\n')
         _git(self.repo, "checkout", "-q", "-b", "main")
         _git(self.repo, "add", ".")
         _git(self.repo, "commit", "-qm", "init")
@@ -47,11 +49,27 @@ class World:
         _stub(self.bin, "sleep", "exit 0")
         _stub(self.bin, "fly", f"""
 echo "fly $* [cwd=$(basename "$PWD")]" >> "{self.log}"
-if [ "$1" = releases ]; then echo '[{{"Status":"complete","ImageRef":"{IMAGE}"}}]'; exit 0; fi
+if [ "$1" = releases ]; then
+  [ "$FAKE_RELEASES" = broken ] && {{ echo 'not json'; exit 0; }}
+  [ "$FAKE_RELEASES" = failing ] && exit 1
+  echo '[{{"Status":"complete","ImageRef":"{IMAGE}"}}]'; exit 0
+fi
 exit ${{FAKE_FLY_EXIT:-0}}""")
 
     def set_ci(self, conclusions: str) -> None:
-        _stub(self.bin, "gh", f'[ "$FAKE_GH_FAIL" = 1 ] && exit 1\nprintf "{conclusions}"\n')
+        _stub(self.bin, "gh", f"""
+if [ "$1" = variable ]; then
+  case "$FAKE_FREEZE" in
+    true) echo true ;;
+    false) echo false ;;
+    error) echo 'failed to get variable: HTTP 401' >&2; exit 1 ;;
+    *) echo "variable $3 was not found" >&2; exit 1 ;;
+  esac
+  exit 0
+fi
+[ "$FAKE_GH_FAIL" = 1 ] && exit 1
+printf "{conclusions}"
+""")
 
     def set_hour(self, hour: str) -> None:
         _stub(self.bin, "date", f'echo "date TZ=$TZ" >> "{self.log}"\necho {hour}')
@@ -164,3 +182,46 @@ def test_a_failed_fly_deploy_stops_and_shows_the_rollback(world):
     assert result.returncode == 1
     assert "/healthz serves" not in result.stdout
     assert IMAGE in result.stderr
+
+
+def test_a_pilot_freeze_refuses_even_a_dry_run(world):
+    result = world.run("--dry-run", FAKE_FREEZE="true")
+    assert result.returncode == 1 and "PILOT_FREEZE" in result.stderr
+    assert "fly deploy" not in world.calls()
+
+
+def test_force_window_overrides_a_pilot_freeze(world):
+    assert world.run("--dry-run", "--force-window", FAKE_FREEZE="true").returncode == 0
+
+
+@pytest.mark.parametrize("freeze", ["false", "unset"])
+def test_no_freeze_passes(world, freeze):
+    assert world.run("--dry-run", FAKE_FREEZE=freeze).returncode == 0
+
+
+def test_a_freeze_that_cannot_be_read_refuses_rather_than_assuming_none(world):
+    result = world.run("--dry-run", FAKE_FREEZE="error")
+    assert result.returncode == 1 and "could not read PILOT_FREEZE" in result.stderr
+
+
+@pytest.mark.parametrize("releases", ["broken", "failing"])
+@pytest.mark.parametrize("args", [(), ("--dry-run",)])
+def test_refuses_when_the_previous_image_cannot_be_read(world, releases, args):
+    result = world.run(*args, FAKE_RELEASES=releases)
+    assert result.returncode == 1 and "previous image" in result.stderr
+    assert "fly deploy" not in world.calls()
+
+
+def test_refuses_at_once_when_this_commit_has_no_readyz(world):
+    (world.repo / "backend" / "app" / "main.py").write_text("no probe here\n")
+    _git(world.repo, "add", ".")
+    _git(world.repo, "commit", "-qm", "without the probe")
+    _git(world.repo, "push", "-q", "origin", "main")
+    result = world.run("--dry-run")
+    assert result.returncode == 1 and "/readyz" in result.stderr and "#644" in result.stderr
+
+
+def test_every_push_to_main_runs_the_heavy_steps():
+    workflow = (SCRIPT.parent.parent / ".github/workflows/ci.yml").read_text()
+    assert "RUN_HEAVY: ${{ github.event_name != 'pull_request' || needs.changes.outputs.docs_only != 'true' }}" in workflow
+
