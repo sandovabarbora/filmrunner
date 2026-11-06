@@ -2239,3 +2239,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the picker flow (FR-45) and paste import keep working
   - failure case: a refused contact returns 404 and reveals nothing about it
 
+## FR-214 · frontend · Care pass over the working screens, from a walkthrough by persona
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-214-ux-care). Left for later: desktop two-column layout, shifting all calls by N minutes, a read-only view for viewers, the crew tab's four-button rows, a shorter first-day path.
+- why: an independent walkthrough found the AD's day screen 5200 px tall with publish far from the edits, and the editor still a generic dark form
+- dod:
+  - publish stays on screen while the AD scrolls a long day, and is loud only when there is something new to send
+  - sharing, per-person links, cancelling and pre-wrap actual times wait behind one tap; a phone day screen stays under 3000 px with little data
+  - an actor's first screen leads with the pickup, parking sits beside the address
+  - sections are titled and ruled rather than boxed; dates read as dates; roles are translated; time inputs are not clipped
+  - failure case: a fold never hides a state the AD must see; the confirmation count and read-only notice stay visible
+

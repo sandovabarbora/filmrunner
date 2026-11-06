@@ -1085,7 +1085,7 @@ def test_czech_browser_gets_a_czech_editor_and_the_toggle_is_shared_with_the_she
     expect(page.locator("#notice")).to_contain_text("Sraz štábu je povinný")
     page.fill("#general_crew_call", "06:30"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Vydáno REV A", timeout=15_000)
-    page.wait_for_selector("#shareLink", timeout=10_000)
+    page.wait_for_selector("#shareLink", timeout=10_000, state="attached")
     link = page.locator("#shareLink").get_attribute("href")
     # the toggle: English in the editor, and the sheet follows
     page.click("#langToggle")

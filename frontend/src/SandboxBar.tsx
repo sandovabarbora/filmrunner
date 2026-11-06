@@ -6,10 +6,10 @@ export function SandboxBar({ persona, lang, switchHref, onExit }: { persona: str
   const name = persona ? PERSONA_NAMES[persona]?.[lang] : null;
   return (
     <div className="sandbox-bar" id="sandboxBar" role="status">
-      <span><b>{cs ? "Testovací prostředí" : "Test environment"}</b>{name ? ` · ${name}` : ""}</span>
+      <span><b>Test</b>{name ? ` · ${name}` : ""}</span>
       <span className="sandbox-actions">
-        <a href={switchHref} id="sandboxSwitch">{cs ? "Změnit osobu" : "Switch person"}</a>
-        <button type="button" className="sandbox-exit" id="sandboxExit" onClick={onExit}>{cs ? "Ukončit" : "Leave"}</button>
+        <a href={switchHref} id="sandboxSwitch">{cs ? "Změnit" : "Switch"}</a>
+        <button type="button" className="sandbox-exit" id="sandboxExit" onClick={onExit}>{cs ? "Konec" : "Leave"}</button>
       </span>
     </div>
   );

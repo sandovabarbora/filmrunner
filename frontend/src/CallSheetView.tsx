@@ -185,6 +185,9 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   const first = personal ? changes.filter(leads) : changes;
   const rest = personal ? changes.filter((c) => !leads(c)) : [];
   const otherPlaces = sheetLocations.length - 1;
+  // An actor's day starts when the car comes, so that time is the title; the call moves down beside make-up.
+  const pickupLeads = !!personal?.is_cast && !!personal.pickup_time;
+  const leadingBefore = pickupLeads ? personal?.pickup_before : personal?.call_before;
   return (
     <article id="sheet" className="sheet visible" aria-label="Call sheet" data-rev={rev?.revision_letter}>
       <div className="hero">
@@ -196,19 +199,20 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
               ? <p className="you-off" id="yourCallBehind" role="status">{L("you.behind", { rev: rev!.revision_letter })}</p>
               : personal.is_cast && !personal.works_today
               ? <p className="you-off" id="yourCallOff">{L("you.notToday")}</p>
-              : <div className="value hero-time" id="yourCall">{personal.personal_call || (personal.is_cast ? personal.pickup_time : rev?.general_crew_call) || "—"}</div>}
+              : <div className="value hero-time" id="yourCall">{(pickupLeads ? personal.pickup_time : personal.personal_call || rev?.general_crew_call) || "—"}</div>}
             <div className="hero-sub">
               <div className="you-call">
-                <span className="label">{L("you.call")}</span>
-                {!personalBehind && personal.call_before && <span className="was" id="yourCallWas">{" · "}<span className="k">{L("you.was")}</span> <s>{personal.call_before}</s></span>}
+                <span className="label">{pickupLeads ? L("you.pickup") : L("you.call")}</span>
+                {!personalBehind && leadingBefore && <span className="was" id="yourCallWas">{" · "}<span className="k">{L("you.was")}</span> <s>{leadingBefore}</s></span>}
                 {!personalBehind && personal.note && <span className="note">{" · "}{personal.note}</span>}
               </div>
               <div id="revBadgeWrap">{rev && <span className="rev-badge" data-rev={rev.revision_letter}>REV {rev.revision_letter}</span>}</div>
             </div>
-            <div className="who"><span className="name">{personal.name}</span><span className="role">{" · "}{personal.is_cast ? personal.position : `${personal.department} · ${personal.position}`}</span></div>
-            {!personalBehind && (personal.pickup_time || personal.makeup_hair_time || personal.on_set_time) && (
+            <div className="who"><span className="name">{personal.name}</span><span className="role">{" · "}{personal.is_cast || personal.position.toLowerCase().includes(personal.department.toLowerCase()) ? personal.position : `${personal.department} · ${personal.position}`}</span></div>
+            {!personalBehind && ((personal.pickup_time && !pickupLeads) || (pickupLeads && personal.personal_call) || personal.makeup_hair_time || personal.on_set_time) && (
               <div className="you-extra" id="yourExtra">
-                {personal.pickup_time && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
+                {pickupLeads && personal.personal_call && <span><span className="k">{L("you.call")} </span><span className="v">{personal.personal_call}</span>{personal.call_before && <> <s className="v">{personal.call_before}</s></>}</span>}
+                {personal.pickup_time && !pickupLeads && <span><span className="k">{L("you.pickup")} </span><span className="v">{personal.pickup_time}</span>{personal.pickup_before && <> <s className="v">{personal.pickup_before}</s></>}</span>}
                 {personal.makeup_hair_time && <span><span className="k">{L("th.mh")} </span><span className="v">{personal.makeup_hair_time}</span></span>}
                 {personal.on_set_time && <span><span className="k">{L("th.onSet")} </span><span className="v">{personal.on_set_time}</span></span>}
               </div>
@@ -246,6 +250,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
               <div className="place">{firstPlace.name}</div>
               {firstPlaceBefore && <div className="was" id="yourPlaceWas">{L("you.was")} <s>{firstPlaceBefore}</s></div>}
               {firstPlace.address && (firstPlaceUrl ? <a className="address-link" href={firstPlaceUrl} target="_blank" rel="noreferrer">{firstPlace.address}</a> : <div>{firstPlace.address}</div>)}
+              {firstPlace.parking_notes && <div className="more-places" id="yourParking">{L("where.parking")}: {firstPlace.parking_notes}</div>}
               {otherPlaces > 0 && <div className="more-places">{L("you.morePlaces", { n: otherPlaces })}</div>}
             </div>
           )}
@@ -280,11 +285,11 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
         </div>
       </section>
 
-      <section className="meta" aria-label="Light and weather">
+      {(rev?.sunrise || rev?.sunset || rev?.weather_forecast) && <section className="meta" aria-label="Light and weather">
         <span><span className="k">{L("sunrise")} </span><span className="v" id="sunrise">{rev?.sunrise || "—"}</span></span>
         <span><span className="k">{L("sunset")} </span><span className="v" id="sunset">{rev?.sunset || "—"}</span></span>
         <span className="weather"><span className="k">{L("weather")} </span><span id="weather">{rev?.weather_forecast || "—"}</span></span>
-      </section>
+      </section>}
 
       {rev?.safety_notes && (
         <section className={`safety${first.some((c) => c.field === "safety_notes") && !alreadyConfirmed ? " in-hero" : ""}`} id="safetyBox" aria-label={L("safety")}>

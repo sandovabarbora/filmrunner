@@ -204,3 +204,19 @@ def mocked_geocoding_api_url(mock_nominatim_url: str) -> Iterator[str]:
     env = {**_base_api_env(), "FILMRUNNER_NOMINATIM_URL": mock_nominatim_url}
     yield from _start_api(env)
 
+
+
+OPEN_FOLDS = """new MutationObserver(() => document.querySelectorAll('details[data-fold]:not([open])').forEach((d) => { d.open = true; }))
+  .observe(document, { childList: true, subtree: true });"""
+
+
+@pytest.fixture(autouse=True)
+def _folds_open_unless_a_test_is_about_them(request: pytest.FixtureRequest):
+    """Folding is covered by one test; the rest reach into the sections, which a person opens with one tap."""
+    if "context" in request.fixturenames and "keeps_folds" not in request.keywords:
+        request.getfixturevalue("context").add_init_script(OPEN_FOLDS)
+    yield
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line("markers", "keeps_folds: the test checks what is folded, so nothing opens the sections for it")

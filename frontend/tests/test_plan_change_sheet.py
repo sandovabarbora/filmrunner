@@ -4,6 +4,7 @@ import urllib.request
 import uuid
 from datetime import date
 
+import pytest
 from conftest import E2E_TOKEN
 from playwright.sync_api import Page, expect
 
@@ -166,3 +167,30 @@ def test_a_real_session_shows_no_test_bar(page: Page, frontend_url: str, api_url
     page.goto(f"{frontend_url}/editor.html")
     page.wait_for_selector("#createProduction", timeout=15_000)
     expect(page.locator("#sandboxBar")).to_have_count(0)
+
+
+@pytest.mark.keeps_folds
+def test_the_day_screen_is_about_changing_the_plan(page: Page, frontend_url: str, api_url: str) -> None:
+    """Publish stays in reach, and everything a changed plan does not need waits behind one tap."""
+    sheet, _ = _changed_day(api_url)
+    production = _api(api_url, "GET", f"/call-sheets/{sheet}")["production_id"]
+    connection = json.dumps({"apiBase": api_url, "token": E2E_TOKEN})
+    page.add_init_script(f"localStorage.setItem('filmrunner.editor.connection', {json.dumps(connection)});")
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{frontend_url}/editor.html#/p/{production}/day/{sheet}")
+    page.wait_for_selector("#publish", timeout=15_000)
+
+    box = page.locator("#publish").bounding_box()
+    assert box is not None and box["y"] + box["height"] <= 844
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight / 2)")
+    box = page.locator("#publish").bounding_box()
+    assert box is not None and box["y"] + box["height"] <= 844
+
+    expect(page.locator("#shareLink")).to_be_hidden()
+    expect(page.locator("#personalLinks ul")).to_be_hidden()
+    expect(page.locator("#cancelDayBtn")).to_be_hidden()
+    expect(page.locator("#unconfirmed")).to_be_hidden()
+    expect(page.locator("#confirmedCount")).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollHeight") < 3000
+    page.click("#shareDetails summary")
+    expect(page.locator("#shareLink")).to_be_visible()

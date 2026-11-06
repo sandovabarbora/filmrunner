@@ -12,7 +12,8 @@ import { PersonPicker } from "../PersonPicker";
 import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
-import { useL } from "../lang";
+import { fmtDate } from "../../i18n";
+import { useLang, useL } from "../lang";
 import { Icon } from "../../Icon";
 
 /** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
@@ -103,6 +104,7 @@ export function ProductionScreen({ conn, productionId, production, tab, setNotic
 
 function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection; productionId: string; canPublish: boolean; setNotice: (n: Notice) => void }) {
   const L = useL();
+  const lang = useLang();
   const [days, setDays] = useState<CallSheetCreated[] | null>(null);
   const [reload, setReload] = useState(0);
   useEffect(() => {
@@ -174,7 +176,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
 
   return (
     <section className="block" aria-label={L("Days")}>
-      <h2>{L("Days")}</h2>
+      <h2 className="visually-hidden">{L("Days")}</h2>
       {days === null && <p className="hint">{L("Loading…")}</p>}
       {days && days.length === 0 && <p className="hint">{L("No shoot days yet.")}</p>}
       {days && days.length > 0 && (
@@ -182,7 +184,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
           {days.map((d) => (
             <li key={d.id}>
               <a className="row" href={href({ screen: "day", productionId, callSheetId: d.id })}>
-                <span className="name">{L("Day")} {d.day_number} {L("of")} {d.day_count} <span className="meta">· {d.shoot_date} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">{L("CANCELLED")}</span>}{d.status === "draft" && <span className="tag">{L("DRAFT")}</span>}
+                <span className="name">{L("Day")} {d.day_number} {L("of")} {d.day_count} <span className="meta">· {fmtDate(lang, d.shoot_date)} · {d.unit_name}</span>{d.status === "cancelled" && <span className="tag warn">{L("CANCELLED")}</span>}{d.status === "draft" && <span className="tag">{L("DRAFT")}</span>}
                   <span className="meta day-glance">
                     {d.current_revision?.general_crew_call && <>{L("call")} <b>{d.current_revision.general_crew_call}</b></>}
                     {d.opened?.first_location_name && <> · {d.opened.first_location_name}</>}
@@ -602,7 +604,7 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
   const canSave = form.name.trim() && form.department.trim() && form.position.trim() && !busy;
   return (
     <section className="block" aria-label={L("Crew")}>
-      <h2>{L("Crew")}</h2>
+      <h2 className="visually-hidden">{L("Crew")}</h2>
       {crew === null && <p className="hint">{L("Loading…")}</p>}
       {allCrew && allCrew.length > 0 && (
         <div className="inline crew-filter">
@@ -821,7 +823,7 @@ function Settings({ conn, production, setNotice, onUpdated }: { conn: Connection
   }
   return (
     <section className="block" aria-label={L("Settings")}>
-      <h2>{L("Settings")}</h2>
+      <h2 className="visually-hidden">{L("Settings")}</h2>
       <div className="grid2">
         <label className="field" htmlFor="productionName"><span className="label">{L("Name")}</span><input id="productionName" value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label className="field" htmlFor="productionStatus"><span className="label">{L("Status")}</span>
@@ -900,7 +902,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
   const canSave = form.name.trim() && form.character.trim() && !busy;
   return (
     <section className="block" aria-label={L("Cast")}>
-      <h2>{L("Cast")}</h2>
+      <h2 className="visually-hidden">{L("Cast")}</h2>
       {cast === null && <p className="hint">{L("Loading…")}</p>}
       {cast && cast.length === 0 && <p className="hint">{L("No cast yet. Add the actors once; each day then gets its own status, pickup, make-up and on-set times.")}</p>}
       {cast && cast.length > 0 && (
@@ -1025,7 +1027,7 @@ function Locations({ conn, productionId, canEdit, setNotice }: { conn: Connectio
   const canSave = form.name.trim() && !busy;
   return (
     <section className="block" aria-label={L("Locations")}>
-      <h2>{L("Locations")}</h2>
+      <h2 className="visually-hidden">{L("Locations")}</h2>
       <p className="hint">{L("An address is geocoded on save so a scene can be tied to it for sunrise/sunset and a nearby hospital can be suggested.")}</p>
       {locations === null && <p className="hint">{L("Loading…")}</p>}
       {locations && locations.length === 0 && <p className="hint">{L("No locations yet.")}</p>}
@@ -1116,7 +1118,7 @@ function Members({ conn, productionId, setNotice }: { conn: Connection; producti
 
   return (
     <section className="block" aria-label={L("Members")}>
-      <h2>{L("Members")}</h2>
+      <h2 className="visually-hidden">{L("Members")}</h2>
       <p className="hint">{L("Owner: everything, incl. members. Editor: days, crew, publish. Viewer: read only.")}</p>
       {members === null && <p className="hint">{L("Loading…")}</p>}
       {members && members.length > 0 && (

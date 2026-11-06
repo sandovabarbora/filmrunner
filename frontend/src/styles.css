@@ -135,6 +135,9 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; }
 .hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.72) 0, rgba(10, 14, 17, 0.28) 32%, rgba(10, 14, 17, 0.34) 48%, rgba(10, 14, 17, 0.94) 70%, var(--paper) 100%); }
 .hero-time { font-weight: 800; font-stretch: 125%; font-size: min(calc((100vw - 40px) / 3.2), 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
+/* Small type crosses the bright part of the still, so it carries its own shade. */
+.you .who, .you-extra, .hero-sub, .sheet-header, .you-where .was, .you-where .more-places { text-shadow: 0 1px 8px rgba(10, 14, 17, 0.95); }
+.hero-sub .rev-badge { text-shadow: none; }
 .hero-sub { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 8px; }
 .you-call { font-size: 1.0625rem; font-weight: 600; }
 .you-call s { text-decoration-thickness: 2px; }
@@ -145,7 +148,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you-extra { display: flex; gap: 4px 16px; flex-wrap: wrap; margin-top: 6px; font-size: 0.9375rem; color: var(--ink-2); }
 .you-extra .v { font-weight: 700; color: var(--ink); }
 /* Viewfinder corners: the frame the still sits in. */
-.frame { position: relative; flex: 1 0 96px; margin: 14px 0; }
+.frame { position: relative; flex: 1 0 40px; margin: 12px 0; }
 .frame i { position: absolute; width: 18px; height: 18px; border: 0 solid var(--ink); }
 .frame i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
 .frame i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
@@ -194,7 +197,7 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 
 /* FR-202: the crew member's own word that they know, in the revision's colour. It follows what it confirms, and rests at the bottom of the screen until
    the reader reaches that point: under the thumb from the first second, without inviting a confirmation above the changes. */
-.confirm { position: sticky; bottom: 0; z-index: 2; margin: 0 -20px; padding: 10px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--paper); }
+.confirm { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--paper); box-shadow: 0 0 0 100vmax var(--paper); clip-path: inset(0 -100vmax); }
 .confirm.offline { position: static; }
 .confirm button, .confirm button:hover:not(:disabled) { width: 100%; min-height: 56px; white-space: normal; border: 0; background: var(--rev); color: var(--on-rev); font-size: 1.125rem; font-weight: 800; letter-spacing: -0.015em; }
 .confirm button:disabled { background: var(--paper-2); color: var(--muted); }
@@ -490,9 +493,11 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 }
 
 /* The test environment announces itself on every screen, in a colour nothing real uses at this size. */
-.sandbox-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 12px; margin: 0 -20px; padding: 6px 20px; background: var(--rev-d); color: var(--on-rev); font-size: var(--fs-small); }
+.sandbox-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 2px 12px; padding: 6px 0; background: var(--rev-d); box-shadow: 0 0 0 100vmax var(--rev-d); clip-path: inset(0 -100vmax); color: var(--on-rev); font-size: var(--fs-small); }
 .sandbox-bar b { font-weight: 800; }
 .sandbox-actions { display: flex; align-items: center; gap: 12px; }
-.sandbox-bar a { display: inline-block; padding-block: 8px; color: inherit; font-weight: 600; }
-.sandbox-bar button.sandbox-exit, .sandbox-bar button.sandbox-exit:hover:not(:disabled) { min-height: 0; padding: 8px 0; border: 0; background: none; color: inherit; font-size: inherit; font-weight: 600; text-decoration: underline; }
+.sandbox-bar a { display: inline-block; padding-block: 4px; color: inherit; font-weight: 600; }
+.sandbox-bar button.sandbox-exit, .sandbox-bar button.sandbox-exit:hover:not(:disabled) { min-height: 0; padding: 4px 0; border: 0; background: none; color: inherit; font-size: inherit; font-weight: 600; text-decoration: underline; }
 @media print { .sandbox-bar { display: none; } }
+
+@media print { .hero-sub, .you .who, .you-extra, .sheet-header { text-shadow: none; } }
