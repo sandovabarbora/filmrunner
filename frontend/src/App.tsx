@@ -183,7 +183,7 @@ export function App() {
       {mode.kind === "home" && (
         <section className="home" aria-label="Start">
           <StillBackground />
-          <p className="home-mark" aria-hidden="true">FilmRunner</p>
+          <p className="home-mark" aria-hidden="true" onClick={onLogoTap}>FilmRunner</p>
           <div className="home-card">
             <h2>{L("home.crew")}</h2>
             <p>{L("home.crewText")}</p>

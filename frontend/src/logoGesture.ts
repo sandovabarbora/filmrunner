@@ -1,8 +1,9 @@
 import { useRef } from "react";
 
-const WINDOW_MS = 3000;
-// Long enough for a sixth tap to arrive, short enough that five taps still feel immediate.
-const SETTLE_MS = 700;
+// Seven unhurried taps on a phone take about five seconds.
+const WINDOW_MS = 7000;
+// Five taps mean admin only once the tapping has clearly stopped; someone on their way to seven must never land there.
+const SETTLE_MS = 1500;
 
 /** Seven taps on the logo open the test environment; five, where offered, open admin access. */
 export function useLogoGesture(onSeven: () => void, onFive?: () => void): () => void {

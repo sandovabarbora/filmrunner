@@ -501,3 +501,6 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
 @media print { .sandbox-bar { display: none; } }
 
 @media print { .hero-sub, .you .who, .you-extra, .sheet-header { text-shadow: none; } }
+
+/* Repeated taps on the name must stay taps: no double-tap zoom, no text selection. */
+.masthead h1, .home-mark { touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: default; }

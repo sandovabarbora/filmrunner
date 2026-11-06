@@ -194,3 +194,27 @@ def test_the_day_screen_is_about_changing_the_plan(page: Page, frontend_url: str
     assert page.evaluate("document.documentElement.scrollHeight") < 3000
     page.click("#shareDetails summary")
     expect(page.locator("#shareLink")).to_be_visible()
+
+
+@pytest.mark.parametrize("target", [".masthead h1", ".home-mark"])
+def test_unhurried_taps_on_either_name_open_the_test_environment(page: Page, frontend_url: str, api_url: str, target: str) -> None:
+    _send_the_built_in_api_to_the_test_server(page, api_url)
+    page.goto(f"{frontend_url}/")
+    page.wait_for_selector("#openDemo", timeout=10_000)
+    for _ in range(7):
+        page.click(target, no_wait_after=True)
+        page.wait_for_timeout(700)
+    expect(page.locator("#testLab")).to_be_visible(timeout=10_000)
+    page.unroute_all(behavior="ignoreErrors")
+
+
+def test_unhurried_taps_in_the_editor_do_not_stop_at_admin(page: Page, frontend_url: str, api_url: str) -> None:
+    _send_the_built_in_api_to_the_test_server(page, api_url)
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#logo", timeout=10_000)
+    for _ in range(7):
+        page.click("#logo", no_wait_after=True)
+        page.wait_for_timeout(700)
+    expect(page.locator("#testLab")).to_be_visible(timeout=10_000)
+    expect(page.locator("#adminScreen")).to_have_count(0)
+    page.unroute_all(behavior="ignoreErrors")
