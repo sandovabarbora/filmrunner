@@ -4,9 +4,12 @@ measured 2026-09-22 — see ADR-006). The live comparison itself reruns
 daily and on demand in CI (scripts/check_astronomy_accuracy.py), since
 this sandbox's own egress proxy still blocks the reference API directly."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
-from app.services.astronomy import sunrise_sunset
+import pytest
+
+from app.services.astronomy import _local_hhmm, _sun_time_utc_hours, sunrise_sunset
 
 PRAGUE_LAT, PRAGUE_LNG = 50.0755, 14.4378
 
@@ -75,3 +78,40 @@ def test_returns_hh_mm_strings():
     rise, sset = sunrise_sunset(PRAGUE_LAT, PRAGUE_LNG, date(2026, 6, 21))
     assert datetime.strptime(rise, "%H:%M")
     assert datetime.strptime(sset, "%H:%M")
+
+
+def _exact_local(hours: float, on_date: date) -> datetime:
+    midnight = datetime(on_date.year, on_date.month, on_date.day, tzinfo=timezone.utc)
+    return (midnight + timedelta(seconds=hours * 3600)).astimezone(ZoneInfo("Europe/Prague"))
+
+
+def test_the_minute_rounding_up_to_sixty_carries_the_hour():
+    """QA's example: 06:59:50 CET was shown as 06:00."""
+    assert sunrise_sunset(PRAGUE_LAT, PRAGUE_LNG, date(2026, 11, 6))[0] == "07:00"
+
+
+@pytest.mark.parametrize("lat,lng", [(PRAGUE_LAT, PRAGUE_LNG), (49.1951, 16.6068), (49.8209, 18.2625), (50.77, 15.06)])
+def test_every_day_of_two_years_shows_the_exact_time_to_the_nearest_minute(lat: float, lng: float):
+    """Every day rather than a sample: the old bug hit about 3% of values, on no particular date."""
+    wrong = []
+    on_date = date(2026, 1, 1)
+    while on_date.year < 2028:
+        shown = sunrise_sunset(lat, lng, on_date)
+        for is_sunrise, hhmm in ((True, shown[0]), (False, shown[1])):
+            exact = _exact_local(_sun_time_utc_hours(is_sunrise, lat, lng, on_date), on_date)
+            exact_seconds = exact.hour * 3600 + exact.minute * 60 + exact.second + exact.microsecond / 1e6
+            if abs(_minutes(hhmm) * 60 - exact_seconds) > 30.001:
+                wrong.append((on_date.isoformat(), is_sunrise, hhmm, exact.time().isoformat()))
+        on_date += timedelta(days=1)
+    assert not wrong, f"{len(wrong)} wrong, first: {wrong[:3]}"
+
+
+@pytest.mark.parametrize("hours,on_date,expected", [
+    (5.9999, date(2026, 11, 6), "07:00"),  # the minute rolls into the next hour
+    (22.9999, date(2026, 11, 6), "00:00"),  # and the hour into the next day
+    (23.9999, date(2026, 11, 6), "01:00"),  # the UTC day itself rolls over
+    (5.5, date(2026, 6, 21), "07:30"),  # summer offset
+    (0.0, date(2026, 11, 6), "01:00"),
+])
+def test_rounding_boundaries(hours: float, on_date: date, expected: str):
+    assert _local_hhmm(hours, on_date, "Europe/Prague") == expected
