@@ -1248,3 +1248,67 @@ def test_a_publish_overtaken_by_another_editor_says_so_and_keeps_the_newer_revis
     expect(page.locator("#general_crew_call")).to_have_value("04:44")
     current = call(f"/call-sheets/{sheet['id']}")["current_revision"]
     assert current["revision_letter"] == "B" and current["general_crew_call"] == "04:44"
+
+
+# --- FR-222 -------------------------------------------------------------------------------------
+
+def _api_post(page: Page, api_url: str, path: str, body: dict) -> dict:
+    resp = page.request.post(f"{api_url}/api/v1{path}", data=body, headers={"Authorization": f"Bearer {E2E_TOKEN}"})
+    assert resp.ok, resp.text()
+    return resp.json()
+
+
+def test_a_time_that_is_not_a_time_is_stopped_with_its_field_named(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E times {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "25:99")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text('Crew call: "25:99" is not a time', timeout=10_000)
+    expect(page.locator("#publishState")).to_contain_text("Not published yet")
+    page.fill("#general_crew_call", "6:30")
+    page.fill("#sunrise", "abc")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text('Sunrise: "abc" is not a time', timeout=10_000)
+    page.fill("#sunrise", "")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+
+
+def test_a_server_error_reads_as_a_server_error_and_keeps_the_draft(page: Page, frontend_url: str, api_url: str) -> None:
+    """The other half of test_publish_without_network_keeps_the_draft: same draft, a different thing to tell the AD."""
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E five hundred {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "05:45")
+    page.route(f"{api_url}/**/call-sheets", lambda route: route.fulfill(
+        status=500, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"}, body='{"detail":"Internal server error"}',
+    ) if route.request.method == "POST" else route.continue_())
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("The server had a problem", timeout=15_000)
+    expect(page.locator("#notice")).not_to_contain_text("No connection")
+    expect(page.locator("#notice")).not_to_contain_text("Internal server error")
+    page.unroute(f"{api_url}/**/call-sheets")
+    page.reload()
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    assert page.locator("#general_crew_call").input_value() == "05:45"
+
+
+def test_after_rev_z_publishing_is_off_and_says_why(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    name = f"E2E rev z {uuid.uuid4().hex[:6]}"
+    _create_production(page, name)
+    productions = page.request.get(f"{api_url}/api/v1/productions", headers={"Authorization": f"Bearer {E2E_TOKEN}"}).json()
+    pid = next(p["id"] for p in productions if p["name"] == name)
+    day = _api_post(page, api_url, f"/productions/{pid}/call-sheets", {"shoot_date": "2031-06-06", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "07:00"}})
+    for _ in range(25):
+        _api_post(page, api_url, f"/call-sheets/{day['id']}/revisions", {"general_crew_call": "07:00"})
+    page.reload()
+    page.wait_for_selector("#days", timeout=10_000)
+    page.locator("#days a.row").first.click()
+    expect(page.locator("#publishState")).to_contain_text("used all 26 revisions", timeout=10_000)
+    expect(page.locator("#publish")).to_be_disabled()
+    expect(page.locator("#publish")).not_to_contain_text("[")
+    expect(page.locator("#publish")).to_contain_text("No revisions left")
