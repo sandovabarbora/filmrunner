@@ -148,3 +148,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: a hidden gesture is not protection, so the isolation has to hold for anyone who finds it. Reusing membership means no access rule needs a test exception to get wrong.
 - Revisit when: test worlds put visible load on the database, or a real pilot makes a public write endpoint unwelcome; one setting turns it off.
 
+
+## 2026-11-06: a time field takes H:MM and H.MM and stores HH:MM
+- Decision: the API accepts "6:30", "6.30" and "06:30" and stores "06:30"; anything else is a 422, and empty means no value. Validation is on Create and Update models only, and values rebuilt from stored rows skip it.
+- Why: the editor's time fields are free text and people type all three, while "25:99" and "abc" must never reach a crew. Old stored values must keep reading back and must not block an unrelated change.
+- Revisit when: production data shows another form people rely on; `TBA` is the likely one, and it is refused today.

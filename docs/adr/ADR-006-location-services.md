@@ -130,3 +130,7 @@ The daily/on-demand CI accuracy check (FR-67) reports a deviation above
 its ±3-minute tolerance for two runs in a row (a genuine formula issue,
 not a one-off provider hiccup); or a production needs a location outside
 OpenStreetMap's coverage.
+
+## Addendum, FR-222 (2026-11-06): values stored before the rounding fix
+
+A minute that rounded up to 60 became :00 without carrying the hour, so 07:00 read as 06:00. That hit 22 of 1460 Prague values over 2026 and 2027, about 3% of days. The calculation is fixed; stored revisions are not, because revisions are immutable, and the editor and a moved day carry the old value forward. `cd backend && python -m scripts.sun_rollover_report` counts what is affected, read-only. An AD clears the two sun fields and publishes to correct a day.
