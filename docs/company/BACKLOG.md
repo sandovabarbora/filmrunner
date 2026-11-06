@@ -2251,3 +2251,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - sections are titled and ruled rather than boxed; dates read as dates; roles are translated; time inputs are not clipped
   - failure case: a fold never hides a state the AD must see; the confirmation count and read-only notice stay visible
 
+## FR-215 · frontend · Bring the sheet's load time back after the new typeface
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-215-lighter-font). The score was 93 before FR-210, and 81 to 84 after it, so CI failed on some runs of `main`. Measured locally after the change: 88. The CI baseline stays at 93.
+- why: Czech text downloaded 176 KB of font on the first screen, which is slow on a set's signal and pushed Lighthouse to the edge of its gate
+- dod:
+  - the two font files total under 60 KB and cover every weight, width and Czech letter the product sets
+  - the Lighthouse gate passes on `main` without changing its baseline
+  - failure case: a character outside the subset falls back to a system font rather than showing nothing
+

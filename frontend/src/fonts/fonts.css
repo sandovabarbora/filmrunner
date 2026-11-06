@@ -1,0 +1,19 @@
+/* Archivo cut down to what this product sets: weights 400 to 800, widths 100 to 125, Latin and Czech. Rebuild recipe in docs/design/visual-world.md. */
+@font-face {
+  font-family: "Archivo Variable";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 100% 125%;
+  font-display: swap;
+  src: url(./archivo-latin.woff2) format("woff2-variations");
+  unicode-range: U+0020-007E, U+00A0-00FF, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+20AC, U+2192;
+}
+@font-face {
+  font-family: "Archivo Variable";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 100% 125%;
+  font-display: swap;
+  src: url(./archivo-czech.woff2) format("woff2-variations");
+  unicode-range: U+010C-010F, U+011A-011B, U+0147-0148, U+0158-0159, U+0160-0161, U+0164-0165, U+016E-016F, U+017D-017E;
+}
