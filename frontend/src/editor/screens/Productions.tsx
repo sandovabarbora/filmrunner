@@ -4,6 +4,7 @@ import { href } from "../route";
 import { noticeFromError, type Notice } from "../EditorApp";
 import type { Production } from "../../types";
 import { useL } from "../lang";
+import { DashboardPanel } from "./Dashboard";
 
 export function ProductionsScreen({ conn, productions, onCreated, setNotice }: {
   conn: Connection; productions: Production[] | null; onCreated: (p: Production) => void; setNotice: (n: Notice) => void;
@@ -27,6 +28,8 @@ export function ProductionsScreen({ conn, productions, onCreated, setNotice }: {
   }
 
   return (
+    <>
+    {productions && productions.length > 0 && <DashboardPanel conn={conn} />}
     <section className="block" aria-label={L("Productions")}>
       <h2>{L("Productions")}</h2>
       {productions === null && <p className="hint">{L("Loading…")}</p>}
@@ -52,5 +55,6 @@ export function ProductionsScreen({ conn, productions, onCreated, setNotice }: {
         <button type="button" id="createProduction" className="secondary" disabled={!name.trim() || busy} onClick={() => void create()}>{L("Create")}</button>
       </div>
     </section>
+    </>
   );
 }

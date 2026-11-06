@@ -2207,3 +2207,13 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - stills and the font are precached, so the first screen works offline; print stays black on white with no still
   - failure case: a still that fails to load leaves the solid ground, and all text stays readable
 
+## FR-211 · frontend · After signing in, the first screen says what needs you now, across all your films
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-211-dashboard). Crew and cast keep their link with no account; showing one person their days across films through `Contact` is a separate item. Deploy needed: adds `GET /me/dashboard`.
+- why: the founder wants anyone in a production role to see what matters to them first, and someone on several films to find their way through the chaos
+- dod:
+  - `GET /me/dashboard` lists, soonest first, days in the next two days with people who have not confirmed, and days not yet published; everything else is on track
+  - only productions the caller can see, with no phones or personal links in the response
+  - a first revision more than a day away is not raised, so the number means something
+  - failure case: if the overview fails to load, the list of films still works
