@@ -52,6 +52,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_api_token)])
 
+ATTACH_NEEDS_EDIT = "You can only view this person on another production, and only its editors can reuse them; add them as a new person instead"
+
 
 def _productions_using_contact(db: Session, contact_id: uuid.UUID) -> set[uuid.UUID]:
     crew = db.query(CrewMember.production_id).filter(CrewMember.contact_id == contact_id)
@@ -62,27 +64,36 @@ def _productions_using_contact(db: Session, contact_id: uuid.UUID) -> set[uuid.U
 def _contact_for(db: Session, contact_id: uuid.UUID, access: Access) -> Contact:
     """A contact can join only a production of its own world, so a test persona can never pull in a real person by id.
 
-    Attaching returns the person's phone and email and then opens editing, so a contact already
-    in use must be on a production the caller can see: an id alone proves nothing, and sign-up is
-    open. A contact nobody uses yet is the picker's create-then-attach. Refused looks like unknown,
-    so the answer does not confirm that an id belongs to someone.
+    Attaching returns the person's phone and email and opens editing, and an id proves nothing:
+    ids are public in photo URLs and sign-up is open. So a contact in use needs crew:edit on a
+    production using it, and an unused one needs its creator (the picker's create-then-attach).
+    A stranger's refusal looks like an unknown id, so it does not confirm the id belongs to someone.
     """
     contact = db.get(Contact, contact_id)
     not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
     if contact is None or contact.sandbox_session != access.production.sandbox_session:
         raise not_found
-    if access.principal.kind == "service":
+    principal = access.principal
+    if principal.kind == "service":
         return contact
     used_on = _productions_using_contact(db, contact_id)
-    if used_on and not used_on & {p.id for p in visible_productions(db, access.principal)}:
-        raise not_found
-    return contact
+    if not used_on:
+        if contact.created_by is None or contact.created_by != principal.label:
+            raise not_found
+        return contact
+    standing = [resolve_access_or_none(db, principal, production_id) for production_id in used_on]
+    if any(CREW_EDIT in permissions for permissions in standing):
+        return contact
+    if any(standing):
+        # They can already see this person, so a 404 would be false; the production stays unnamed because the caller's own list names it.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ATTACH_NEEDS_EDIT)
+    raise not_found
 
 
 async def _read_capped(file: UploadFile, limit: int, too_large: str) -> bytes:
     data = await file.read(limit + 1)
     if len(data) > limit:
-        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=too_large)
+        raise HTTPException(status_code=413, detail=too_large)
     return data
 
 
@@ -210,6 +221,8 @@ def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Princ
         db.query(CrewMember).filter(CrewMember.production_id.in_(ids)).all()
         + db.query(CastMember).filter(CastMember.production_id.in_(ids)).all()
     )
+    editable = {p.id for p in visible if CREW_EDIT in resolve_access_or_none(db, principal, p.id)}
+    attachable = {m.contact_id for m in memberships if m.production_id in editable}
     digits = "".join(ch for ch in needle if ch.isdigit())
     for m in memberships:
         c = m.contact
@@ -221,7 +234,7 @@ def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Princ
         if existing is None:
             position = m.position if isinstance(m, CrewMember) else f"cast · {m.character_name}"
             rows[c.id] = ContactMatch(id=c.id, name=c.name, phone=c.phone, email=c.email, photo_url=c.photo_url,
-                                      last_production_name=m.production.name, last_position=position)
+                                      last_production_name=m.production.name, last_position=position, can_attach=c.id in attachable)
     out = sorted(rows.values(), key=lambda r: (r.name.lower(), r.phone or ""))
     return out[:10]
 
@@ -231,7 +244,7 @@ def create_contact(payload: ContactCreate, db: Session = Depends(get_db), princi
     session = session_of_email(principal.email)
     if session is not None:
         enforce_quota(db, Contact, session, MAX_CONTACTS_PER_SESSION)
-    contact = Contact(**payload.model_dump(), sandbox_session=session)
+    contact = Contact(**payload.model_dump(), sandbox_session=session, created_by=principal.label or None)
     db.add(contact)
     db.commit()
     db.refresh(contact)
@@ -497,15 +510,12 @@ def remove_crew_member(
 
 
 def _require_contact_edit(db: Session, principal: Principal, contact_id: uuid.UUID) -> None:
-    """Contacts are shared rows and a change shows on every sheet using them, so it takes crew:edit on all of those productions."""
+    """Contacts are shared rows; editing one needs crew:edit on a production using it. Any one is enough: only editors can spread a contact."""
     if principal.kind == "service":
         return
     used_on = _productions_using_contact(db, contact_id)
-    if not used_on:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: it is not on any production you edit")
-    if not all(CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in used_on):
-        # Does not name the other production: the caller may not be allowed to know it exists.
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This person is also on a production you cannot edit, so their name, phone and photo cannot be changed from here")
+    if not any(CREW_EDIT in resolve_access_or_none(db, principal, production_id) for production_id in used_on):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person on its crew or cast")
 
 
 @router.patch("/contacts/{contact_id}", response_model=ContactRead)

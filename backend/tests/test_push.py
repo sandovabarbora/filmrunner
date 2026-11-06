@@ -137,12 +137,14 @@ class TestSubscriptionCap:
         contact = client.post("/api/v1/contacts", json={"name": "Someone Else"}, headers=AUTH).json()["id"]
         return client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Grip", "position": "Grip"}, headers=AUTH).json()
 
-    def test_a_sixth_device_replaces_the_oldest(self, client: TestClient, db_session) -> None:
+    def test_a_sixth_device_is_refused_and_nothing_is_evicted(self, client: TestClient, db_session) -> None:
+        """Failure case: a leaked link must not be able to push the real phone off the list."""
         _pid, member = _setup(client)
         seeded = self._seed(db_session, member, 5)
-        new = "https://fcm.googleapis.com/fcm/send/new"
-        assert _subscribe(client, member, endpoint=new).status_code == 201
-        assert self._endpoints(db_session, member) == {*seeded[1:], new}
+        resp = _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new")
+        assert resp.status_code == 409
+        assert "5 devices" in resp.json()["detail"]
+        assert self._endpoints(db_session, member) == set(seeded)
 
     def test_five_devices_are_all_kept(self, client: TestClient, db_session) -> None:
         _pid, member = _setup(client)
@@ -151,19 +153,44 @@ class TestSubscriptionCap:
         assert _subscribe(client, member, endpoint=new).status_code == 201
         assert self._endpoints(db_session, member) == {*seeded, new}
 
-    def test_refreshing_keys_on_a_known_device_evicts_nobody(self, client: TestClient, db_session) -> None:
+    def test_refreshing_keys_on_a_known_device_works_at_the_cap(self, client: TestClient, db_session) -> None:
         _pid, member = _setup(client)
         seeded = self._seed(db_session, member, 5)
-        assert _subscribe(client, member, endpoint=seeded[0]).status_code == 201
+        assert _subscribe(client, member, endpoint=seeded[0], keys={"p256dh": "fresh", "auth": "keys"}).status_code == 201
         assert self._endpoints(db_session, member) == set(seeded)
+        db_session.expire_all()
+        assert db_session.query(PushSubscription).filter(PushSubscription.endpoint == seeded[0]).one().p256dh == "fresh"
 
-    def test_the_cap_holds_when_a_device_moves_over_from_another_member(self, client: TestClient, db_session) -> None:
+    def test_a_device_cannot_move_onto_a_member_at_the_cap(self, client: TestClient, db_session) -> None:
         pid, member = _setup(client)
         seeded = self._seed(db_session, member, 5)
+        other = self._second_member(client, pid)
         moved = "https://fcm.googleapis.com/fcm/send/shared-phone"
-        assert _subscribe(client, self._second_member(client, pid), endpoint=moved).status_code == 201
-        assert _subscribe(client, member, endpoint=moved).status_code == 201
-        assert self._endpoints(db_session, member) == {*seeded[1:], moved}
+        assert _subscribe(client, other, endpoint=moved).status_code == 201
+        assert _subscribe(client, member, endpoint=moved).status_code == 409
+        assert self._endpoints(db_session, member) == set(seeded)
+        assert self._endpoints(db_session, other) == {moved}
+
+    def test_turning_one_off_frees_a_place(self, client: TestClient, db_session) -> None:
+        _pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 5)
+        assert client.delete(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", params={"endpoint": seeded[0]}).status_code == 204
+        assert _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new").status_code == 201
+
+    def test_a_dead_endpoint_pruned_on_410_frees_a_place(self, client: TestClient, db_session, vapid_configured) -> None:
+        pid, member = _setup(client)
+        self._seed(db_session, member, 5)
+
+        class _Gone:
+            status_code = 410
+            text = "gone"
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("gone", response=_Gone())):
+            client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": "2026-12-01", "day_number": 1, "day_count": 1, "initial_revision": {"schedule_items": []}}, headers=AUTH)
+            sheet = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()[0]["id"]
+            client.post(f"/api/v1/call-sheets/{sheet}/revisions", json={"general_crew_call": "05:00", "schedule_items": []}, headers=AUTH)
+        assert self._endpoints(db_session, member) == set()
+        assert _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new").status_code == 201
 
     def test_the_cap_is_per_member(self, client: TestClient, db_session) -> None:
         pid, member = _setup(client)

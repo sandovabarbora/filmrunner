@@ -39,9 +39,10 @@ export function PersonPicker({ conn, id, value, onChange, onPick, disabled }: {
         <ul className="picker-list" role="listbox" aria-label={L("People already in FilmRunner")}>
           {matches.map((c) => (
             <li key={c.id} role="option" aria-selected={false}>
-              <button type="button" className="picker-item" onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(c); setOpen(false); }}>
+              <button type="button" className="picker-item" disabled={!c.can_attach} onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(c); setOpen(false); }}>
                 <span className="name">{c.name}</span>
                 <span className="meta">{c.phone ?? "no number"}{c.last_production_name ? ` · ${c.last_production_name}` : ""}{c.last_position ? ` · ${c.last_position}` : ""}</span>
+                {!c.can_attach && <span className="meta">{L("You can only view them there; only its editors can add them elsewhere. Keep typing to add a new person.")}</span>}
               </button>
             </li>
           ))}

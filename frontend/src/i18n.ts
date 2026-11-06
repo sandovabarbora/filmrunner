@@ -140,6 +140,7 @@ const EN = {
   "notify.off": "Turn off",
   "notify.enable": "Notify me when this call sheet changes",
   "notify.busy": "Working…",
+  "notify.limit": "Notifications are already on for 5 devices on this link. Turn them off on one of those first.",
   "lang.toggle": "Čeština",
   "privacy": "Privacy: what is stored about you",
 } as const;
@@ -279,6 +280,7 @@ const CS: Partial<Record<Key, string>> = {
   "notify.off": "Vypnout",
   "notify.enable": "Dej mi vědět, když se dispozice změní",
   "notify.busy": "Pracuji…",
+  "notify.limit": "Upozornění už jsou s tímhle odkazem zapnutá na 5 zařízeních. Nejdřív je na některém z nich vypni.",
   "lang.toggle": "English",
   "privacy": "Soukromí: co se o vás ukládá",
 };

@@ -61,7 +61,7 @@ def live_session_count(db: Session) -> int:
 
 
 def _crew(db: Session, production: Production, name: str, phone: str, department: str, position: str, head: bool = False) -> CrewMember:
-    contact = Contact(name=name, phone=phone, sandbox_session=production.sandbox_session)
+    contact = Contact(name=name, phone=phone, sandbox_session=production.sandbox_session, created_by="sandbox")
     db.add(contact)
     db.flush()
     member = CrewMember(production_id=production.id, contact_id=contact.id, department=department, position=position,
@@ -116,7 +116,7 @@ def create_session(db: Session, today: date) -> SandboxSession:
     sound = _crew(db, water, "Jana Bílá", "+420600000104", "Zvuk", "Mistr zvuku", head=True)
     catering = _crew(db, water, "Lída Horká", "+420600000105", "Catering", "Catering (dodavatel)")
     _crew(db, water, "Ivo Malý", "+420600000106", "Rekvizity", "Rekvizitář")
-    actress_contact = Contact(name="Anna Geislerová", phone="+420600000107", sandbox_session=session)
+    actress_contact = Contact(name="Anna Geislerová", phone="+420600000107", sandbox_session=session, created_by="sandbox")
     db.add(actress_contact)
     db.flush()
     actress = CastMember(production_id=water.id, contact_id=actress_contact.id, character_name="MARTA")

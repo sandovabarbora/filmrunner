@@ -79,7 +79,7 @@ fly ssh console -a filmrunner-api -C 'sh -c "printf %s \"\$FILMRUNNER_API_BEARER
 | Secret | Lost → | Recreate |
 |---|---|---|
 | `FILMRUNNER_DATABASE_URL` | API down | Reset the DB password (above), set again. |
-| `FILMRUNNER_API_BEARER_TOKEN` | scripts and the admin path stop | See "Rotating the service token" below. Under 32 characters the API refuses to boot outside development (FR-220). |
+| `FILMRUNNER_API_BEARER_TOKEN` | scripts and the admin path stop | See "Rotating the service token" above. Under 32 characters the API refuses to boot outside development (FR-220). |
 | `FILMRUNNER_VAPID_PUBLIC_KEY` / `_PRIVATE_KEY` | push stops | `python -m scripts.generate_vapid_keys`, set both; every phone must re-enable notifications. |
 | `FILMRUNNER_ANTHROPIC_API_KEY` | PDF import falls back to heuristics (still works) | New key in the Anthropic console, set. |
 | Supabase anon key / URL (GitHub Actions variables) | sign-in stops on Pages | Project Settings → API → copy; update the repository variables. |

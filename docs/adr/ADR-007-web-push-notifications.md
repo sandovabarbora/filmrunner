@@ -55,7 +55,11 @@ FR-220 restricts it: `https`, default port, no userinfo, and a host under
 `fcm.googleapis.com`, `push.services.mozilla.com`, `push.apple.com` or
 `notify.windows.com`. `send()` applies the same check, and a stored row that
 fails it is deleted rather than sent to. A member keeps at most 5
-subscriptions; a sixth replaces the oldest. A browser whose push service is
+subscriptions. A sixth new endpoint gets a 409 rather than replacing the
+oldest, so a leaked link cannot push the real phone off the list; the same
+endpoint re-subscribing still works, and dead ones free their place when the
+next publish prunes them on 404/410. Confirming a revision never waits on any
+of this. A browser whose push service is
 not on the list gets a 422 and cannot subscribe: add the domain to
 `_PUSH_SERVICE_DOMAINS` in `app/services/push.py`.
 

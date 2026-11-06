@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -57,7 +57,7 @@ class BodyLimitMiddleware:
         declared = _declared_length(scope)
         if declared is not None and declared > limit:
             # The rest of the body is never read, so the connection cannot be reused for another request.
-            response = JSONResponse({"detail": _detail(limit)}, status_code=status.HTTP_413_CONTENT_TOO_LARGE, headers={"Connection": "close"})
+            response = JSONResponse({"detail": _detail(limit)}, status_code=413, headers={"Connection": "close"})
             await response(scope, receive, send)
             return
 
@@ -70,7 +70,7 @@ class BodyLimitMiddleware:
                 received += len(message.get("body", b""))
                 if received > limit:
                     # FastAPI's body parsing turns every other exception type into a 400.
-                    raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=_detail(limit), headers={"Connection": "close"})
+                    raise HTTPException(status_code=413, detail=_detail(limit), headers={"Connection": "close"})
             return message
 
         await self.app(scope, counting_receive, send)

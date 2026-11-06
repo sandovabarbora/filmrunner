@@ -28,6 +28,8 @@ class ContactMatch(ContactRead):
 
     last_production_name: str | None = None
     last_position: str | None = None
+    # False when the caller only views every film using this person: they can see them but not add them elsewhere.
+    can_attach: bool = True
 
 
 class ProductionCreate(BaseModel):

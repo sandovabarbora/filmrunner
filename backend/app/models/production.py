@@ -73,6 +73,9 @@ class Contact(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     # Set only via POST /contacts/{id}/photo (Supabase Storage public URL), never by direct PATCH.
     photo_url: Mapped[str | None] = mapped_column(String(500))
+    # Who made an unused contact is the only proof it is theirs to attach: its id alone is public in old photo URLs.
+    # Null on rows from before this column, which only the service token may then attach.
+    created_by: Mapped[str | None] = mapped_column(String(255))
     # Which test world owns this row, if any. Contacts are shared, so ownership must be stated, never inferred: it keeps real people out of test films and is what purging goes by.
     sandbox_session: Mapped[str | None] = mapped_column(String(32), index=True)
 

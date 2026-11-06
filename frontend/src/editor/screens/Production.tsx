@@ -306,7 +306,8 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
     if (otherProductions === null) {
       try {
         const all = await api.listProductions(conn);
-        setOtherProductions(all.filter((p) => p.id !== productionId));
+        // Copying attaches each person, which takes crew edit on the production they come from.
+        setOtherProductions(all.filter((p) => p.id !== productionId && p.permissions?.includes("crew:edit")));
       } catch (err) {
         setOtherProductions([]);
         setNotice(noticeFromError(err, "Could not load your other productions"));
@@ -540,6 +541,7 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
       try {
         // FR-45: the same person on another production (same name and phone digits) is reused, not duplicated.
         const match = (await api.searchContacts(conn, row.name).catch(() => []))
+          .filter((c) => c.can_attach)
           .find((c) => c.name.trim().toLowerCase() === row.name.toLowerCase() && !!row.phone && whatsappNumber(c.phone) === whatsappNumber(row.phone));
         const contact = match ?? await api.createContact(conn, { name: row.name, phone: row.phone, email: null });
         const member = await api.createCrewMember(conn, productionId, {

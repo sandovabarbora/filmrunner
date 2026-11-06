@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, Request
@@ -176,3 +177,10 @@ def test_a_very_large_day_publishes_under_the_cap(client: TestClient) -> None:
     }
     resp = client.post(f"/api/v1/productions/{pid}/call-sheets", json=body, headers=AUTH)
     assert resp.status_code == 201, resp.text
+
+
+def test_no_413_depends_on_a_starlette_status_constant() -> None:
+    """The constant's name changed between Starlette versions, and using a missing one only fails when a 413 is due."""
+    backend = Path(__file__).resolve().parents[1] / "app"
+    for module in (backend / "bodylimit.py", backend / "routers" / "productions.py"):
+        assert "HTTP_413" not in module.read_text(), module

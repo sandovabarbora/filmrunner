@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, PUSH_CHANGED, subscribe, unsubscribe } from "./push";
+import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, PUSH_CHANGED, PushLimitError, subscribe, unsubscribe } from "./push";
 import { t, type Lang } from "./i18n";
 import { Icon } from "./Icon";
 
@@ -41,7 +41,7 @@ export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: s
       await subscribe(apiBase, token, vapidPublicKey);
       setState({ kind: "on" });
     } catch (err) {
-      setState({ kind: "error", text: err instanceof Error ? err.message : "Could not enable notifications" });
+      setState({ kind: "error", text: err instanceof PushLimitError ? t(lang, "notify.limit") : err instanceof Error ? err.message : "Could not enable notifications" });
     }
   }
 

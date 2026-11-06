@@ -105,8 +105,8 @@ describe("Crew edit form", () => {
     }));
   });
 
-  describe("FR-220: a person shared with a production this AD cannot edit", () => {
-    const refused = new ApiError(403, "This person is also on a production you cannot edit, so their name, phone and photo cannot be changed from here");
+  describe("FR-220: a save or a pick the server would refuse", () => {
+    const refused = new ApiError(403, "You cannot edit this contact: no production you edit has this person on its crew or cast");
 
     it("changing only the role never touches the contact, so the shared person does not block the save", async () => {
       const setNotice = vi.fn();
@@ -138,7 +138,7 @@ describe("Crew edit form", () => {
       await user.type(phone, "602 000 111");
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-      await waitFor(() => expect(setNotice).toHaveBeenCalledWith({ kind: "error", text: expect.stringContaining("production you cannot edit") }));
+      await waitFor(() => expect(setNotice).toHaveBeenCalledWith({ kind: "error", text: expect.stringContaining("no production you edit") }));
       expect(api.updateCrewMember).not.toHaveBeenCalled();
       expect(savePendingCrewEdit).not.toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("Crew edit form", () => {
     it("picking them unchanged attaches them without an edit the server would refuse", async () => {
       const setNotice = vi.fn();
       vi.mocked(api.listCrew).mockResolvedValue([]);
-      vi.mocked(api.searchContacts).mockResolvedValue([{ id: "contact-9", name: "Petr Dvořák", phone: "602 000 111", email: null, photo_url: null, last_production_name: "Last film", last_position: "Gaffer" }]);
+      vi.mocked(api.searchContacts).mockResolvedValue([{ id: "contact-9", name: "Petr Dvořák", phone: "602 000 111", email: null, photo_url: null, last_production_name: "Last film", last_position: "Gaffer", can_attach: true }]);
       vi.mocked(api.updateContact).mockRejectedValue(refused);
       vi.mocked(api.createCrewMember).mockResolvedValue({ ...member, id: "member-9", contact_id: "contact-9" });
 
@@ -162,6 +162,21 @@ describe("Crew edit form", () => {
       await waitFor(() => expect(api.createCrewMember).toHaveBeenCalledWith(conn, "prod-1", expect.objectContaining({ contact_id: "contact-9" })));
       expect(api.updateContact).not.toHaveBeenCalled();
       expect(api.createContact).not.toHaveBeenCalled();
+    });
+
+    it("a person the viewer can only see cannot be picked, and the list says why", async () => {
+      vi.mocked(api.listCrew).mockResolvedValue([]);
+      vi.mocked(api.searchContacts).mockResolvedValue([{ id: "contact-7", name: "Petr Dvořák", phone: "602 000 111", email: null, photo_url: null, last_production_name: "Their film", last_position: "Gaffer", can_attach: false }]);
+
+      const user = userEvent.setup();
+      render(<Crew conn={conn} productionId="prod-1" productionName="Test Production" canEdit setNotice={vi.fn()} />);
+      await user.type(await screen.findByLabelText("Name"), "Petr");
+      const row = await screen.findByRole("button", { name: /Petr Dvořák/ });
+      expect(row).toBeDisabled();
+      expect(row).toHaveTextContent("only its editors can add them elsewhere");
+      await user.click(row);
+      expect(screen.getByLabelText("Name")).toHaveValue("Petr");
+      expect(screen.getByLabelText("Phone")).toHaveValue("");
     });
   });
 });

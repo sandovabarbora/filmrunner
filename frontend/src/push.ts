@@ -51,6 +51,9 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return registration.pushManager.getSubscription();
 }
 
+/** The server refuses a device past its limit. Told apart from other failures because trying again cannot help. */
+export class PushLimitError extends Error {}
+
 /** Two places on the sheet can turn notifications on, and they must not disagree about the result. */
 export const PUSH_CHANGED = "filmrunner:push-changed";
 
@@ -75,6 +78,7 @@ export async function subscribe(apiBase: string, token: string, vapidPublicKey: 
   });
   if (!resp.ok) {
     await subscription.unsubscribe();
+    if (resp.status === 409) throw new PushLimitError("Too many devices on this link");
     throw new Error(`Could not save the subscription (HTTP ${resp.status})`);
   }
   window.dispatchEvent(new Event(PUSH_CHANGED));

@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Subscribing needs only a personal link, so without a cap one leaked link can grow the table and every publish's fan-out.
+# A new device is refused rather than replacing the oldest: replacing would let that same link push the real phone off.
+# Fake endpoints do not stay: the push service answers 404/410 on the next publish and they are pruned.
 MAX_SUBSCRIPTIONS_PER_MEMBER = 5
 
 
@@ -39,22 +41,13 @@ def _crew_member_or_404(db: Session, token: str) -> CrewMember:
     return member
 
 
-def _evict_oldest_beyond_cap(db: Session, member: CrewMember, keep_endpoint: str) -> None:
-    others = (
-        db.query(PushSubscription)
-        .filter(PushSubscription.crew_member_id == member.id, PushSubscription.endpoint != keep_endpoint)
-        .order_by(PushSubscription.created_at.desc(), PushSubscription.id)
-        .offset(MAX_SUBSCRIPTIONS_PER_MEMBER - 1)
-        .all()
-    )
-    for subscription in others:
-        db.delete(subscription)
-
-
 @router.post("/public/crew/{token}/push-subscription", status_code=status.HTTP_201_CREATED)
 def subscribe(token: str, payload: PushSubscriptionCreate, db: Session = Depends(get_db)) -> dict:
     member = _crew_member_or_404(db, token)
     existing = db.query(PushSubscription).filter(PushSubscription.endpoint == payload.endpoint).first()
+    is_new_for_member = existing is None or existing.crew_member_id != member.id
+    if is_new_for_member and db.query(PushSubscription).filter(PushSubscription.crew_member_id == member.id).count() >= MAX_SUBSCRIPTIONS_PER_MEMBER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Notifications are already on for {MAX_SUBSCRIPTIONS_PER_MEMBER} devices on this link; turn them off on one of those first")
     if existing is not None:
         # Re-subscribing with the same endpoint (e.g. the browser refreshed
         # the encryption keys) updates in place rather than duplicating.
@@ -69,7 +62,6 @@ def subscribe(token: str, payload: PushSubscriptionCreate, db: Session = Depends
                 p256dh=payload.keys.p256dh, auth=payload.keys.auth, link_url=payload.link_url,
             )
         )
-    _evict_oldest_beyond_cap(db, member, payload.endpoint)
     db.commit()
     logger.info("Push subscription saved for crew member %s", member.id)
     return {"status": "subscribed"}
