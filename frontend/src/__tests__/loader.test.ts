@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cacheCallSheet, getCachedCallSheet } from "../cache";
-import { loadCallSheet, loadNextDay, loadPersonal } from "../loader";
+import { confirmRevision, loadCallSheet, loadNextDay, loadPersonal } from "../loader";
 import type { CallSheet, PersonalSheet } from "../types";
 
 vi.mock("../cache", () => ({ cacheCallSheet: vi.fn(), getCachedCallSheet: vi.fn() }));
@@ -120,9 +120,59 @@ describe("loadPersonal", () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it("forgets the saved copy on a 404, so a later failure cannot bring it back", async () => {
+    vi.stubGlobal("fetch", answer(PERSON));
+    await loadPersonal("http://a", "id", "tok");
+    vi.stubGlobal("fetch", answer({}, 404));
+    await loadPersonal("http://a", "id", "tok");
+    vi.stubGlobal("fetch", answer({}, 500));
+    expect(await loadPersonal("http://a", "id", "tok")).toEqual({ kind: "unreachable" });
+  });
+
+  it("forgets the worker's copy on a 404, whatever it varied on", async () => {
+    const cacheDelete = vi.fn().mockResolvedValue(true);
+    vi.stubGlobal("caches", { open: vi.fn().mockResolvedValue({ delete: cacheDelete }) });
+    vi.stubGlobal("fetch", answer({}, 404));
+    await loadPersonal("http://a", "id", "tok");
+    expect(cacheDelete).toHaveBeenCalledWith("http://a/api/v1/public/call-sheets/id/me/tok", { ignoreVary: true });
+  });
+
   it("ignores a copy that cannot say how old it is", async () => {
     localStorage.setItem("filmrunner-personal:id:tok", JSON.stringify(PERSON));
     vi.stubGlobal("fetch", answer({}, 500));
     expect(await loadPersonal("http://a", "id", "tok")).toEqual({ kind: "unreachable" });
+  });
+});
+
+describe("loadNextDay", () => {
+  it("forgets the saved day on a 404, so a later failure cannot open it", async () => {
+    vi.stubGlobal("fetch", answer({ production_name: "P", call_sheet_id: "id", days: [] }));
+    await loadNextDay("http://a", "tok");
+    vi.stubGlobal("fetch", answer({}, 404));
+    expect(await loadNextDay("http://a", "tok")).toBe("invalid");
+    vi.stubGlobal("fetch", answer({}, 500));
+    expect(await loadNextDay("http://a", "tok")).toBeNull();
+  });
+
+  it("keeps the saved day through a 500", async () => {
+    const day = { production_name: "P", call_sheet_id: "id", days: [] };
+    vi.stubGlobal("fetch", answer(day));
+    await loadNextDay("http://a", "tok");
+    vi.stubGlobal("fetch", answer({}, 500));
+    expect(await loadNextDay("http://a", "tok")).toEqual(day);
+  });
+});
+
+describe("confirmRevision", () => {
+  it.each([[409, "stale"], [404, "removed"], [403, "refused"], [500, "failed"], [429, "failed"]])("a %i is %s", async (status, kind) => {
+    vi.stubGlobal("fetch", answer({}, status));
+    expect((await confirmRevision("http://a", "id", "tok", "B")).kind).toBe(kind);
+  });
+
+  it("gives up after a bounded wait and reports a failure", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timed out", "TimeoutError")));
+    expect((await confirmRevision("http://a", "id", "tok", "B")).kind).toBe("failed");
+    expect(timeout).toHaveBeenCalledWith(15_000);
   });
 });

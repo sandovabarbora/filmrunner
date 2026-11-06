@@ -2304,4 +2304,5 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - with nothing saved a load waits 15 s behind a skeleton, with a saved copy 5 s
   - the saved copy banner names the revision letter and when it was saved, and is true both offline and with the server down
   - the crew sheet's day links, the tomorrow link and both folds are 44 px to tap, the document language follows the chosen language, and viewport-fit=cover leaves nothing under a notch
-  - failure case: a server that never answers ends in a message, not a blank screen, and a saved copy is never shown as live
+  - Confirm works only when the person's own block is live and of the revision on screen, and says why when it does not
+  - failure case: a person removed while the page is open is told, loses the block and no saved copy brings it back; a server that never answers ends in a message, not a blank screen, or a stuck Confirm; a saved copy is never shown as live

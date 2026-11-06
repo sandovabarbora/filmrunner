@@ -66,9 +66,9 @@ function personalData(p: PersonalResult | null) {
   return p?.kind === "live" || p?.kind === "saved" ? p.data : null;
 }
 
-/** A refresh that fails or is refused does not take away the block the person is reading. */
-function afterRefresh(shown: PersonalResult | null, next: PersonalResult): PersonalResult | null {
-  return personalData(shown) && !personalData(next) ? shown : next;
+/** A read that could not reach the server says nothing about the person, so it does not take away the block they are reading. A 404 does. */
+function afterRead(shown: PersonalResult | null, next: PersonalResult): PersonalResult | null {
+  return next.kind === "unreachable" && personalData(shown) ? shown : next;
 }
 
 export function App() {
@@ -90,9 +90,24 @@ export function App() {
   const [printRequested] = useState(() => new URLSearchParams(window.location.search).get("print") === "1");
   const printedRef = useRef(false);
   const refreshRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  // Reads overlap (first load, the re-check, the poll). An answer counts unless a read started after it has already answered,
+  // so a late failure cannot overwrite a newer answer, and a first load is not held back waiting for a newer read.
+  const sheetReads = useRef({ started: 0, answered: 0 });
+  const personalReads = useRef({ started: 0, answered: 0 });
+
+  async function readPersonal(api: string, sheet: string, me: string) {
+    const read = ++personalReads.current.started;
+    const p = await loadPersonal(api, sheet, me);
+    if (read < personalReads.current.answered) return;
+    personalReads.current.answered = read;
+    setPersonal((shown) => afterRead(shown, p));
+  }
 
   async function load(url: string, id: string, me: string | null = null) {
+    const read = ++sheetReads.current.started;
     const r = await loadCallSheet(url, id);
+    if (read < sheetReads.current.answered) return;
+    sheetReads.current.answered = read;
     setResult(r);
     // A live load through a personal link is a read receipt (FR-36); a cached copy is not — the AD must not think REV B arrived.
     if (r.kind === "live" && me && mode.kind === "share") markSeen(mode.api, id, me);
@@ -108,7 +123,7 @@ export function App() {
     if (mode.kind === "share") {
       void load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
       if (mode.me) {
-        void loadPersonal(mode.api, mode.sheet, mode.me).then(setPersonal);
+        void readPersonal(mode.api, mode.sheet, mode.me);
         // A day link opened through a personal token still gets "tomorrow" and the other days (FR-42, FR-32).
         if (!mine) void loadNextDay(mode.api, mode.me).then((next) => { if (next && next !== "invalid") setMine(next); });
       }
@@ -138,9 +153,8 @@ export function App() {
       const mine = ++latest;
       // The block first: a block newer than the sheet for a moment is harmless, a new revision over an old call time is not.
       if (mode.me) {
-        const p = await loadPersonal(mode.api, mode.sheet, mode.me);
-        if (mine !== latest) return;  // a slower answer from an earlier refresh must not overwrite a newer one
-        setPersonal((shown) => afterRefresh(shown, p));
+        await readPersonal(mode.api, mode.sheet, mode.me);
+        if (mine !== latest) return;
       }
       if (mine === latest) await load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
     };
@@ -282,8 +296,9 @@ export function App() {
               letter={result.data.current_revision.revision_letter}
               // The block and the sheet refresh separately: a confirmation counts only for the revision on screen.
               confirmedAt={myBlock.revision_letter === result.data.current_revision.revision_letter ? myBlock.confirmed_at ?? null : null}
-              // Only a known old copy waits. The server refuses a stale letter, so a wrong guess about freshness costs nothing.
-              offline={result.kind === "cached"}
+              // An `unknown` sheet can still confirm: the server refuses a stale letter, so a wrong guess about its freshness costs nothing.
+              // The person's own block has no such check: they must not confirm a revision whose times for them they have not seen.
+              waitingFor={result.kind === "cached" ? "sheet" : personal?.kind === "live" && myBlock.revision_letter === result.data.current_revision.revision_letter ? null : "block"}
               lang={lang}
               onStale={() => void refreshRef.current()}
               pushable={!myBlock.is_cast}

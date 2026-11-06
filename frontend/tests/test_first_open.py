@@ -86,6 +86,8 @@ class CrewApi:
         self.gate.set()
         self.hits: Counter[str] = Counter()
         self.lose_signal: Callable[[], None] = lambda: None
+        # Per-route answers for the next requests only, each (seconds to wait, status or None for the normal answer).
+        self.script: dict[str, list[tuple[float, int | None]]] = {}
 
     @staticmethod
     def route_of(path: str) -> str:
@@ -156,9 +158,11 @@ def crew_api() -> Iterator[tuple[CrewApi, str]]:
             if route == "sheet":
                 state.gate.wait(HOLD_LIMIT_S)
             delay = state.delay.get(route)
+            status = state.status.get(route)
+            if state.script.get(route):
+                delay, status = state.script[route].pop(0)
             if delay:
                 time.sleep(delay)
-            status = state.status.get(route)
             try:
                 if status is not None:
                     self._send(status, b'{"detail":"fault"}')
@@ -464,6 +468,173 @@ def test_a_server_that_never_answers_ends_in_a_message_not_a_blank_screen(crew_a
     assert time.monotonic() - started > 12
     assert page.locator(".skeleton").count() == 0
     assert page.locator(".empty").inner_text().strip()
+
+
+def _pick_up_the_phone(page: Page) -> None:
+    page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+
+
+def _live_first_open(page: Page, link: str) -> None:
+    page.goto(link)
+    page.wait_for_selector("#you", timeout=15_000)
+    _controlled(page)
+    page.wait_for_timeout(1_000)  # the re-check on controllerchange settles
+
+
+def test_a_person_removed_while_the_page_is_open_is_told_and_loses_the_block(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    _live_first_open(page, _crew_link(frontend_url, url))
+    api.set_fault("me", status=404)
+    _pick_up_the_phone(page)
+    page.wait_for_selector("#personalInvalid", timeout=10_000)
+    assert page.locator("#you").count() == 0
+    assert page.locator("#confirmBtn").count() == 0
+
+
+def test_a_refresh_that_cannot_reach_the_server_keeps_the_block_on_screen(crew_api, browser: Browser, frontend_url: str) -> None:
+    api, url = crew_api
+    ctx = browser.new_context(locale="cs-CZ", **IPHONE)
+    # Without storage there is no saved copy to fall back on, so this is the one path to `unreachable` over a shown block.
+    ctx.add_init_script("Storage.prototype.setItem = () => { throw new Error('blocked'); };")
+    page = ctx.new_page()
+    _live_first_open(page, _crew_link(frontend_url, url))
+    api.set_fault("me", status=500)
+    _pick_up_the_phone(page)
+    page.wait_for_timeout(1_500)
+    assert page.locator("#yourCall").inner_text() == "05:45"
+    assert page.locator("#personalUnreachable").count() == 0
+    ctx.close()
+
+
+def test_a_saved_block_does_not_come_back_after_a_removal(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    link = _crew_link(frontend_url, url)
+    _saved_visit(page, link)
+    api.set_fault("me", status=404)
+    page.goto(link)
+    page.wait_for_selector("#personalInvalid", timeout=15_000)
+    api.set_fault("me", status=500)
+    page.goto(link)
+    page.wait_for_selector("#personalUnreachable", timeout=15_000)
+    assert page.locator("#you").count() == 0
+
+
+def test_the_worker_copy_of_a_block_does_not_come_back_after_a_removal(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    """A 404 leaves the worker's cache as it was, and with no signal the worker answers from it."""
+    api, url = crew_api
+    page = phone.new_page()
+    link = _crew_link(frontend_url, url)
+    _saved_visit(page, link)
+    api.set_fault("me", status=404)
+    page.goto(link)
+    page.wait_for_selector("#personalInvalid", timeout=15_000)
+    api.lose_signal()
+    page.goto(link)
+    page.wait_for_selector("#sheet.visible", timeout=15_000)
+    page.wait_for_selector("#personalUnreachable", timeout=15_000)
+    assert page.locator("#you").count() == 0
+
+
+def test_a_saved_day_does_not_come_back_after_a_removal(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    stable = f"{frontend_url}/index.html?api={url}&me=tok123"
+    page.goto(stable)
+    page.wait_for_selector("#you", timeout=15_000)
+    api.set_fault("next", status=404)
+    page.goto(stable)
+    expect(page.locator("#status")).to_have_class(re.compile(r"\berror\b"), timeout=15_000)
+    api.set_fault("next", status=500)
+    page.goto(stable)
+    expect(page.locator("#status")).to_have_class(re.compile(r"\berror\b"), timeout=15_000)
+    assert page.locator("#sheet.visible").count() == 0
+    expect(page.locator("#status")).not_to_contain_text("Živě")
+
+
+@pytest.mark.parametrize("locale,why", [("cs-CZ", "tvoje časy"), ("en-US", "your own times")])
+def test_confirm_waits_for_a_block_from_an_older_revision(crew_api, browser: Browser, frontend_url: str, locale: str, why: str) -> None:
+    api, url = crew_api
+    ctx = browser.new_context(locale=locale, **IPHONE)
+    page = ctx.new_page()
+    link = _crew_link(frontend_url, url)
+    api.letter = "A"
+    _saved_visit(page, link)
+    api.letter = "B"
+    api.set_fault("me", status=500)
+    page.goto(link)
+    page.wait_for_selector("#yourCallBehind", timeout=15_000)
+    expect(page.locator("#confirmBtn")).to_be_disabled()
+    expect(page.locator("#confirmBlockWaiting")).to_contain_text(why)
+    assert page.locator("#confirmOffline").count() == 0
+    assert api.hits["confirm"] == 0
+
+    api.set_fault("me")
+    _pick_up_the_phone(page)
+    expect(page.locator("#confirmBtn")).to_be_enabled(timeout=10_000)
+    assert page.locator("#confirmBlockWaiting").count() == 0
+    ctx.close()
+
+
+def test_confirm_waits_for_a_saved_block_of_the_same_revision(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    link = _crew_link(frontend_url, url)
+    _saved_visit(page, link)
+    api.set_fault("me", status=500)
+    page.goto(link)
+    page.wait_for_selector("#personalSaved", timeout=15_000)
+    expect(page.locator("#confirmBtn")).to_be_disabled()
+    expect(page.locator("#confirmBlockWaiting")).to_be_visible()
+
+
+def test_a_late_failure_of_the_first_read_does_not_overwrite_the_recheck(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    api.script["me"] = [(6, 500)]
+    api.script["sheet"] = [(6, 500)]
+    page = phone.new_page()
+    page.goto(_crew_link(frontend_url, url))
+    _controlled(page)
+    page.wait_for_selector("#you", timeout=5_000)
+    expect(page.locator("#status")).to_have_class(re.compile(r"\bonline\b"))
+    page.wait_for_timeout(6_500)  # both first reads have failed by now
+    assert page.locator("#yourCall").inner_text() == "05:45"
+    assert page.locator("#personalUnreachable").count() == 0
+    expect(page.locator("#status")).to_have_class(re.compile(r"\bonline\b"))
+
+
+def test_a_confirm_the_server_never_answers_ends_in_the_failure_message(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    _live_first_open(page, _crew_link(frontend_url, url))
+    api.set_fault("confirm", delay=HOLD_LIMIT_S)
+    page.click("#confirmBtn")
+    page.wait_for_selector("#confirmFailed", timeout=20_000)
+    expect(page.locator("#confirmBtn")).to_be_enabled()
+
+
+def test_confirm_404_says_the_link_is_off_the_list_not_try_again(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    api, url = crew_api
+    page = phone.new_page()
+    _live_first_open(page, _crew_link(frontend_url, url))
+    api.set_fault("confirm", status=404)
+    page.click("#confirmBtn")
+    expect(page.locator("#confirmRemoved")).to_contain_text("seznamu", timeout=10_000)
+    assert page.locator("#confirmFailed").count() == 0
+    expect(page.locator("#confirmBtn")).to_be_disabled()
+
+
+def test_confirm_403_says_nothing_to_confirm_because_the_person_is_still_on_the_list(crew_api, phone: BrowserContext, frontend_url: str) -> None:
+    """The API answers 403 for a cancelled day or an actor not called today (routers/call_sheets.py), never for a removed person."""
+    api, url = crew_api
+    page = phone.new_page()
+    _live_first_open(page, _crew_link(frontend_url, url))
+    api.set_fault("confirm", status=403)
+    page.click("#confirmBtn")
+    page.wait_for_selector("#confirmRefused", timeout=10_000)
+    assert "seznamu" not in page.locator("#confirmRefused").inner_text()
+    assert page.locator("#confirmFailed").count() == 0
 
 
 def _assert_tap_target(page: Page, selector: str) -> None:

@@ -16,6 +16,8 @@ import type { CallSheet, CrewNextDay, PersonalSheet } from "./types";
 
 const SOURCE_HEADER = "x-filmrunner-source";
 const FETCHED_AT_HEADER = "x-filmrunner-fetched-at";
+const WORKER_API_CACHE = "filmrunner-api-v1";  // cacheName in vite.config.ts
+const CONFIRM_TIMEOUT_MS = 15_000;
 
 // A saved copy is worth more than a long wait, so a phone that has one gives up early. A phone with nothing
 // saved has nothing better to show, and a cold server with a heavy day has been measured at 7 s.
@@ -117,14 +119,33 @@ function store(key: string, value: unknown): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable: fine */ }
 }
 
+function forget(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* storage unavailable: nothing was kept */ }
+}
+
+// A 404 passes through the worker without touching its cache, so with no signal it would still answer with the old block.
+// ignoreVary: the API varies on Origin, and this request is not the one that was cached.
+async function forgetWorkerCopy(url: string): Promise<void> {
+  try {
+    const cache = await caches.open(WORKER_API_CACHE);
+    await cache.delete(url, { ignoreVary: true });
+  } catch { /* no Cache API here, so nothing was kept */ }
+}
+
 /** Personal block: network first, last copy second. Only the server's own 404 means the token is unknown; a 500, a 429 or a timeout says nothing about the person. */
 export async function loadPersonal(apiBase: string, sheetId: string, token: string): Promise<PersonalResult> {
   const key = `${PERSONAL_DB}:${sheetId}:${token}`;
   const stored = readStored<SavedPersonal>(key);
   const saved = stored?.savedAt ? stored : null;  // a copy from before savedAt existed cannot say how old it is
+  const url = `${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/me/${encodeURIComponent(token)}`;
   try {
-    const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/me/${encodeURIComponent(token)}`, readOptions(saved !== null));
-    if (resp.status === 404) return { kind: "invalid" };
+    const resp = await fetch(url, readOptions(saved !== null));
+    if (resp.status === 404) {
+      // Otherwise a later 5xx or lost signal would bring back the call time of someone no longer on the list.
+      forget(key);
+      await forgetWorkerCopy(url);
+      return { kind: "invalid" };
+    }
     if (!resp.ok) throw new Error(`API returned ${resp.status}`);
     const data = (await resp.json()) as PersonalSheet;
     // This route is under the worker's NetworkFirst too, so it can answer from its own cache.
@@ -153,7 +174,10 @@ export async function loadNextDay(apiBase: string, token: string): Promise<CrewN
   const saved = readStored<CrewNextDay>(key);
   try {
     const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/crew/${encodeURIComponent(token)}/next`, readOptions(saved !== null));
-    if (resp.status === 404) return "invalid";
+    if (resp.status === 404) {
+      forget(key);
+      return "invalid";
+    }
     if (!resp.ok) throw new Error(`API returned ${resp.status}`);
     const data = (await resp.json()) as CrewNextDay;
     store(key, data);
@@ -166,19 +190,24 @@ export async function loadNextDay(apiBase: string, token: string): Promise<CrewN
 /** FR-36: tell the AD this personal link opened the sheet live. Fire and forget; never blocks the sheet. */
 export function markSeen(apiBase: string, sheetId: string, token: string): void {
   try {
-    void fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/seen/${encodeURIComponent(token)}`, { method: "POST", keepalive: true }).catch(() => undefined);
+    void fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/seen/${encodeURIComponent(token)}`, { method: "POST", keepalive: true, signal: AbortSignal.timeout(CONFIRM_TIMEOUT_MS) }).catch(() => undefined);
   } catch { /* offline: nothing to report */ }
 }
 
-export type ConfirmResult = { kind: "confirmed"; confirmedAt: string } | { kind: "stale" } | { kind: "failed" };
+export type ConfirmResult = { kind: "confirmed"; confirmedAt: string } | { kind: "stale" } | { kind: "removed" } | { kind: "refused" } | { kind: "failed" };
 
 /** FR-202: "I know about REV X". Unlike a read receipt the person is waiting for the answer, so every outcome is reported. */
 export async function confirmRevision(apiBase: string, sheetId: string, token: string, letter: string): Promise<ConfirmResult> {
   try {
     const resp = await fetch(`${apiBase.replace(/\/$/, "")}/api/v1/public/call-sheets/${sheetId}/confirm/${encodeURIComponent(token)}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision_letter: letter }),
+      // A retry after a timeout is safe: the server keeps the first confirmation.
+      signal: AbortSignal.timeout(CONFIRM_TIMEOUT_MS),
     });
     if (resp.status === 409) return { kind: "stale" };
+    if (resp.status === 404) return { kind: "removed" };
+    // The API's 403 means a cancelled day or an actor not called today; that person is still on the list.
+    if (resp.status === 403) return { kind: "refused" };
     if (!resp.ok) return { kind: "failed" };
     const data = (await resp.json()) as { confirmed_at: string };
     return { kind: "confirmed", confirmedAt: data.confirmed_at };
