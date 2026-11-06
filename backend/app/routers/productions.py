@@ -45,6 +45,8 @@ from app.schemas.production import (
 from app.services import call_sheet_pdf, geocoding, hospitals, weather
 from app.services.astronomy import sunrise_sunset
 
+from app.sandbox_tokens import session_of_email
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_api_token)])
@@ -69,7 +71,7 @@ def create_production(
     payload: ProductionCreate, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)
 ) -> ProductionRead:
     """Whoever creates a production owns it (service scripts own everything anyway)."""
-    production = Production(**payload.model_dump())
+    production = Production(**payload.model_dump(), sandbox_session=session_of_email(principal.email))
     db.add(production)
     db.flush()
     if principal.kind == "user" and principal.email:
@@ -119,6 +121,9 @@ def add_member(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown role {payload.role!r}") from exc
     email = payload.email.strip().lower()
+    # Both directions stay closed: a test film gets no real people, and no real film gets a test persona.
+    if access.production.sandbox_session is not None or session_of_email(email) is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Members cannot be added across the test environment")
     if "@" not in email:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="An email address is required")
     existing = db.query(ProductionMember).filter(ProductionMember.production_id == access.production.id, ProductionMember.email == email).first()

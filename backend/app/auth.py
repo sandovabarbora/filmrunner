@@ -21,6 +21,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
+from app import sandbox_tokens
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,10 @@ def require_principal(
     token = credentials.credentials
     if token == get_settings().api_bearer_token:
         return Principal(kind="service", subject="service", email=None)
+    # A test persona is an ordinary signed-in user who is a member of test productions only, so every access rule applies unchanged.
+    sandbox = sandbox_tokens.read_token(token) if get_settings().sandbox_enabled else None
+    if sandbox is not None:
+        return Principal(kind="user", subject=str(sandbox["sub"]), email=sandbox["email"])
     return _principal_from_jwt(token)
 
 

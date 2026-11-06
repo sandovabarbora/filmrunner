@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     # heuristics pass runs alone; with it, Claude does the structured extraction.
     # FR-51 / ADR-008: requests per minute on /api/v1/public/* per client IP, and per personal token
     # on the token routes. 0 disables a limit. Sized for a crew on one Wi-Fi: see app/ratelimit.py.
+    sandbox_enabled: bool = True
     public_rate_limit_per_ip: int = 300
     public_rate_limit_per_token: int = 30
     # FR-128: the contact-photo endpoint is a cacheable, non-probing GET (no token, no write), so it

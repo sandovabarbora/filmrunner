@@ -46,6 +46,8 @@ class Production(Base):
         default=ProductionStatus.PREP,
         nullable=False,
     )
+    # Set only on a test world created for one visitor: such a production is deleted after a day and never listed for anyone outside it.
+    sandbox_session: Mapped[str | None] = mapped_column(String(32), index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     locations: Mapped[list["Location"]] = relationship(back_populates="production")

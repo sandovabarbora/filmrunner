@@ -488,3 +488,11 @@ td.time { font-family: var(--mono); font-weight: 700; white-space: nowrap; paddi
   .sheet .contacts .hod .label { color: var(--ink-2); }
   .location-head .name { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
 }
+
+/* The test environment announces itself on every screen, in a colour nothing real uses at this size. */
+.sandbox-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2px 12px; margin: 0 -20px; padding: 6px 20px; background: var(--rev-d); color: var(--on-rev); font-size: var(--fs-small); }
+.sandbox-bar b { font-weight: 800; }
+.sandbox-actions { display: flex; align-items: center; gap: 12px; }
+.sandbox-bar a { display: inline-block; padding-block: 8px; color: inherit; font-weight: 600; }
+.sandbox-bar button.sandbox-exit, .sandbox-bar button.sandbox-exit:hover:not(:disabled) { min-height: 0; padding: 8px 0; border: 0; background: none; color: inherit; font-size: inherit; font-weight: 600; text-decoration: underline; }
+@media print { .sandbox-bar { display: none; } }

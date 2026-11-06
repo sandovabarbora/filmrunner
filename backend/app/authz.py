@@ -106,7 +106,7 @@ def require_on(db: Session, principal: Principal, production_id: uuid.UUID, perm
 
 def visible_productions(db: Session, principal: Principal) -> list[Production]:
     if principal.kind == "service":
-        return list(db.query(Production).order_by(Production.created_at.desc()).all())
+        return list(db.query(Production).filter(Production.sandbox_session.is_(None)).order_by(Production.created_at.desc()).all())
     ids = [
         m.production_id
         for m in db.query(ProductionMember).filter(
