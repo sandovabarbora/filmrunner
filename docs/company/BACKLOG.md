@@ -2217,3 +2217,25 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - only productions the caller can see, with no phones or personal links in the response
   - a first revision more than a day away is not raised, so the number means something
   - failure case: if the overview fails to load, the list of films still works
+
+## FR-212 · frontend · Seven taps on the logo open a test environment with personas
+- state: done
+- gated: no
+- note: delivered 2026-11-06 (feat/fr-212-test-personas). Deploy needed: adds a migration and `POST /public/sandbox/sessions`. `FILMRUNNER_SANDBOX_ENABLED=false` switches it off, including every token already issued.
+- why: the founder wants to try the app as each role, and it lets an interviewee see the product from their own seat
+- dod:
+  - each visitor gets a private world of invented films; six personas cover production manager, 1st AD, read-only producer, and crew, cast and supplier links
+  - a persona is an ordinary member of test films only, so no access rule has an exception; real productions stay invisible and unreachable, in both directions
+  - a yellow bar on every screen says it is a test; leaving removes the persona's sign-in
+  - worlds are deleted after a day; starting one is limited per IP and capped in total
+  - failure case: if the world cannot be created, the screen says so and the real app is untouched
+
+## FR-213 · security · A signed-in user can attach a real contact to their own film by id and read it
+- state: ready
+- gated: no
+- why: found while reviewing FR-212: `create_crew_member` and `create_cast_member` only check that the contact exists, contact ids appear in photo URLs on public sheets, and the response returns the phone; FR-212 closed this across the test boundary only
+- dod:
+  - attaching a contact needs the caller to already reach it through one of their productions, or to have just created it
+  - the picker flow (FR-45) and paste import keep working
+  - failure case: a refused contact returns 404 and reveals nothing about it
+

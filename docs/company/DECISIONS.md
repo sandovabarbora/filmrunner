@@ -143,3 +143,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: the founder rejected the paper look outright. The first round of three flat directions was also rejected; the chosen direction came from their saved references (A24, Kookie, Secret Level).
 - Revisit when: crew report the dark screen is hard to read in daylight, or a production wants its own location photos.
 
+## 2026-11-06: test personas are ordinary users of throwaway films
+- Decision: seven taps on the logo open a test environment open to anyone. A persona gets a signed token for a user who is a member of test films only. Five taps still open admin access. A test film cannot gain real members, and a real film cannot gain a test persona.
+- Why: a hidden gesture is not protection, so the isolation has to hold for anyone who finds it. Reusing membership means no access rule needs a test exception to get wrong.
+- Revisit when: test worlds put visible load on the database, or a real pilot makes a public write endpoint unwelcome; one setting turns it off.
+

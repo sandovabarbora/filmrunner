@@ -88,7 +88,8 @@ def _notify(db: Session, call_sheet: CallSheet, revision: CallSheetRevision, tit
     with no subscribers yet (nobody has opted in) looks identical.
     """
     summary = NotificationSummary()
-    if not is_configured():
+    # A test world's push endpoints are whatever an anonymous visitor typed: the server must not call them.
+    if not is_configured() or call_sheet.production.sandbox_session is not None:
         return summary
 
     subscriptions = (

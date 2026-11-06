@@ -206,3 +206,12 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .dash-ontrack a { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; align-items: center; min-height: var(--control); padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.28); color: inherit; text-decoration: none; font-size: var(--fs-small); }
 .dash-ontrack b { font-weight: 600; }
 .dash-ontrack span { color: var(--ink-2); }
+
+/* Seven taps on the logo: pick who to be. */
+.test-lab { margin-top: 18svh; }
+.test-lab h2 { margin: 0 0 8px; font-size: min(11vw, 3.25rem); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--ink); }
+.test-lab-note { margin: 0 0 16px; color: var(--ink-2); }
+.test-personas { list-style: none; margin: 0 0 12px; padding: 0; }
+.test-personas button, .test-personas button:hover:not(:disabled) { display: block; width: 100%; padding: 11px 0; border: 0; border-top: 1px solid rgba(255, 255, 255, 0.28); background: none; color: var(--ink); text-align: left; white-space: normal; }
+.test-personas b { display: block; font-size: 1.3125rem; line-height: 1.12; font-weight: 800; letter-spacing: -0.025em; }
+.test-personas span { display: block; margin-top: 2px; font-size: var(--fs-small); font-weight: 500; color: var(--ink-2); }

@@ -46,6 +46,8 @@ class Production(Base):
         default=ProductionStatus.PREP,
         nullable=False,
     )
+    # Set only on a test world created for one visitor: such a production is deleted after a day and never listed for anyone outside it.
+    sandbox_session: Mapped[str | None] = mapped_column(String(32), index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     locations: Mapped[list["Location"]] = relationship(back_populates="production")
@@ -71,6 +73,8 @@ class Contact(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     # Set only via POST /contacts/{id}/photo (Supabase Storage public URL), never by direct PATCH.
     photo_url: Mapped[str | None] = mapped_column(String(500))
+    # Which test world owns this row, if any. Contacts are shared, so ownership must be stated, never inferred: it keeps real people out of test films and is what purging goes by.
+    sandbox_session: Mapped[str | None] = mapped_column(String(32), index=True)
 
 
 class Location(Base):

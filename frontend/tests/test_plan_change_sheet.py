@@ -97,3 +97,72 @@ def test_signing_in_opens_on_what_needs_you_and_leads_to_the_day(page: Page, fro
 
     item.click()
     expect(page.locator("#seenPanel")).to_contain_text("REV B", timeout=15_000)
+
+
+def _send_the_built_in_api_to_the_test_server(page: Page, api_url: str) -> None:
+    """The test environment always talks to the deployed API; here that address must reach the local one."""
+    allow = {"access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*"}
+
+    def forward(route) -> None:
+        if route.request.method == "OPTIONS":
+            route.fulfill(status=204, headers=allow)
+            return
+        response = route.fetch(url=route.request.url.replace("https://filmrunner-api.fly.dev", api_url))
+        route.fulfill(response=response, headers={**response.headers, **allow})
+
+    page.route("https://filmrunner-api.fly.dev/**", forward)
+
+
+def _tap_logo(page: Page, selector: str, times: int) -> None:
+    for _ in range(times):
+        page.click(selector, no_wait_after=True)
+
+
+def test_seven_taps_open_personas_and_each_one_sees_their_own_app(page: Page, frontend_url: str, api_url: str) -> None:
+    _send_the_built_in_api_to_the_test_server(page, api_url)
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#logo", timeout=10_000)
+    _tap_logo(page, "#logo", 7)
+    expect(page.locator("#testLab")).to_be_visible(timeout=10_000)
+    expect(page.locator("#adminScreen")).to_have_count(0)  # seven taps do not stop at five
+
+    page.click("#testPersonas [data-persona='produkcni']", timeout=15_000)
+    expect(page.locator("#dashCount")).to_have_text("2", timeout=15_000)
+    expect(page.locator("#sandboxBar")).to_contain_text("Production manager")
+    expect(page.locator("#productions")).to_contain_text("Nádraží")
+
+    page.click("#sandboxSwitch")
+    page.click("#testPersonas [data-persona='ad']", timeout=15_000)
+    expect(page.locator("#sandboxBar")).to_contain_text("1st AD", timeout=15_000)
+    expect(page.locator("#productions li")).to_have_count(1)
+
+    page.click("#sandboxSwitch")
+    page.click("#testPersonas [data-persona='gaffer']", timeout=15_000)
+    expect(page.locator("#yourCall")).to_have_text("05:00", timeout=15_000)
+    expect(page.locator("#sandboxBar")).to_contain_text("Gaffer")
+    assert page.locator("#confirmBtn").count() == 1
+
+    # Leaving ends the persona: no test sign-in survives into the real app.
+    page.click("#sandboxExit")
+    page.wait_for_selector("#openEditor", timeout=10_000)
+    assert page.evaluate("localStorage.getItem('filmrunner.sandbox')") is None
+    assert page.evaluate("localStorage.getItem('filmrunner.editor.connection')") is None
+    page.unroute_all(behavior="ignoreErrors")
+
+
+def test_seven_taps_work_from_the_home_screen_too(page: Page, frontend_url: str, api_url: str) -> None:
+    _send_the_built_in_api_to_the_test_server(page, api_url)
+    page.goto(f"{frontend_url}/")
+    page.wait_for_selector("#openDemo", timeout=10_000)
+    _tap_logo(page, ".masthead h1", 7)
+    expect(page.locator("#testLab")).to_be_visible(timeout=10_000)
+    page.unroute_all(behavior="ignoreErrors")
+
+
+def test_a_real_session_shows_no_test_bar(page: Page, frontend_url: str, api_url: str) -> None:
+    connection = json.dumps({"apiBase": api_url, "token": E2E_TOKEN})
+    page.add_init_script(f"localStorage.setItem('filmrunner.editor.connection', {json.dumps(connection)});")
+    page.goto(f"{frontend_url}/editor.html")
+    page.wait_for_selector("#createProduction", timeout=15_000)
+    expect(page.locator("#sandboxBar")).to_have_count(0)

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { CallSheetView, StillBackground } from "./CallSheetView";
 import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
+import { useLogoGesture } from "./logoGesture";
 import { NotificationToggle } from "./NotificationToggle";
+import { SandboxBar } from "./SandboxBar";
+import { leaveSandbox, loadSandbox } from "./sandbox";
 import { ConfirmRevision } from "./ConfirmRevision";
 import type { CrewDayRef, CrewNextDay, PersonalSheet } from "./types";
 import { detectLang, fmtDate, rememberLang, t, type Lang } from "./i18n";
@@ -148,6 +151,8 @@ export function App() {
     ? `${window.location.origin}${window.location.pathname}?sheet=${mode.sheet}&api=${encodeURIComponent(mode.api)}`
     : null;
 
+  const onLogoTap = useLogoGesture(() => { window.location.href = "editor.html#/test"; });
+
   const subtitle =
     mode.kind === "dev" ? L("sub.dev") : mode.kind === "share" || mode.kind === "mine" ? L("sub.your") : mode.kind === "demo" ? L("sub.demo") : L("sub.home");
   const loading = result === null && status.kind === "" && (mode.kind === "demo" || mode.kind === "share" || mode.kind === "mine");
@@ -163,8 +168,11 @@ export function App() {
 
   return (
     <div className="wrap">
+      {new URLSearchParams(window.location.search).has("sandbox") && (
+        <SandboxBar persona={loadSandbox()?.current ?? null} lang={lang} switchHref="editor.html#/test" onExit={() => { leaveSandbox(); window.location.href = "./"; }} />
+      )}
       <header className="masthead">
-        <h1>FilmRunner</h1>
+        <h1 onClick={onLogoTap}>FilmRunner</h1>
         <p className="sub" id="subtitle">{subtitle}</p>
         {/* FR-82: no aria-label — the printed target-language name (e.g. "Čeština") is the accessible name too, so it can never drift from what's on screen; `title` carries the same explanation as a hover tooltip. */}
         <button type="button" className="lang-toggle" id="langToggle" onClick={switchLang} title={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}>{L("lang.toggle")}</button>

@@ -1,5 +1,9 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { StillBackground } from "../CallSheetView";
+import { useLogoGesture } from "../logoGesture";
+import { SandboxBar } from "../SandboxBar";
+import { dropExpiredPersona, leaveSandbox, loadSandbox } from "../sandbox";
+import { TestLab } from "./screens/TestLab";
 import { api, ApiError, saveConnection, type Connection } from "./api";
 import { API_BASE, connectionFromSession, requestCode, serviceConnection, signInConfigured, signOut, supabase, verifyCode } from "./session";
 import { href, navigate, useRoute } from "./route";
@@ -23,24 +27,16 @@ export function noticeFromError(err: unknown, fallback: string): Notice {
 }
 
 /** Five taps on the logo within three seconds open the admin screen (service token entry). */
-function useTapGesture(onTrigger: () => void, taps = 5, windowMs = 3000) {
-  const stamps = useRef<number[]>([]);
-  return () => {
-    const now = Date.now();
-    stamps.current = [...stamps.current.filter((t) => now - t < windowMs), now];
-    if (stamps.current.length >= taps) {
-      stamps.current = [];
-      onTrigger();
-    }
-  };
-}
-
 function EditorAppInner() {
   const L = useL();
-  const [conn, setConn] = useState<Connection | null>(serviceConnection);
+  const { lang } = useContext(LangContext);
+  const [conn, setConn] = useState<Connection | null>(() => { dropExpiredPersona(); return serviceConnection(); });
+  // Only while a test persona is signed in: a saved world must not label a real session.
+  const stored = loadSandbox();
+  const sandbox = stored && stored.personas.some((p) => p.key === stored.current && p.token === conn?.token) ? stored : null;
   const [authChecked, setAuthChecked] = useState(() => serviceConnection() !== null || !signInConfigured);
   const [adminScreen, setAdminScreen] = useState(false);
-  const onLogoTap = useTapGesture(() => setAdminScreen(true));
+  const onLogoTap = useLogoGesture(() => navigate({ screen: "test" }), () => setAdminScreen(true));
 
   // Product path: a Supabase session (persisted by supabase-js) becomes the connection and follows token refreshes.
   useEffect(() => {
@@ -59,6 +55,7 @@ function EditorAppInner() {
     api.listProductions(conn).then(setProductions).catch((err: unknown) => { setProductions([]); setNotice(noticeFromError(err, L("Cannot load productions"))); });
   }, [conn]);
 
+  if (route.screen === "test") return <TestLab />;
   if (!authChecked) return <div className="wrap"><div className="skeleton" aria-hidden="true"><i /><i /><i /></div></div>;
   if (adminScreen) {
     return (
@@ -83,9 +80,10 @@ function EditorAppInner() {
 
   return (
     <div className="wrap">
+      {sandbox && <SandboxBar persona={sandbox.current} lang={lang} switchHref="#/test" onExit={() => { leaveSandbox(); window.location.hash = "#/"; window.location.reload(); }} />}
       <header className="masthead">
         <h1 id="logo" onClick={onLogoTap}><a href="#/" className="plain">FilmRunner</a></h1>
-        <p className="sub">{serviceConnection() ? "Admin" : L("Editor")} · <button className="linklike" onClick={() => void disconnect()}>{L("sign out")}</button> · <LangToggle /></p>
+        <p className="sub">{sandbox ? L("Test") : serviceConnection() ? "Admin" : L("Editor")} · <button className="linklike" onClick={() => void disconnect()}>{L("sign out")}</button> · <LangToggle /></p>
       </header>
 
       <nav className="crumbs" aria-label={L("Breadcrumb")}>

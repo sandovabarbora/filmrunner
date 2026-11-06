@@ -81,7 +81,7 @@ def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date,
     if not ordered:
         return
     location = db.get(Location, ordered[0].location_id)
-    if location is None or location.geo_lat is None or location.geo_lng is None:
+    if location is None or location.geo_lat is None or location.geo_lng is None or location.production.sandbox_session is not None:
         return
     suggestion = weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date)
     if suggestion is not None:
@@ -146,6 +146,12 @@ def publish_revision(
         replaced = None
         crew_calls_seed = None
         cast_calls_seed = None
+    named_locations = {item.location_id for item in payload.schedule_items if item.location_id is not None}
+    if named_locations:
+        own = {r[0] for r in db.query(Location.id).filter(Location.production_id == call_sheet.production_id, Location.id.in_(named_locations))}
+        if named_locations - own:
+            raise LocationNotOnProduction("scenes must use locations of this production")
+
     if payload.crew_calls is None:
         # Copy forward: the AD edits yesterday's personal calls, they never retype them.
         crew_calls = [
@@ -252,6 +258,10 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, crea
 
 class HeadOfDayNotOnProduction(ValueError):
     """The head of day must be a crew member of this production."""
+
+
+class LocationNotOnProduction(ValueError):
+    """A scene names a location of another production; the public sheet would show that location."""
 
 
 class CrewCallNotOnProduction(ValueError):
