@@ -130,10 +130,10 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .sheet.visible { display: block; }
 
 /* The first screen: the still runs behind everything up to the bottom of the viewport, and its grade falls to the page ground so any overflow lands on solid colour. */
-.hero { display: flex; flex-direction: column; }
+.hero { display: flex; flex-direction: column; min-height: calc(100svh - 158px); }
 .hero-bg { position: absolute; z-index: -1; top: 0; left: 0; width: 100%; height: 100svh; overflow: hidden; }
-.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; filter: brightness(0.6) saturate(0.7); }
-.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.72) 0, rgba(10, 14, 17, 0.28) 32%, rgba(10, 14, 17, 0.34) 48%, rgba(10, 14, 17, 0.94) 70%, var(--paper) 100%); }
+.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 62% center; filter: brightness(0.45) saturate(0.6) blur(1.5px); }
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 17, 0.55) 0, rgba(10, 14, 17, 0.45) 45%, rgba(10, 14, 17, 0.96) 72%, var(--paper) 100%); }
 .hero-time { font-weight: 800; font-stretch: 125%; font-size: min(calc((100vw - 40px) / 3.2), 9rem); line-height: 0.88; letter-spacing: -0.07em; margin: 2px 0 0 -0.03em; white-space: nowrap; }
 .hero-sub { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 8px; }
 .you-call { font-size: 1.0625rem; font-weight: 600; }
@@ -145,13 +145,12 @@ button.linklike { all: unset; cursor: pointer; text-decoration: underline; color
 .you-extra { display: flex; gap: 4px 16px; flex-wrap: wrap; margin-top: 6px; font-size: 0.9375rem; color: var(--ink-2); }
 .you-extra .v { font-weight: 700; color: var(--ink); }
 /* Viewfinder corners: the frame the still sits in. */
-.frame { position: relative; flex: none; height: clamp(96px, 20svh, 200px); margin: 14px 0 12px; overflow: hidden; }
-.frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 40%; }
+.frame { position: relative; flex: 1 0 40px; margin: 12px 0; }
 .frame i { position: absolute; z-index: 1; width: 18px; height: 18px; border: 0 solid var(--ink); }
-.frame i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
-.frame i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
-.frame i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
-.frame i:nth-child(4) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
+.frame i:nth-of-type(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
+.frame i:nth-of-type(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
+.frame i:nth-of-type(3) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
+.frame i:nth-of-type(4) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
 .sheet-header { display: block; }
 .production { display: inline; margin: 0; font-size: var(--fs-small); font-weight: 700; }
 .day { display: inline; margin: 0 0 0 6px; font-size: var(--fs-small); color: var(--ink-2); }

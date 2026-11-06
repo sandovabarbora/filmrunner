@@ -256,7 +256,7 @@ def test_confirming_also_turns_on_notifications(page: Page, frontend_url: str, a
     page.add_init_script(_STUB_PUSH_API)
     page.goto(link)
     page.wait_for_selector("#confirmPushNote", timeout=15_000)
-    expect(page.locator("#confirmAsk")).to_contain_text("confirm you know")
+    expect(page.locator("#confirmAsk")).to_contain_text("Confirm you know")
     page.click("#confirmBtn")
     expect(page.locator("#confirmDone")).to_contain_text("your AD can see", timeout=15_000)
     expect(page.locator("#confirmPushOn")).to_be_visible(timeout=15_000)

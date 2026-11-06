@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { confirmRevision } from "./loader";
-import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, subscribe } from "./push";
+import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, subscribe } from "./push";
 import { t, type Lang } from "./i18n";
 
 type PushState = "unknown" | "offer" | "on" | "blocked" | "failed" | "needs-install" | "none";
@@ -25,7 +25,7 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!pushable) { setPush("none"); return; }
+      if (!pushable || !isOurApi(apiBase)) { setPush("none"); return; }
       // iOS Safari only offers push to a page added to the home screen.
       if (!browserSupportsPush()) { setPush("needs-install"); return; }
       const [key, existing] = await Promise.all([fetchVapidPublicKey(apiBase), currentSubscription()]);

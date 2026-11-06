@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, PUSH_CHANGED, subscribe, unsubscribe } from "./push";
+import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, PUSH_CHANGED, subscribe, unsubscribe } from "./push";
 import { t, type Lang } from "./i18n";
 import { Icon } from "./Icon";
 
@@ -19,7 +19,7 @@ export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: s
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
-      if (!browserSupportsPush()) {
+      if (!browserSupportsPush() || !isOurApi(apiBase)) {
         if (!cancelled) setState({ kind: "unsupported" });
         return;
       }

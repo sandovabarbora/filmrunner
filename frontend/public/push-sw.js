@@ -23,7 +23,9 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/";
+  // Only ever open our own pages, whatever a push message says.
+  const target = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const c of clientList) {

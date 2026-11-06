@@ -191,6 +191,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
   return (
     <article id="sheet" className="sheet visible" aria-label="Call sheet" data-rev={rev?.revision_letter}>
       <div className="hero">
+        <StillBackground name={items[0]?.day_night === "NIGHT" ? "night" : "hall"} />
         {personal ? (
           <section className="you" id="you" aria-label={L("you.call")}>
             {/* An actor's day starts at their own pickup; the crew call is never their time, and someone not called has none. */}
@@ -227,11 +228,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
           </section>
         )}
 
-        {/* The picture sits in its own frame and the words on the ground, so nothing crosses what a person has to read. */}
-        <div className="frame" aria-hidden="true">
-          <img src={`${import.meta.env.BASE_URL}stills/${items[0]?.day_night === "NIGHT" ? "night" : "hall"}.webp`} alt="" />
-          <i /><i /><i /><i />
-        </div>
+        <div className="frame" aria-hidden="true"><i /><i /><i /><i /></div>
 
         <div className="hero-foot">
           <header className="sheet-header">
