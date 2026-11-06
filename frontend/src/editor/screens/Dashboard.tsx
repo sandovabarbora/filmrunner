@@ -53,7 +53,7 @@ function Item({ item, L }: { item: DashboardItem; L: L }) {
 
 /** The first thing after signing in: what needs this person now, across all their films, soonest first. */
 export function DashboardPanel({ conn }: { conn: Connection }) {
-  const { lang, L } = useContext(LangContext);
+  const { L } = useContext(LangContext);
   const [board, setBoard] = useState<Dashboard | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -88,7 +88,7 @@ export function DashboardPanel({ conn }: { conn: Connection }) {
               <li key={p.production_id}>
                 <a href={href({ screen: "production", productionId: p.production_id, tab: "days" })}>
                   <b>{p.production_name}</b>
-                  <span>{p.next_shoot_date ? `${fmtDate(lang, p.next_shoot_date)}${p.crew_call ? ` · ${p.crew_call}` : ""}` : L("No days ahead")}</span>
+                  {p.next_shoot_date ? <DayWhen date={p.next_shoot_date} call={p.crew_call} /> : <span>{L("No days ahead")}</span>}
                 </a>
               </li>
             ))}

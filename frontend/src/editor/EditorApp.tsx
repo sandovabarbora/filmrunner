@@ -83,7 +83,7 @@ function EditorAppInner() {
       {sandbox && <SandboxBar persona={sandbox.current} lang={lang} switchHref="#/test" onExit={() => { leaveSandbox(); window.location.hash = "#/"; window.location.reload(); }} />}
       <header className="masthead">
         <h1 id="logo" onClick={onLogoTap}><a href="#/" className="plain">FilmRunner</a></h1>
-        <p className="sub">{sandbox ? L("Test") : serviceConnection() ? "Admin" : L("Editor")} · <button className="linklike" onClick={() => void disconnect()}>{L("sign out")}</button> · <LangToggle /></p>
+        <p className="sub">{!sandbox && <>{serviceConnection() ? "Admin" : L("Editor")} · <button className="linklike" onClick={() => void disconnect()}>{L("sign out")}</button> · </>}<LangToggle /></p>
       </header>
 
       <nav className="crumbs" aria-label={L("Breadcrumb")}>

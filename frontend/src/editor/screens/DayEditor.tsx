@@ -66,6 +66,11 @@ function nextLetter(letter: string): string {
   return String.fromCharCode(letter.charCodeAt(0) + 1);
 }
 
+function localToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 export function DayEditor({ conn, productionId, productionName, callSheetId, canPublish, setNotice }: {
   conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; canPublish: boolean; setNotice: (n: Notice) => void;
 }) {
@@ -416,7 +421,6 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <div className="seen" id="seenPanel">
               <p className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</p>
               {notOpened > 0 && <p className="seen-urgent" id="notOpenedCount">{L("Not opened: {n}", { n: notOpened })}</p>}
-              <p className="hint">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}</p>
               {next && (
                 <a className="button primary remind-next" id="remindNext" href={whatsappUrl(whatsappNumber(next.phone)!, nudgeOf(next))} target="_blank" rel="noreferrer" onClick={() => setReminded(new Set(reminded).add(remindKey(next)))}>
                   <Icon name="chat" />{L("Remind {name} ({left} left)", { name: next.name, left: toRemind.length })}
@@ -426,7 +430,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               {waiting.length === 0
                 ? <p className="hint">{L("Everyone on the crew has confirmed.")}</p>
                 // With a whole crew still to confirm the list would bury the form the AD also came for; a few names stay in view.
-                : <details className="others" id="waitingList" open={waiting.length <= 8}>
+                : <details className="others" id="waitingList" data-fold>
                   <summary>{L("Not confirmed yet ({n})", { n: waiting.length })}</summary>
                   <ul className="waiting" id="unconfirmed" aria-label={L("Not confirmed yet")}>
                     {waiting.map((e) => {
@@ -459,7 +463,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   </ul>
                 </details>
               )}
-              <p className="hint">{L("Opening a link counts as opened, not confirmed; a copy shown offline counts as neither. Refreshes every minute.")}</p>
+              <p className="hint seen-note">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}. {L("Opening a link counts as opened, not confirmed; a copy shown offline counts as neither. Refreshes every minute.")}</p>
             </div>
           );
         })()}
@@ -681,31 +685,20 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             {!readOnly && <button type="button" className="quiet" id="restoreDay" disabled={busy} onClick={() => void restoreDay()}>{L("Restore the day")}</button>}
           </div>
         )}
-        <div className="publish-state" id="publishState">
-          {offline && L("Read-only while offline. Reconnect to publish.")}
-          {!offline && !canPublish && L("Read-only: your role on this production can view but not publish.")}
-          {!readOnly && !published && !planned && L("Not published yet. Your draft is saved on this phone.")}
-          {!readOnly && planned && L("Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A.")}
-          {!readOnly && published && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
-          {!readOnly && published && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter(draft.lastPublishedLetter!) })}
-        </div>
-        <button id="publish" onClick={() => void publish()} disabled={busy || readOnly}>
-          {busy ? L("Publishing…") : published ? L("Publish REV {rev}", { rev: nextLetter(draft.lastPublishedLetter!) }) : L("Publish")}
-        </button>
         {planned && !readOnly && (
           <div className="inline">
             <button type="button" className="quiet danger" id="deleteDraftDay" disabled={busy} onClick={() => void deleteDraft()}>{L("Delete this planned day")}</button>
           </div>
         )}
         {published && dayStatus !== "cancelled" && (
-          <div className="actuals" id="actuals">
-            <div className="label">{L("Actual times")}</div>
+          <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= localToday() || Object.values(actuals).some(Boolean)}>
+            <summary>{L("Actual times")}</summary>
             <p className="hint">{L("After wrap: what really happened. For the production's records only; the crew's sheet does not change and nobody is notified.")}</p>
             <div className="actuals-grid">
               {([["first_shot", "First shot"], ["lunch_out", "Lunch out"], ["lunch_in", "Lunch in"], ["wrap", "Wrap"]] as const).map(([key, label]) => (
                 <label key={key} className="field" htmlFor={`actual_${key}`}>
                   <span className="label">{L(label)}</span>
-                  <input id={`actual_${key}`} className="mono" placeholder="19:40" value={actuals[key] ?? ""} disabled={readOnly || actualsBusy}
+                  <input id={`actual_${key}`} className="mono" placeholder="hh:mm" value={actuals[key] ?? ""} disabled={readOnly || actualsBusy}
                     onChange={(e) => { setActuals({ ...actuals, [key]: e.target.value }); setActualsDirty(true); }} />
                 </label>
               ))}
@@ -719,7 +712,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 <button type="button" id="saveActuals" className="secondary" disabled={!actualsDirty || actualsBusy} onClick={() => void saveActuals()}>{actualsBusy ? L("Saving…") : L("Save actual times")}</button>
               </div>
             )}
-          </div>
+          </details>
         )}
         {published && history.length > 0 && (
           <details className="history" id="historyPanel">
@@ -751,17 +744,6 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             </ul>
           </details>
         )}
-        {published && !readOnly && dayStatus !== "cancelled" && (
-          <div className="inline cancel-day" id="cancelDay">
-            {!confirmCancel
-              ? <button type="button" className="quiet danger" id="cancelDayBtn" disabled={busy} onClick={() => setConfirmCancel(true)}>{L("Cancel this day…")}</button>
-              : <>
-                  <span className="hint">{L("Every subscribed phone gets \"Day {n}: CANCELLED\". The sheet stays readable. Sure?", { n: draft.day_number })}</span>
-                  <button type="button" className="quiet danger" id="confirmCancelDay" disabled={busy} onClick={() => void cancelDay()}>{L("Yes, cancel Day {n}", { n: draft.day_number })}</button>
-                  <button type="button" className="quiet" onClick={() => setConfirmCancel(false)}>{L("Keep it")}</button>
-                </>}
-          </div>
-        )}
         {published && !readOnly && (
           <div className="inline next-day" id="nextDay">
             {!nextDayClash
@@ -774,8 +756,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           </div>
         )}
         {published && (
-          <div className="share">
-            <div className="label">{L("Crew link")}</div>
+          <details className="share fold" id="shareDetails" data-fold>
+            <summary>{L("Share the day: link, QR, PDF, message")}</summary>
             <a id="shareLink" href={crewLink(conn.apiBase, draft.callSheetId!)} target="_blank" rel="noreferrer">{crewLink(conn.apiBase, draft.callSheetId!)}</a>
             <button type="button" className="quiet" onClick={() => navigator.clipboard?.writeText(crewLink(conn.apiBase, draft.callSheetId!))}><Icon name="copy" />{L("Copy")}</button>
             <a className="quiet-link" id="pdfLink" href={`${crewLink(conn.apiBase, draft.callSheetId!)}&print=1`} target="_blank" rel="noreferrer"><Icon name="print" />{L("PDF")}</a>
@@ -798,11 +780,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               <QrCode value={crewLink(conn.apiBase, draft.callSheetId!)} />
               <span className="hint">{L("Scan to open the crew link")}</span>
             </div>
-          </div>
+          </details>
         )}
         {published && canPublish && crew.length > 0 && (
-          <div className="share" id="personalLinks">
-            <div className="label">{L("Personal links · one per person, for the whole shoot")}</div>
+          <details className="share fold" id="personalLinks" data-fold>
+            <summary>{L("Personal links · one per person, for the whole shoot")}</summary>
             <p className="hint">{L("Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.")}</p>
             <ul className="list">
               {crew.map((m) => {
@@ -823,9 +805,38 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 );
               })}
             </ul>
-          </div>
+          </details>
+        )}
+        {published && !readOnly && dayStatus !== "cancelled" && (
+          <details className="fold" id="dayActions" data-fold>
+            <summary>{L("Cancel the day")}</summary>
+            <div className="inline cancel-day" id="cancelDay">
+            {!confirmCancel
+              ? <button type="button" className="quiet danger" id="cancelDayBtn" disabled={busy} onClick={() => setConfirmCancel(true)}>{L("Cancel this day…")}</button>
+              : <>
+                  <span className="hint">{L("Every subscribed phone gets \"Day {n}: CANCELLED\". The sheet stays readable. Sure?", { n: draft.day_number })}</span>
+                  <button type="button" className="quiet danger" id="confirmCancelDay" disabled={busy} onClick={() => void cancelDay()}>{L("Yes, cancel Day {n}", { n: draft.day_number })}</button>
+                  <button type="button" className="quiet" onClick={() => setConfirmCancel(false)}>{L("Keep it")}</button>
+                </>}
+            </div>
+          </details>
         )}
       </section>
+
+      <div className="publish-bar" id="publishBar">
+        <div className="publish-state" id="publishState">
+          {offline && L("Read-only while offline. Reconnect to publish.")}
+          {!offline && !canPublish && L("Read-only: your role on this production can view but not publish.")}
+          {!readOnly && !published && !planned && L("Not published yet. Your draft is saved on this phone.")}
+          {!readOnly && planned && L("Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A.")}
+          {!readOnly && published && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
+          {!readOnly && published && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter(draft.lastPublishedLetter!) })}
+        </div>
+        {/* With nothing new to send, publishing is not the next step: only a change earns the loud button. */}
+        <button id="publish" className={published && !draft.dirtySincePublish ? "secondary" : undefined} onClick={() => void publish()} disabled={busy || readOnly}>
+          {busy ? L("Publishing…") : published ? L("Publish REV {rev}", { rev: nextLetter(draft.lastPublishedLetter!) }) : L("Publish")}
+        </button>
+      </div>
     </>
   );
 }

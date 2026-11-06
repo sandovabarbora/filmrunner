@@ -74,7 +74,7 @@ def find_clipped_elements(page: Page) -> list[dict]:
                 if (cs.display === 'none' || cs.visibility === 'hidden') return;
                 if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') return;
                 if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
-                if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) {
+                if (!el.closest('.visually-hidden') && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) {
                     clipped.push({
                         tag: el.tagName,
                         cls: el.className && el.className.toString().slice(0, 60),
