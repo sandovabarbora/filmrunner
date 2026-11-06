@@ -6,6 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, smsUrl, whatsappNumber, whatsappUrl } from "../shareText";
+import { nextRevisionLetter } from "../revisions";
 import { firstBadTime } from "../times";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
@@ -93,10 +94,6 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     castCalls: Object.fromEntries((rev?.cast_calls ?? []).map((e) => [e.cast_member_id, { status: e.status_code, pickup: e.pickup_time ?? "", call: e.call_time ?? "", makeup: e.makeup_hair_time ?? "", onSet: e.on_set_time ?? "" }])),
   };
   return { ...draft, base: editableContent(draft) };
-}
-
-function nextLetter(letter: string): string {
-  return String.fromCharCode(letter.charCodeAt(0) + 1);
 }
 
 function localToday(): string {
@@ -455,6 +452,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const published = draft.callSheetId && draft.lastPublishedLetter && !planned;
   // The message must say what the link says: with unpublished edits the text would lie (FR-29 dod).
   const shareable = !!published && !draft.dirtySincePublish;
+  const nextLetter = published ? nextRevisionLetter(draft.lastPublishedLetter!) : null;
+  const outOfLetters = !!published && nextLetter === null;
   const dis = readOnly;
 
   return (
@@ -902,12 +901,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           {!offline && !canPublish && L("Read-only: your role on this production can view but not publish.")}
           {!readOnly && !published && !planned && L("Not published yet. Your draft is saved on this phone.")}
           {!readOnly && planned && L("Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A.")}
-          {!readOnly && published && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
-          {!readOnly && published && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter(draft.lastPublishedLetter!) })}
+          {!readOnly && outOfLetters && L("This day has used all 26 revisions, A to Z, so nothing more can be published on it. To change it further, cancel it and create a new day for the same date.")}
+          {!readOnly && published && !outOfLetters && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
+          {!readOnly && published && !outOfLetters && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter! })}
         </div>
         {/* With nothing new to send, publishing is not the next step: only a change earns the loud button. */}
-        <button id="publish" className={published && !draft.dirtySincePublish ? "secondary" : undefined} onClick={() => void publish()} disabled={busy || readOnly}>
-          {busy ? L("Publishing…") : published ? L("Publish REV {rev}", { rev: nextLetter(draft.lastPublishedLetter!) }) : L("Publish")}
+        <button id="publish" className={published && !draft.dirtySincePublish ? "secondary" : undefined} onClick={() => void publish()} disabled={busy || readOnly || outOfLetters}>
+          {busy ? L("Publishing…") : outOfLetters ? L("No revisions left") : published ? L("Publish REV {rev}", { rev: nextLetter! }) : L("Publish")}
         </button>
       </div>
     </>

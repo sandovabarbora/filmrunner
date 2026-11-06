@@ -366,6 +366,8 @@ export const CS: Record<string, string> = {
   "Move down": "Posunout níž",
   "Publish": "Vydat",
   "Publish REV {rev}": "Vydat REV {rev}",
+  "No revisions left": "Žádné další revize",
+  "This day has used all 26 revisions, A to Z, so nothing more can be published on it. To change it further, cancel it and create a new day for the same date.": "Tento den vyčerpal všech 26 revizí, A až Z, takže na něm už nejde nic vydat. Pokud ho potřebuješ dál měnit, zruš ho a založ nový den na stejné datum.",
   "Publishing…": "Vydávám…",
   "Not opened yet": "Zatím neotevřeno",
   "Message text": "Text zprávy",
