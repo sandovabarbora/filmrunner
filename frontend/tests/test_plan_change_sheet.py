@@ -218,3 +218,15 @@ def test_unhurried_taps_in_the_editor_do_not_stop_at_admin(page: Page, frontend_
     expect(page.locator("#testLab")).to_be_visible(timeout=10_000)
     expect(page.locator("#adminScreen")).to_have_count(0)
     page.unroute_all(behavior="ignoreErrors")
+
+
+def test_nothing_runs_behind_what_a_crew_member_reads(page: Page, frontend_url: str, api_url: str) -> None:
+    sheet, token = _changed_day(api_url)
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{frontend_url}/?sheet={sheet}&api={api_url}&me={token}")
+    page.wait_for_selector("#confirmBtn", timeout=15_000)
+    expect(page.locator(".hero-bg")).to_have_count(0)
+    expect(page.locator(".frame img")).to_be_visible()
+    expect(page.locator("#confirmAsk")).to_contain_text("The plan changed")
+    box = page.locator("#confirmBtn").bounding_box()
+    assert box is not None and box["y"] + box["height"] <= 844

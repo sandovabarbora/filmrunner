@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, subscribe, unsubscribe } from "./push";
+import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, PUSH_CHANGED, subscribe, unsubscribe } from "./push";
 import { t, type Lang } from "./i18n";
 import { Icon } from "./Icon";
 
@@ -18,7 +18,7 @@ export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: s
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const check = async () => {
       if (!browserSupportsPush()) {
         if (!cancelled) setState({ kind: "unsupported" });
         return;
@@ -28,8 +28,11 @@ export function NotificationToggle({ apiBase, token, lang = "en" }: { apiBase: s
       if (existing) { setState({ kind: "on" }); return; }
       if (!key) { setState({ kind: "not-configured" }); return; }
       setState({ kind: "off", vapidPublicKey: key });
-    })();
-    return () => { cancelled = true; };
+    };
+    const recheck = () => { void check(); };
+    recheck();
+    window.addEventListener(PUSH_CHANGED, recheck);
+    return () => { cancelled = true; window.removeEventListener(PUSH_CHANGED, recheck); };
   }, [apiBase]);
 
   async function enable(vapidPublicKey: string) {

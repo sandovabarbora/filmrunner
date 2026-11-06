@@ -9,7 +9,7 @@ The root `DESIGN.md` describes the data model, so the visual decisions live here
 | Ground | `--paper` `#0a0e11`; text `--ink` `#f5f7f7`, secondary `--ink-2`, `--muted` |
 | Typeface | Archivo only, self-hosted and cut down to 57 KB. The time uses weight 800 and width 125% |
 | Revision colour | Only on the REV label and the confirm action, text always `--on-rev`, and the letter is always written |
-| Still | One per day, `frontend/public/stills/`, graded down to the ground. Generated, never presented as a real location |
+| Still | One per day, `frontend/public/stills/`, inside the viewfinder frame on the crew sheet, never behind text a person must read. Home and sign-in may use it behind large type, well dimmed. Generated, never presented as a real location |
 | Viewfinder corners | Once, around the still on the first screen |
 | Below the first screen | Titled sections separated by rules; no boxes |
 | Editor | Same ground and colours, no still |

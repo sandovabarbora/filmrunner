@@ -39,6 +39,9 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return registration.pushManager.getSubscription();
 }
 
+/** Two places on the sheet can turn notifications on, and they must not disagree about the result. */
+export const PUSH_CHANGED = "filmrunner:push-changed";
+
 export async function subscribe(apiBase: string, token: string, vapidPublicKey: string): Promise<void> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Notification permission was not granted");
@@ -62,6 +65,7 @@ export async function subscribe(apiBase: string, token: string, vapidPublicKey: 
     await subscription.unsubscribe();
     throw new Error(`Could not save the subscription (HTTP ${resp.status})`);
   }
+  window.dispatchEvent(new Event(PUSH_CHANGED));
 }
 
 export async function unsubscribe(apiBase: string, token: string): Promise<void> {
