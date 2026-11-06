@@ -20,9 +20,10 @@ function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
 /** The sheet takes its API from the link, so a crafted link could otherwise sign someone up for notifications from a stranger's server. */
 export function isOurApi(apiBase: string): boolean {
   try {
-    const host = new URL(apiBase).hostname;
-    const configured = import.meta.env.VITE_API_BASE ? new URL(import.meta.env.VITE_API_BASE as string).hostname : null;
-    return host === "filmrunner-api.fly.dev" || host === configured || host === "localhost" || host === "127.0.0.1";
+    const { origin, hostname } = new URL(apiBase);
+    const configured = import.meta.env.VITE_API_BASE ? new URL(import.meta.env.VITE_API_BASE as string).origin : null;
+    // Loopback stays for tests and development: reaching it would already mean running on the person's own phone.
+    return origin === "https://filmrunner-api.fly.dev" || origin === configured || hostname === "localhost" || hostname === "127.0.0.1";
   } catch {
     return false;
   }

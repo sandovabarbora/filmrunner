@@ -24,8 +24,10 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   // Only ever open our own pages, whatever a push message says.
-  const target = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin);
-  const url = target.origin === self.location.origin ? target.href : self.location.origin + "/";
+  // The scope, not the origin: on GitHub Pages the origin is shared with other projects.
+  const scope = self.registration.scope;
+  const target = new URL((event.notification.data && event.notification.data.url) || scope, scope);
+  const url = target.href.startsWith(scope) ? target.href : scope;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const c of clientList) {
