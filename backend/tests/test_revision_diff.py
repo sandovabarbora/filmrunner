@@ -1,5 +1,7 @@
 """FR-23: what changed between the last two revisions, on the public read."""
 
+import itertools
+
 NO_MOVE = {"other_call_sheet_id": None, "other_day_number": None, "other_date": None}
 
 from fastapi.testclient import TestClient
@@ -9,8 +11,12 @@ from app.config import get_settings
 AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 
 
+_day_numbers = itertools.count(1)
+
+
 def _sheet(client: TestClient, pid: str, revision: dict) -> dict:
-    body = {"shoot_date": "2026-09-23", "day_number": 2, "day_count": 5, "initial_revision": revision}
+    # A new day number each time: the same date and number twice is a retry, or a conflict (FR-222).
+    body = {"shoot_date": "2026-09-23", "day_number": next(_day_numbers), "day_count": 5, "initial_revision": revision}
     r = client.post(f"/api/v1/productions/{pid}/call-sheets", json=body, headers=AUTH)
     assert r.status_code == 201, r.text
     return r.json()

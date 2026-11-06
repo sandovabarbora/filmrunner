@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, selectinload
 
@@ -27,9 +27,9 @@ from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, ActualsUpdate, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.services.call_sheets import LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import DuplicateDay, LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet_once, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_day_restored_in_background, notify_subscribers_in_background
-from app.services.replan import cancel_day, move_scene, reschedule_day, restore_day, swap_days
+from app.services.replan import ReplanConflict, cancel_day, move_scene, reschedule_day, restore_day, swap_days
 
 logger = logging.getLogger(__name__)
 
@@ -76,14 +76,23 @@ def create_call_sheet_endpoint(
     production_id: uuid.UUID,
     payload: CallSheetCreate,
     background_tasks: BackgroundTasks,
+    response: Response,
     db: Session = Depends(get_db),
     principal: Principal = Depends(require_principal),
 ) -> CallSheet:
     require_on(db, principal, production_id, DAY_PUBLISH)
     try:
-        call_sheet = create_call_sheet(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
+        call_sheet, is_new = create_call_sheet_once(db, production_id, payload, created_by=_audit_label(principal, payload.initial_revision.created_by))
     except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction, LocationNotOnProduction) as exc:
+        db.rollback()  # the day was flushed before its revision was refused, and it must not linger
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except DuplicateDay as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if not is_new:
+        # FR-222: a retry. It was announced by the call that really created the day.
+        response.status_code = status.HTTP_200_OK
+        return _read_with_contacts(db, call_sheet.id)
     # FR-78: delivery runs after this response is sent (see notifications.py); the AD
     # checks who was told via the history panel, not this response.
     if not payload.draft and call_sheet.current_revision is not None:
@@ -239,7 +248,12 @@ def restore_call_sheet(
     """Undo a cancellation. A published day goes back on and the crew is told; a planned day goes back to being planned."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
-    if restore_day(db, call_sheet):
+    try:
+        tell_crew = restore_day(db, call_sheet)
+    except ReplanConflict as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if tell_crew:
         background_tasks.add_task(notify_day_restored_in_background, call_sheet.id)
     logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.kind)
     return _read_with_contacts(db, call_sheet_id)

@@ -100,6 +100,19 @@ def auth_headers():
 
 
 @pytest.fixture()
+def prague_clock(monkeypatch):
+    """Sets what app.clock reads as the wall clock in Prague, given as "2026-11-10T00:30"."""
+    from datetime import datetime
+
+    from app import clock
+
+    def set_to(local_iso: str) -> None:
+        monkeypatch.setattr(clock, "prague_now", lambda: datetime.fromisoformat(local_iso).replace(tzinfo=clock.PRAGUE))
+
+    return set_to
+
+
+@pytest.fixture()
 def background_tasks_share_db(db_session, monkeypatch):
     """FR-78: `app/services/notifications.py`'s *_in_background helpers open
     their own `app.database.SessionLocal()` — correct in production, where a

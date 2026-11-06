@@ -294,6 +294,61 @@ def publish_revision(
     return revision, True
 
 
+class DuplicateDay(ValueError):
+    """This date, day number and unit is already a day, with other content; the message tells the AD."""
+
+
+def live_days_like(db: Session, production_id, shoot_date: date, day_number: int, unit_name: str) -> list[CallSheet]:
+    """The days this one would duplicate. A cancelled day does not count: creating its replacement is the normal way forward."""
+    return (
+        db.query(CallSheet)
+        .filter(CallSheet.production_id == production_id, CallSheet.shoot_date == shoot_date, CallSheet.day_number == day_number,
+                CallSheet.unit_name == unit_name, CallSheet.status != CallSheetStatus.CANCELLED)
+        .all()
+    )
+
+
+def _same_create_request(sheet: CallSheet, payload: CallSheetCreate) -> bool:
+    """Whether `payload` is what created `sheet`, so a retry rather than a second day. Compared with REV A, not the
+    current revision: a retry that arrives after a newer publish is still that same request."""
+    first = next((r for r in sheet.revisions if r.revision_letter == "A"), None)
+    wanted = payload.initial_revision
+    if first is None or sheet.day_count != payload.day_count or (sheet.status == CallSheetStatus.DRAFT) != payload.draft:
+        return False
+    # Left blank, these were filled in by the server when it published.
+    if any(getattr(wanted, name) and getattr(wanted, name) != getattr(first, name) for name in ("sunrise", "sunset", "weather_forecast")):
+        return False
+    if any((getattr(wanted, name) or None) != (getattr(first, name) or None) for name in ("general_crew_call", "shooting_call", "safety_notes", "head_of_day_crew_member_id")):
+        return False
+    stored_items = [(i.order_index, i.scene_number, i.int_ext, i.day_night, i.set_description, i.location_id, i.page_count_eighths) for i in _ordered_items(first)]
+    sent_items = sorted(((i.order_index, i.scene_number, i.int_ext, i.day_night, i.set_description, i.location_id, i.page_count_eighths) for i in wanted.schedule_items), key=lambda row: row[0])
+    stored_crew = {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in first.crew_calls}
+    sent_crew = {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in wanted.crew_calls or []}
+    stored_cast = {e.cast_member_id: (e.status_code, e.pickup_time, e.call_time, e.makeup_hair_time, e.on_set_time) for e in first.cast_calls}
+    sent_cast = {e.cast_member_id: (e.status_code, e.pickup_time, e.call_time, e.makeup_hair_time, e.on_set_time) for e in wanted.cast_calls or []}
+    return stored_items == sent_items and stored_crew == sent_crew and stored_cast == sent_cast
+
+
+def create_call_sheet_once(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> tuple[CallSheet, bool]:
+    """Create a day unless it exists. Returns (day, is_new); is_new False is a retry, and the crew was told the first time.
+
+    An advisory lock rather than a unique index: an index cannot be added while older duplicates may exist, and a
+    retried create has to be told apart from a real conflict anyway.
+
+    Raises:
+        DuplicateDay: the day exists with other content.
+    """
+    key = f"create-day:{production_id}:{payload.shoot_date}:{payload.day_number}:{payload.unit_name}"
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": key})
+    existing = live_days_like(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
+    if not existing:
+        return create_call_sheet(db, production_id, payload, created_by=created_by), True
+    retried = next((sheet for sheet in existing if _same_create_request(sheet, payload)), None)
+    if retried is not None:
+        return retried, False
+    raise DuplicateDay(f"Day {payload.day_number} of {payload.unit_name} on {payload.shoot_date.isoformat()} already exists; open it instead of creating it again")
+
+
 def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> CallSheet:
     """Create a call sheet together with its initial revision ('A')."""
     call_sheet = CallSheet(
