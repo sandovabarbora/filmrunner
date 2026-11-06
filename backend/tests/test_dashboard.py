@@ -151,3 +151,42 @@ def test_nobody_with_no_productions_gets_an_empty_board() -> None:
 
 def test_the_dashboard_needs_a_sign_in(client: TestClient) -> None:
     assert client.get("/api/v1/me/dashboard").status_code in (401, 403)
+
+
+def test_a_published_day_with_nobody_on_it_needs_attention_rather_than_being_on_track(client: TestClient) -> None:
+    """FR-222: "everyone has confirmed" was true of an empty list."""
+    pid, _ = _production(client, "Prázdno", people=0)
+    sheet = _day(client, pid, 2)
+    board = _dashboard(client)
+    item = next(i for i in board["items"] if i["production_id"] == pid)
+    assert (item["kind"], item["call_sheet_id"], item["revision_letter"], item["total"]) == ("no_crew", sheet["id"], "A", 0)
+    assert pid not in [p["production_id"] for p in board["on_track"]]
+
+
+def test_an_empty_day_past_the_watch_window_waits(client: TestClient) -> None:
+    pid, _ = _production(client, "Daleko", people=0)
+    _day(client, pid, 5)
+    board = _dashboard(client)
+    assert pid not in [i["production_id"] for i in board["items"]] and pid in [p["production_id"] for p in board["on_track"]]
+
+
+def test_a_day_with_only_cast_called_is_not_empty(client: TestClient) -> None:
+    pid, _ = _production(client, "Herci", people=0)
+    contact = client.post("/api/v1/contacts", json={"name": "Anna"}, headers=AUTH).json()["id"]
+    actor = client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": contact, "character_name": "Hero"}, headers=AUTH).json()
+    client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": _in(1), "day_number": 1, "day_count": 1, "initial_revision": {
+        "general_crew_call": "07:00", "cast_calls": [{"cast_member_id": actor["id"], "status_code": "W"}]}}, headers=AUTH)
+    item = next(i for i in _dashboard(client)["items"] if i["production_id"] == pid)
+    assert item["kind"] == "unconfirmed"
+
+
+def test_on_the_same_day_people_who_do_not_know_lead_then_an_empty_day_then_an_unpublished_one(client: TestClient) -> None:
+    waiting, _ = _production(client, "C čeká")
+    sheet = _day(client, waiting, 1)
+    _revise(client, sheet["id"])
+    empty, _ = _production(client, "A prázdno", people=0)
+    _day(client, empty, 1)
+    planned, _ = _production(client, "B plán")
+    client.post(f"/api/v1/productions/{planned}/call-sheets", json={"shoot_date": _in(1), "day_number": 1, "day_count": 1, "draft": True, "initial_revision": {}}, headers=AUTH)
+    kinds = [i["kind"] for i in _dashboard(client)["items"] if i["production_id"] in (waiting, empty, planned)]
+    assert kinds == ["unconfirmed", "no_crew", "unpublished"]
