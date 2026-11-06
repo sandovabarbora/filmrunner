@@ -6,6 +6,7 @@ import { NotificationToggle } from "./NotificationToggle";
 import { SandboxBar } from "./SandboxBar";
 import { leaveSandbox, loadSandbox } from "./sandbox";
 import { ConfirmRevision } from "./ConfirmRevision";
+import { isOurApi } from "./push";
 import type { CrewDayRef, CrewNextDay } from "./types";
 import { detectLang, fmtDate, fmtSavedAt, rememberLang, t, type Lang } from "./i18n";
 
@@ -15,6 +16,9 @@ import { detectLang, fmtDate, fmtSavedAt, rememberLang, t, type Lang } from "./i
  *   ?me=<token>&api=<base>  a crew member's one link for the whole shoot: opens their next day (FR-32)
  *   ?dev=1                  the lookup form, for local development
  *   anything else           the bundled demo, so the public URL never shows a form
+ *
+ * `api` comes from the link, and whatever it answers is shown as a real sheet and kept in the
+ * offline cache, so a link naming anyone else's server counts as having no `api` at all.
  */
 type Mode =
   | { kind: "share"; api: string; sheet: string; me: string | null }
@@ -26,10 +30,11 @@ type Mode =
 const DEMO_URL = "demo/call-sheet.json";
 const DEMO_ID = "demo";
 
-function modeFromLocation(): Mode {
+export function modeFromLocation(): Mode {
   const params = new URLSearchParams(window.location.search);
   const sheet = params.get("sheet");
-  const api = params.get("api");
+  const linkedApi = params.get("api");
+  const api = linkedApi && isOurApi(linkedApi) ? linkedApi : null;
   if (sheet && api) return { kind: "share", api, sheet, me: params.get("me") };
   const me = params.get("me");
   if (me && api) return { kind: "mine", api, me };

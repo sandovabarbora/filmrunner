@@ -14,6 +14,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# config.py defaults to production; the suite runs on the short dev token.
+os.environ.setdefault("FILMRUNNER_ENVIRONMENT", "development")
 os.environ.setdefault(
     "FILMRUNNER_DATABASE_URL",
     "postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner_test",

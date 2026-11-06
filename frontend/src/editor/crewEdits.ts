@@ -31,6 +31,17 @@ export function diffCrewEditFields(original: CrewEditableFields, edited: CrewEdi
   return patch;
 }
 
+/**
+ * What a save would change on the contact. The contact is shared across productions and editing it
+ * takes rights on all of them (FR-220), so a save that leaves the person alone must not ask to.
+ */
+export function contactChanges(current: { name: string; phone: string | null }, name: string, phone: string | null): { name?: string; phone?: string | null } {
+  const changes: { name?: string; phone?: string | null } = {};
+  if (current.name.trim() !== name) changes.name = name;
+  if ((current.phone?.trim() || null) !== phone) changes.phone = phone;
+  return changes;
+}
+
 /** Applies a partial patch onto a base record, mirroring the backend's `exclude_unset` partial update: a key absent from `patch` is left untouched. */
 export function mergeCrewEdit(base: CrewEditableFields, patch: Partial<CrewEditableFields>): CrewEditableFields {
   return { ...base, ...patch };

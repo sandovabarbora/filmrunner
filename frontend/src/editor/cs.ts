@@ -417,5 +417,8 @@ export const CS: Record<string, string> = {
   "Use: {text}": "Použít: {text}",
   "People already in FilmRunner": "Lidé, kteří už ve FilmRunneru jsou",
   "no number": "bez čísla",
+  "You cannot edit this contact: no production you edit has this person on its crew or cast": "Tento kontakt nemůžeš upravit: žádná produkce, kterou upravuješ, tohoto člověka nemá ve štábu ani v castu",
+  "You can only view this person on another production, and only its editors can reuse them; add them as a new person instead": "Tohoto člověka na jiné produkci jen vidíš a použít ho dál můžou jen její editoři; přidej ho jako nového",
+  "You can only view them there; only its editors can add them elsewhere. Keep typing to add a new person.": "Tam ho jen vidíš; přidat ho jinam můžou jen její editoři. Piš dál a přidáš nového člověka.",
   "Add a location to this day to get sunrise, sunset, weather and the nearest hospital. ": "Přidej tomuto dni lokaci a dostaneš východ, západ, počasí a nejbližší nemocnici. ",
 };

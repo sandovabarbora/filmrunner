@@ -2231,8 +2231,9 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: if the world cannot be created, the screen says so and the real app is untouched
 
 ## FR-213 · security · A signed-in user can attach a real contact to their own film by id and read it
-- state: ready
+- state: in-progress
 - gated: no
+- note: covered by FR-220's pull request (feat/fr-220-security); do not start separately.
 - why: found while reviewing FR-212: `create_crew_member` and `create_cast_member` only check that the contact exists, contact ids appear in photo URLs on public sheets, and the response returns the phone; FR-212 closed this across the test boundary only
 - dod:
   - attaching a contact needs the caller to already reach it through one of their productions, or to have just created it
@@ -2301,6 +2302,19 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - one sentence above the button says what is asked and why
   - tapping confirm also asks for notification permission; the outcome is stated after confirming
   - failure case: refusing or failing notifications never blocks or undoes the confirmation, and it can be tried again
+
+## FR-220 · tech-lead · Close the verified security holes before the first real pilot
+- state: in-progress
+- gated: partial
+- note: code in the pull request from feat/fr-220-security. Merging, the backend deploy and checking the production service token's length are the founder's. Open: the sandbox signing key is still derived from the service token.
+- why: an audit found, and tests confirmed, that any signed-up user could read and rewrite another production's contact by id, that bodies of any size were buffered before auth on a 256 MB machine, that the server would POST to any URL handed to the open push endpoint, and that a crafted link could show a fake sheet
+- dod:
+  - attaching a contact needs crew edit on a production using it, or, once, being its creator if it was never used; editing needs crew edit on any production using it; the picker, paste import and role edits keep working, and a viewer sees why they cannot reuse someone
+  - bodies are capped at 256 KB, 12 MB on PDF import and photo upload, by header and by counted bytes, with CORS headers on the 413
+  - push endpoints must be https on a known push service; a sixth new endpoint is refused, nothing is evicted, and confirming is never blocked by it
+  - `environment` defaults to production, a service token under 32 characters refuses to boot outside development, the comparison is constant time
+  - the sheet ignores an `api=` that is not ours; pypdf is on a clean version in the runtime block; `created_by` is off the public sheet
+  - failure case: a refused contact is the same 404 as an unknown id; a refused boot does not print the token or database URL to the logs; a body over the cap never reaches a handler and the browser can read why
 
 ## FR-223 · tech-lead · Make the API and the deploy safe for a 05:00 shoot morning
 - state: in-progress

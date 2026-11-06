@@ -6,6 +6,7 @@ py_vapid) runs for real — see test_send_signs_and_calls_webpush_for_real.
 """
 
 import json
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -53,12 +54,149 @@ def _notifications(client: TestClient, call_sheet_id: str) -> dict | None:
     return history[-1]["notifications"]
 
 
-def _subscribe_payload(endpoint="https://push.example.com/ep1"):
+def _subscribe_payload(endpoint="https://fcm.googleapis.com/fcm/send/ep1"):
     return {
         "endpoint": endpoint,
         "keys": {"p256dh": "BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA", "auth": "fake-auth-key"},
         "link_url": "https://filmrunner.example/?sheet=abc&api=https://api.example&me=tok",
     }
+
+
+def _subscribe(client: TestClient, member: dict, **overrides):
+    return client.post(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", json={**_subscribe_payload(), **overrides})
+
+
+class TestEndpointValidation:
+    @pytest.mark.parametrize("endpoint", [
+        "https://fcm.googleapis.com/fcm/send/abc",
+        "https://updates.push.services.mozilla.com/wpush/v2/abc",
+        "https://web.push.apple.com/abc",
+        "https://wns2-par02p.notify.windows.com/w/?token=abc",
+        "https://FCM.googleapis.com/fcm/send/abc",
+    ])
+    def test_the_browsers_push_services_are_accepted(self, client: TestClient, endpoint: str) -> None:
+        _pid, member = _setup(client)
+        assert _subscribe(client, member, endpoint=endpoint).status_code == 201
+
+    @pytest.mark.parametrize("endpoint", [
+        "http://fcm.googleapis.com/fcm/send/abc",
+        "https://evil.example/fcm/send/abc",
+        "https://169.254.169.254/latest/meta-data",
+        "https://localhost/abc",
+        "https://push.example.com/ep1",
+        "https://evilfcm.googleapis.com/abc",
+        "https://notfcm.googleapis.com/abc",
+        "https://fcm.googleapis.com.evil.example/abc",
+        "https://evilpush.apple.com/abc",
+        "https://push.apple.com.evil.example/abc",
+        "https://fcm.googleapis.com@evil.example/abc",
+        "https://evil.example@fcm.googleapis.com/abc",
+        "https://fcm.googleapis.com:8443/abc",
+        "https://evil.example\\@fcm.googleapis.com/abc",
+        "https://fcm.googleapis.com/abc def",
+        "fcm.googleapis.com/abc",
+        "",
+    ])
+    def test_anything_else_is_refused_and_not_stored(self, client: TestClient, db_session, endpoint: str) -> None:
+        """Failure case: this URL is later POSTed to by the server, so a stranger's host here is an SSRF."""
+        _pid, member = _setup(client)
+        assert _subscribe(client, member, endpoint=endpoint).status_code == 422
+        assert db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).count() == 0
+
+    def test_lengths_match_the_database_columns(self, client: TestClient) -> None:
+        _pid, member = _setup(client)
+        long_endpoint = "https://fcm.googleapis.com/" + "a" * 1000
+        assert _subscribe(client, member, endpoint=long_endpoint).status_code == 422
+        assert _subscribe(client, member, link_url="https://x.example/" + "a" * 2000).status_code == 422
+        assert _subscribe(client, member, keys={"p256dh": "a" * 256, "auth": "b"}).status_code == 422
+        assert _subscribe(client, member, keys={"p256dh": "a", "auth": "b" * 256}).status_code == 422
+
+    def test_a_row_stored_before_this_check_is_never_sent_to_and_gets_cleaned_up(self, vapid_configured) -> None:
+        with patch.object(push_service, "webpush") as webpush:
+            with pytest.raises(push_service.PushDeliveryError) as failure:
+                push_service.send(endpoint="https://evil.example/hook", p256dh="a", auth="b", payload={})
+        webpush.assert_not_called()
+        assert failure.value.gone is True
+
+
+class TestSubscriptionCap:
+    def _seed(self, db_session, member: dict, count: int) -> list[str]:
+        """created_at is set by hand: inside the test's one transaction now() never moves."""
+        endpoints = [f"https://fcm.googleapis.com/fcm/send/seed{i}" for i in range(count)]
+        for i, endpoint in enumerate(endpoints):
+            db_session.add(PushSubscription(crew_member_id=member["id"], endpoint=endpoint, p256dh="p", auth="a", link_url="https://x.example",
+                                            created_at=datetime(2026, 1, 1 + i)))
+        db_session.commit()
+        return endpoints
+
+    def _endpoints(self, db_session, member: dict) -> set[str]:
+        db_session.expire_all()
+        return {row.endpoint for row in db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"])}
+
+    def _second_member(self, client: TestClient, pid: str) -> dict:
+        contact = client.post("/api/v1/contacts", json={"name": "Someone Else"}, headers=AUTH).json()["id"]
+        return client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Grip", "position": "Grip"}, headers=AUTH).json()
+
+    def test_a_sixth_device_is_refused_and_nothing_is_evicted(self, client: TestClient, db_session) -> None:
+        """Failure case: a leaked link must not be able to push the real phone off the list."""
+        _pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 5)
+        resp = _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new")
+        assert resp.status_code == 409
+        assert "5 devices" in resp.json()["detail"]
+        assert self._endpoints(db_session, member) == set(seeded)
+
+    def test_five_devices_are_all_kept(self, client: TestClient, db_session) -> None:
+        _pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 4)
+        new = "https://fcm.googleapis.com/fcm/send/new"
+        assert _subscribe(client, member, endpoint=new).status_code == 201
+        assert self._endpoints(db_session, member) == {*seeded, new}
+
+    def test_refreshing_keys_on_a_known_device_works_at_the_cap(self, client: TestClient, db_session) -> None:
+        _pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 5)
+        assert _subscribe(client, member, endpoint=seeded[0], keys={"p256dh": "fresh", "auth": "keys"}).status_code == 201
+        assert self._endpoints(db_session, member) == set(seeded)
+        db_session.expire_all()
+        assert db_session.query(PushSubscription).filter(PushSubscription.endpoint == seeded[0]).one().p256dh == "fresh"
+
+    def test_a_device_cannot_move_onto_a_member_at_the_cap(self, client: TestClient, db_session) -> None:
+        pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 5)
+        other = self._second_member(client, pid)
+        moved = "https://fcm.googleapis.com/fcm/send/shared-phone"
+        assert _subscribe(client, other, endpoint=moved).status_code == 201
+        assert _subscribe(client, member, endpoint=moved).status_code == 409
+        assert self._endpoints(db_session, member) == set(seeded)
+        assert self._endpoints(db_session, other) == {moved}
+
+    def test_turning_one_off_frees_a_place(self, client: TestClient, db_session) -> None:
+        _pid, member = _setup(client)
+        seeded = self._seed(db_session, member, 5)
+        assert client.delete(f"/api/v1/public/crew/{member['personal_token']}/push-subscription", params={"endpoint": seeded[0]}).status_code == 204
+        assert _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new").status_code == 201
+
+    def test_a_dead_endpoint_pruned_on_410_frees_a_place(self, client: TestClient, db_session, vapid_configured) -> None:
+        pid, member = _setup(client)
+        self._seed(db_session, member, 5)
+
+        class _Gone:
+            status_code = 410
+            text = "gone"
+
+        with patch("app.services.push.webpush", side_effect=WebPushException("gone", response=_Gone())):
+            client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": "2026-12-01", "day_number": 1, "day_count": 1, "initial_revision": {"schedule_items": []}}, headers=AUTH)
+            sheet = client.get(f"/api/v1/productions/{pid}/call-sheets", headers=AUTH).json()[0]["id"]
+            client.post(f"/api/v1/call-sheets/{sheet}/revisions", json={"general_crew_call": "05:00", "schedule_items": []}, headers=AUTH)
+        assert self._endpoints(db_session, member) == set()
+        assert _subscribe(client, member, endpoint="https://fcm.googleapis.com/fcm/send/new").status_code == 201
+
+    def test_the_cap_is_per_member(self, client: TestClient, db_session) -> None:
+        pid, member = _setup(client)
+        self._seed(db_session, member, 5)
+        assert _subscribe(client, self._second_member(client, pid)).status_code == 201
+        assert len(self._endpoints(db_session, member)) == 5
 
 
 class TestVapidKeyEndpoint:
@@ -79,7 +217,7 @@ class TestSubscribe:
         assert resp.status_code == 201, resp.text
         rows = db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).all()
         assert len(rows) == 1
-        assert rows[0].endpoint == "https://push.example.com/ep1"
+        assert rows[0].endpoint == "https://fcm.googleapis.com/fcm/send/ep1"
 
     def test_subscribe_with_unknown_token_is_404(self, client: TestClient) -> None:
         resp = client.post("/api/v1/public/crew/not-a-real-token/push-subscription", json=_subscribe_payload())
@@ -102,7 +240,7 @@ class TestSubscribe:
         resp = client.request(
             "DELETE",
             f"/api/v1/public/crew/{member['personal_token']}/push-subscription",
-            params={"endpoint": "https://push.example.com/ep1"},
+            params={"endpoint": "https://fcm.googleapis.com/fcm/send/ep1"},
         )
         assert resp.status_code == 204
         rows = db_session.query(PushSubscription).filter(PushSubscription.crew_member_id == member["id"]).all()
@@ -213,7 +351,7 @@ class TestNotifySubscribers:
 
         with patch("app.services.push.webpush", side_effect=WebPushException("forbidden", response=_ForbiddenResponse())):
             with pytest.raises(push_service.PushDeliveryError) as exc_info:
-                push_service.send(endpoint="https://push.example.com/ep1", p256dh="a", auth="b", payload={})
+                push_service.send(endpoint="https://fcm.googleapis.com/fcm/send/ep1", p256dh="a", auth="b", payload={})
         assert exc_info.value.gone is False
         assert exc_info.value.status_code == 403
 
@@ -320,8 +458,8 @@ class TestPersonalPush:
         pid, gaffer = _setup(client)
         contact = client.post("/api/v1/contacts", json={"name": "Marek Sýkora"}, headers=AUTH).json()["id"]
         dop = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": contact, "department": "Camera", "position": "DoP"}, headers=AUTH).json()
-        client.post(f"/api/v1/public/crew/{gaffer['personal_token']}/push-subscription", json=_subscribe_payload("https://push.example.com/gaffer"))
-        client.post(f"/api/v1/public/crew/{dop['personal_token']}/push-subscription", json=_subscribe_payload("https://push.example.com/dop"))
+        client.post(f"/api/v1/public/crew/{gaffer['personal_token']}/push-subscription", json=_subscribe_payload("https://fcm.googleapis.com/fcm/send/gaffer"))
+        client.post(f"/api/v1/public/crew/{dop['personal_token']}/push-subscription", json=_subscribe_payload("https://fcm.googleapis.com/fcm/send/dop"))
         sheet = client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": "2026-11-10", "day_number": 7, "day_count": 24, "initial_revision": {"general_crew_call": "07:00", "schedule_items": []}}, headers=AUTH).json()
         return gaffer, sheet
 
@@ -362,7 +500,7 @@ def test_send_signs_and_calls_webpush_for_real(vapid_configured, monkeypatch) ->
 
     monkeypatch.setattr(push_service, "webpush", _fake_webpush)
     push_service.send(
-        endpoint="https://push.example.com/real", p256dh="fake-p256dh", auth="fake-auth",
+        endpoint="https://fcm.googleapis.com/fcm/send/real", p256dh="fake-p256dh", auth="fake-auth",
         payload={"title": "t", "body": "b", "url": "https://example.com"},
     )
     assert captured["vapid_private_key"] == vapid_configured.vapid_private_key

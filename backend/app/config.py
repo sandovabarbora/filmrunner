@@ -9,6 +9,7 @@ from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+MIN_SERVICE_TOKEN_LENGTH = 32
 DEV_BEARER_TOKEN = "dev-only-token-change-me"
 
 
@@ -20,10 +21,13 @@ class Settings(BaseSettings):
     running against a dev database.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="FILMRUNNER_")
+    # hide_input_in_errors: a refused boot's message goes to the platform's logs, and the input is every secret.
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="FILMRUNNER_", hide_input_in_errors=True)
 
     database_url: str = "postgresql+psycopg://filmrunner:filmrunner_dev@localhost:5432/filmrunner"
-    environment: str = "development"
+    # Fail closed: forgetting this on a deploy must not switch the token checks below off.
+    # Local work, CI and docker-compose set it to "development" explicitly.
+    environment: str = "production"
     log_level: str = "INFO"
 
     # Stub auth for this skeleton: a single shared bearer token, NOT a real
@@ -83,11 +87,19 @@ class Settings(BaseSettings):
     git_sha: str | None = None
 
     @model_validator(mode="after")
-    def _refuse_dev_token_outside_development(self) -> "Settings":
-        if self.environment != "development" and self.api_bearer_token == DEV_BEARER_TOKEN:
+    def _refuse_weak_token_outside_development(self) -> "Settings":
+        if self.environment == "development":
+            return self
+        if self.api_bearer_token == DEV_BEARER_TOKEN:
             raise ValueError(
                 "FILMRUNNER_API_BEARER_TOKEN must be set to a real value when "
-                f"FILMRUNNER_ENVIRONMENT is '{self.environment}'"
+                f"FILMRUNNER_ENVIRONMENT is '{self.environment}' (for local work, set FILMRUNNER_ENVIRONMENT=development)"
+            )
+        # The sandbox signing key is derived from this token and anyone can get a sandbox token to test guesses against offline.
+        if len(self.api_bearer_token) < MIN_SERVICE_TOKEN_LENGTH:
+            raise ValueError(
+                f"FILMRUNNER_API_BEARER_TOKEN must be at least {MIN_SERVICE_TOKEN_LENGTH} characters when "
+                f"FILMRUNNER_ENVIRONMENT is '{self.environment}' (for local work, set FILMRUNNER_ENVIRONMENT=development)"
             )
         return self
 

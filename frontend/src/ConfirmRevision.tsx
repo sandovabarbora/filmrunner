@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { confirmRevision } from "./loader";
-import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, subscribe } from "./push";
+import { browserSupportsPush, currentSubscription, fetchVapidPublicKey, isOurApi, PushLimitError, subscribe } from "./push";
 import { t, type Lang } from "./i18n";
 
-type PushState = "unknown" | "offer" | "on" | "blocked" | "failed" | "needs-install" | "none";
+type PushState = "unknown" | "offer" | "on" | "blocked" | "failed" | "limit" | "needs-install" | "none";
 
 /** Opening a link is not reading it. This is the person's own word that they know, and the AD's list is built from it.
  *  The same tap turns on notifications: a browser only asks in response to a tap, and this is the moment the reason is obvious. */
@@ -43,7 +43,7 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
     // Must start inside the tap: Safari refuses a permission request made after anything else was awaited.
     subscribe(apiBase, token, vapidKey)
       .then(() => setPush("on"))
-      .catch(() => setPush(Notification.permission === "denied" ? "blocked" : "failed"));
+      .catch((err: unknown) => setPush(err instanceof PushLimitError ? "limit" : Notification.permission === "denied" ? "blocked" : "failed"));
   }
 
   async function confirm() {
@@ -65,6 +65,7 @@ export function ConfirmRevision({ apiBase, sheetId, token, letter, confirmedAt, 
         <p className="confirm-done-line"><Icon name="check" />{L("confirm.done", { rev: letter, time })}</p>
         {push === "on" && <p className="confirm-push" id="confirmPushOn">{L("confirm.pushOn")}</p>}
         {push === "blocked" && <p className="confirm-push" id="confirmPushBlocked">{L("confirm.pushBlocked")}</p>}
+        {push === "limit" && <p className="confirm-push" id="confirmPushLimit">{L("notify.limit")}</p>}
         {push === "needs-install" && <p className="confirm-push" id="confirmPushInstall">{L("confirm.pushInstall")}</p>}
         {(push === "offer" || push === "failed") && (
           <button type="button" className="secondary" id="confirmPushEnable" onClick={turnOnPush}>

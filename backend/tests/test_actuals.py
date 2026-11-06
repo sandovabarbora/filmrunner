@@ -37,3 +37,21 @@ def test_actuals_refused_on_a_draft_or_cancelled_day(client: TestClient) -> None
     client.post(f"/api/v1/call-sheets/{cancelled['id']}/cancel", headers=AUTH)
     r = client.put(f"/api/v1/call-sheets/{cancelled['id']}/actuals", json={"wrap": "19:00"}, headers=AUTH)
     assert r.status_code == 409 and "cancelled" in r.json()["detail"]
+
+
+def test_who_published_is_kept_off_the_public_sheet(client: TestClient) -> None:
+    """FR-220: `created_by` is the AD's email for a signed-in publisher, and the public sheet needs no login."""
+    from app.auth import Principal, require_principal
+    from app.main import app
+
+    ad = Principal(kind="user", subject="user-ad", email="first.ad@example.com")
+    app.dependency_overrides[require_principal] = lambda: ad
+    try:
+        pid = client.post("/api/v1/productions", json={"name": "Who"}).json()["id"]
+        day = _day(client, pid, 1)
+        assert client.get(f"/api/v1/call-sheets/{day['id']}").json()["current_revision"]["created_by"] == ad.email
+    finally:
+        app.dependency_overrides.pop(require_principal, None)
+    public = client.get(f"/api/v1/public/call-sheets/{day['id']}")
+    assert public.json()["current_revision"]["created_by"] is None
+    assert ad.email not in public.text

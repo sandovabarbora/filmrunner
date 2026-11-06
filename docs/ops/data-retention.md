@@ -94,7 +94,9 @@ account needed. Lists, against the real database:
   context (removal cascades their subscription cleanly since FR-79,
   shipped 2026-09-24)
 - contacts orphaned (no crew or cast membership on any production) as of
-  today, which nothing currently cleans up
+  today, which nothing currently cleans up. Since FR-220 a new contact
+  records its creator's sign-in email in `contacts.created_by`, never
+  returned by the API, until its first attach clears it
 
 Run it with `cd backend && python -m scripts.retention_report`.
 

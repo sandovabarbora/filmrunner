@@ -50,6 +50,22 @@ was opened with, so the notification's tap-through works without the
 backend having to know the frontend's deployed origin — GitHub Pages
 today, something else later), `created_at`.
 
+Subscribing needs no login and the server later POSTs to `endpoint`, so
+FR-220 restricts it: `https`, default port, no userinfo, and a host under
+`fcm.googleapis.com`, `push.services.mozilla.com`, `push.apple.com` or
+`notify.windows.com`. `send()` applies the same check, and a stored row that
+fails it is deleted rather than sent to. A member keeps at most 5
+subscriptions. A sixth new endpoint gets a 409 rather than replacing the
+oldest, so a leaked link cannot push the real phone off the list; the same
+endpoint re-subscribing still works, and a dead one frees its place when a
+publish gets 404/410 from the push service. A made-up endpoint answered
+differently never gets pruned, so a leaked link can fill the places and block
+a new device, though not a phone already subscribed; links cannot be rotated
+yet. Confirming a revision never waits on any
+of this. A browser whose push service is
+not on the list gets a 422 and cannot subscribe: add the domain to
+`_PUSH_SERVICE_DOMAINS` in `app/services/push.py`.
+
 `DistributionLog` gains a `push` value on its existing `channel` enum and
 a new nullable `error` column. Every notification attempt — success or
 failure — writes one row, keyed to the crew member's `contact_id` and the

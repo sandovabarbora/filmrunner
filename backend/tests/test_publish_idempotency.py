@@ -63,7 +63,7 @@ def real_call_sheet(vapid_configured):
     db.add(
         PushSubscription(
             crew_member_id=crew_member.id,
-            endpoint=f"https://push.example.com/fr-142-{uuid.uuid4()}",
+            endpoint=f"https://fcm.googleapis.com/fcm/send/fr-142-{uuid.uuid4()}",
             p256dh="BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA",
             auth="fake-auth-key",
             link_url="https://filmrunner.example/?sheet=abc",

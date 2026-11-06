@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 _SEND_TIMEOUT_SECONDS = 5
 
+# The server POSTs to whatever endpoint a subscription holds, and subscribing needs no login,
+# so an open list would be a request forgery. These are the hosts browsers hand out: Chrome and
+# other Chromium browsers (FCM), Firefox (Mozilla), Safari (Apple), Edge (Windows Notification Service).
+_PUSH_SERVICE_DOMAINS = ("fcm.googleapis.com", "push.services.mozilla.com", "push.apple.com", "notify.windows.com")
+
 
 class PushDeliveryError(Exception):
     """A push attempt failed. `gone` marks a subscription the browser itself
@@ -47,6 +52,21 @@ class PushDeliveryError(Exception):
         self.reason = reason
         self.gone = gone
         self.status_code = status_code
+
+
+def is_known_push_endpoint(endpoint: str) -> bool:
+    """Parsed strictly enough that this check and the HTTP client cannot disagree about which host is meant."""
+    if any(ch.isspace() or ch == "\\" for ch in endpoint):
+        return False
+    try:
+        parts = urlsplit(endpoint)
+        port = parts.port
+    except ValueError:
+        return False
+    if parts.scheme != "https" or parts.username is not None or parts.password is not None or port not in (None, 443):
+        return False
+    host = parts.hostname or ""
+    return any(host == domain or host.endswith(f".{domain}") for domain in _PUSH_SERVICE_DOMAINS)
 
 
 def is_configured() -> bool:
@@ -68,6 +88,9 @@ def send(*, endpoint: str, p256dh: str, auth: str, payload: dict) -> None:
     settings = get_settings()
     if not is_configured():
         raise PushDeliveryError("push notifications are not configured on this server")
+    # A row saved before subscribing validated its endpoint: gone=True has the caller delete it.
+    if not is_known_push_endpoint(endpoint):
+        raise PushDeliveryError("endpoint is not a known push service", gone=True)
     subscription_info = {"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}}
     try:
         webpush(

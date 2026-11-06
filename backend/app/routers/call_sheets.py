@@ -274,6 +274,9 @@ def _read_with_contacts(db: Session, call_sheet_id: uuid.UUID, *, public: bool =
     read.production_title = call_sheet.production.name
     if not public:
         read.actuals = _actuals_of(call_sheet)
+    elif read.current_revision is not None:
+        # The publishing AD's email: the crew's sheet needs no login, and nothing on it shows who published.
+        read.current_revision.created_by = None
     read.contacts = build_contacts(db, call_sheet)
     read.personal_calls = build_personal_calls(db, call_sheet)
     read.cast_calls = build_cast_calls(db, call_sheet)

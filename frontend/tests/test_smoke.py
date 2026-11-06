@@ -41,10 +41,20 @@ def test_share_link_loads_from_api_without_form(page: Page, frontend_url: str) -
             '"current_revision":{"revision_letter":"A","schedule_items":[]}}',
         ),
     )
-    page.goto(f"{frontend_url}/index.html?sheet=abc&api=http://api.test")
+    page.goto(f"{frontend_url}/index.html?sheet=abc&api=http://localhost:9")
     page.wait_for_selector("#sheet.visible", timeout=10_000)
     assert "Day 3 of 9" in page.locator("#dayLabel").inner_text()
     assert page.locator("#lookup").count() == 0
+
+
+def test_a_crafted_link_shows_no_sheet_and_calls_no_stranger(page: Page, frontend_url: str) -> None:
+    """FR-220: a link naming someone else's server must not produce a sheet that looks real, or reach the cache."""
+    asked: list[str] = []
+    page.on("request", lambda request: asked.append(request.url) if request.url.startswith("https://evil.example") else None)
+    page.goto(f"{frontend_url}/index.html?sheet=abc&api=https://evil.example")
+    page.wait_for_selector("#openEditor", timeout=10_000)
+    assert not page.locator("#sheet").evaluate("el => el.classList.contains('visible')")
+    assert asked == []
 
 
 def test_service_worker_registers(page: Page, frontend_url: str) -> None:
@@ -139,7 +149,7 @@ def test_contacts_get_whatsapp_and_copy_only_when_the_number_normalises(page: Pa
             ),
         ),
     )
-    page.goto(f"{frontend_url}/index.html?sheet=wa1&api=http://api.test")
+    page.goto(f"{frontend_url}/index.html?sheet=wa1&api=http://localhost:9")
     page.wait_for_selector("#contacts", timeout=10_000)
     rows = page.locator("#contacts .contact")
     assert rows.count() == 2
@@ -173,7 +183,7 @@ def test_going_offline_after_a_live_load_shows_cached_status_with_timestamp(page
         "**/api/v1/public/call-sheets/xyz",
         lambda route: route.fulfill(content_type="application/json", body=_SHEET_BODY),
     )
-    url = f"{frontend_url}/index.html?sheet=xyz&api=http://api.test"
+    url = f"{frontend_url}/index.html?sheet=xyz&api=http://localhost:9"
     page.goto(url)
     page.wait_for_selector("#sheet.visible", timeout=10_000)
     assert page.locator("#status").get_attribute("class") == "status online"
@@ -263,7 +273,7 @@ def test_share_link_to_a_missing_or_non_public_sheet_shows_a_clear_message_not_a
         "**/api/v1/public/call-sheets/gone",
         lambda route: route.fulfill(status=404, content_type="application/json", body='{"detail":"Call sheet not found"}'),
     )
-    page.goto(f"{frontend_url}/index.html?sheet=gone&api=http://api.test")
+    page.goto(f"{frontend_url}/index.html?sheet=gone&api=http://localhost:9")
     page.wait_for_function(
         "document.querySelector('#status').textContent.trim().length > 0", timeout=10_000
     )

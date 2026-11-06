@@ -52,8 +52,24 @@ notes to exist first), audit log of role changes, SSO groups.
 - `POST /contacts` is not production-scoped (address book rows); any
   signed-in user can create a contact. `PATCH /contacts/{id}` is guarded:
   the caller needs `crew:edit` on a production that has the person in its
-  crew (a contact used nowhere is editable only by the service token).
-  Found by the automated commit review on 2026-09-14 as an IDOR.
+  crew or cast (a contact used nowhere is editable only by the service
+  token). Found by the automated commit review on 2026-09-14 as an IDOR.
+- Attaching a contact (`POST .../crew-members`, `.../cast-members`) is an
+  access decision too (FR-213, FR-220): the response carries the person's
+  phone and email, and contact ids are public in photo URLs. A contact in
+  use needs `crew:edit` on a production using it. An unused one can be
+  attached only by whoever created it, once: `contacts.created_by` is
+  cleared on the first attach. A contact that later falls out of use, and
+  older rows with no creator, only by the service token. A stranger's refusal is
+  the same 404 as an unknown id. A viewer gets a 403 saying why, and the
+  picker shows that person as unavailable (`can_attach` on the search).
+- Those two rules work together. Any one production's editors may edit a
+  shared contact, which is safe only because nothing short of edit rights
+  can spread it. An earlier version of FR-220 let viewers attach and
+  required edit rights on every production; review showed a viewer could
+  then lock the real editors out, so it was replaced. Known limit: an
+  editor on one production can change a shared contact shown on another;
+  the real fix is a per-production copy, after the pilot.
 
 ## Revisit when
 

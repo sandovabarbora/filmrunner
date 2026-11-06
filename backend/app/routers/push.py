@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Subscribing needs only a personal link, so without a cap one leaked link can grow the table and every publish's fan-out.
+# A new device is refused rather than replacing the oldest: replacing would let that same link push the real phone off.
+# A row is pruned only when the push service answers 404 or 410, so a made-up endpoint it answers differently stays and holds its place.
+MAX_SUBSCRIPTIONS_PER_MEMBER = 5
+
 
 @router.get("/public/push/vapid-key", response_model=VapidKeyRead)
 def get_vapid_key() -> VapidKeyRead:
@@ -40,6 +45,9 @@ def _crew_member_or_404(db: Session, token: str) -> CrewMember:
 def subscribe(token: str, payload: PushSubscriptionCreate, db: Session = Depends(get_db)) -> dict:
     member = _crew_member_or_404(db, token)
     existing = db.query(PushSubscription).filter(PushSubscription.endpoint == payload.endpoint).first()
+    is_new_for_member = existing is None or existing.crew_member_id != member.id
+    if is_new_for_member and db.query(PushSubscription).filter(PushSubscription.crew_member_id == member.id).count() >= MAX_SUBSCRIPTIONS_PER_MEMBER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Notifications are already on for {MAX_SUBSCRIPTIONS_PER_MEMBER} devices on this link; turn them off on one of those first")
     if existing is not None:
         # Re-subscribing with the same endpoint (e.g. the browser refreshed
         # the encryption keys) updates in place rather than duplicating.

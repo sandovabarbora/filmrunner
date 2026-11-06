@@ -111,7 +111,7 @@ def _seed_production_with_subscribers(db_session, count: int) -> uuid.UUID:
         db_session.add(
             PushSubscription(
                 crew_member_id=member.id,
-                endpoint=f"https://push.example.com/ep{i}",
+                endpoint=f"https://fcm.googleapis.com/fcm/send/ep{i}",
                 p256dh="BFakeP256dhKeyBFakeP256dhKeyBFakeP256dhKeyAA",
                 auth="fake-auth-key",
                 link_url="https://filmrunner.example/?sheet=abc&api=https://api.example",

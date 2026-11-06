@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type CrewEditableFields, diffCrewEditFields, mergeCrewEdit } from "../crewEdits";
+import { type CrewEditableFields, contactChanges, diffCrewEditFields, mergeCrewEdit } from "../crewEdits";
 
 const baseline: CrewEditableFields = {
   name: "Jana Novakova", phone: "+420600111222",
@@ -56,5 +56,28 @@ describe("FR-144: two devices queuing conflicting offline edits to the same crew
     const second = diffCrewEditFields(baseline, { ...baseline, department: "Best Boy Grip" });
     const merged = { ...first, ...second };
     expect(merged).toEqual({ phone: "+420600999888", department: "Best Boy Grip" });
+  });
+});
+
+describe("FR-220: contactChanges keeps a save that changes nothing about the person off the shared contact", () => {
+  const person = { name: "Jana Nováková", phone: "+420 111 222 333" };
+
+  it("nothing changed: nothing to send", () => {
+    expect(contactChanges(person, "Jana Nováková", "+420 111 222 333")).toEqual({});
+  });
+
+  it("stray spaces and an empty phone are not a change", () => {
+    expect(contactChanges({ name: " Jana ", phone: " 777 " }, "Jana", "777")).toEqual({});
+    expect(contactChanges({ name: "Jana", phone: "" }, "Jana", null)).toEqual({});
+    expect(contactChanges({ name: "Jana", phone: null }, "Jana", null)).toEqual({});
+  });
+
+  it("sends only the field that changed", () => {
+    expect(contactChanges(person, "Jana Nováková", "602 000 111")).toEqual({ phone: "602 000 111" });
+    expect(contactChanges(person, "Jana N.", "+420 111 222 333")).toEqual({ name: "Jana N." });
+  });
+
+  it("clearing the phone is a change", () => {
+    expect(contactChanges(person, "Jana Nováková", null)).toEqual({ phone: null });
   });
 });

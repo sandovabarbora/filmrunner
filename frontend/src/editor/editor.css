@@ -161,6 +161,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 .picker-list { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 0; list-style: none; border: var(--frame); border-radius: var(--radius); background: var(--card); box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 220px; overflow: auto; }
 .picker-item { display: block; width: 100%; min-height: 0; text-align: left; padding: 8px 10px; border: 0; border-radius: 0; background: none; color: var(--ink); font: inherit; white-space: normal; cursor: pointer; }
 .picker-item:hover, .picker-item:focus { background: var(--paper-2); }
+.picker-item:disabled { cursor: default; background: none; }
 .picker-item .name { display: block; font-weight: 600; }
 .picker-item .meta { display: block; font-size: 0.8125rem; color: var(--muted); }
 

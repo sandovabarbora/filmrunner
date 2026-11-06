@@ -52,13 +52,51 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_api_token)])
 
+ATTACH_NEEDS_EDIT = "You can only view this person on another production, and only its editors can reuse them; add them as a new person instead"
 
-def _contact_for(db: Session, contact_id: uuid.UUID, production: Production) -> Contact:
-    """A contact can join only a production of its own world, so a test persona can never pull in a real person by id."""
+
+def _productions_using_contact(db: Session, contact_id: uuid.UUID) -> set[uuid.UUID]:
+    crew = db.query(CrewMember.production_id).filter(CrewMember.contact_id == contact_id)
+    cast = db.query(CastMember.production_id).filter(CastMember.contact_id == contact_id)
+    return {production_id for (production_id,) in crew.union(cast)}
+
+
+def _contact_for(db: Session, contact_id: uuid.UUID, access: Access) -> Contact:
+    """A contact can join only a production of its own world, so a test persona can never pull in a real person by id.
+
+    Attaching returns the person's phone and email and opens editing, and an id proves nothing:
+    ids are public in photo URLs and sign-up is open. So a contact in use needs crew:edit on a
+    production using it, and an unused one needs its creator (the picker's create-then-attach).
+    The caller clears created_by on attaching: others may edit the person from then on, so having
+    once created the row must not reach them again if they fall out of use.
+    A stranger's refusal looks like an unknown id, so it does not confirm the id belongs to someone.
+    """
     contact = db.get(Contact, contact_id)
-    if contact is None or contact.sandbox_session != production.sandbox_session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
-    return contact
+    not_found = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contact not found")
+    if contact is None or contact.sandbox_session != access.production.sandbox_session:
+        raise not_found
+    principal = access.principal
+    if principal.kind == "service":
+        return contact
+    used_on = _productions_using_contact(db, contact_id)
+    if not used_on:
+        if contact.created_by is None or contact.created_by != principal.label:
+            raise not_found
+        return contact
+    standing = [resolve_access_or_none(db, principal, production_id) for production_id in used_on]
+    if any(CREW_EDIT in permissions for permissions in standing):
+        return contact
+    if any(standing):
+        # They can already see this person, so a 404 would be false; the production stays unnamed because the caller's own list names it.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ATTACH_NEEDS_EDIT)
+    raise not_found
+
+
+async def _read_capped(file: UploadFile, limit: int, too_large: str) -> bytes:
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(status_code=413, detail=too_large)
+    return data
 
 
 def _refuse_in_test_world(principal: Principal, what: str) -> None:
@@ -185,6 +223,8 @@ def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Princ
         db.query(CrewMember).filter(CrewMember.production_id.in_(ids)).all()
         + db.query(CastMember).filter(CastMember.production_id.in_(ids)).all()
     )
+    editable = {p.id for p in visible if CREW_EDIT in resolve_access_or_none(db, principal, p.id)}
+    attachable = {m.contact_id for m in memberships if m.production_id in editable}
     digits = "".join(ch for ch in needle if ch.isdigit())
     for m in memberships:
         c = m.contact
@@ -196,7 +236,7 @@ def search_contacts(q: str = "", db: Session = Depends(get_db), principal: Princ
         if existing is None:
             position = m.position if isinstance(m, CrewMember) else f"cast · {m.character_name}"
             rows[c.id] = ContactMatch(id=c.id, name=c.name, phone=c.phone, email=c.email, photo_url=c.photo_url,
-                                      last_production_name=m.production.name, last_position=position)
+                                      last_production_name=m.production.name, last_position=position, can_attach=c.id in attachable)
     out = sorted(rows.values(), key=lambda r: (r.name.lower(), r.phone or ""))
     return out[:10]
 
@@ -206,7 +246,7 @@ def create_contact(payload: ContactCreate, db: Session = Depends(get_db), princi
     session = session_of_email(principal.email)
     if session is not None:
         enforce_quota(db, Contact, session, MAX_CONTACTS_PER_SESSION)
-    contact = Contact(**payload.model_dump(), sandbox_session=session)
+    contact = Contact(**payload.model_dump(), sandbox_session=session, created_by=principal.label or None)
     db.add(contact)
     db.commit()
     db.refresh(contact)
@@ -310,7 +350,7 @@ async def import_call_sheet_pdf(
 ) -> CallSheetPdfExtraction:
     """FR-57: contacts out of an old call sheet PDF, as a preview. Nothing is created here; the PDF is not stored."""
     _refuse_in_test_world(access.principal, "PDF import")
-    data = await file.read()
+    data = await _read_capped(file, call_sheet_pdf.MAX_PDF_BYTES, "The PDF is over 10 MB; export a lighter one")
     if not data.startswith(b"%PDF"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="That file is not a PDF")
     try:
@@ -339,7 +379,7 @@ def _with_links_for(access: Access, people: list) -> list:
 def create_cast_member(
     production_id: uuid.UUID, payload: CastMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CastMember:
-    _contact_for(db, payload.contact_id, access.production)
+    _contact_for(db, payload.contact_id, access).created_by = None
     actor = CastMember(production_id=production_id, **payload.model_dump())
     db.add(actor)
     db.commit()
@@ -416,7 +456,7 @@ def get_hospital_suggestion(
 def create_crew_member(
     production_id: uuid.UUID, payload: CrewMemberCreate, db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT))
 ) -> CrewMember:
-    _contact_for(db, payload.contact_id, access.production)
+    _contact_for(db, payload.contact_id, access).created_by = None
     member = CrewMember(production_id=production_id, **payload.model_dump())
     db.add(member)
     db.commit()
@@ -472,13 +512,12 @@ def remove_crew_member(
 
 
 def _require_contact_edit(db: Session, principal: Principal, contact_id: uuid.UUID) -> None:
-    """Contacts are shared rows; editing one needs crew:edit on a production that has this person in its crew."""
+    """Contacts are shared rows; editing one needs crew:edit on a production using it. Any one is enough: only editors can spread a contact."""
     if principal.kind == "service":
         return
-    production_ids = {m.production_id for m in db.query(CrewMember).filter(CrewMember.contact_id == contact_id)}
-    allowed = any(CREW_EDIT in resolve_access_or_none(db, principal, pid) for pid in production_ids)
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person in its crew")
+    used_on = _productions_using_contact(db, contact_id)
+    if not any(CREW_EDIT in resolve_access_or_none(db, principal, production_id) for production_id in used_on):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot edit this contact: no production you edit has this person on its crew or cast")
 
 
 @router.patch("/contacts/{contact_id}", response_model=ContactRead)
@@ -513,9 +552,7 @@ async def upload_contact_photo_endpoint(
     _require_contact_edit(db, principal, contact_id)
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"Photo must be JPEG or PNG, got {file.content_type!r}")
-    data = await file.read()
-    if len(data) > MAX_PHOTO_BYTES:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
+    data = await _read_capped(file, MAX_PHOTO_BYTES, f"Photo is larger than {MAX_PHOTO_BYTES // 1000} KB; resize before uploading")
     try:
         contact.photo_url = store_contact_photo(db, str(contact_id), data, file.content_type)
     except PhotoUploadNotConfigured as exc:

@@ -247,6 +247,7 @@ export interface Contact extends ContactCreate {
 export interface ContactMatch extends Contact {
   last_production_name: string | null;
   last_position: string | null;
+  can_attach: boolean;
 }
 
 export interface CrewMemberCreate {
