@@ -30,6 +30,38 @@ logger = logging.getLogger(__name__)
 _REVISION_LETTERS = string.ascii_uppercase  # A, B, C, ... Z (26 revisions/day is already an incident)
 
 
+class StaleRevision(ValueError):
+    """The day moved on since this publish was prepared, and publishing would overwrite someone else's change."""
+
+
+def _rows_match(payload_rows, stored_rows, key) -> bool:
+    if len(payload_rows) != len(stored_rows):
+        return False
+    return all(
+        all(getattr(stored, field) == value for field, value in sent.model_dump().items())
+        for sent, stored in zip(sorted(payload_rows, key=key), sorted(stored_rows, key=key))
+    )
+
+
+def _is_same_content(revision: CallSheetRevision, previous: CallSheetRevision | None, payload: CallSheetRevisionCreate) -> bool:
+    """Tells a retry of the same publish from a different edit. The server fills some blank fields in, so a blank
+    matches a stored value, unless the revision before had a value: then the blank is someone clearing it."""
+    for field in ("general_crew_call", "shooting_call", "safety_notes", "head_of_day_crew_member_id"):
+        if getattr(revision, field) != getattr(payload, field):
+            return False
+    for field in ("sunrise", "sunset", "weather_forecast"):
+        sent = getattr(payload, field) or None
+        stored = getattr(revision, field) or None
+        cleared = sent is None and previous is not None and getattr(previous, field)
+        if (sent is not None and stored != sent) or (cleared and stored is not None):
+            return False
+    if not _rows_match(payload.schedule_items, revision.schedule_items, key=lambda r: r.order_index):
+        return False
+    if payload.crew_calls is not None and not _rows_match(payload.crew_calls, revision.crew_calls, key=lambda r: str(r.crew_member_id)):
+        return False
+    return payload.cast_calls is None or _rows_match(payload.cast_calls, revision.cast_calls, key=lambda r: str(r.cast_member_id))
+
+
 def _next_revision_letter(call_sheet: CallSheet) -> str:
     """Return the next revision letter for a call sheet.
 
@@ -119,41 +151,39 @@ def publish_revision(
     adding a new immutable revision, never by editing an existing one — see
     DESIGN.md for why.
 
-    Returns (revision, is_new). FR-142: a double-tap or a flaky-connection
-    retry can send two publish requests for the same call sheet within
-    milliseconds of each other. A Postgres transaction-scoped advisory
-    lock keyed on the call sheet serializes them; whichever call has to
-    wait for the other re-reads the call sheet once it gets the lock, and
-    if a revision was actually added while it waited, that call is the
-    duplicate half of the double-tap — it returns the revision the other
-    call just published, with is_new=False, instead of publishing a
-    second one. The caller must not send a second push when is_new is
-    False. A normal sequential pair of calls (an AD publishes now, then a
-    real correction minutes later) never contends for the lock, so each
-    still gets its own distinct revision exactly as before.
+    Returns (revision, is_new). A Postgres transaction-scoped advisory lock
+    serializes publishes of one call sheet. FR-142: a double-tap or a retry
+    after a lost response sends the same content twice, and collapses into
+    the revision already published, with is_new=False; the caller must not
+    send a second push then. FR-219: anything else that lost the race, or
+    that was prepared from another revision than `expected_revision_id`
+    says, is a different person's edit and raises StaleRevision, since
+    publishing it would silently undo the change that won.
 
     `commit=False` leaves the transaction open for a change spanning several
     days (app/services/replan.py); its advisory lock is held until that commit,
     and the caller then calls fill_weather_after_commit itself.
     """
-    revision_count_before_lock = len(call_sheet.revisions)
+    # By id, not by count or letter: publishing a planned day replaces its REV A with a new REV A.
+    before_lock = call_sheet.current_revision.id if call_sheet.current_revision is not None else None
     lock_key = str(call_sheet.id)
-    acquired_without_waiting = db.execute(
+    waited = not db.execute(
         text("SELECT pg_try_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": lock_key}
     ).scalar()
-    if not acquired_without_waiting:
-        # Someone else is publishing this exact call sheet right now. Wait for
-        # them — the lock releases automatically at the end of their
-        # transaction — rather than racing the "one current revision" unique
-        # index below.
+    if waited:
+        # The lock releases at the end of the other publish's transaction.
         db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": lock_key})
-        db.expire(call_sheet)
-        if len(call_sheet.revisions) != revision_count_before_lock:
-            duplicate_of = call_sheet.current_revision
-            assert duplicate_of is not None  # a revision was just added, so one is current
-            return duplicate_of, False
-        # They errored out or published nothing (e.g. a validation failure):
-        # fall through and publish for real, now holding the lock ourselves.
+    # Only these two: a change spanning days has unflushed edits on this object, and the session does not autoflush.
+    db.expire(call_sheet, ["revisions", "status"])
+    current = call_sheet.current_revision
+    current_id = current.id if current is not None else None
+    lost_the_race = current_id != before_lock
+    prepared_from_older = payload.expected_revision_id is not None and current_id != payload.expected_revision_id
+    if (lost_the_race or prepared_from_older) and current is not None:
+        earlier = sorted((r for r in call_sheet.revisions if r.id != current.id), key=lambda r: r.revision_letter)
+        if _is_same_content(current, earlier[-1] if earlier else None, payload):
+            return current, False
+        raise StaleRevision(f"REV {current.revision_letter} was published after this was prepared, so nothing was published. Reload the day and make the change again.")
 
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
     previous = call_sheet.current_revision

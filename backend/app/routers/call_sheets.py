@@ -27,7 +27,7 @@ from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.services.call_sheets import LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
 from app.services.replan import move_scene, reschedule_day, swap_days
 
@@ -137,6 +137,8 @@ def publish_revision_endpoint(
         revision, is_new = publish_revision(db, call_sheet, payload, created_by=_audit_label(principal, payload.created_by))
     except (HeadOfDayNotOnProduction, CrewCallNotOnProduction, CastCallNotOnProduction, LocationNotOnProduction) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except StaleRevision as exc:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail=str(exc)) from exc
     except ValueError as exc:
         # 26 revisions/day exhausted — a real operational limit, not a bug,
         # so it's a 409 (Conflict) rather than a 500.

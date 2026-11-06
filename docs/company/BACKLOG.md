@@ -2271,6 +2271,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - five taps followed by a pause still open admin access
   - failure case: a tap on the name in the editor still only goes home, and fewer than five taps do nothing
 
+## FR-219 · tech-lead · One editor's publish never silently undoes another's
+- state: in-progress
+- gated: no
+- why: QA reproduced an editor with an older page publishing over a newer revision, reverting a crew call with nobody told, and two different publishes at the same moment both reporting success while one was lost
+- dod:
+  - a publish prepared from another revision is refused with 412 and nothing reaches the crew, on a planned day too
+  - two different publishes racing give one revision and one refusal, never a 201 carrying someone else's content
+  - a retry of the same content still collapses into one revision and one push
+  - failure case: the editor says which of its changes did not go out, rather than dropping them without a word
+
 ## FR-218 · frontend · The landing page in the product's own look
 - state: in-progress
 - gated: no
