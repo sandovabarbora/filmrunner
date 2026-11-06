@@ -72,9 +72,10 @@ def _next_revision_letter(call_sheet: CallSheet) -> str:
     """
     count = len(call_sheet.revisions)
     if count >= len(_REVISION_LETTERS):
+        # The routers return this text to the AD as a 409, so it says what to do next and carries no ids.
         raise ValueError(
-            f"Call sheet {call_sheet.id} already has {count} revisions; "
-            "refusing to generate a 27th (A-Z exhausted)."
+            f"Day {call_sheet.day_number} already has {count} revisions (REV A to Z), the most one day can have. "
+            "To change it further, cancel this day and create a new one for the same date."
         )
     return _REVISION_LETTERS[count]
 

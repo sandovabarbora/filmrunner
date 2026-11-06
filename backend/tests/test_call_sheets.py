@@ -220,5 +220,7 @@ class TestRevisionSupersession:
         for _ in range(25):  # already have A (1) + 25 = 26 total
             publish_revision(db_session, call_sheet, CallSheetRevisionCreate())
 
-        with pytest.raises(ValueError, match="already has 26 revisions"):
+        with pytest.raises(ValueError, match="already has 26 revisions") as refused:
             publish_revision(db_session, call_sheet, CallSheetRevisionCreate())
+        assert str(call_sheet.id) not in str(refused.value)
+        assert f"Day {call_sheet.day_number}" in str(refused.value)
