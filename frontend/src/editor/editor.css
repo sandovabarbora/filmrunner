@@ -139,7 +139,7 @@ input:disabled, select:disabled, textarea:disabled { background: var(--paper-2);
 
 /* FR-50: collapsed publish history — who, when, what changed. */
 .history { margin-top: 14px; }
-.history summary { cursor: pointer; color: var(--ink); }
+.history summary { cursor: pointer; color: var(--ink); padding-block: calc((var(--control) + 1px - 1.45em) / 2); margin-block: calc((1.45em - var(--control) - 1px) / 2); }
 .history-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .history-list > li { font-size: 0.8125rem; }
 .history-list .rev { font-weight: 700; }

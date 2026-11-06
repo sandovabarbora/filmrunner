@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { CallSheetView, StillBackground } from "./CallSheetView";
-import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult } from "./loader";
+import { loadCallSheet, loadNextDay, loadPersonal, markSeen, publicCallSheetUrl, type LoadResult, type PersonalResult } from "./loader";
 import { useLogoGesture } from "./logoGesture";
 import { NotificationToggle } from "./NotificationToggle";
 import { SandboxBar } from "./SandboxBar";
 import { leaveSandbox, loadSandbox } from "./sandbox";
 import { ConfirmRevision } from "./ConfirmRevision";
-import type { CrewDayRef, CrewNextDay, PersonalSheet } from "./types";
-import { detectLang, fmtDate, rememberLang, t, type Lang } from "./i18n";
+import type { CrewDayRef, CrewNextDay } from "./types";
+import { detectLang, fmtDate, fmtSavedAt, rememberLang, t, type Lang } from "./i18n";
 
 /**
  * The URL decides what the page is:
@@ -60,22 +60,36 @@ function tomorrowLine(days: CrewDayRef[], currentId: string): { kind: "day" | "c
   return { kind: next.status === "cancelled" ? "cancelled" : "day", day: next };
 }
 
+const SLOW_LOAD_NOTE_MS = 4_000;
+
+function personalData(p: PersonalResult | null) {
+  return p?.kind === "live" || p?.kind === "saved" ? p.data : null;
+}
+
+/** A refresh that fails or is refused does not take away the block the person is reading. */
+function afterRefresh(shown: PersonalResult | null, next: PersonalResult): PersonalResult | null {
+  return personalData(shown) && !personalData(next) ? shown : next;
+}
+
 export function App() {
   const [mode, setMode] = useState<Mode>(modeFromLocation);
   // FR-48: labels in the crew member's language; the toggle is remembered per device.
   const [lang, setLang] = useState<Lang>(detectLang);
   const L = (key: Parameters<typeof t>[1], vars?: Record<string, string | number>) => t(lang, key, vars);
   function switchLang() { const next: Lang = lang === "cs" ? "en" : "cs"; rememberLang(next); setLang(next); }
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   const [mine, setMine] = useState<CrewNextDay | null>(null);
   const [apiBase, setApiBase] = useState("http://localhost:8000");
   const [sheetId, setSheetId] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "", text: "" });
   const [result, setResult] = useState<LoadResult | null>(null);
-  const [personal, setPersonal] = useState<PersonalSheet | null | "invalid">(null);
+  const [personal, setPersonal] = useState<PersonalResult | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [slowLoad, setSlowLoad] = useState(false);
   // FR-47: the PDF button appends ?print=1 so the printed page opens the print dialog on load, no extra tap.
   const [printRequested] = useState(() => new URLSearchParams(window.location.search).get("print") === "1");
   const printedRef = useRef(false);
-  const refreshRef = useRef<() => void>(() => undefined);
+  const refreshRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   async function load(url: string, id: string, me: string | null = null) {
     const r = await loadCallSheet(url, id);
@@ -83,7 +97,7 @@ export function App() {
     // A live load through a personal link is a read receipt (FR-36); a cached copy is not — the AD must not think REV B arrived.
     if (r.kind === "live" && me && mode.kind === "share") markSeen(mode.api, id, me);
     if (r.kind === "live") setStatus({ kind: "online", text: L("status.live") });
-    if (r.kind === "cached") setStatus({ kind: "offline", text: L("status.cached", { when: new Date(r.fetchedAt).toLocaleString() }) });
+    if (r.kind === "cached") setStatus({ kind: "offline", text: L("status.cached", { rev: r.data.current_revision?.revision_letter ?? "—", when: fmtSavedAt(lang, r.fetchedAt) }) });
     if (r.kind === "unknown") setStatus({ kind: "offline", text: L("status.unknown") });
     if (r.kind === "not_found") setStatus({ kind: "error", text: L("status.notfound") });
     if (r.kind === "error") setStatus({ kind: "error", text: L("status.error", { reason: r.reason }) });
@@ -102,7 +116,7 @@ export function App() {
     if (mode.kind === "mine") {
       // The stable link: resolve to a day, then behave exactly like the day's own share link.
       void loadNextDay(mode.api, mode.me).then((next) => {
-        if (next === "invalid") { setPersonal("invalid"); setStatus({ kind: "error", text: L("status.invalidToken") }); return; }
+        if (next === "invalid") { setPersonal({ kind: "invalid" }); setStatus({ kind: "error", text: L("status.invalidToken") }); return; }
         if (next === null) { setStatus({ kind: "error", text: L("status.unreachable") }); return; }
         setMine(next);
         if (!next.call_sheet_id) { setStatus({ kind: "offline", text: L("status.noDay", { production: next.production_name }) }); return; }
@@ -126,15 +140,25 @@ export function App() {
       if (mode.me) {
         const p = await loadPersonal(mode.api, mode.sheet, mode.me);
         if (mine !== latest) return;  // a slower answer from an earlier refresh must not overwrite a newer one
-        if (p !== "invalid") setPersonal(p);
+        setPersonal((shown) => afterRefresh(shown, p));
       }
       if (mine === latest) await load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
     };
-    refreshRef.current = () => void refresh();
+    refreshRef.current = refresh;
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
+  }, [mode]);
+
+  useEffect(() => {
+    // The first answer on a first visit goes round the worker, so its cache has nothing for a later open with no signal.
+    // Once the worker has control, one more read goes through it, and a worker that replaced an unstamped one can now say what is live.
+    const sw = navigator.serviceWorker;
+    if (mode.kind !== "share" || !sw) return;
+    const recheck = () => void refreshRef.current();
+    sw.addEventListener("controllerchange", recheck, { once: true });
+    return () => sw.removeEventListener("controllerchange", recheck);
   }, [mode]);
 
   useEffect(() => {
@@ -156,6 +180,20 @@ export function App() {
   const subtitle =
     mode.kind === "dev" ? L("sub.dev") : mode.kind === "share" || mode.kind === "mine" ? L("sub.your") : mode.kind === "demo" ? L("sub.demo") : L("sub.home");
   const loading = result === null && status.kind === "" && (mode.kind === "demo" || mode.kind === "share" || mode.kind === "mine");
+  const sheetShown = !!result && result.kind !== "error" && result.kind !== "not_found";
+  const myBlock = personalData(personal);
+
+  useEffect(() => {
+    if (!loading) { setSlowLoad(false); return; }
+    const timer = window.setTimeout(() => setSlowLoad(true), SLOW_LOAD_NOTE_MS);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  async function retry() {
+    setRetrying(true);
+    await refreshRef.current();
+    setRetrying(false);
+  }
 
   function onLookup() {
     const id = sheetId.trim();
@@ -213,37 +251,49 @@ export function App() {
       {loading && (
         <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>
       )}
+      {loading && slowLoad && <p className="slow-load" id="slowLoad" role="status">{L("status.slow")}</p>}
 
-      {personal === "invalid" && (
+      {personal?.kind === "invalid" && (
         <div className="status offline" id="personalInvalid" role="status">{L("personal.invalid")}</div>
+      )}
+      {sheetShown && personal?.kind === "unreachable" && (
+        <div className="status offline" id="personalUnreachable" role="status">
+          <p className="status-line">{L("personal.unreachable")}</p>
+          <button type="button" className="secondary" id="personalRetry" disabled={retrying} onClick={() => void retry()}>{retrying ? L("personal.retrying") : L("personal.retry")}</button>
+        </div>
+      )}
+      {/* With the whole sheet on a saved copy its banner already says this. */}
+      {sheetShown && personal?.kind === "saved" && result.kind !== "cached" && (
+        <div className="status offline" id="personalSaved" role="status">{L("personal.saved", { when: fmtSavedAt(lang, personal.savedAt) })}</div>
       )}
       {result && result.kind !== "error" && result.kind !== "not_found" && (
         <CallSheetView
           callSheet={result.data}
-          personal={personal && personal !== "invalid" ? personal : null}
+          personal={myBlock}
           freshness={result.kind === "cached" ? { fromCache: true, fetchedAt: result.fetchedAt } : { fromCache: false }}
           shareUrl={shareUrl}
           lang={lang}
           dayHref={mode.kind === "share" ? (id) => `?api=${encodeURIComponent(mode.api)}&sheet=${id}${mode.me ? `&me=${encodeURIComponent(mode.me)}` : ""}` : undefined}
-          confirm={mode.kind === "share" && mode.me && personal && personal !== "invalid" && personal.works_today !== false && result.data.status !== "cancelled" && result.data.current_revision ? (
+          confirm={mode.kind === "share" && mode.me && myBlock && myBlock.works_today !== false && result.data.status !== "cancelled" && result.data.current_revision ? (
             <ConfirmRevision
               apiBase={mode.api}
               sheetId={mode.sheet}
               token={mode.me}
               letter={result.data.current_revision.revision_letter}
               // The block and the sheet refresh separately: a confirmation counts only for the revision on screen.
-              confirmedAt={personal.revision_letter === result.data.current_revision.revision_letter ? personal.confirmed_at ?? null : null}
-              offline={result.kind !== "live"}
+              confirmedAt={myBlock.revision_letter === result.data.current_revision.revision_letter ? myBlock.confirmed_at ?? null : null}
+              // Only a known old copy waits. The server refuses a stale letter, so a wrong guess about freshness costs nothing.
+              offline={result.kind === "cached"}
               lang={lang}
-              onStale={() => refreshRef.current()}
-              pushable={!personal.is_cast}
+              onStale={() => void refreshRef.current()}
+              pushable={!myBlock.is_cast}
               changed={result.data.current_revision.revision_letter !== "A"}
             />
           ) : null}
         />
       )}
       {/* Push is crew-only: an actor's phone hears from the AD by SMS or WhatsApp, with the times in the message. */}
-      {mode.kind === "share" && mode.me && personal && personal !== "invalid" && !personal.is_cast && (
+      {mode.kind === "share" && mode.me && myBlock && !myBlock.is_cast && (
         <NotificationToggle apiBase={mode.api} token={mode.me} lang={lang} />
       )}
       {mine && mode.kind === "share" && result && result.kind !== "error" && result.kind !== "not_found" && (() => {
