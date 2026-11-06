@@ -26,7 +26,8 @@ engine = create_engine(
     pool_size=5,
     max_overflow=5,
     pool_timeout=10,
-    connect_args={"connect_timeout": 5},
+    # A black-holed socket answers no statement, and statement_timeout is enforced by the server, so only TCP can end the wait (about 25 s).
+    connect_args={"connect_timeout": 5, "keepalives": 1, "keepalives_idle": 10, "keepalives_interval": 5, "keepalives_count": 3},
 )
 
 

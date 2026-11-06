@@ -37,3 +37,11 @@ def test_sql_errors_do_not_carry_bound_parameters():
         with pytest.raises(DBAPIError) as caught:
             conn.execute(text("SELECT 1 / (:bound)::int - nonexistent_column"), {"bound": "crew-link-value"})
     assert "crew-link-value" not in str(caught.value)
+
+
+def test_a_black_holed_socket_is_noticed_by_tcp_keepalives():
+    # statement_timeout is enforced by the server, so it cannot end a connection whose server has vanished.
+    with engine.connect() as conn:
+        parameters = conn.connection.dbapi_connection.info.get_parameters()
+    assert (parameters["keepalives"], parameters["keepalives_idle"], parameters["keepalives_interval"], parameters["keepalives_count"]) == ("1", "10", "5", "3")
+

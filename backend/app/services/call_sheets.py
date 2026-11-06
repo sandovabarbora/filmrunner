@@ -131,7 +131,11 @@ def fill_weather_after_commit(db: Session, revision: CallSheetRevision) -> None:
             return
         db.execute(
             update(CallSheetRevision)
-            .where(CallSheetRevision.id == revision_id, or_(CallSheetRevision.weather_forecast.is_(None), CallSheetRevision.weather_forecast == ""))
+            .where(
+                CallSheetRevision.id == revision_id,
+                CallSheetRevision.is_current.is_(True),  # a revision superseded during the call keeps what the crew saw on it
+                or_(CallSheetRevision.weather_forecast.is_(None), CallSheetRevision.weather_forecast == ""),
+            )
             .values(weather_forecast=suggestion)
             .execution_options(synchronize_session=False)
         )

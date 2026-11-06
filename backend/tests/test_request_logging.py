@@ -2,13 +2,16 @@
 
 import asyncio
 import logging
+from datetime import date
 from pathlib import Path
 
 import httpx
 import pytest
 
 from app.request_log import RequestLogMiddleware
-from app.services import geocoding, push
+from app.auth import Principal, require_principal
+from app.main import app
+from app.services import geocoding, hospitals, push, weather
 
 CREW_LINK = "crew-link-value-do-not-log-4f1c"
 BACKEND = Path(__file__).resolve().parents[1]
@@ -17,7 +20,8 @@ BACKEND = Path(__file__).resolve().parents[1]
 @pytest.fixture(autouse=True)
 def _loggers_enabled():
     # test_migration_enum_casing.py runs Alembic in this process, and its fileConfig disables every existing logger.
-    for name in ("filmrunner.request", geocoding.logger.name, push.logger.name):
+    for name in ("filmrunner.request", geocoding.logger.name, push.logger.name, weather.logger.name, hospitals.logger.name,
+                 "app.routers.call_sheets", "app.routers.productions"):
         logging.getLogger(name).disabled = False
 
 
@@ -139,3 +143,43 @@ def test_a_failed_push_logs_neither_the_endpoint_nor_a_reason_carrying_it(monkey
 def test_the_geocoder_user_agent_has_a_project_url_and_no_address():
     assert "github.com/sandovabarbora/filmrunner" in geocoding._USER_AGENT
     assert "@" not in geocoding._USER_AGENT
+
+
+def _http_failure_quoting_the_url(*args, **kwargs):
+    request = httpx.Request("GET", "https://provider.example/?latitude=50.0755&longitude=14.4378")
+    raise httpx.HTTPStatusError(f"503 for url {request.url}", request=request, response=httpx.Response(503, request=request))
+
+
+def test_a_failed_weather_call_logs_only_the_exception_class(monkeypatch, caplog):
+    monkeypatch.setattr(weather.httpx, "get", _http_failure_quoting_the_url)
+    with caplog.at_level(logging.DEBUG):
+        assert weather.weather_suggestion(50.0755, 14.4378, date(2026, 6, 21)) is None
+    logged = _everything(caplog)
+    assert "HTTPStatusError" in logged and "50.0755" not in logged and "provider.example" not in logged
+
+
+def test_a_failed_hospital_lookup_logs_only_the_exception_class(monkeypatch, caplog):
+    monkeypatch.setattr(hospitals.httpx, "post", _http_failure_quoting_the_url)
+    with caplog.at_level(logging.DEBUG):
+        assert hospitals.nearest_hospital_suggestion(50.0755, 14.4378) is None
+    logged = _everything(caplog)
+    assert "HTTPStatusError" in logged and "50.0755" not in logged and "provider.example" not in logged
+
+
+def test_no_audit_log_line_carries_the_users_email(client, caplog):
+    email = "person.name@example.com"
+    app.dependency_overrides[require_principal] = lambda: Principal(kind="user", subject="user-1", email=email)
+    with caplog.at_level(logging.INFO):
+        production = client.post("/api/v1/productions", json={"name": "Logging test"})
+        assert production.status_code == 201, production.text
+        sheet = client.post(f"/api/v1/productions/{production.json()['id']}/call-sheets", json={
+            "shoot_date": "2030-01-01", "day_number": 1, "day_count": 1, "initial_revision": {"general_crew_call": "05:00"},
+        })
+        assert sheet.status_code == 201, sheet.text
+        sheet_url = f"/api/v1/call-sheets/{sheet.json()['id']}"
+        assert client.post(f"{sheet_url}/cancel").status_code == 200
+        assert client.post(f"{sheet_url}/restore").status_code == 200
+    logged = _everything(caplog)
+    assert email not in logged
+    assert "cancelled by user" in logged and "restored by user" in logged and "by user" in logged.split("Created production")[1]
+

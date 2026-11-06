@@ -116,6 +116,40 @@ def test_a_late_forecast_does_not_overwrite_a_value_written_meanwhile(world, mon
     assert revision.weather_forecast == "written meanwhile"
 
 
+def test_a_superseded_revision_is_not_changed_by_its_late_forecast(world, monkeypatch):
+    db, production_id, location_id = world
+    sheet = _create(db, production_id, location_id, day=1)
+    sheet_id = sheet.id
+
+    def weather_while_another_publish_lands(lat, lng, on_date):
+        with SessionLocal() as other:
+            service.publish_revision(other, other.get(CallSheet, sheet_id), CallSheetRevisionCreate(
+                general_crew_call="06:00", weather_forecast="newer revision", schedule_items=[_scene(location_id)]))
+        return "late for B"
+
+    monkeypatch.setattr(service.weather, "weather_suggestion", weather_while_another_publish_lands)
+    revision, _ = service.publish_revision(db, sheet, CallSheetRevisionCreate(general_crew_call="05:30", schedule_items=[_scene(location_id)]))
+    assert revision.revision_letter == "B" and revision.weather_forecast is None
+    with SessionLocal() as other:
+        current = other.query(CallSheetRevision).filter_by(call_sheet_id=sheet_id, is_current=True).one()
+        assert (current.revision_letter, current.weather_forecast) == ("C", "newer revision")
+
+
+@pytest.mark.parametrize("provider_says,expected", [
+    ("typed by the AD", []),
+    ("9-18°C, slight rain", [("typed by the AD", "9-18°C, slight rain")]),
+])
+def test_the_crew_diff_after_the_fill_compares_the_real_forecast(world, monkeypatch, provider_says, expected):
+    db, production_id, location_id = world
+    sheet = _create(db, production_id, location_id, day=1)
+    monkeypatch.setattr(service.weather, "weather_suggestion", lambda lat, lng, on_date: provider_says)
+    service.publish_revision(db, sheet, CallSheetRevisionCreate(general_crew_call="05:00", schedule_items=[_scene(location_id)]))
+    with SessionLocal() as crew_view:
+        by_letter = {r.revision_letter: r for r in crew_view.query(CallSheetRevision).filter_by(call_sheet_id=sheet.id)}
+        changes = service.revision_changes(by_letter["A"], by_letter["B"])
+    assert [(c.before, c.after) for c in changes if c.field == "weather"] == expected
+
+
 def test_a_new_draft_day_is_never_visible_as_published_during_the_weather_call(world, monkeypatch):
     db, production_id, location_id = world
     statuses = []
