@@ -11,9 +11,10 @@ from datetime import date
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.clock import prague_today
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, SceneMove
 from app.schemas.call_sheet import CallSheetRevisionCreate, CastCallEntryCreate, CrewCallEntryCreate, ScheduleItemCreate
-from app.services.call_sheets import fill_weather_after_commit, publish_revision
+from app.services.call_sheets import fill_weather_after_commit, live_days_like, publish_revision
 
 
 class ReplanConflict(ValueError):
@@ -135,12 +136,18 @@ def _unit_day_on(db: Session, sheet: CallSheet, shoot_date: date) -> CallSheet |
     )
 
 
+def _refuse_past(sheet: CallSheet, shoot_date: date) -> None:
+    if shoot_date < prague_today():
+        raise ReplanConflict(f"Day {sheet.day_number} cannot move to {shoot_date.isoformat()}: that date is in the past. Pick today or a later date.")
+
+
 def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_letter: str, created_by: str | None) -> list[tuple[CallSheet, CallSheetRevision]]:
     """Move a whole shoot day to another date."""
     _lock(db, sheet)
     revision = _current(sheet, expected_letter)
     if sheet.shoot_date == shoot_date:
         raise ReplanConflict(f"Day {sheet.day_number} is already on {shoot_date.isoformat()}")
+    _refuse_past(sheet, shoot_date)
     clash = _unit_day_on(db, sheet, shoot_date)
     if clash is not None:
         raise ReplanConflict(f"Day {clash.day_number} is already on {shoot_date.isoformat()}; swap the two days instead")
@@ -167,6 +174,8 @@ def restore_day(db: Session, sheet: CallSheet) -> bool:
     _lock(db, sheet)
     tell_crew = sheet.status == CallSheetStatus.CANCELLED and not sheet.cancelled_from_draft
     if sheet.status == CallSheetStatus.CANCELLED:
+        if live_days_like(db, sheet.production_id, sheet.shoot_date, sheet.day_number, sheet.unit_name):
+            raise ReplanConflict(f"Day {sheet.day_number} of {sheet.unit_name} on {sheet.shoot_date.isoformat()} was created again after this one was cancelled; keep that one or cancel it first")
         sheet.status = CallSheetStatus.DRAFT if sheet.cancelled_from_draft else CallSheetStatus.PUBLISHED
         sheet.cancelled_from_draft = False
     db.commit()
@@ -181,6 +190,8 @@ def swap_days(db: Session, a: CallSheet, b: CallSheet, expected_letter: str, exp
         raise ReplanConflict("That day belongs to another production")
     _lock(db, a, b)
     rev_a, rev_b = _current(a, expected_letter), _current(b, expected_other_letter)
+    _refuse_past(a, b.shoot_date)
+    _refuse_past(b, a.shoot_date)
     payloads = {a.id: _payload(rev_a, new_date=True), b.id: _payload(rev_b, new_date=True)}
     a.shoot_date, b.shoot_date = b.shoot_date, a.shoot_date
     a.day_number, b.day_number = b.day_number, a.day_number

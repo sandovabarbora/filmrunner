@@ -13,6 +13,12 @@ AUTH = {"Authorization": f"Bearer {get_settings().api_bearer_token}"}
 pytestmark = pytest.mark.usefixtures("background_tasks_share_db")
 
 
+@pytest.fixture(autouse=True)
+def _before_the_dates_used_here(prague_clock) -> None:
+    # These tests name dates in November 2026; rescheduling onto a past date is refused, and they would start failing then.
+    prague_clock("2026-11-01T12:00")
+
+
 def _scene(n: str, order: int, description: str = "Set") -> dict:
     return {"order_index": order, "scene_number": n, "int_ext": "INT", "day_night": "DAY", "set_description": description, "page_count_eighths": 8}
 
