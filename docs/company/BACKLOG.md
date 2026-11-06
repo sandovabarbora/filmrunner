@@ -2302,6 +2302,17 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - tapping confirm also asks for notification permission; the outcome is stated after confirming
   - failure case: refusing or failing notifications never blocks or undoes the confirmation, and it can be tried again
 
+## FR-223 · tech-lead · Make the API and the deploy safe for a 05:00 shoot morning
+- state: in-progress
+- gated: partial
+- note: code in two PRs; the founder merges, deploys and sets up the monitors (`docs/ops/pilot-day.md`). In progress until the founder has deployed and `/readyz` answers live.
+- why: a paused database, a slow weather service, a cold machine or a token in a log line must not decide a shoot morning, and a first-time reader must know what to do when one does
+- dod:
+  - `/readyz` answers 503 without details when the database is unreachable, and the Fly check stays on `/healthz`
+  - one machine stays running, and logs carry the route template, never a path, personal token, address or push endpoint
+  - a publish commits and releases its lock before the weather call, and the pool stays under the session pooler's limit
+  - `scripts/deploy_api.sh` refuses anything but a clean, green main outside 22:00-07:00 Prague, and proves the new commit serves
+  - failure case: a failing or slow weather call leaves the publish standing with a blank forecast
 
 ## FR-221 · frontend · What a crew member sees on first opening their link
 - state: in-progress

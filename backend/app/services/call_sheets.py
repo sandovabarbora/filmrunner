@@ -12,7 +12,7 @@ import string
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import text
+from sqlalchemy import or_, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -96,28 +96,53 @@ def _fill_computed_sunrise_sunset(db: Session, revision: CallSheetRevision, shoo
     revision.sunset = sset
 
 
-def _fill_weather_forecast(db: Session, revision: CallSheetRevision, shoot_date, schedule_items) -> None:
-    """FR-39: same idea as the sunrise/sunset auto-fill — a blank weather
-    line reads as "not checked", so publish fills it from the day's first
-    located scene with the same suggestion text the "Suggest weather"
-    button would give. Never overwrites a value the AD typed (checked by
-    the caller). `weather_suggestion` already has its own timeout and
-    returns None on any failure, so a down provider never fails or delays
-    the publish — the field is simply left blank."""
+def _weather_target(db: Session, revision: CallSheetRevision) -> tuple[float, float, date] | None:
     # Open-Meteo forecasts 16 days ahead and nothing in the past; outside that window the call can only
     # fail (FR-52 found a 400 per publish on a 30-day schedule import), so it is not made.
-    horizon = (shoot_date - date.today()).days
+    horizon = (revision.shoot_date - date.today()).days
     if horizon < 0 or horizon > 16:
-        return
-    ordered = sorted((i for i in schedule_items if i.location_id is not None), key=lambda i: i.order_index)
+        return None
+    ordered = sorted((i for i in revision.schedule_items if i.location_id is not None), key=lambda i: i.order_index)
     if not ordered:
-        return
+        return None
     location = db.get(Location, ordered[0].location_id)
     if location is None or location.geo_lat is None or location.geo_lng is None or location.production.sandbox_session is not None:
+        return None
+    return location.geo_lat, location.geo_lng, revision.shoot_date
+
+
+def fill_weather_after_commit(db: Session, revision: CallSheetRevision) -> None:
+    """FR-39: a blank weather line reads as "not checked", so it fills from the day's first located scene,
+    the same text the "Suggest weather" button gives, and never replaces a value someone wrote.
+
+    FR-223: call only after the publish is committed, so a slow provider holds neither the advisory lock nor
+    a pooled connection. The publish already stands at this point, so nothing here may turn it into an error.
+    """
+    if revision.weather_forecast:
         return
-    suggestion = weather.weather_suggestion(location.geo_lat, location.geo_lng, shoot_date)
-    if suggestion is not None:
-        revision.weather_forecast = suggestion
+    revision_id = revision.id
+    try:
+        target = _weather_target(db, revision)
+        db.commit()  # ends the read above: no connection stays checked out across the HTTP call
+        if target is None:
+            return
+        suggestion = weather.weather_suggestion(*target)
+        if suggestion is None:
+            return
+        db.execute(
+            update(CallSheetRevision)
+            .where(
+                CallSheetRevision.id == revision_id,
+                CallSheetRevision.is_current.is_(True),  # a revision superseded during the call keeps what the crew saw on it
+                or_(CallSheetRevision.weather_forecast.is_(None), CallSheetRevision.weather_forecast == ""),
+            )
+            .values(weather_forecast=suggestion)
+            .execution_options(synchronize_session=False)
+        )
+        db.commit()
+    except Exception as exc:  # noqa: BLE001 - see the docstring
+        db.rollback()
+        logger.warning("Weather fill failed for revision %s: %s", revision_id, exc.__class__.__name__)
 
 
 def publish_revision(
@@ -140,7 +165,8 @@ def publish_revision(
     publishing it would silently undo the change that won.
 
     `commit=False` leaves the transaction open for a change spanning several
-    days (app/services/replan.py); its advisory lock is held until that commit.
+    days (app/services/replan.py); its advisory lock is held until that commit,
+    and the caller then calls fill_weather_after_commit itself.
     """
     # By id, not by count or letter: publishing a planned day replaces its REV A with a new REV A.
     before_lock = call_sheet.current_revision.id if call_sheet.current_revision is not None else None
@@ -248,11 +274,10 @@ def publish_revision(
 
     if revision.sunrise is None and revision.sunset is None:
         _fill_computed_sunrise_sunset(db, revision, call_sheet.shoot_date, payload.schedule_items)
-    if not revision.weather_forecast:
-        _fill_weather_forecast(db, revision, call_sheet.shoot_date, payload.schedule_items)
 
     if commit:
         db.commit()
+        fill_weather_after_commit(db, revision)
     else:
         db.flush()
     db.refresh(revision)
@@ -278,10 +303,12 @@ def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, crea
     db.add(call_sheet)
     db.flush()
 
-    publish_revision(db, call_sheet, payload.initial_revision, created_by=created_by)
+    # Not committed yet: a draft must never be visible as published, not even while the forecast loads.
+    revision, _ = publish_revision(db, call_sheet, payload.initial_revision, created_by=created_by, commit=False)
     if payload.draft:
         call_sheet.status = CallSheetStatus.DRAFT
-        db.commit()
+    db.commit()
+    fill_weather_after_commit(db, revision)
     db.refresh(call_sheet)
     return call_sheet
 

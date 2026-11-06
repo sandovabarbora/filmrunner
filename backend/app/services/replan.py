@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, SceneMove
 from app.schemas.call_sheet import CallSheetRevisionCreate, CastCallEntryCreate, CrewCallEntryCreate, ScheduleItemCreate
-from app.services.call_sheets import publish_revision
+from app.services.call_sheets import fill_weather_after_commit, publish_revision
 
 
 class ReplanConflict(ValueError):
@@ -84,6 +84,11 @@ def _lock(db: Session, *sheets: CallSheet) -> None:
         db.expire(sheet)
 
 
+def _fill_weather(db: Session, *revisions: CallSheetRevision) -> None:
+    for revision in revisions:
+        fill_weather_after_commit(db, revision)
+
+
 def _first_location(items: list[ScheduleItemCreate]):
     return next((i.location_id for i in items if i.location_id is not None), None)
 
@@ -115,6 +120,7 @@ def move_scene(
     published = {sheet.id: _publish(db, sheet, payloads[sheet.id], created_by) for sheet in _ordered(source, target)}
     db.add(SceneMove(scene_number=scene_number, from_revision_id=published[source.id].id, to_revision_id=published[target.id].id))
     db.commit()
+    _fill_weather(db, *published.values())
     return [(sheet, published[sheet.id]) for sheet in (source, target) if sheet.status != CallSheetStatus.DRAFT]
 
 
@@ -139,6 +145,7 @@ def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_let
     sheet.shoot_date = shoot_date
     published = _publish(db, sheet, _payload(revision, new_date=True), created_by)
     db.commit()
+    _fill_weather(db, published)
     return [] if sheet.status == CallSheetStatus.DRAFT else [(sheet, published)]
 
 
@@ -155,4 +162,5 @@ def swap_days(db: Session, a: CallSheet, b: CallSheet, expected_letter: str, exp
     a.day_number, b.day_number = b.day_number, a.day_number
     published = {sheet.id: _publish(db, sheet, payloads[sheet.id], created_by) for sheet in _ordered(a, b)}
     db.commit()
+    _fill_weather(db, *published.values())
     return [(sheet, published[sheet.id]) for sheet in (a, b) if sheet.status != CallSheetStatus.DRAFT]

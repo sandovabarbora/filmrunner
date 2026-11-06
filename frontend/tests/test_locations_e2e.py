@@ -33,7 +33,7 @@ def _nominatim_reachable() -> bool:
         urllib.request.urlopen(
             urllib.request.Request(
                 "https://nominatim.openstreetmap.org/search?q=Prague&format=jsonv2&limit=1",
-                headers={"User-Agent": "FilmRunner/1.0 (contact: sandovabarb@gmail.com)"},
+                headers={"User-Agent": "FilmRunner/1.0 (+https://github.com/sandovabarbora/filmrunner)"},
             ),
             timeout=3,
         )
