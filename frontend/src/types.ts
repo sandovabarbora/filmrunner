@@ -230,6 +230,7 @@ export interface Member {
 export interface CallSheetCreated extends CallSheet {
   id: string;
   production_id: string;
+  cancelled_from_draft?: boolean;
 }
 
 export interface ContactCreate {

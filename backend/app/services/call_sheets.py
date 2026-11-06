@@ -192,7 +192,7 @@ def publish_revision(
 
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
     previous = call_sheet.current_revision
-    if call_sheet.status == CallSheetStatus.DRAFT and previous is not None:
+    if call_sheet.hidden_from_crew and previous is not None:
         # A draft day (FR-56) was never seen by anyone: its content is replaced, not revised, so the
         # first thing the crew sees is REV A. Copy-forward below still reads `previous` first.
         replaced = previous
@@ -248,6 +248,7 @@ def publish_revision(
         existing.is_current = False
     # A published revision means the day is on: this also puts a cancelled day back (FR-34), telling the crew via the revision push.
     call_sheet.status = CallSheetStatus.PUBLISHED
+    call_sheet.cancelled_from_draft = False
 
     revision = CallSheetRevision(
         call_sheet_id=call_sheet.id,
@@ -625,8 +626,8 @@ def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> li
     # Every revision since `before`, not only the last: someone catching up across several must still see each move.
     between = [r for r in after.call_sheet.revisions if before.revision_letter < r.revision_letter <= after.revision_letter]
     # A planned day does not exist for the crew: no link to it and no trace of it. To them the scene simply left or arrived.
-    moves_out = [m for r in between for m in r.moves_out if m.to_revision.call_sheet.status != CallSheetStatus.DRAFT]
-    moves_in = [m for r in between for m in r.moves_in if m.from_revision.call_sheet.status != CallSheetStatus.DRAFT]
+    moves_out = [m for r in between for m in r.moves_out if not m.to_revision.call_sheet.hidden_from_crew]
+    moves_in = [m for r in between for m in r.moves_in if not m.from_revision.call_sheet.hidden_from_crew]
     moved_out = {m.scene_number for m in moves_out}
     moved_in = {m.scene_number for m in moves_in}
     for move in moves_out:
@@ -816,8 +817,8 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
                    general_crew_call=s.current_revision.general_crew_call if s.current_revision else None,
                    first_location_name=first_location_name(s.current_revision))
         for s in sheets
+        if not s.hidden_from_crew
     ]
-    days = [d for d in days if d.status != "draft"]  # planned days (FR-56) do not exist for the crew yet
     live = [d for d in days if d.status != "cancelled"]
     upcoming = [d for d in live if d.shoot_date >= today]
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))

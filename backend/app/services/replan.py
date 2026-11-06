@@ -151,6 +151,28 @@ def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_let
     return [] if sheet.status == CallSheetStatus.DRAFT else [(sheet, published)]
 
 
+def cancel_day(db: Session, sheet: CallSheet) -> bool:
+    """The day is off. Returns whether the crew must be told: not on a repeat (a double tap holds the lock in turn), and not for a day they never saw."""
+    _lock(db, sheet)
+    tell_crew = sheet.status != CallSheetStatus.CANCELLED and sheet.status != CallSheetStatus.DRAFT
+    if sheet.status != CallSheetStatus.CANCELLED:
+        sheet.cancelled_from_draft = sheet.status == CallSheetStatus.DRAFT
+        sheet.status = CallSheetStatus.CANCELLED
+    db.commit()
+    return tell_crew
+
+
+def restore_day(db: Session, sheet: CallSheet) -> bool:
+    """Undo a cancellation, back to what the day was. Returns whether the crew must be told."""
+    _lock(db, sheet)
+    tell_crew = sheet.status == CallSheetStatus.CANCELLED and not sheet.cancelled_from_draft
+    if sheet.status == CallSheetStatus.CANCELLED:
+        sheet.status = CallSheetStatus.DRAFT if sheet.cancelled_from_draft else CallSheetStatus.PUBLISHED
+        sheet.cancelled_from_draft = False
+    db.commit()
+    return tell_crew
+
+
 def swap_days(db: Session, a: CallSheet, b: CallSheet, expected_letter: str, expected_other_letter: str, created_by: str | None) -> list[tuple[CallSheet, CallSheetRevision]]:
     """The two days trade places: each takes the other's date and day number, and keeps its own scenes and calls."""
     if a.id == b.id:

@@ -28,8 +28,8 @@ from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, ActualsUpdate, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
 from app.services.call_sheets import LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
-from app.services.notifications import notify_day_cancelled_in_background, notify_subscribers_in_background
-from app.services.replan import move_scene, reschedule_day, swap_days
+from app.services.notifications import notify_day_cancelled_in_background, notify_day_restored_in_background, notify_subscribers_in_background
+from app.services.replan import cancel_day, move_scene, reschedule_day, restore_day, swap_days
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,13 @@ def _get_call_sheet_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
         .first()
     )
     if call_sheet is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
+    return call_sheet
+
+
+def _crew_visible_or_404(db: Session, call_sheet_id: uuid.UUID) -> CallSheet:
+    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    if call_sheet.hidden_from_crew:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
     return call_sheet
 
@@ -109,7 +116,7 @@ def delete_draft_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_
     """FR-56: only a day nobody has seen (status draft) can be deleted; a published day is cancelled instead."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
-    if call_sheet.status != CallSheetStatus.DRAFT:
+    if not call_sheet.hidden_from_crew:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only an unpublished draft can be deleted; cancel a published day instead")
     for rev in list(call_sheet.revisions):
         for child in list(rev.schedule_items) + list(rev.cast_calls) + list(rev.crew_calls):
@@ -212,26 +219,29 @@ def cancel_call_sheet(
     db: Session = Depends(get_db),
     principal: Principal = Depends(require_principal),
 ) -> CallSheetRead:
-    """FR-34: the day is off. The sheet stays readable with a CANCELLED banner and every subscriber is told; nothing is deleted."""
+    """FR-34: the day is off. The sheet stays readable with a CANCELLED banner and every subscriber is told; nothing is deleted.
+    FR-222: a planned day the crew never saw is cancelled in silence, and a repeat tells nobody again."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
-    if call_sheet.status != CallSheetStatus.CANCELLED:
-        call_sheet.status = CallSheetStatus.CANCELLED
-        db.commit()
-        logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.kind)
-    background_tasks.add_task(notify_day_cancelled_in_background, call_sheet.id)
+    if cancel_day(db, call_sheet):
+        background_tasks.add_task(notify_day_cancelled_in_background, call_sheet.id)
+    logger.info("Call sheet %s (day %d) cancelled by %s", call_sheet.id, call_sheet.day_number, principal.kind)
     return _read_with_contacts(db, call_sheet_id)
 
 
 @router.post("/call-sheets/{call_sheet_id}/restore", response_model=CallSheetRead)
-def restore_call_sheet(call_sheet_id: uuid.UUID, db: Session = Depends(get_db), principal: Principal = Depends(require_principal)) -> CallSheetRead:
-    """Undo a cancellation; the AD then publishes a revision so the crew gets told the day is back on."""
+def restore_call_sheet(
+    call_sheet_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_principal),
+) -> CallSheetRead:
+    """Undo a cancellation. A published day goes back on and the crew is told; a planned day goes back to being planned."""
     call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
     require_on(db, principal, call_sheet.production_id, DAY_PUBLISH)
-    if call_sheet.status == CallSheetStatus.CANCELLED:
-        call_sheet.status = CallSheetStatus.PUBLISHED
-        db.commit()
-        logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.kind)
+    if restore_day(db, call_sheet):
+        background_tasks.add_task(notify_day_restored_in_background, call_sheet.id)
+    logger.info("Call sheet %s (day %d) restored by %s", call_sheet.id, call_sheet.day_number, principal.kind)
     return _read_with_contacts(db, call_sheet_id)
 
 
@@ -300,16 +310,13 @@ def get_call_sheet(
 @public_router.get("/public/call-sheets/{call_sheet_id}", response_model=CallSheetRead)
 def get_call_sheet_public(call_sheet_id: uuid.UUID, db: Session = Depends(get_db)) -> CallSheetRead:
     """Unauthenticated read, fetched by the offline-first PWA for caching. A draft day (FR-56) does not exist for the crew."""
-    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
-    if call_sheet.status == CallSheetStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
-    return _read_with_contacts(db, call_sheet_id, public=True)
+    return _read_with_contacts(db, _crew_visible_or_404(db, call_sheet_id).id, public=True)
 
 
 @public_router.get("/public/call-sheets/{call_sheet_id}/me/{token}", response_model=PersonalSheet)
 def get_personal_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends(get_db)) -> PersonalSheet:
     """Unauthenticated: the personal block for a crew member's link. 404 for an unknown token."""
-    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    call_sheet = _crew_visible_or_404(db, call_sheet_id)
     personal = build_personal(db, call_sheet, token)
     if personal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
@@ -329,7 +336,7 @@ def get_next_day_public(token: str, db: Session = Depends(get_db)) -> CrewNextDa
 @public_router.post("/public/call-sheets/{call_sheet_id}/seen/{token}", status_code=status.HTTP_204_NO_CONTENT)
 def mark_seen_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends(get_db)) -> None:
     """Unauthenticated: the personal link loaded this sheet live (FR-36). Idempotent; 404 for an unknown token."""
-    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
+    call_sheet = _crew_visible_or_404(db, call_sheet_id)
     if not record_seen(db, call_sheet, token):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member of this production")
 
@@ -337,9 +344,7 @@ def mark_seen_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depends
 @public_router.post("/public/call-sheets/{call_sheet_id}/confirm/{token}", response_model=ConfirmResult)
 def confirm_public(call_sheet_id: uuid.UUID, token: str, payload: ConfirmRequest, db: Session = Depends(get_db)) -> ConfirmResult:
     """Unauthenticated, like the rest of a personal link: "I know about this revision" (FR-202). 409 when a newer one replaced it."""
-    call_sheet = _get_call_sheet_or_404(db, call_sheet_id)
-    if call_sheet.status == CallSheetStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call sheet not found")
+    call_sheet = _crew_visible_or_404(db, call_sheet_id)
     # 409 means "a newer revision exists" and the sheet reloads; these two have nothing to do with that.
     if call_sheet.status == CallSheetStatus.CANCELLED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This day is cancelled; there is nothing to confirm")

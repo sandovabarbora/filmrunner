@@ -76,8 +76,8 @@ def test_only_a_draft_can_be_deleted(client: TestClient) -> None:
 def test_deleting_a_draft_cleans_up_crew_calls_cast_calls_and_seen_receipts(client: TestClient, db_session) -> None:
     """FR-146: the delete-draft route's manual child loop (schedule_items + cast_calls
     + crew_calls) had never been exercised with cast_calls/crew_calls actually present,
-    and a 'seen' receipt can land on a draft's revision too (the public seen endpoint
-    does not check draft status) — both must be gone, not dangling, after the delete."""
+    and a 'seen' receipt can sit on a draft's revision too (the public seen endpoint
+    allowed that until FR-222) — both must be gone, not dangling, after the delete."""
     pid, member = _setup(client)
     actor_cid = client.post("/api/v1/contacts", json={"name": "Jan Herec"}, headers=AUTH).json()["id"]
     actor = client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": actor_cid, "character_name": "X"}, headers=AUTH).json()
@@ -91,8 +91,8 @@ def test_deleting_a_draft_cleans_up_crew_calls_cast_calls_and_seen_receipts(clie
         },
     }, headers=AUTH).json()
     revision_id = draft["current_revision"]["id"]
-    # Reachable even on a draft: the public seen endpoint does not 404 a draft's token match.
-    assert client.post(f"/api/v1/public/call-sheets/{draft['id']}/seen/{member['personal_token']}").status_code == 204
+    db_session.add(RevisionView(revision_id=revision_id, crew_member_id=member["id"]))
+    db_session.commit()
     assert db_session.query(RevisionView).filter(RevisionView.revision_id == revision_id).count() == 1
     assert db_session.query(CrewCallEntry).filter(CrewCallEntry.revision_id == revision_id).count() == 1
     assert db_session.query(CastCallEntry).filter(CastCallEntry.revision_id == revision_id).count() == 1
