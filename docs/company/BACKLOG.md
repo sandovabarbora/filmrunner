@@ -19,7 +19,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
 - why: outreach named a sudden plan change as the biggest pain, but that sentence covers deciding, replanning, telling and paying, and FR-200 to FR-207 only address telling; the FR-3 script cannot tell them apart (`docs/research/plan-change-interviews.md`)
 - dod:
   - the guide's decision table and the founder's prediction are written down before the first conversation
-  - five or six conversations held across the guide's role slots, one notes file each under `docs/research/interviews/`
+  - five or six conversations held across the guide's role slots, one notes file each, kept outside this public repository
   - one paragraph in `DECISIONS.md` says which row of the table applied, with the split by role
   - failure case: if fewer than five people agree to talk, widen through referrals and the channels in `discovery-plan.md` rather than deciding on fewer; if no pattern appears, run three more in the thinnest role
 

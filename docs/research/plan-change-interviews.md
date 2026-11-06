@@ -139,7 +139,7 @@ stack works (Supabase restored, sign-in checked, FR-200 to FR-207 deployed).
 
 ## Notes template
 
-One file per interview, `docs/research/interviews/<yyyy-mm-dd>-<role>-<size-bucket>.md`.
+One file per interview, named `<yyyy-mm-dd>-<role>-<size-bucket>.md`. Keep these files outside this repository: they hold people and companies, and the repository is public. Only the anonymised conclusion goes in `DECISIONS.md`.
 Fill the table the same day; the "evidence" lines are quotes or numbers, not
 impressions.
 
