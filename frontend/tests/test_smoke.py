@@ -329,40 +329,6 @@ def test_privacy_page_reachable_from_sheet_landing_and_editor(page: Page, fronte
     assert page.locator("#privacyLink").get_attribute("href") == "privacy.html"
 
 
-def test_landing_flow_video_autoplays_respects_reduced_motion_and_hides_if_missing(page: Page, frontend_url: str) -> None:
-    """FR-54: the recorded flow video plays muted/looped by default, only offers manual
-    controls (no autoplay) when the visitor asked for reduced motion, and disappears
-    entirely rather than showing a broken player if the file is missing."""
-    page.goto(f"{frontend_url}/landing.html")
-    video = page.locator("video[data-flow-video]")
-    video.wait_for(timeout=10_000)
-    assert video.get_attribute("poster") == "landing/call-sheet-top.cs.jpg"  # FR-62: per-language shots
-    assert video.get_attribute("src") == "landing/landing-flow.webm"
-    page.wait_for_timeout(500)
-    assert video.evaluate("el => el.autoplay") is True
-    assert video.evaluate("el => el.muted") is True
-    assert video.evaluate("el => el.loop") is True
-    assert video.evaluate("el => el.paused") is False
-
-    ctx = page.context.browser.new_context(viewport=page.viewport_size, reduced_motion="reduce")
-    reduced = ctx.new_page()
-    reduced.goto(f"{frontend_url}/landing.html")
-    rv = reduced.locator("video[data-flow-video]")
-    rv.wait_for(timeout=10_000)
-    reduced.wait_for_timeout(500)
-    assert rv.evaluate("el => el.autoplay") is False
-    assert rv.evaluate("el => el.controls") is True
-    assert rv.evaluate("el => el.paused") is True
-    ctx.close()
-
-    ctx2 = page.context.browser.new_context(viewport=page.viewport_size)
-    missing = ctx2.new_page()
-    missing.route("**/landing/landing-flow.webm", lambda route: route.fulfill(status=404, body="not found"))
-    missing.goto(f"{frontend_url}/landing.html")
-    expect(missing.locator("section.flow")).to_have_count(0, timeout=10_000)
-    ctx2.close()
-
-
 def test_landing_shows_the_screenshots_of_the_visitor_s_language(browser, frontend_url: str) -> None:
     """FR-62: a Czech visitor sees the Czech shots (and Czech copy); English sees the English ones; a missing
     file hides only its own image, never the figure the other language still needs."""
@@ -375,7 +341,7 @@ def test_landing_shows_the_screenshots_of_the_visitor_s_language(browser, fronte
         expect(shown).to_have_count(3)
         for i in range(3):
             assert shown.nth(i).is_visible(), f"{locale}: shot {i} hidden"
-            assert f".{suffix}.jpg" in shown.nth(i).get_attribute("src")
+            assert f".{suffix}.webp" in shown.nth(i).get_attribute("src")
         assert not page.locator(f".shots img[lang='{other}']").first.is_visible()
         # every shot really loaded (naturalWidth 0 means a broken file)
         widths = page.eval_on_selector_all(f".shots img[lang='{suffix}']", "els => els.map(e => e.naturalWidth)")
@@ -395,7 +361,7 @@ def test_landing_survives_a_missing_screenshot(browser, frontend_url: str) -> No
     cdp = ctx.new_cdp_session(page)
     cdp.send("Network.enable")
     cdp.send("Network.setCacheDisabled", {"cacheDisabled": True})
-    page.route("**/landing/contacts.en.jpg", lambda route: route.abort())
+    page.route("**/landing/production.en.webp", lambda route: route.abort())
     page.goto(f"{frontend_url}/landing.html")
     page.wait_for_selector(".shots figure", timeout=10_000)
     expect(page.locator(".shots img[lang='en']")).to_have_count(2, timeout=5_000)

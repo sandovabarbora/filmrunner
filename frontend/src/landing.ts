@@ -36,8 +36,6 @@ for (const btn of document.querySelectorAll<HTMLButtonElement>(".langToggle butt
   btn.addEventListener("click", () => setLang(btn.dataset.lang as Lang));
 }
 
-// A screenshot that failed to render (missing file, e.g. FR-25's own
-// failure case) disappears instead of showing a broken-image icon.
 // FR-25/FR-62 failure case: a screenshot that failed to render (missing file) hides its own <img>,
 // so the visitor sees the other language's shot or nothing — never a broken-image icon.
 function dropShot(img: HTMLImageElement): void {
@@ -53,30 +51,4 @@ for (const img of document.querySelectorAll<HTMLImageElement>("[data-screenshot]
   // `complete` with no intrinsic width is exactly that case.
   if (img.complete && img.naturalWidth === 0) dropShot(img);
   else img.addEventListener("error", () => dropShot(img));
-}
-
-// FR-54: the recorded flow video autoplays only when the visitor hasn't
-// asked for reduced motion (it stays muted/looping either way so a manual
-// play never surprises with sound); a video that fails to load (missing
-// file) disappears rather than showing a broken player, same failure-case
-// convention as the screenshots above.
-const flowVideo = document.querySelector<HTMLVideoElement>("[data-flow-video]");
-if (flowVideo) {
-  const dropFlowVideo = () => {
-    flowVideo.closest("section.flow")?.remove();
-  };
-  // Same deferred-script race as the screenshots above: the video can already
-  // have failed before this listener exists.
-  if (flowVideo.error) dropFlowVideo();
-  else flowVideo.addEventListener("error", dropFlowVideo);
-  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  if (reducedMotion) {
-    flowVideo.controls = true;
-  } else {
-    flowVideo.autoplay = true;
-    flowVideo.play?.().catch(() => {
-      // Autoplay can be blocked (e.g. low-power mode); offer manual controls instead.
-      flowVideo.controls = true;
-    });
-  }
 }

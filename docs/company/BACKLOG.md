@@ -2271,6 +2271,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - five taps followed by a pause still open admin access
   - failure case: a tap on the name in the editor still only goes home, and fewer than five taps do nothing
 
+## FR-218 · frontend · The landing page in the product's own look
+- state: in-progress
+- gated: no
+- why: the public page still had the cream look the founder rejected, showed old screens and led with a claim the positioning has since replaced; the founder chose the composition where the page reads as a call sheet addressed to the visitor
+- dod:
+  - first screen: headline over the still, ruled strip of call, place and who has not confirmed, primary action opens the test environment; holds at 320 px in both languages
+  - product shots come from the test environment by script and say the data is invented; nothing claims a customer or a number
+  - the page says what the product does not do, including that no real shoot has used it yet
+  - failure case: a missing shot drops only itself, and reduced motion sees the final state with no animation
+
 ## FR-217 · frontend · Say what we want from a person, and turn on notifications with the same tap
 - state: done
 - gated: no
