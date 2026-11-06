@@ -66,7 +66,7 @@ def fetch_reference(on_date: date) -> tuple[str, str]:
         f"?lat={LAT}&lng={LNG}&date={on_date.isoformat()}&formatted=0"
     )
     req = urllib.request.Request(
-        url, headers={"User-Agent": "filmrunner-astronomy-check/1.0 (contact: sandovabarb@gmail.com)"}
+        url, headers={"User-Agent": "filmrunner-astronomy-check/1.0 (+https://github.com/sandovabarbora/filmrunner)"}
     )
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:

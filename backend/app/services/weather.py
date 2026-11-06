@@ -78,5 +78,6 @@ def weather_suggestion(lat: float, lng: float, on_date: date) -> str | None:
         description = _WEATHER_CODES.get(code, "forecast unavailable in detail")
         return f"{round(lo)}-{round(hi)}°C, {description}"
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-        logger.warning("Weather suggestion failed for (%s, %s) on %s: %s", lat, lng, on_date, exc)
+        # Only the class: coordinates show where a shoot is, and httpx puts them in the message through the URL.
+        logger.warning("Weather suggestion failed: %s", exc.__class__.__name__)
         return None
