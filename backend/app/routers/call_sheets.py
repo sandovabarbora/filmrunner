@@ -13,8 +13,6 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 import logging
 import uuid
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import ValidationError
@@ -22,12 +20,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import Principal, require_api_token, require_principal
 from app.authz import DAY_PUBLISH, PRODUCTION_READ, require_on
+from app import clock
 from app.database import get_db
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus
 from app.models.production import Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRead, CallSheetRevisionCreate, CallSheetRevisionRead
 from app.schemas.call_sheet import Actuals, ActualsUpdate, ConfirmRequest, ConfirmResult, MoveSceneRequest, RescheduleRequest, SwapDaysRequest, CrewNextDay, HistoryEntry, PersonalSheet, RevisionSummary, SeenReport
-from app.services.call_sheets import DuplicateDay, LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet_once, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
+from app.services.call_sheets import NIGHT_ENDS_AT_HOUR, DuplicateDay, LocationNotOnProduction, NotCalledToday, RevisionNoLongerCurrent, StaleRevision, record_confirmed, CastCallNotOnProduction, CrewCallNotOnProduction, HeadOfDayNotOnProduction, build_cast_calls, build_contacts, build_history, build_personal, build_personal_calls, build_opened_summary, build_seen_report, build_sheet_locations, create_call_sheet_once, next_day_for_token, previous_revision, publish_revision, record_seen, revision_changes
 from app.services.notifications import notify_day_cancelled_in_background, notify_day_restored_in_background, notify_subscribers_in_background
 from app.services.replan import ReplanConflict, cancel_day, move_scene, reschedule_day, restore_day, swap_days
 
@@ -339,9 +338,10 @@ def get_personal_public(call_sheet_id: uuid.UUID, token: str, db: Session = Depe
 
 @public_router.get("/public/crew/{token}/next", response_model=CrewNextDay)
 def get_next_day_public(token: str, db: Session = Depends(get_db)) -> CrewNextDay:
-    """Unauthenticated: where a crew member's stable link opens (FR-32). "Today" is Prague's today, where the pilot crews are."""
-    today = datetime.now(ZoneInfo("Europe/Prague")).date()
-    result = next_day_for_token(db, token, today)
+    """Unauthenticated: where a crew member's stable link opens (FR-32). "Today" is Prague's today, where the pilot crews are.
+    FR-222: until 06:00 a night shoot that started last evening is still the day."""
+    now = clock.prague_now()
+    result = next_day_for_token(db, token, now.date(), before_dawn=now.hour < NIGHT_ENDS_AT_HOUR)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This personal link does not belong to a crew member")
     return result

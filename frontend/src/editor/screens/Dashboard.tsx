@@ -3,7 +3,9 @@ import { StillBackground } from "../../CallSheetView";
 import { fmtDate } from "../../i18n";
 import type { Dashboard, DashboardItem } from "../../types";
 import { api, type Connection } from "../api";
+import { addDays } from "../drafts";
 import { LangContext, type L } from "../lang";
+import { pragueToday } from "../pragueDate";
 import { href } from "../route";
 
 /** Czech needs three forms; English text is the key, so each form has its own English wording. */
@@ -12,16 +14,10 @@ function byCount(n: number, one: string, few: string, many: string): string {
   return n >= 2 && n <= 4 ? few : many;
 }
 
-function localIso(d: Date): string {
-  const pad = (v: number) => String(v).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 function DayWhen({ date, call }: { date: string; call: string | null | undefined }) {
   const { lang, L } = useContext(LangContext);
-  const today = new Date();
-  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const day = date === localIso(today) ? L("today") : date === localIso(tomorrow) ? L("tomorrow") : fmtDate(lang, date);
+  const today = pragueToday();
+  const day = date === today ? L("today") : date === addDays(today, 1) ? L("tomorrow") : fmtDate(lang, date);
   return <span className="dash-when">{day}{call ? ` ${call}` : ""}</span>;
 }
 

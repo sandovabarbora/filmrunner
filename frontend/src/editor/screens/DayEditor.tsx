@@ -6,6 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, smsUrl, whatsappNumber, whatsappUrl } from "../shareText";
+import { pragueToday } from "../pragueDate";
 import { nextRevisionLetter } from "../revisions";
 import { firstBadTime } from "../times";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
@@ -94,11 +95,6 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     castCalls: Object.fromEntries((rev?.cast_calls ?? []).map((e) => [e.cast_member_id, { status: e.status_code, pickup: e.pickup_time ?? "", call: e.call_time ?? "", makeup: e.makeup_hair_time ?? "", onSet: e.on_set_time ?? "" }])),
   };
   return { ...draft, base: editableContent(draft) };
-}
-
-function localToday(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 export function DayEditor({ conn, productionId, productionName, callSheetId, canPublish, setNotice }: {
@@ -260,8 +256,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!draft) return;
     const locationId = firstLocationId();
     if (!locationId) { setNotice({ kind: "warn", text: L("Pick a location for the first scene to get a weather suggestion.") }); return; }
-    const today = new Date().toISOString().slice(0, 10);
-    if (isBeyondWeatherForecastHorizon(draft.shoot_date, today)) {
+    if (isBeyondWeatherForecastHorizon(draft.shoot_date, pragueToday())) {
       setNotice({ kind: "warn", text: L("Too far ahead to forecast yet — try again closer to the date.") });
       return;
     }
@@ -557,7 +552,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         )}
         {draft.callSheetId && movingDay && (
           <div className="replan" id="moveDayPanel">
-            <Field label={L("New date")} id="newDate" type="date" value={newDate} onChange={(v) => { setNewDate(v); setSwapId(""); }} disabled={busy} />
+            <Field label={L("New date")} id="newDate" type="date" min={pragueToday()} value={newDate} onChange={(v) => { setNewDate(v); setSwapId(""); }} disabled={busy} />
             {otherDays.length > 0 && (
               <label className="field" htmlFor="swapWith">
                 <span className="label">{L("Or swap with")}</span>
@@ -768,7 +763,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           </div>
         )}
         {published && dayStatus !== "cancelled" && (
-          <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= localToday() || Object.values(actuals).some(Boolean)}>
+          <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= pragueToday() || Object.values(actuals).some(Boolean)}>
             <summary>{L("Actual times")}</summary>
             <p className="hint">{L("After wrap: what really happened. For the production's records only; the crew's sheet does not change and nobody is notified.")}</p>
             <div className="actuals-grid">
@@ -919,14 +914,14 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   );
 }
 
-function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean; maxLength?: number }) {
-  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled, maxLength } = props;
+function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean; maxLength?: number; min?: string }) {
+  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled, maxLength, min } = props;
   return (
     <label className="field" htmlFor={id}>
       <span className="label">{label}</span>
       {textarea
         ? <textarea id={id} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} rows={3} disabled={disabled} />
-        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
+        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} min={min} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
     </label>
   );
 }

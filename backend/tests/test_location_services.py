@@ -9,7 +9,10 @@ from datetime import date
 import httpx
 import pytest
 
+from app.models.call_sheet import CallSheetRevision, ScheduleItem
+from app.models.production import Location, Production
 from app.services import geocoding, hospitals, weather
+from app.services.call_sheets import _weather_target
 
 
 class _FakeResponse:
@@ -141,3 +144,23 @@ def test_nearest_hospital_skips_unnamed_nodes(monkeypatch):
     elements = [{"lat": 50.076, "lon": 14.44, "tags": {}}]
     monkeypatch.setattr(hospitals.httpx, "post", lambda *a, **k: _FakeResponse({"elements": elements}))
     assert hospitals.nearest_hospital_suggestion(50.0755, 14.4378) is None
+
+
+@pytest.mark.parametrize("now,shoot_date,asked", [
+    ("2026-12-01T00:30", date(2026, 11, 30), False),  # already yesterday in Prague, though still today in UTC
+    ("2026-12-01T00:30", date(2026, 12, 1), True),
+    ("2026-12-01T00:30", date(2026, 12, 17), True),  # 16 days from Prague's today
+    ("2026-12-01T00:30", date(2026, 12, 18), False),
+])
+def test_the_weather_horizon_counts_from_prague_today(prague_clock, db_session, now, shoot_date, asked) -> None:
+    """FR-222: the check used the server's date, in UTC on Fly."""
+    production = Production(name="Weather")
+    db_session.add(production)
+    db_session.flush()
+    location = Location(production_id=production.id, name="Praha", geo_lat=50.0, geo_lng=14.0)
+    db_session.add(location)
+    db_session.flush()
+    revision = CallSheetRevision(shoot_date=shoot_date, schedule_items=[ScheduleItem(order_index=1, location_id=location.id)])
+    prague_clock(now)
+    assert (_weather_target(db_session, revision) is not None) is asked
+    db_session.expunge_all()

@@ -4,6 +4,7 @@
  * server only ever sees a publish.
  */
 
+import { pragueToday } from "./pragueDate";
 import type { CastStatus, ScheduleItemCreate } from "../types";
 
 export interface CastCallDraft { status: CastStatus; pickup: string; call: string; makeup: string; onSet: string }
@@ -55,7 +56,7 @@ export function emptyDraft(productionId: string, productionName: string | null):
     lastPublishedLetter: null,
     publishedAt: null,
     dirtySincePublish: false,
-    shoot_date: new Date().toISOString().slice(0, 10),
+    shoot_date: pragueToday(),
     day_number: 1,
     day_count: 1,
     unit_name: "Main Unit",
