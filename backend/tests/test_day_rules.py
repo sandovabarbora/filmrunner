@@ -1,6 +1,7 @@
 """FR-222: a day cannot move into the past, and the same day cannot exist twice."""
 
 import threading
+from datetime import date
 import uuid
 from unittest.mock import patch
 
@@ -206,3 +207,86 @@ def test_two_creates_at_once_make_one_day() -> None:
         cleanup.query(Production).filter(Production.id == production_id).delete()
         cleanup.commit()
         cleanup.close()
+
+
+# --- FR-222 review: restore and reschedule wait for a create of the same day. ----------------------
+
+def _race_against_a_create(change, prague_clock_value: str | None = None) -> tuple[object, int]:
+    """A create of Day 3 on 2031-03-03 is under way and not committed while `change` runs in another session.
+    Returns what the change did, and how many live Day 3s exist on that date afterwards."""
+    from datetime import date as day
+
+    from sqlalchemy import text as sql
+
+    from app.models.call_sheet import CallSheetStatus
+    from app.services.replan import ReplanConflict
+
+    setup = SessionLocal()
+    production = Production(name=f"Race {uuid.uuid4()}")
+    setup.add(production)
+    setup.flush()
+    cancelled = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 3), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.CANCELLED)
+    elsewhere = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 10), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.PUBLISHED)
+    setup.add_all([cancelled, elsewhere])
+    setup.flush()
+    for sheet in (cancelled, elsewhere):
+        setup.add(CallSheetRevision(call_sheet_id=sheet.id, revision_letter="A", is_current=True, general_crew_call="06:30", shoot_date=sheet.shoot_date))
+    setup.commit()
+    ids = {"production": production.id, "cancelled": cancelled.id, "elsewhere": elsewhere.id}
+    setup.close()
+
+    creator = SessionLocal()
+    creator.execute(sql("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": f"create-day:{ids['production']}:2031-03-03:3:Main Unit"})
+    creator.add(CallSheet(production_id=ids["production"], shoot_date=day(2031, 3, 3), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.PUBLISHED))
+    creator.flush()
+    outcome: dict = {}
+
+    def run() -> None:
+        db = SessionLocal()
+        try:
+            outcome["result"] = change(db, ids)
+        except ReplanConflict as exc:
+            db.rollback()
+            outcome["result"] = exc
+        finally:
+            db.close()
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    thread.join(0.5)
+    waited = thread.is_alive()
+    creator.commit()
+    creator.close()
+    thread.join(10)
+
+    check = SessionLocal()
+    try:
+        live = check.query(CallSheet).filter(CallSheet.production_id == ids["production"], CallSheet.shoot_date == day(2031, 3, 3),
+                                             CallSheet.day_number == 3, CallSheet.status != CallSheetStatus.CANCELLED).count()
+    finally:
+        for sheet in check.query(CallSheet).filter(CallSheet.production_id == ids["production"]).all():
+            for revision in list(sheet.revisions):
+                check.query(ScheduleItem).filter(ScheduleItem.revision_id == revision.id).delete()
+                check.query(CallSheetRevision).filter(CallSheetRevision.id == revision.id).delete()
+            check.delete(sheet)
+        check.flush()
+        check.query(Production).filter(Production.id == ids["production"]).delete()
+        check.commit()
+        check.close()
+    assert waited, "the change did not wait for the create holding the same day's lock"
+    return outcome["result"], live
+
+
+def test_restoring_waits_for_a_create_of_the_same_day_and_then_refuses() -> None:
+    from app.services.replan import ReplanConflict, restore_day
+
+    result, live = _race_against_a_create(lambda db, ids: restore_day(db, db.get(CallSheet, ids["cancelled"])))
+    assert isinstance(result, ReplanConflict) and live == 1
+
+
+def test_rescheduling_waits_for_a_create_on_the_target_date_and_then_refuses(prague_clock) -> None:
+    from app.services.replan import ReplanConflict, reschedule_day
+
+    prague_clock("2031-01-01T12:00")
+    result, live = _race_against_a_create(lambda db, ids: reschedule_day(db, db.get(CallSheet, ids["elsewhere"]), date(2031, 3, 3), "A", "ad"))
+    assert isinstance(result, ReplanConflict) and live == 1
