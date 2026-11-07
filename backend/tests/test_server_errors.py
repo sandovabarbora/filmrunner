@@ -2,6 +2,7 @@
 the page, the editor reads it as no connection, and the AD keeps retrying something that will never work."""
 
 import logging
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -95,3 +96,58 @@ def test_the_log_keeps_where_it_failed_and_what_caused_it_but_not_the_messages(c
         assert client.get("/api/v1/me/dashboard", headers={**AUTH, **ORIGIN}).status_code == 500
     assert "RuntimeError" in caplog.text and "ValueError" in caplog.text and "test_server_errors.py" in caplog.text
     assert "leaky internals" not in caplog.text and "777000111" not in caplog.text
+
+
+ROW_DETAIL = "DETAIL:  Key (personal_token)=(value-from-the-row) already exists."
+
+
+def test_a_failed_test_world_purge_logs_no_message(client: TestClient, monkeypatch, caplog) -> None:
+    """FR-222 review: this was logger.exception, so Postgres's DETAIL line reached the log."""
+    from sqlalchemy.exc import IntegrityError
+
+    from app.config import get_settings
+    from app.routers import sandbox as sandbox_router
+
+    def failing_purge(_db):
+        raise IntegrityError("DELETE FROM contacts", {}, Exception(ROW_DETAIL))
+
+    monkeypatch.setattr(get_settings(), "sandbox_enabled", True)
+    monkeypatch.setattr(sandbox_router, "purge_expired", failing_purge)
+    monkeypatch.setattr(sandbox_router.logger, "disabled", False)
+    sandbox_router._per_ip.reset()
+    with caplog.at_level(logging.ERROR, logger="app"):
+        r = client.post("/api/v1/public/sandbox/sessions", headers=ORIGIN)
+    assert r.status_code < 300, r.text
+    assert "Could not purge expired test worlds" in caplog.text and "IntegrityError" in caplog.text
+    assert "value-from-the-row" not in caplog.text and "already exists" not in caplog.text
+
+
+def test_a_client_that_hangs_up_mid_body_is_not_logged_as_an_unhandled_error(caplog) -> None:
+    """FastAPI turns ClientDisconnect while reading a body into a 400 before the route runs, so it never reaches
+    UnhandledErrorMiddleware. Checked on the real stack, so a FastAPI upgrade that changes this fails here."""
+    import asyncio
+
+    from app.main import app
+
+    async def run(path: str, content_type: bytes) -> list[dict]:
+        sent: list[dict] = []
+        parts = iter([{"type": "http.request", "body": b'{"name"', "more_body": True}])
+
+        async def receive():
+            return next(parts, {"type": "http.disconnect"})
+
+        async def send(message):
+            sent.append(message)
+
+        scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST", "scheme": "http", "path": path,
+                 "raw_path": path.encode(), "query_string": b"", "root_path": "", "client": ("192.0.2.1", 1), "server": ("testserver", 80),
+                 "headers": [(b"content-type", content_type), (b"authorization", AUTH["Authorization"].encode())]}
+        await app(scope, receive, send)
+        return sent
+
+    with caplog.at_level(logging.WARNING):
+        json_post = asyncio.run(run("/api/v1/productions", b"application/json"))
+        upload = asyncio.run(run(f"/api/v1/contacts/{uuid.uuid4()}/photo", b"multipart/form-data; boundary=x"))
+    statuses = [m["status"] for m in json_post + upload if m["type"] == "http.response.start"]
+    assert all(s < 500 for s in statuses), statuses
+    assert not [r for r in caplog.records if r.name == "app.errors"]

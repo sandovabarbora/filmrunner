@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
+from app.errors import where_it_failed
 from app.ratelimit import SlidingWindow, client_ip
 from app.schemas.sandbox import SandboxSession
 from app.services.sandbox import create_session, live_session_count, purge_expired
@@ -33,9 +34,9 @@ def start_session(request: Request, db: Session = Depends(get_db)) -> SandboxSes
     try:
         purge_expired(db)
         db.commit()
-    except SQLAlchemyError:
+    except SQLAlchemyError as exc:
         db.rollback()
-        logger.exception("Could not purge expired test worlds")
+        logger.error("Could not purge expired test worlds: %s", where_it_failed(exc))
     if live_session_count(db) >= MAX_LIVE_SESSIONS:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="The test environment is full; try again later")
     return create_session(db, datetime.now(ZoneInfo("Europe/Prague")).date())
