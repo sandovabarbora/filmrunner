@@ -1276,6 +1276,32 @@ def test_a_time_that_is_not_a_time_is_stopped_with_its_field_named(page: Page, f
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
 
 
+def test_a_czech_decimal_comma_is_a_time_and_a_bad_standing_call_is_named(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E comma {uuid.uuid4().hex[:6]}")
+    page.click("role=tab[name='Crew']")
+    page.wait_for_selector("#crewName", timeout=10_000)
+    page.fill("#crewName", "Eva Dvořáková")
+    page.fill("#crewDept", "AD")
+    page.fill("#crewPos", "1st AD")
+    page.fill("#crewCall", "brzy")
+    page.click("#addCrew")
+    expect(page.locator("#notice")).to_contain_text('"brzy" is not a time', timeout=10_000)
+    expect(page.locator("#crew", has_text="Eva Dvořáková")).to_have_count(0)
+    page.fill("#crewCall", "5,45")
+    page.click("#addCrew")
+    expect(page.locator("#crew")).to_contain_text("call 05:45", timeout=10_000)
+    page.click("role=tab[name='Days']")
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "6,30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.reload()
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    expect(page.locator("#general_crew_call")).to_have_value("06:30", timeout=10_000)
+
+
 def test_a_server_error_reads_as_a_server_error_and_keeps_the_draft(page: Page, frontend_url: str, api_url: str) -> None:
     """The other half of test_publish_without_network_keeps_the_draft: same draft, a different thing to tell the AD."""
     _connect(page, frontend_url, api_url)

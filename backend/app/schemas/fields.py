@@ -5,11 +5,11 @@ from typing import Annotated
 
 from pydantic import AfterValidator, Field
 
-_CLOCK = re.compile(r"([0-9]{1,2})[:.]([0-9]{2})")
+_CLOCK = re.compile(r"([0-9]{1,2})[:.,]([0-9]{2})")
 
 
 def _clock_time(value: str | None) -> str | None:
-    """The editor's time fields are free text, so "6:30" and the Czech "6.30" arrive as well as "06:30"; all become HH:MM."""
+    """The editor's time fields are free text, so "6:30" and the Czech "6.30" or "6,30" arrive as well as "06:30"; all become HH:MM."""
     if value is None or not value.strip():
         return None
     match = _CLOCK.fullmatch(value.strip())
