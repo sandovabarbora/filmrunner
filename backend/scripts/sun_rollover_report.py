@@ -1,8 +1,8 @@
 """How many stored sunrise and sunset values carry the FR-222 rounding bug.
 
 Until FR-222 a minute that rounded up to 60 became :00 without carrying the
-hour, so 07:00 was stored as 06:00. Revisions are immutable and are never
-rewritten, so those values stay until the AD publishes a corrected revision.
+hour, so 07:00 was stored as 06:00. Nothing rewrites a revision's sun times
+after it is published, so those values stay until the AD publishes a corrected one.
 
 A value counts as affected when it equals what the old arithmetic gives for the
 day's first located scene and differs from the correct time. A location moved on

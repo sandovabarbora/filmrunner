@@ -149,7 +149,12 @@ Append-only. Format: date, decision, why, revisit when.
 - Revisit when: test worlds put visible load on the database, or a real pilot makes a public write endpoint unwelcome; one setting turns it off.
 
 
-## 2026-11-06: a time field takes H:MM and H.MM and stores HH:MM
-- Decision: the API accepts "6:30", "6.30" and "06:30" and stores "06:30"; anything else is a 422, and empty means no value. Validation is on Create and Update models only, and values rebuilt from stored rows skip it.
-- Why: the editor's time fields are free text and people type all three, while "25:99" and "abc" must never reach a crew. Old stored values must keep reading back and must not block an unrelated change.
-- Revisit when: production data shows another form people rely on; `TBA` is the likely one, and it is refused today.
+## 2026-11-06: a time field takes H:MM, H.MM and H,MM and stores HH:MM
+- Decision: the API and the editor accept "6:30", "6.30", "6,30" and "06:30" and store "06:30"; anything else is a 422, and empty means no value. There is no compatibility layer for stored values the rule refuses: the pilot has not started, and `cd backend && python -m scripts.time_format_report` lists them, read-only, by id. Validation is on Create and Update models only, and values rebuilt from stored rows skip it.
+- Why: the editor's time fields are free text and people type all of these, the comma being the Czech decimal habit, while "25:99" and "abc" must never reach a crew. Old stored values must keep reading back and must not block an unrelated change.
+- Revisit when: production data shows another form people rely on. `TBD`, and 24:00 and later for a call after midnight, are refused today; the founder decides those.
+
+## 2026-11-06: removing a crew member clears them as head of day on old revisions
+- Decision: when a person who is head of day on no current revision is removed, the revisions they headed before are set to no head of day, so the history can read "(none) → Karel". Accepted for the pilot.
+- Why: the foreign key has no ON DELETE, so the delete is refused otherwise; their personal calls on those revisions already go with them. It does mean revisions are not strictly immutable: this, and the cascades, are the exceptions.
+- Revisit when: the history must keep names after removals; then store the name on the revision instead of a reference.
