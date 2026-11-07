@@ -2397,3 +2397,12 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - a published day with nobody on it needs attention on the dashboard, in both languages
   - today is Prague's date in the API and the editor; a shoot called at noon or later stays current until 06:00
   - failure case: a cancelled day cannot be restored on top of its replacement, and someone called at 05:30 today is not sent to yesterday's finished sheet
+
+## FR-224 · tech-lead · Resend a cancellation to the people it did not reach
+- state: ready
+- gated: no
+- why: a repeat cancel deliberately tells nobody (FR-222), so a person whose push failed the first time never learns the day is off unless the AD calls them
+- dod:
+  - the AD can resend "CANCELLED" to the people whose delivery failed or who have not opened it, from the day screen, alongside the planned reminders
+  - nobody who already received it gets it twice
+  - failure case: a resend that fails again shows those names to the AD as not told
