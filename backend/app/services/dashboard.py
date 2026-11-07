@@ -10,6 +10,7 @@ from app.services.call_sheets import build_seen_report
 
 # Today, tomorrow and the day after: past that, nothing needs chasing yet.
 WATCH_DAYS = 2
+_KIND_ORDER = {"unconfirmed": 0, "no_crew": 1, "unpublished": 2}
 
 
 def _waiting_item(production: Production, sheet: CallSheet, today: date, db: Session) -> DashboardItem | None:
@@ -17,8 +18,15 @@ def _waiting_item(production: Production, sheet: CallSheet, today: date, db: Ses
     if report is None:
         return None
     everyone = report.seen + report.not_seen
+    if not everyone:
+        # Nobody is told about this day. "All confirmed" would be true of the empty list, and false comfort.
+        return DashboardItem(
+            kind="no_crew", production_id=production.id, production_name=production.name, call_sheet_id=sheet.id,
+            shoot_date=sheet.shoot_date, day_number=sheet.day_number, revision_letter=report.revision_letter,
+            crew_call=sheet.current_revision.general_crew_call,
+        )
     confirmed = sum(1 for e in everyone if e.confirmed_at is not None)
-    if not everyone or confirmed == len(everyone):
+    if confirmed == len(everyone):
         return None
     # A first revision two days out is routine, not a problem: people confirm it as the day comes close.
     if report.revision_letter == "A" and sheet.shoot_date > today + timedelta(days=1):
@@ -67,7 +75,7 @@ def build_dashboard(db: Session, productions: list[Production], today: date) -> 
                 next_call_sheet_id=next_day.id if next_day else None, next_shoot_date=next_day.shoot_date if next_day else None,
                 crew_call=next_day.current_revision.general_crew_call if next_day and next_day.current_revision else None,
             ))
-    # Whatever happens soonest comes first; on the same day, people who do not know yet outrank a sheet not yet out.
-    items.sort(key=lambda i: (i.shoot_date, i.kind != "unconfirmed", i.production_name.lower()))
+    # Whatever happens soonest comes first; on the same day, people who do not know yet outrank a day with nobody on it, then a sheet not yet out.
+    items.sort(key=lambda i: (i.shoot_date, _KIND_ORDER[i.kind], i.production_name.lower()))
     on_track.sort(key=lambda p: (p.next_shoot_date is None, p.next_shoot_date or date.max, p.production_name.lower()))
     return Dashboard(items=items, on_track=on_track)

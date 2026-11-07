@@ -73,7 +73,7 @@ For the assistant director or coordinator who writes the call sheet. Button name
 
 - The day screen says **REV A opened by 12 of 40** and who has not; **nudge** opens WhatsApp with their link.
 - A change: edit, **Publish REV B**; the sheet says "REV B replaces A, issued 06:12" and what changed; push to those who enabled it.
-- Day off: **Cancel this day…**; restore with **Restore the day** plus a revision.
+- Day off: **Cancel this day…**; **Restore the day** puts it back on and tells the crew.
 - Tomorrow: **Start Day 2 from this one**.
 - After wrap: **Actual times** → Save; **Export actual times (CSV)** on the days list.
 - Paper: **PDF** on the day screen, with a QR code back to the live sheet.

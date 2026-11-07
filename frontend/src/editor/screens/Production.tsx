@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
 import { firstBadTime } from "../times";
+import { pragueToday } from "../pragueDate";
 import { clearPendingCrewEdit, contactChanges, diffCrewEditFields, loadAllPendingCrewEdits, mergeCrewEdit, savePendingCrewEdit, type CrewEditableFields, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
@@ -150,7 +151,7 @@ function Days({ conn, productionId, canPublish, setNotice }: { conn: Connection;
       }
       const castByName = new Map(cast.map((a) => [a.contact.name.toLowerCase(), a.id]));
       const maxDay = Math.max(0, ...(days ?? []).map((d) => d.day_number), ...importable.map((d) => d.day_number ?? 0));
-      const today = new Date().toISOString().slice(0, 10);
+      const today = pragueToday();
       let nextNumber = maxDay;
       let created = 0;
       const unmatchedCast = new Set<string>();

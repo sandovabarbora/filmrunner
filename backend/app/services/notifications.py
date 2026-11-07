@@ -72,6 +72,16 @@ def notify_day_cancelled(db: Session, call_sheet: CallSheet) -> NotificationSumm
     return _notify(db, call_sheet, revision, title, lambda _member: body)
 
 
+def notify_day_restored(db: Session, call_sheet: CallSheet) -> NotificationSummary:
+    """FR-222: whoever was told the day is off has to be told it is on again, without waiting for a new revision."""
+    revision = call_sheet.current_revision
+    if revision is None:
+        return NotificationSummary()
+    title = f"Day {call_sheet.day_number}: BACK ON"
+    body = f"Day {call_sheet.day_number} ({call_sheet.shoot_date.isoformat()}) is back on. Open the sheet for details."
+    return _notify(db, call_sheet, revision, title, lambda _member: body)
+
+
 def notify_subscribers(db: Session, call_sheet: CallSheet, revision: CallSheetRevision) -> NotificationSummary:
     """Push the new revision to every subscribed crew member it concerns, each with their own line."""
     return _notify(db, call_sheet, revision, _revision_title(call_sheet, revision), lambda member: _revision_body(call_sheet, revision, member))
@@ -179,5 +189,16 @@ def notify_day_cancelled_in_background(call_sheet_id: uuid.UUID) -> None:
         if call_sheet is None:
             return
         notify_day_cancelled(db, call_sheet)
+    finally:
+        db.close()
+
+
+def notify_day_restored_in_background(call_sheet_id: uuid.UUID) -> None:
+    db = SessionLocal()
+    try:
+        call_sheet = db.get(CallSheet, call_sheet_id)
+        if call_sheet is None:
+            return
+        notify_day_restored(db, call_sheet)
     finally:
         db.close()

@@ -167,9 +167,12 @@ const NEXT_DB = "filmrunner-next";
  * FR-32: which day a person's stable link opens. Network first; the last
  * answer is kept per token so the link still opens the right cached sheet
  * with no signal. "invalid" only when the server itself says the token is
- * unknown — never on a network failure.
+ * unknown — never on a network failure. `live` is false for the saved answer:
+ * an open page may switch days on a live answer only (FR-222).
  */
-export async function loadNextDay(apiBase: string, token: string): Promise<CrewNextDay | "invalid" | null> {
+export type NextDayAnswer = { live: boolean; data: CrewNextDay };
+
+export async function loadNextDay(apiBase: string, token: string): Promise<NextDayAnswer | "invalid" | null> {
   const key = `${NEXT_DB}:${token}`;
   const saved = readStored<CrewNextDay>(key);
   try {
@@ -181,9 +184,9 @@ export async function loadNextDay(apiBase: string, token: string): Promise<CrewN
     if (!resp.ok) throw new Error(`API returned ${resp.status}`);
     const data = (await resp.json()) as CrewNextDay;
     store(key, data);
-    return data;
+    return { live: true, data };
   } catch {
-    return saved;
+    return saved ? { live: false, data: saved } : null;
   }
 }
 

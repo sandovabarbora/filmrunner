@@ -311,6 +311,7 @@ class CallSheetRead(BaseModel):
     day_count: int
     unit_name: str
     status: CallSheetStatus
+    cancelled_from_draft: bool = False
     created_at: UtcDatetime
     production_title: str | None = None  # the sheet's headline; the unit alone says nothing to a freelancer on three shoots
     current_revision: CallSheetRevisionRead | None = None

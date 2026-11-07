@@ -11,7 +11,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String, UniqueConstraint, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -69,6 +69,8 @@ class CallSheet(Base):
         default=CallSheetStatus.DRAFT,
         nullable=False,
     )
+    # FR-222: status "cancelled" alone loses whether the crew ever saw the day, which decides what restoring it does.
+    cancelled_from_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     # FR-65: what actually happened, entered after the day. Not part of any revision: no push, no REV letter,
     # never on the crew's sheet — it is the production's number, not the crew's instruction.
@@ -82,6 +84,11 @@ class CallSheet(Base):
     revisions: Mapped[list["CallSheetRevision"]] = relationship(
         back_populates="call_sheet", order_by="CallSheetRevision.revision_letter"
     )
+
+    @property
+    def hidden_from_crew(self) -> bool:
+        """A planned day does not exist for the crew (FR-56), and cancelling it does not make it exist."""
+        return self.status == CallSheetStatus.DRAFT or self.cancelled_from_draft
 
     @property
     def current_revision(self) -> "CallSheetRevision | None":

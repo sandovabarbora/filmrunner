@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class DashboardItem(BaseModel):
-    kind: Literal["unconfirmed", "unpublished"]
+    kind: Literal["unconfirmed", "no_crew", "unpublished"]
     production_id: uuid.UUID
     production_name: str
     call_sheet_id: uuid.UUID

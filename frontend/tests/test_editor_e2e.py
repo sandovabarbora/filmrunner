@@ -1338,3 +1338,97 @@ def test_after_rev_z_publishing_is_off_and_says_why(page: Page, frontend_url: st
     expect(page.locator("#publish")).to_be_disabled()
     expect(page.locator("#publish")).not_to_contain_text("[")
     expect(page.locator("#publish")).to_contain_text("No revisions left")
+
+
+def test_a_new_day_starts_on_pragues_date_in_a_browser_elsewhere(browser, frontend_url: str, api_url: str) -> None:
+    context = browser.new_context(timezone_id="America/New_York")
+    page = context.new_page()
+    page.clock.set_fixed_time("2026-11-09T23:30:00Z")  # 18:30 on the 9th in New York, 00:30 on the 10th in Prague
+    _connect(page, frontend_url, api_url)
+    _create_production(page, f"E2E prague date {uuid.uuid4().hex[:6]}")
+    page.click("#newDay")
+    page.wait_for_selector("#shoot_date", timeout=10_000)
+    assert page.locator("#shoot_date").input_value() == "2026-11-10"
+    context.close()
+
+
+def test_a_published_day_with_nobody_on_it_is_on_the_dashboard(page: Page, frontend_url: str, api_url: str) -> None:
+    _connect(page, frontend_url, api_url)
+    name = f"E2E empty {uuid.uuid4().hex[:6]}"
+    _create_production(page, name)
+    page.click("#newDay")
+    page.wait_for_selector("#general_crew_call", timeout=10_000)
+    page.fill("#general_crew_call", "06:30")
+    page.click("#publish")
+    expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
+    page.goto(f"{frontend_url}/editor.html")
+    item = page.locator("#dashItems .dash-item", has_text=name)
+    expect(item).to_contain_text("Nobody is on this call sheet", timeout=10_000)
+    expect(item).to_contain_text("today 06:30")
+
+
+def _night_and_morning(page: Page, api_url: str) -> tuple[str, str, str]:
+    """A crew member, a night (Day 1, call 18:00) and the next day (Day 2, call 07:15)."""
+    pid = _api_post(page, api_url, "/productions", {"name": f"E2E night {uuid.uuid4().hex[:6]}"})["id"]
+    contact = _api_post(page, api_url, "/contacts", {"name": "Petr Malý"})["id"]
+    token = _api_post(page, api_url, f"/productions/{pid}/crew-members", {"contact_id": contact, "department": "Grip", "position": "Key grip"})["personal_token"]
+    night = _api_post(page, api_url, f"/productions/{pid}/call-sheets", {"shoot_date": "2099-01-05", "day_number": 1, "day_count": 2, "initial_revision": {"general_crew_call": "18:00"}})["id"]
+    morning = _api_post(page, api_url, f"/productions/{pid}/call-sheets", {"shoot_date": "2099-01-06", "day_number": 2, "day_count": 2, "initial_revision": {"general_crew_call": "07:15"}})["id"]
+    return token, night, morning
+
+
+def _server_picks(page: Page, api_url: str, choice: dict) -> None:
+    """The real /next answer with the chosen day swapped in: the server's own 06:00 rule is tested in the backend,
+    and this page's clock cannot move the API's."""
+    def handle(route):
+        if choice.get("offline"):
+            route.abort()
+            return
+        response = route.fetch()
+        body = response.json()
+        body["call_sheet_id"] = choice["id"]
+        route.fulfill(response=response, json=body)
+    page.route(f"{api_url}/api/v1/public/crew/*/next", handle)
+
+
+def test_an_open_stable_link_moves_on_when_the_night_ends(page: Page, frontend_url: str, api_url: str) -> None:
+    token, night, morning = _night_and_morning(page, api_url)
+    choice = {"id": night}
+    _server_picks(page, api_url, choice)
+    page.clock.install(time="2099-01-06T05:58:00+01:00")
+    page.goto(f"{frontend_url}/?api={api_url}&me={token}")
+    expect(page.locator("#yourCall")).to_have_text("18:00", timeout=15_000)
+
+    choice["offline"] = True  # 06:00 passes with no signal: the saved answer must not move anyone
+    page.clock.run_for(61_000)
+    page.wait_for_timeout(500)
+    expect(page.locator("#yourCall")).to_have_text("18:00")
+
+    choice.update(offline=False, id=morning)  # signal again, and the server has moved on
+    page.clock.run_for(61_000)
+    expect(page.locator("#yourCall")).to_have_text("07:15", timeout=15_000)
+
+
+def test_a_day_link_with_a_token_stays_on_its_day(page: Page, frontend_url: str, api_url: str) -> None:
+    token, night, morning = _night_and_morning(page, api_url)
+    _server_picks(page, api_url, {"id": morning})
+    page.clock.install(time="2099-01-06T05:58:00+01:00")
+    page.goto(f"{frontend_url}/?api={api_url}&sheet={night}&me={token}")
+    expect(page.locator("#yourCall")).to_have_text("18:00", timeout=15_000)
+    page.clock.run_for(130_000)
+    page.wait_for_timeout(500)
+    expect(page.locator("#yourCall")).to_have_text("18:00")
+
+
+def test_a_stable_link_does_not_pull_back_someone_who_went_to_another_day(page: Page, frontend_url: str, api_url: str) -> None:
+    """The server's choice did not change, so a later poll leaves the person where they went."""
+    token, night, morning = _night_and_morning(page, api_url)
+    _server_picks(page, api_url, {"id": morning})
+    page.clock.install(time="2099-01-06T07:00:00+01:00")
+    page.goto(f"{frontend_url}/?api={api_url}&me={token}")
+    expect(page.locator("#yourCall")).to_have_text("07:15", timeout=15_000)
+    page.locator("#otherDays a.day", has_text="Day 1").click()
+    expect(page.locator("#yourCall")).to_have_text("18:00", timeout=15_000)
+    page.clock.run_for(130_000)
+    page.wait_for_timeout(500)
+    expect(page.locator("#yourCall")).to_have_text("18:00")
