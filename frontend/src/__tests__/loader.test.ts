@@ -159,7 +159,15 @@ describe("loadNextDay", () => {
     vi.stubGlobal("fetch", answer(day));
     await loadNextDay("http://a", "tok");
     vi.stubGlobal("fetch", answer({}, 500));
-    expect(await loadNextDay("http://a", "tok")).toEqual(day);
+    expect(await loadNextDay("http://a", "tok")).toEqual({ live: false, data: day });
+  });
+
+  it("says whether the answer is live, so a saved one never moves an open page to another day", async () => {
+    const day = { production_name: "P", call_sheet_id: "id", days: [] };
+    vi.stubGlobal("fetch", answer(day));
+    expect(await loadNextDay("http://a", "tok")).toEqual({ live: true, data: day });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
+    expect(await loadNextDay("http://a", "tok")).toEqual({ live: false, data: day });
   });
 });
 
