@@ -24,11 +24,29 @@ describe("request errors", () => {
   it("turns a 422's list of problems into something readable", async () => {
     respondWith(422, { detail: [
       { loc: ["body", "initial_revision", "general_crew_call"], msg: "Value error, must be a time from 00:00 to 23:59, like 06:30", type: "value_error" },
-      { loc: ["body", "unit_name"], msg: "String should have at most 100 characters", type: "string_too_long" },
+      { loc: ["body", "unit_name"], msg: "String should have at most 100 characters", type: "string_too_long", ctx: { max_length: 100 } },
     ] });
+    setCurrentLang("en");
     const err = await failure();
     expect(err.status).toBe(422);
-    expect(err.message).toBe("general_crew_call: must be a time from 00:00 to 23:59, like 06:30; unit_name: String should have at most 100 characters");
+    expect(err.message).toBe("Crew call: write a time from 00:00 to 23:59, like 06:30.; Unit: too long, at most 100 characters.");
+  });
+
+  it("says it in Czech when the editor is in Czech, naming the field in words", async () => {
+    respondWith(422, { detail: [
+      { loc: ["body", "initial_revision", "crew_calls", 0, "pickup_time"], msg: "Value error, must be a time from 00:00 to 23:59, like 06:30", type: "value_error" },
+      { loc: ["body", "initial_revision", "safety_notes"], msg: "String should have at most 2000 characters", type: "string_too_long", ctx: { max_length: 2000 } },
+      { loc: ["body", "name"], msg: "Value error, must not contain a NUL byte", type: "value_error" },
+    ] });
+    setCurrentLang("cs");
+    expect((await failure()).message).toBe("Vyzvednutí: napiš čas od 00:00 do 23:59, třeba 06:30.; Bezpečnost: příliš dlouhé, nejvýš 2000 znaků.; Jméno: obsahuje znak, který nejde uložit.");
+    setCurrentLang("en");
+  });
+
+  it("keeps an unknown field and message as the server wrote them", async () => {
+    respondWith(422, { detail: [{ loc: ["body", "role"], msg: "Input should be 'viewer'", type: "literal_error" }] });
+    setCurrentLang("en");
+    expect((await failure()).message).toBe("role: Input should be 'viewer'");
   });
 
   it("keeps a plain detail as it is", async () => {

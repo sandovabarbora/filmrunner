@@ -5,6 +5,8 @@
 
 import type { Dashboard, CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, HistoryEntry, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes, CallSheetPdfExtraction, Actuals } from "../types";
 
+import { currentLang, translate } from "./lang";
+
 export interface Connection {
   apiBase: string;
   token: string;
@@ -16,13 +18,35 @@ export class ApiError extends Error {
   }
 }
 
+/** The words the editor uses for a field, so a 422 names what the AD sees rather than the API's name for it. */
+const FIELD_LABELS: Record<string, string> = {
+  general_crew_call: "Crew call", shooting_call: "Shooting call", sunrise: "Sunrise", sunset: "Sunset", weather_forecast: "Weather",
+  safety_notes: "Safety notes", unit_name: "Unit", scene_number: "Scene", set_description: "Set", note: "Note",
+  call_time: "Call time", pickup_time: "Pickup time", makeup_hair_time: "Make-up time", on_set_time: "On set time",
+  first_shot: "First shot", lunch_out: "Lunch out", lunch_in: "Lunch in", wrap: "Wrap",
+  standard_call_time: "Usual call", standard_pickup_time: "Usual pickup", name: "Name", phone: "Phone", email: "Email",
+  address: "Address", parking_notes: "Parking notes", nearest_hospital: "Nearest hospital", department: "Department",
+  position: "Position", character_name: "Character",
+};
+
+type Problem = { loc?: unknown[]; msg?: string; type?: string; ctx?: { max_length?: number } };
+
+function problemText(problem: Problem): string {
+  const T = (text: string, vars?: Record<string, string | number>) => translate(currentLang(), text, vars);
+  const key = String(problem.loc?.[problem.loc.length - 1] ?? "");
+  const field = FIELD_LABELS[key] ? T(FIELD_LABELS[key]) : key;
+  const msg = problem.msg ?? "";
+  if (msg.includes("must be a time")) return T("{field}: write a time from 00:00 to 23:59, like 06:30.", { field });
+  if (problem.type === "string_too_long") return T("{field}: too long, at most {max} characters.", { field, max: problem.ctx?.max_length ?? "?" });
+  if (msg.includes("NUL byte")) return T("{field}: contains a character that cannot be saved.", { field });
+  return `${field}: ${msg.replace(/^Value error, /, "")}`;
+}
+
 /** FastAPI's 422 detail is a list of { loc, msg }; shown raw it would read "HTTP 422". */
 function readableDetail(detail: unknown, fallback: string): string {
   if (typeof detail === "string") return detail;
   if (!Array.isArray(detail) || detail.length === 0) return fallback;
-  return detail
-    .map((problem: { loc?: unknown[]; msg?: string }) => `${String(problem.loc?.[problem.loc.length - 1] ?? "")}: ${(problem.msg ?? "").replace(/^Value error, /, "")}`)
-    .join("; ");
+  return (detail as Problem[]).map(problemText).join("; ");
 }
 
 async function detailFromResponse(resp: Response, fallback: string): Promise<string> {

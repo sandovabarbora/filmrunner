@@ -3,10 +3,10 @@ import { firstBadTime, isClockTime } from "../times";
 
 describe("isClockTime", () => {
   it("accepts what the server accepts", () => {
-    for (const ok of ["06:30", "00:00", "23:59", "6:30", "6.30", " 06:30 ", "", "   "]) expect(isClockTime(ok), ok).toBe(true);
+    for (const ok of ["06:30", "00:00", "23:59", "6:30", "6.30", "6,30", "06,30", " 06:30 ", "", "   "]) expect(isClockTime(ok), ok).toBe(true);
   });
   it("refuses what the server refuses", () => {
-    for (const bad of ["25:99", "abc", "24:00", "12:60", "6", "06:3", "06:30:00", "06:30 pm"]) expect(isClockTime(bad), bad).toBe(false);
+    for (const bad of ["25:99", "abc", "24:00", "24,00", "12:60", "6", "06:3", "06:30:00", "06:30 pm", "TBD", "6;30"]) expect(isClockTime(bad), bad).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 /** The same rule as the server's ClockTime (backend/app/schemas/fields.py), checked first so the AD is told which field and why. */
-const CLOCK = /^([0-9]{1,2})[:.]([0-9]{2})$/;
+const CLOCK = /^([0-9]{1,2})[:.,]([0-9]{2})$/;
 
 export function isClockTime(value: string): boolean {
   const typed = value.trim();

@@ -8,13 +8,14 @@ import uuid
 from pydantic import BaseModel, ConfigDict
 
 from app.models.production import ProductionStatus
-from app.schemas.fields import ClockTime
+from app.schemas.fields import ClockTime, optional_text, text
 
 
+# Lengths match the columns, so the *Read models that extend these still read every stored row back.
 class ContactCreate(BaseModel):
-    name: str
-    phone: str | None = None
-    email: str | None = None
+    name: text(255)
+    phone: optional_text(50) = None
+    email: optional_text(255) = None
 
 
 class ContactRead(ContactCreate):
@@ -34,18 +35,18 @@ class ContactMatch(ContactRead):
 
 
 class ProductionCreate(BaseModel):
-    name: str
-    working_title: str | None = None
-    production_company: str | None = None
+    name: text(255)
+    working_title: optional_text(255) = None
+    production_company: optional_text(255) = None
     status: ProductionStatus = ProductionStatus.PREP
 
 
 class ProductionUpdate(BaseModel):
     """Rename or move the production along its lifecycle (FR-34)."""
 
-    name: str | None = None
-    working_title: str | None = None
-    production_company: str | None = None
+    name: optional_text(255) = None
+    working_title: optional_text(255) = None
+    production_company: optional_text(255) = None
     status: ProductionStatus | None = None
 
 
@@ -57,19 +58,19 @@ class ProductionRead(ProductionCreate):
 
 
 class LocationCreate(BaseModel):
-    name: str
-    address: str | None = None
-    parking_notes: str | None = None
-    nearest_hospital: str | None = None
+    name: text(255)
+    address: optional_text(500) = None
+    parking_notes: optional_text(1000) = None
+    nearest_hospital: optional_text(500) = None
     geo_lat: float | None = None
     geo_lng: float | None = None
 
 
 class LocationUpdate(BaseModel):
-    name: str | None = None
-    address: str | None = None
-    parking_notes: str | None = None
-    nearest_hospital: str | None = None
+    name: optional_text(255) = None
+    address: optional_text(500) = None
+    parking_notes: optional_text(1000) = None
+    nearest_hospital: optional_text(500) = None
 
 
 class LocationRead(LocationCreate):
@@ -95,8 +96,8 @@ class SunTimes(BaseModel):
 
 class CrewMemberCreate(BaseModel):
     contact_id: uuid.UUID
-    department: str
-    position: str
+    department: text(100)
+    position: text(100)
     standard_call_time: ClockTime = None
     is_head_of_department: bool = False
 
@@ -118,7 +119,7 @@ class CrewMemberRead(BaseModel):
 
 class CastMemberCreate(BaseModel):
     contact_id: uuid.UUID
-    character_name: str
+    character_name: text(255)
     standard_pickup_time: ClockTime = None
 
 
@@ -135,12 +136,12 @@ class CastMemberRead(BaseModel):
 
 
 class CastMemberUpdate(BaseModel):
-    character_name: str | None = None
+    character_name: optional_text(255) = None
     standard_pickup_time: ClockTime = None
 
 
 class MemberCreate(BaseModel):
-    email: str
+    email: text(255)
     role: str  # owner | editor | viewer
 
 
@@ -155,14 +156,14 @@ class MemberRead(BaseModel):
 
 
 class ContactUpdate(BaseModel):
-    name: str | None = None
-    phone: str | None = None
-    email: str | None = None
+    name: optional_text(255) = None
+    phone: optional_text(50) = None
+    email: optional_text(255) = None
 
 
 class CrewMemberUpdate(BaseModel):
-    department: str | None = None
-    position: str | None = None
+    department: optional_text(100) = None
+    position: optional_text(100) = None
     standard_call_time: ClockTime = None
     is_head_of_department: bool | None = None
 

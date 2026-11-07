@@ -37,9 +37,10 @@ from sqlalchemy import Enum, String
 
 from app.main import app
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, CastCallEntry, CrewCallEntry, ScheduleItem
-from app.models.production import CastMember, CrewMember
+from app.models.membership import ProductionMember
+from app.models.production import CastMember, Contact, CrewMember, Location, Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate, CastCallEntryCreate, ConfirmRequest, CrewCallEntryCreate, MoveSceneRequest, RescheduleRequest, ScheduleItemCreate, SwapDaysRequest
-from app.schemas.production import CastMemberCreate, ContactCreate, CrewMemberCreate, LocationCreate, MemberCreate, ProductionCreate
+from app.schemas.production import CastMemberCreate, CastMemberUpdate, ContactCreate, ContactUpdate, CrewMemberCreate, CrewMemberUpdate, LocationCreate, LocationUpdate, MemberCreate, ProductionCreate, ProductionUpdate
 from app.schemas.push import PushSubscriptionCreate
 
 
@@ -375,14 +376,14 @@ def test_created_by_leaves_room_for_the_service_prefix(client: TestClient, auth_
 
 
 @pytest.mark.parametrize("path", TIME_FIELDS)
-@pytest.mark.parametrize("value", ["25:99", "abc", "24:00", "12:60", "6", "06:3", "06:30:00", "٠٦:٣٠", "06:30 pm"])
+@pytest.mark.parametrize("value", ["25:99", "abc", "24:00", "24,00", "12:60", "6", "06:3", "06:30:00", "٠٦:٣٠", "06:30 pm", "TBD", "6;30"])
 def test_something_that_is_not_a_time_is_refused(client: TestClient, auth_headers, _full_day, path, value) -> None:
     url, body = _full_day
     r = client.post(url, json=_with(body, path, value), headers=auth_headers)
     assert r.status_code == 422, f"{path}={value!r}: {r.status_code}"
 
 
-@pytest.mark.parametrize("value,stored", [("00:00", "00:00"), ("23:59", "23:59"), ("06:30", "06:30"), ("6:30", "06:30"), ("6.30", "06:30"), (" 06:30 ", "06:30"), ("", None), ("  ", None), (None, None)])
+@pytest.mark.parametrize("value,stored", [("00:00", "00:00"), ("23:59", "23:59"), ("06:30", "06:30"), ("6:30", "06:30"), ("6.30", "06:30"), ("6,30", "06:30"), ("06,30", "06:30"), (" 06:30 ", "06:30"), ("", None), ("  ", None), (None, None)])
 def test_what_people_actually_type_as_a_time_is_kept(client: TestClient, auth_headers, _full_day, value, stored) -> None:
     url, body = _full_day
     r = client.post(url, json=_with(_with(body, "initial_revision.shooting_call", value), "initial_revision.crew_calls.0.pickup_time", value), headers=auth_headers)
@@ -485,3 +486,46 @@ def test_old_values_are_carried_forward_rather_than_blocking_a_change_that_does_
     r = client.post(f"/api/v1/call-sheets/{sheet_id}/reschedule", json={"shoot_date": "2031-05-06", "expected_revision_letter": "B"}, headers=auth_headers)
     assert r.status_code == 200, r.text
     assert r.json()["current_revision"]["crew_calls"][0]["call_time"] == "abc"
+
+
+# --- FR-222 review: the same limits on the production, contact, location, crew and cast bodies. ---
+
+STORED_IN = {
+    ContactCreate: Contact, ContactUpdate: Contact, ProductionCreate: Production, ProductionUpdate: Production,
+    LocationCreate: Location, LocationUpdate: Location, CrewMemberCreate: CrewMember, CrewMemberUpdate: CrewMember,
+    CastMemberCreate: CastMember, CastMemberUpdate: CastMember, MemberCreate: ProductionMember,
+}
+
+
+def _other_text_cases() -> list[tuple[str, str, type[BaseModel], str, int]]:
+    """Every swept route whose body model is stored in one of these tables, with each String column it writes."""
+    cases = []
+    for method, path, model in ROUTES:
+        table = STORED_IN.get(model)
+        if table is None:
+            continue
+        columns = table.__table__.columns
+        for name in model.model_fields:
+            column = columns.get(name)
+            if column is not None and isinstance(column.type, String) and not isinstance(column.type, Enum) and column.type.length:
+                cases.append((method, path, model, name, column.type.length))
+    return cases
+
+
+OTHER_TEXT_CASES = _other_text_cases()
+
+
+def test_the_other_walk_found_what_it_should() -> None:
+    found = {(model.__name__, name) for _, _, model, name, _ in OTHER_TEXT_CASES}
+    assert {("ContactCreate", "name"), ("ContactUpdate", "phone"), ("ProductionCreate", "name"), ("LocationUpdate", "address"),
+            ("CrewMemberCreate", "department"), ("CastMemberCreate", "character_name"), ("MemberCreate", "email")} <= found
+    assert set(STORED_IN) <= {model for _, _, model in ROUTES}
+
+
+@pytest.mark.parametrize("method,path,model,name,length", OTHER_TEXT_CASES, ids=[f"{m}:{p}:{n}" for m, p, _, n, _ in OTHER_TEXT_CASES])
+def test_other_bodies_refuse_over_length_text_and_nul_bytes_with_a_422(client: TestClient, auth_headers, _ids, method, path, model, name, length) -> None:
+    url = "/api/v1" + _fill(path, _ids)
+    base = _valid_body(model, _ids) if method == "POST" else {}
+    for value in ("x" * (length + 1), "a\x00b"):
+        r = client.request(method, url, headers=auth_headers, json={**base, name: value})
+        assert r.status_code == 422, f"{method} {path} {name}={value[:5]!r}: {r.status_code} {r.text[:200]}"
