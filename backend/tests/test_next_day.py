@@ -144,3 +144,100 @@ def test_the_last_night_of_a_shoot_still_opens_at_one_in_the_morning(client: Tes
     token, ids = _night_setup(client, [("2026-11-10", "18:00")])
     prague_clock("2026-11-11T01:00")
     assert _opens(client, token) == ids["2026-11-10"]
+
+
+# --- FR-222 review: the night is held for a person, not for a day. ------------------------------
+
+def _people(client: TestClient) -> dict:
+    pid = client.post("/api/v1/productions", json={"name": "Noc lidé"}, headers=AUTH).json()["id"]
+    crew_contact = client.post("/api/v1/contacts", json={"name": "Jana"}, headers=AUTH).json()["id"]
+    crew = client.post(f"/api/v1/productions/{pid}/crew-members", json={"contact_id": crew_contact, "department": "Camera", "position": "AC"}, headers=AUTH).json()
+    cast_contact = client.post("/api/v1/contacts", json={"name": "Anna"}, headers=AUTH).json()["id"]
+    actor = client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": cast_contact, "character_name": "Hero"}, headers=AUTH).json()
+    return {"pid": pid, "crew": crew, "actor": actor}
+
+
+def _night_day(client: TestClient, pid: str, number: int, shoot_date: str, call: str, *, crew_calls=None, cast_calls=None) -> str:
+    revision = {"general_crew_call": call, "crew_calls": crew_calls or [], "cast_calls": cast_calls or []}
+    r = client.post(f"/api/v1/productions/{pid}/call-sheets", json={"shoot_date": shoot_date, "day_number": number, "day_count": 2, "initial_revision": revision}, headers=AUTH)
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+def _cast_call(actor: dict, **times) -> list[dict]:
+    return [{"cast_member_id": actor["id"], "status_code": "W", **times}]
+
+
+def test_crew_with_their_own_early_call_today_open_today(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "08:00", crew_calls=[{"crew_member_id": p["crew"]["id"], "call_time": "05:00"}])
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["crew"]["personal_token"]) == today
+
+
+def test_crew_on_an_early_general_call_today_open_today(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "05:00")
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["crew"]["personal_token"]) == today
+
+
+def test_crew_with_an_early_pickup_today_open_today(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "08:00", crew_calls=[{"crew_member_id": p["crew"]["id"], "pickup_time": "05:15"}])
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["crew"]["personal_token"]) == today
+
+
+def test_crew_called_last_night_and_late_today_stay_on_last_night(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    yesterday = _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    _night_day(client, p["pid"], 2, "2026-11-11", "08:00")
+    prague_clock("2026-11-11T01:00")
+    assert _opens(client, p["crew"]["personal_token"]) == yesterday
+
+
+def test_an_actor_not_called_last_night_opens_today(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "08:00", cast_calls=_cast_call(p["actor"], call_time="09:00"))
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["actor"]["personal_token"]) == today
+
+
+def test_an_actor_called_last_night_and_late_today_stays_on_last_night(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    yesterday = _night_day(client, p["pid"], 1, "2026-11-10", "14:00", cast_calls=_cast_call(p["actor"], call_time="15:00"))
+    _night_day(client, p["pid"], 2, "2026-11-11", "08:00", cast_calls=_cast_call(p["actor"], call_time="10:00"))
+    prague_clock("2026-11-11T01:00")
+    assert _opens(client, p["actor"]["personal_token"]) == yesterday
+
+
+def test_an_actor_called_last_night_with_an_early_pickup_today_opens_today(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00", cast_calls=_cast_call(p["actor"], call_time="15:00"))
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "08:00", cast_calls=_cast_call(p["actor"], pickup_time="05:00", call_time="06:00"))
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["actor"]["personal_token"]) == today
+
+
+def test_an_actor_called_last_night_and_not_today_stays_on_last_night(client: TestClient, prague_clock) -> None:
+    p = _people(client)
+    yesterday = _night_day(client, p["pid"], 1, "2026-11-10", "14:00", cast_calls=_cast_call(p["actor"], call_time="15:00"))
+    _night_day(client, p["pid"], 2, "2026-11-11", "05:00")
+    prague_clock("2026-11-11T04:00")
+    assert _opens(client, p["actor"]["personal_token"]) == yesterday
+
+
+def test_a_today_call_that_is_not_a_time_counts_as_early(client: TestClient, prague_clock, db_session) -> None:
+    """Unknown is treated as early: the risk worth avoiding is a person sent to a finished sheet."""
+    p = _people(client)
+    _night_day(client, p["pid"], 1, "2026-11-10", "14:00")
+    today = _night_day(client, p["pid"], 2, "2026-11-11", "08:00")
+    db_session.query(CallSheetRevision).filter(CallSheetRevision.call_sheet_id == today).update({"general_crew_call": "brzy"})
+    db_session.commit()
+    prague_clock("2026-11-11T01:00")
+    assert _opens(client, p["crew"]["personal_token"]) == today

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.clock import prague_today
 from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus, SceneMove
 from app.schemas.call_sheet import CallSheetRevisionCreate, CastCallEntryCreate, CrewCallEntryCreate, ScheduleItemCreate
-from app.services.call_sheets import fill_weather_after_commit, live_days_like, publish_revision
+from app.services.call_sheets import fill_weather_after_commit, live_days_like, lock_day_slot, publish_revision
 
 
 class ReplanConflict(ValueError):
@@ -143,7 +143,11 @@ def _refuse_past(sheet: CallSheet, shoot_date: date) -> None:
 
 def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_letter: str, created_by: str | None) -> list[tuple[CallSheet, CallSheetRevision]]:
     """Move a whole shoot day to another date."""
+    number, unit = sheet.day_number, sheet.unit_name
+    lock_day_slot(db, sheet.production_id, shoot_date, number, unit)
     _lock(db, sheet)
+    if (sheet.day_number, sheet.unit_name) != (number, unit):
+        raise ReplanConflict(f"Day {number} was changed by someone else just now; reload and try again")
     revision = _current(sheet, expected_letter)
     if sheet.shoot_date == shoot_date:
         raise ReplanConflict(f"Day {sheet.day_number} is already on {shoot_date.isoformat()}")
@@ -171,6 +175,8 @@ def cancel_day(db: Session, sheet: CallSheet) -> bool:
 
 def restore_day(db: Session, sheet: CallSheet) -> bool:
     """Undo a cancellation, back to what the day was. Returns whether the crew must be told."""
+    # A cancelled day cannot be moved or renumbered, so the slot read before the lock is still its slot after it.
+    lock_day_slot(db, sheet.production_id, sheet.shoot_date, sheet.day_number, sheet.unit_name)
     _lock(db, sheet)
     tell_crew = sheet.status == CallSheetStatus.CANCELLED and not sheet.cancelled_from_draft
     if sheet.status == CallSheetStatus.CANCELLED:

@@ -330,6 +330,13 @@ def _same_create_request(sheet: CallSheet, payload: CallSheetCreate) -> bool:
     return stored_items == sent_items and stored_crew == sent_crew and stored_cast == sent_cast
 
 
+def lock_day_slot(db: Session, production_id, shoot_date: date, day_number: int, unit_name: str) -> None:
+    """Serialise everything that can put a live day on this date, number and unit: creating one, restoring one,
+    moving one there. Always taken before a day's own publish lock, never after, so the two cannot deadlock."""
+    key = f"create-day:{production_id}:{shoot_date}:{day_number}:{unit_name}"
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": key})
+
+
 def create_call_sheet_once(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> tuple[CallSheet, bool]:
     """Create a day unless it exists. Returns (day, is_new); is_new False is a retry, and the crew was told the first time.
 
@@ -339,8 +346,7 @@ def create_call_sheet_once(db: Session, production_id, payload: CallSheetCreate,
     Raises:
         DuplicateDay: the day exists with other content.
     """
-    key = f"create-day:{production_id}:{payload.shoot_date}:{payload.day_number}:{payload.unit_name}"
-    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": key})
+    lock_day_slot(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
     existing = live_days_like(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
     if not existing:
         return create_call_sheet(db, production_id, payload, created_by=created_by), True
@@ -844,10 +850,28 @@ def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCal
 NIGHT_ENDS_AT_HOUR = 6
 
 
-def _called_after_noon(call: str | None) -> bool:
-    """Stored calls can predate validation, so anything that is not a time is simply not a late call."""
-    hour = (call or "").partition(":")[0]
-    return hour.isascii() and hour.isdigit() and int(hour) >= 12
+def _minutes(value: str | None) -> int | None:
+    """Minutes after midnight of an HH:MM time; None for anything else, which stored data can still hold."""
+    hour, colon, minute = (value or "").partition(":")
+    if not colon or not (hour.isascii() and hour.isdigit() and minute.isascii() and minute.isdigit()):
+        return None
+    return int(hour) * 60 + int(minute)
+
+
+def _due_before_dawn(revision: CallSheetRevision, person: CrewMember | CastMember) -> bool:
+    """Whether this person has to move before 06:00 on this day: their earliest own time (call or pickup), else the general call.
+    An actor not called that day does not. A time that cannot be read counts as early, since the harm to avoid is
+    sending someone to a finished sheet."""
+    if isinstance(person, CastMember):
+        entry = next((e for e in revision.cast_calls if e.cast_member_id == person.id), None)
+        if entry is None:
+            return False
+        times = [t for t in (entry.pickup_time, entry.call_time, entry.makeup_hair_time, entry.on_set_time) if t] or [revision.general_crew_call]
+    else:
+        entry = _crew_entry(revision, person)
+        times = [effective_call(revision, person)] + ([entry.pickup_time] if entry and entry.pickup_time else [])
+    minutes = [_minutes(t) for t in times]
+    return any(m is None or m < NIGHT_ENDS_AT_HOUR * 60 for m in minutes)
 
 
 def next_day_for_token(db: Session, token: str, today: date, *, before_dawn: bool = False) -> CrewNextDay | None:
@@ -858,11 +882,13 @@ def next_day_for_token(db: Session, token: str, today: date, *, before_dawn: boo
     unknown token; a production with no days yet gives call_sheet_id None
     so the viewer can say "no day published yet" instead of 404-ing.
 
-    FR-222: `before_dawn` (before 06:00) keeps a day dated yesterday open if
-    its crew call was at noon or later: at 01:00 that shoot is still running.
-    A morning call does not qualify. It wrapped long ago, and someone called
-    at 05:30 today must not open yesterday's sheet at 05:00; turnaround rules
-    out someone called after noon yesterday being called that early today."""
+    FR-222: `before_dawn` (before 06:00) keeps yesterday's day open for a
+    shoot still running: only when that day's crew call was at noon or later,
+    this person was on it (crew always are, an actor only when called), and
+    they are not due before 06:00 on today's day (their own call or pickup,
+    else the general call). Otherwise it is today's day as usual. Whether
+    they are still on set is not known; the rule only avoids the cases that
+    send someone with an early start today to a finished sheet."""
     member = db.query(CrewMember).filter(CrewMember.personal_token == token).first() or db.query(CastMember).filter(CastMember.personal_token == token).first()
     if member is None:
         return None
@@ -894,8 +920,13 @@ def next_day_for_token(db: Session, token: str, today: date, *, before_dawn: boo
     upcoming = [d for d in live if d.shoot_date >= today]
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))
     if before_dawn:
-        running = [d for d in live if d.shoot_date == today - timedelta(days=1) and _called_after_noon(d.general_crew_call)]
-        chosen = running[-1] if running else chosen
+        by_id = {s.id: s for s in sheets}
+        running = [d for d in live if d.shoot_date == today - timedelta(days=1) and (_minutes(d.general_crew_call) or 0) >= 12 * 60
+                   and by_id[d.call_sheet_id].current_revision is not None and _is_called(by_id[d.call_sheet_id].current_revision, member)]
+        today_days = [by_id[d.call_sheet_id] for d in live if d.shoot_date == today]
+        early_today = any(day.current_revision is not None and _due_before_dawn(day.current_revision, member) for day in today_days)
+        if running and not early_today:
+            chosen = running[-1]
     return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
                        call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)
 
