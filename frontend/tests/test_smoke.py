@@ -349,8 +349,8 @@ def test_landing_shows_the_screenshots_of_the_visitor_s_language(browser, fronte
         page.goto(f"{frontend_url}/landing.html")
         page.wait_for_selector(".shots figure", timeout=10_000)
         shown = page.locator(f".shots img[lang='{suffix}']")
-        expect(shown).to_have_count(3)
-        for i in range(3):
+        expect(shown).to_have_count(2)
+        for i in range(2):
             assert shown.nth(i).is_visible(), f"{locale}: shot {i} hidden"
             assert f".{suffix}.webp" in shown.nth(i).get_attribute("src")
         assert not page.locator(f".shots img[lang='{other}']").first.is_visible()
@@ -372,10 +372,10 @@ def test_landing_survives_a_missing_screenshot(browser, frontend_url: str) -> No
     cdp = ctx.new_cdp_session(page)
     cdp.send("Network.enable")
     cdp.send("Network.setCacheDisabled", {"cacheDisabled": True})
-    page.route("**/landing/production.en.webp", lambda route: route.abort())
+    page.route("**/landing/ad.en.webp", lambda route: route.abort())
     page.goto(f"{frontend_url}/landing.html")
     page.wait_for_selector(".shots figure", timeout=10_000)
-    expect(page.locator(".shots img[lang='en']")).to_have_count(2, timeout=5_000)
-    assert page.locator(".shots figure").count() == 3  # the Czech shot keeps the third figure alive
-    assert page.locator(".shots img[lang='cs']").count() == 3
+    expect(page.locator(".shots img[lang='en']")).to_have_count(1, timeout=5_000)
+    assert page.locator(".shots figure").count() == 2  # the Czech shot keeps the second figure alive
+    assert page.locator(".shots img[lang='cs']").count() == 2
     ctx.close()

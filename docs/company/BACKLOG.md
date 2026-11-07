@@ -2341,3 +2341,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the crew sheet's day links, the tomorrow link and both folds are 44 px to tap, the document language follows the chosen language, and viewport-fit=cover leaves nothing under a notch
   - Confirm works only when the person's own block is live and of the revision on screen, and says why when it does not
   - failure case: a person removed while the page is open is told, loses the block and no saved copy brings it back; a server that never answers ends in a message, not a blank screen, or a stuck Confirm; a saved copy is never shown as live
+
+## FR-224 · frontend · Make the landing page quieter so the eye knows where to go
+- state: in-progress
+- gated: no
+- note: PR open 2026-11-07 (feat/fr-224-quieter-landing). Checked in headless Chromium at 1440, 820, 390 and 320 wide; not tried on a real phone.
+- why: the founder gets lost in the page and finds too much bold; weight 800 at 125% stretch was the default voice, so nothing ranked and the close was as loud as the hero
+- dod:
+  - only the hero headline and the strip's time keep weight 800 at wide stretch; section headings, the offline quote, the close heading, place names and buttons step down
+  - the three fact lists that repeated the screenshots and the hero strip are gone, with no copy changed and the pilot `mailto:` link unchanged
+  - the hero time and place settle in under a second, with no blur, and the reduced-motion guard is kept
+  - on desktop each screenshot section reads as one unit, with no long dark void beside a tall figure
+  - the page has five content blocks: the crew member with the offline point folded in, the AD and head of production with one screenshot, getting started, what it does not do, and the close
+  - failure case: nothing overflows sideways at 320 px, and the page still reads with scripting off
