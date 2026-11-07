@@ -2352,4 +2352,5 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the three fact lists that repeated the screenshots and the hero strip are gone, with no copy changed and the pilot `mailto:` link unchanged
   - the hero time and place settle in under a second, with no blur, and the reduced-motion guard is kept
   - on desktop each screenshot section reads as one unit, with no long dark void beside a tall figure
+  - the page has five content blocks: the crew member with the offline point folded in, the AD and head of production with one screenshot, getting started, what it does not do, and the close
   - failure case: nothing overflows sideways at 320 px, and the page still reads with scripting off
