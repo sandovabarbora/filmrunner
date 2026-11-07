@@ -2373,7 +2373,7 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - today is Prague's date in the API and the editor; a shoot called at noon or later stays current until 06:00
   - failure case: a cancelled day cannot be restored on top of its replacement, and someone called at 05:30 today is not sent to yesterday's finished sheet
 
-## FR-224 · tech-lead · Resend a cancellation to the people it did not reach
+## FR-226 · tech-lead · Resend a cancellation to the people it did not reach
 - state: ready
 - gated: no
 - why: a repeat cancel deliberately tells nobody (FR-222), so a person whose push failed the first time never learns the day is off unless the AD calls them
