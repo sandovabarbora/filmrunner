@@ -10,6 +10,8 @@ import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
 import { Icon } from "../../Icon";
+import { JumpRow } from "../JumpRow";
+import { removeScene, restoreScene, type RemovedScene } from "../sceneUndo";
 
 function revisionPayload(d: Draft): RevisionCreate {
   const clean = (s: string) => (s.trim() === "" ? null : s.trim());
@@ -137,6 +139,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [newDate, setNewDate] = useState("");
   const [swapId, setSwapId] = useState("");
   const latest = useRef<Draft | null>(null);
+  const [undo, setUndo] = useState<RemovedScene | null>(null);  // FR-226: one removed scene at a time, for eight seconds
+  const undoNote = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (!undo) return; const t = window.setTimeout(() => setUndo(null), 8000); return () => window.clearTimeout(t); }, [undo]);
+  useEffect(() => { if (undo) undoNote.current?.scrollIntoView({ block: "nearest" }); }, [undo]);  // the offer must not sit under the publish bar
+  useEffect(() => setUndo(null), [callSheetId]);
   const key = draftKey(productionId, callSheetId);
 
   // Load: an existing day comes from the server (falling back to the local draft when offline);
@@ -434,6 +441,11 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   return (
     <>
+      <JumpRow label={L("Sections of the day")} targets={[
+        { id: "dayBlock", label: L("Day") }, { id: "callsBlock", label: L("Calls") }, { id: "personalCallsBlock", label: L("Personal calls") },
+        ...(cast.length > 0 ? [{ id: "castBlock", label: L("Cast") }] : []), { id: "scheduleBlock", label: L("Schedule") },
+        ...(published ? [{ id: "shareDetails", label: L("Share") }] : []),
+      ]} />
       {/* At 23:00 the question is who still does not know, not the form: it comes first, above everything that can be edited. */}
         {published && seen && (() => {
           const everyone = [...seen.seen, ...seen.not_seen];
@@ -507,7 +519,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             </div>
           );
         })()}
-      <section className="block" aria-label={L("Shoot day")}>
+      <section className="block" id="dayBlock" aria-label={L("Shoot day")}>
         <h2>{L("Shoot day")}</h2>
         <div className="grid2">
           <Field label={L("Date")} id="shoot_date" type="date" value={draft.shoot_date} onChange={(v) => update({ shoot_date: v })} disabled={dis || !!draft.callSheetId} />
@@ -542,7 +554,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         )}
       </section>
 
-      <section className="block" aria-label={L("Calls")}>
+      <section className="block" id="callsBlock" aria-label={L("Calls")}>
         <h2>{L("Calls")}</h2>
         <div className="grid2">
           <Field label={L("Crew call")} id="general_crew_call" placeholder="06:30" mono value={draft.general_crew_call} onChange={(v) => update({ general_crew_call: v })} disabled={dis} />
@@ -583,7 +595,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         </label>
       </section>
 
-      <section className="block" aria-label={L("Personal calls")}>
+      <section className="block" id="personalCallsBlock" aria-label={L("Personal calls")}>
         <h2>{L("Personal calls")}</h2>
         <p className="hint">{L("Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.")}</p>
         {crew.length === 0 && <p className="hint">{L("Add crew under the Crew tab first.")}</p>}
@@ -628,7 +640,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       </section>
 
       {cast.length > 0 && (
-        <section className="block" aria-label={L("Cast calls")}>
+        <section className="block" id="castBlock" aria-label={L("Cast calls")}>
           <h2>{L("Cast")}</h2>
           <p className="hint">{L("Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.")}</p>
           <ul className="items" id="castCalls">
@@ -663,7 +675,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         </section>
       )}
 
-      <section className="block" aria-label={L("Schedule")}>
+      <section className="block" id="scheduleBlock" aria-label={L("Schedule")}>
         <h2>{L("Schedule")}</h2>
         {draft.items.length === 0 && <p className="hint">{L("No scenes yet. Add the first one; order is the shooting order.")}</p>}
         <ol className="items" id="items">
@@ -685,7 +697,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 <div className="item-actions">
                   <button type="button" className="quiet icon-only" onClick={() => moveItem(i, -1)} disabled={i === 0} aria-label={L("Move up")}><Icon name="up" /></button>
                   <button type="button" className="quiet icon-only" onClick={() => moveItem(i, 1)} disabled={i === draft.items.length - 1} aria-label={L("Move down")}><Icon name="down" /></button>
-                  <button type="button" className="quiet danger" onClick={() => setDraft((d) => d ? { ...d, items: d.items.filter((_, j) => j !== i), dirtySincePublish: !!d.callSheetId } : d)}>{L("Remove")}</button>
+                  <button type="button" className="quiet danger" onClick={() => { const r = removeScene(draft, i); setDraft(r.draft); setUndo(r.removed); }}>{L("Remove")}</button>
                   {draft.callSheetId && !draft.dirtySincePublish && dayStatus !== "cancelled" && otherDays.length > 0 && it.scene_number && (
                     <select className="move-to" aria-label={L("Move to another day: {n}", { n: it.scene_number })} value={movingScene?.index === i ? movingScene.targetId : ""} disabled={busy}
                       onChange={(e) => setMovingScene(e.target.value ? { index: i, targetId: e.target.value } : null)}>
@@ -711,6 +723,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             </li>
           ))}
         </ol>
+        <p className="undo-note" id="undoNote" role="status" ref={undoNote}>
+          {undo && !dis && <>{undo.item.scene_number ? L("Scene {n} removed", { n: undo.item.scene_number }) : L("Scene removed")} · <button type="button" className="linklike" id="undoRemove" onClick={() => { setDraft((d) => d ? restoreScene(d, undo) : d); setUndo(null); }}>{L("Undo")}</button></>}
+        </p>
         {!dis && (
           <button type="button" id="addScene" className="secondary" onClick={() => setDraft((d) => d ? { ...d, items: [...d.items, { order_index: d.items.length + 1, scene_number: "", int_ext: "EXT", day_night: "DAY", set_description: "", location_id: null, page_count_eighths: 8 }] } : d)}>
             <Icon name="plus" />{L("Add scene")}

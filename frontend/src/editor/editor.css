@@ -245,3 +245,15 @@ a.button.primary.remind-next { background: var(--card); color: var(--ink); }
 .publish-bar .publish-state { margin-bottom: 6px; font-size: var(--fs-small); }
 .publish-bar #publish { min-height: 48px; }
 @media print { .publish-bar { display: none; } }
+
+/* FR-226: the day's blocks one tap away, under the breadcrumb, out of the way of the fields and the publish bar. */
+.jump { position: sticky; top: 0; z-index: 4; display: flex; gap: 4px 14px; margin-top: 6px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--rule); background: var(--paper); box-shadow: 0 0 0 100vmax var(--paper); clip-path: inset(0 -100vmax); }
+.jump::-webkit-scrollbar { display: none; }
+.jump a { flex: none; display: inline-flex; align-items: center; min-height: var(--control); white-space: nowrap; color: var(--muted); text-decoration: none; font-size: var(--fs-small); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.jump a[aria-current] { color: var(--ink); border-bottom-color: var(--ink); }
+.jump a:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.block:focus, #shareDetails:focus { outline: none; }
+@media print { .jump { display: none; } }
+.undo-note { margin: 8px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
+.undo-note:empty { margin: 0; }
+.undo-note .linklike { display: inline-block; padding-block: 12px; margin-block: -12px; color: var(--ink); font-weight: 600; }

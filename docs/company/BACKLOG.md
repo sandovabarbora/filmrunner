@@ -2367,3 +2367,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the general crew call and shooting start read secondary to the person's own time
   - hover only on a fine pointer, a short press scale on tap, no tap highlight
   - failure case: the personal call row keeps call, pickup and note readable at 320 px; changed text stays WCAG AA
+
+## FR-226 · frontend · Find your place in the day editor, and take back a removed scene
+- state: in-progress
+- gated: no
+- note: PR open 2026-11-07 (feat/fr-226-editor-jump-and-undo), stacked on FR-225. Checked in headless Chromium at 320, 390 and 1440 px; not tried on a real phone.
+- why: the day editor is one long page and the founder gets lost in it; Remove took a scene away with no way back short of retyping it
+- dod:
+  - a sticky row under the breadcrumb links to Day, Calls, Personal calls, Cast (when there is cast), Schedule and Share, in CS and EN, marks the block being read with aria-current, and every link is 44 px tall
+  - a jump lands the heading below the row and above the publish bar; a focused field is never left under the row; smooth scrolling only without reduced motion
+  - Remove takes the scene out at once and says "Scene 42 removed · Undo" in a role="status" line for eight seconds; Undo puts it back at the same index with every field
+  - one pending undo at a time: a second removal replaces the first
+  - failure case: removal and undo touch only the unpublished draft and its autosave, never a published revision; undoing the only change since publish leaves nothing to publish
