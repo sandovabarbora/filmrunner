@@ -11,31 +11,56 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app.models.call_sheet import CallSheetStatus, CastStatusCode, DayNight, IntExt
+from app.schemas.fields import ClockTime, optional_text, text
 from app.schemas.push import NotificationSummaryRead
 
 # The database keeps UTC without a zone. Sent as is, a browser reads it as local time: "issued 21:40" for a revision out at 22:40.
 UtcDatetime = Annotated[datetime, AfterValidator(lambda d: d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d)]
 
+# Above what any shoot needs, and below the 32-bit Integer columns that would otherwise raise.
+_MAX_SEQUENCE = 9999
+# 1000 pages, in eighths. A feature script is about 120.
+_MAX_PAGE_EIGHTHS = 8000
+
 
 class ScheduleItemCreate(BaseModel):
+    order_index: int = Field(ge=0, le=_MAX_SEQUENCE)
+    scene_number: text(20)
+    int_ext: IntExt
+    day_night: DayNight
+    set_description: text(500)
+    location_id: uuid.UUID | None = None
+    page_count_eighths: int = Field(ge=0, le=_MAX_PAGE_EIGHTHS)
+
+
+# The *Read models do not extend the *Create ones: stored rows predate the validation and must keep reading back.
+class ScheduleItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
     order_index: int
     scene_number: str
     int_ext: IntExt
     day_night: DayNight
     set_description: str
     location_id: uuid.UUID | None = None
-    page_count_eighths: int = Field(ge=0)
-
-
-class ScheduleItemRead(ScheduleItemCreate):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
+    page_count_eighths: int
 
 
 class CastCallEntryCreate(BaseModel):
+    cast_member_id: uuid.UUID
+    status_code: CastStatusCode
+    pickup_time: ClockTime = None
+    call_time: ClockTime = None
+    makeup_hair_time: ClockTime = None
+    on_set_time: ClockTime = None
+
+
+class CastCallEntryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
     cast_member_id: uuid.UUID
     status_code: CastStatusCode
     pickup_time: str | None = None
@@ -44,21 +69,20 @@ class CastCallEntryCreate(BaseModel):
     on_set_time: str | None = None
 
 
-class CastCallEntryRead(CastCallEntryCreate):
+class CrewCallEntryCreate(BaseModel):
+    crew_member_id: uuid.UUID
+    call_time: ClockTime = None
+    pickup_time: ClockTime = None
+    note: optional_text(300) = None
+
+
+class CrewCallEntryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
-
-
-class CrewCallEntryCreate(BaseModel):
     crew_member_id: uuid.UUID
     call_time: str | None = None
     pickup_time: str | None = None
     note: str | None = None
-
-
-class CrewCallEntryRead(CrewCallEntryCreate):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
 
 
 class PersonalCallRow(BaseModel):
@@ -77,13 +101,14 @@ class CallSheetRevisionCreate(BaseModel):
     """Payload to publish a new revision (initial 'A', or a same-day 'hot
     revision' correcting an already-published one)."""
 
-    general_crew_call: str | None = None
-    shooting_call: str | None = None
-    sunrise: str | None = None
-    sunset: str | None = None
-    weather_forecast: str | None = None
-    safety_notes: str | None = None
-    created_by: str | None = None
+    general_crew_call: ClockTime = None
+    shooting_call: ClockTime = None
+    sunrise: ClockTime = None
+    sunset: ClockTime = None
+    weather_forecast: optional_text(500) = None
+    safety_notes: optional_text(2000) = None
+    # 247, not the column's 255: the audit label prepends "service:" (routers/call_sheets.py:_audit_label).
+    created_by: optional_text(247) = None
     # The revision this edit was made from; a different current one means someone else published in between.
     expected_revision_id: uuid.UUID | None = None
     head_of_day_crew_member_id: uuid.UUID | None = None
@@ -92,6 +117,15 @@ class CallSheetRevisionCreate(BaseModel):
     cast_calls: list[CastCallEntryCreate] | None = None
     # None = copy the previous revision's entries forward; [] = clear them.
     crew_calls: list[CrewCallEntryCreate] | None = None
+
+    @field_validator("crew_calls")
+    @classmethod
+    def _one_entry_per_person(cls, entries: list[CrewCallEntryCreate] | None) -> list[CrewCallEntryCreate] | None:
+        # The table's unique constraint would otherwise raise at insert, after the old revision has been retired.
+        people = [entry.crew_member_id for entry in entries or []]
+        if len(people) != len(set(people)):
+            raise ValueError("a person is named more than once in the personal calls")
+        return entries
 
 
 class CallSheetRevisionRead(BaseModel):
@@ -175,9 +209,9 @@ class CallSheetContacts(BaseModel):
 
 class CallSheetCreate(BaseModel):
     shoot_date: date
-    day_number: int = Field(ge=1)
-    day_count: int = Field(ge=1)
-    unit_name: str = "Main Unit"
+    day_number: int = Field(ge=1, le=_MAX_SEQUENCE)
+    day_count: int = Field(ge=1, le=_MAX_SEQUENCE)
+    unit_name: text(100) = "Main Unit"
     initial_revision: CallSheetRevisionCreate
     # FR-56: a planned day. Kept on the server as status "draft": invisible to the crew, no push,
     # not the target of anyone's stable link, deletable. Publishing later keeps the letter A.
@@ -235,6 +269,14 @@ class Actuals(BaseModel):
     lunch_in: str | None = None
     wrap: str | None = None
     note: str | None = None
+
+
+class ActualsUpdate(BaseModel):
+    first_shot: ClockTime = None
+    lunch_out: ClockTime = None
+    lunch_in: ClockTime = None
+    wrap: ClockTime = None
+    note: optional_text(500) = None
 
 
 class HistoryEntry(BaseModel):
@@ -328,26 +370,26 @@ class SeenEntry(BaseModel):
 class MoveSceneRequest(BaseModel):
     """FR-203. `occurrence` tells apart a scene shot in two parts on one day; the letters are what the AD was looking at."""
 
-    scene_number: str
+    scene_number: text(20)
     occurrence: int = Field(default=0, ge=0)
     target_call_sheet_id: uuid.UUID
-    expected_revision_letter: str
-    expected_target_revision_letter: str
+    expected_revision_letter: text(1)
+    expected_target_revision_letter: text(1)
 
 
 class RescheduleRequest(BaseModel):
     shoot_date: date
-    expected_revision_letter: str
+    expected_revision_letter: text(1)
 
 
 class SwapDaysRequest(BaseModel):
     other_call_sheet_id: uuid.UUID
-    expected_revision_letter: str
-    expected_other_revision_letter: str
+    expected_revision_letter: text(1)
+    expected_other_revision_letter: text(1)
 
 
 class ConfirmRequest(BaseModel):
-    revision_letter: str = Field(min_length=1, max_length=1)
+    revision_letter: text(1) = Field(min_length=1)
 
 
 class ConfirmResult(BaseModel):
