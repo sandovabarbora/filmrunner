@@ -2354,3 +2354,16 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - on desktop each screenshot section reads as one unit, with no long dark void beside a tall figure
   - the page has five content blocks: the crew member with the offline point folded in, the AD and head of production with one screenshot, getting started, what it does not do, and the close
   - failure case: nothing overflows sideways at 320 px, and the page still reads with scripting off
+
+## FR-225 · frontend · A calmer hierarchy so nobody gets lost in the app
+- state: in-progress
+- gated: no
+- note: PR open 2026-11-07 (feat/fr-225-calmer-hierarchy). Subtraction only inside the Hledáček world: no new fonts, colours, features or copy. Checked in headless Chromium at 320, 375, 390 and 1440 px; not tried on a real phone.
+- why: the founder gets lost in the app; weight 800 was the default voice for headings, values, labels and buttons, so nothing ranked, and a screen could carry more than one filled button
+- dod:
+  - one weight-800 thing per screen: the crew member's call time and place, the overview's task line; headings 600-700, body 400-500
+  - one filled button per screen: Confirm on the crew sheet, Publish in the day editor; print, remind, move and add are outlined or quiet
+  - the crew member's time, place and Confirm are in the first screen at 390x844 and 375x667; the viewfinder corners stay around the time
+  - the general crew call and shooting start read secondary to the person's own time
+  - hover only on a fine pointer, a short press scale on tap, no tap highlight
+  - failure case: the personal call row keeps call, pickup and note readable at 320 px; changed text stays WCAG AA

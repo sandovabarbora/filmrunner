@@ -418,7 +418,7 @@ export function CallSheetView({ callSheet, personal = null, freshness, shareUrl 
       )}
 
       <div className="actions">
-        <button onClick={() => window.print()}><Icon name="print" />{L("print")}</button>
+        <button className="quiet" onClick={() => window.print()}><Icon name="print" />{L("print")}</button>
         <span className="hint">{L("print.hint")}</span>
       </div>
     </article>
