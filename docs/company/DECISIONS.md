@@ -159,10 +159,10 @@ Append-only. Format: date, decision, why, revisit when.
 - Why: the foreign key has no ON DELETE, so the delete is refused otherwise; their personal calls on those revisions already go with them. It does mean revisions are not strictly immutable: this, and the cascades, are the exceptions.
 - Revisit when: the history must keep names after removals; then store the name on the revision instead of a reference.
 
-## 2026-11-06: a night shoot stays current until 06:00 only if it was called at noon or later
-- Decision: before 06:00 Prague, a crew link stays on the day dated yesterday when its crew call was at 12:00 or later. Otherwise it opens today's day as before.
-- Why: a bare "yesterday until 06:00" shows a finished sheet to someone called at 05:30 today. Turnaround rules means nobody called after noon yesterday is called that early today, so the two cases cannot collide.
-- Revisit when: a real pilot has a split day or a call before noon that runs past midnight.
+## 2026-11-06: a night shoot stays current until 06:00 for the people on it
+- Decision: before 06:00 Prague, a person's stable link stays on yesterday's day only if that day's crew call was at noon or later, the person was on it (crew always are; an actor only when called), and they are not due before 06:00 on today's day (their own call or pickup, else the general call; a time that cannot be read counts as early). Otherwise it opens today's day. An open stable-link page follows the server when its choice changes, on a live answer only, and a day link never moves.
+- Why: the first version looked at the day alone, and its turnaround argument held only for people who worked yesterday, so someone not called last night, or called early today, could be sent to a finished sheet at 05:00.
+- Revisit when: a real pilot has a split day, or a call before noon that runs past midnight.
 
 ## 2026-11-06: a cancelled day remembers it was a draft, in a new column
 - Decision: `call_sheets.cancelled_from_draft`, added by a migration. Restoring returns the day to what it was, and the crew cannot reach a cancelled draft by any public route. A day cancelled before this migration counts as published.
@@ -173,3 +173,18 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: creating a day takes a lock on production, date, day number and unit, then compares with what exists. An identical payload returns the existing day with a 200 and no push; anything else is a 409. A cancelled day does not count.
 - Why: a unique index cannot be added while older duplicates may exist, and it could not tell a retry from a conflict anyway. No migration needed.
 - Revisit when: the read-only duplicate query in the FR-222 PR shows none in production; an index would then add a guarantee for writers outside this path.
+
+## 2026-11-06: a repeat cancel tells nobody
+- Decision: cancelling a day that is already cancelled changes nothing and sends nothing, including to people whose first delivery failed.
+- Why: a double tap must not wake the crew twice; telling the people who missed it is a resend, which belongs with the planned reminder automation (FR-224), not with a second tap.
+- Revisit when: FR-224 lands.
+
+## 2026-11-06: restoring a day keeps confirmations of the same revision
+- Decision: restoring a cancelled day leaves its current revision, and anyone's confirmation of it, as they were.
+- Why: the content is what they confirmed; asking again would be noise. A new revision after the restore asks again as usual.
+- Revisit when: the pilot shows people confirmed the old plan without noticing the cancellation in between.
+
+## 2026-11-06: a create retried after its day was cancelled makes a new day
+- Decision: a cancelled day does not count as a duplicate, so a create with the same payload after a cancel creates a new day rather than returning the cancelled one.
+- Why: creating the replacement is the normal way forward after a cancel. No client retries a create on its own: the editor creates only when the AD taps publish, and the schedule import only when the AD confirms it; neither queues a create offline.
+- Revisit when: a client gains an automatic or offline retry of creates.
