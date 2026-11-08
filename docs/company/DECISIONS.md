@@ -176,8 +176,8 @@ Append-only. Format: date, decision, why, revisit when.
 
 ## 2026-11-06: a repeat cancel tells nobody
 - Decision: cancelling a day that is already cancelled changes nothing and sends nothing, including to people whose first delivery failed.
-- Why: a double tap must not wake the crew twice; telling the people who missed it is a resend, which belongs with the planned reminder automation (FR-226), not with a second tap.
-- Revisit when: FR-226 lands.
+- Why: a double tap must not wake the crew twice; telling the people who missed it is a resend, which belongs with the planned reminder automation (FR-227), not with a second tap.
+- Revisit when: FR-227 lands.
 
 ## 2026-11-06: restoring a day keeps confirmations of the same revision
 - Decision: restoring a cancelled day leaves its current revision, and anyone's confirmation of it, as they were.
