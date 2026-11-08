@@ -104,18 +104,18 @@ export function App() {
   const sheetReads = useRef({ started: 0, answered: 0 });
   const personalReads = useRef({ started: 0, answered: 0 });
 
-  async function readPersonal(api: string, sheet: string, me: string) {
+  async function readPersonal(api: string, sheet: string, me: string, stale: () => boolean = () => false) {
     const read = ++personalReads.current.started;
     const p = await loadPersonal(api, sheet, me);
-    if (read < personalReads.current.answered) return;
+    if (stale() || read < personalReads.current.answered) return;
     personalReads.current.answered = read;
     setPersonal((shown) => afterRead(shown, p));
   }
 
-  async function load(url: string, id: string, me: string | null = null) {
+  async function load(url: string, id: string, me: string | null = null, stale: () => boolean = () => false) {
     const read = ++sheetReads.current.started;
     const r = await loadCallSheet(url, id);
-    if (read < sheetReads.current.answered) return;
+    if (stale() || read < sheetReads.current.answered) return;
     sheetReads.current.answered = read;
     setResult(r);
     // A live load through a personal link is a read receipt (FR-36); a cached copy is not — the AD must not think REV B arrived.
@@ -159,11 +159,14 @@ export function App() {
     // back up, without waiting out the full interval.
     if (mode.kind !== "share") return;
     let latest = 0;
+    // Set when this mode is replaced: a refresh still in flight must not show the old day or move the page afterwards.
+    let replaced = false;
     const refresh = async () => {
       const mine = ++latest;
+      const stale = () => replaced || mine !== latest;
       if (fromStableLink.current && mode.me) {
         const next = await loadNextDay(mode.api, mode.me);
-        if (mine !== latest) return;
+        if (stale()) return;
         if (next && next !== "invalid" && next.live) {
           setMine(next.data);
           const chosen = next.data.call_sheet_id;
@@ -174,16 +177,16 @@ export function App() {
       }
       // The block first: a block newer than the sheet for a moment is harmless, a new revision over an old call time is not.
       if (mode.me) {
-        await readPersonal(mode.api, mode.sheet, mode.me);
-        if (mine !== latest) return;
+        await readPersonal(mode.api, mode.sheet, mode.me, stale);
+        if (stale()) return;
       }
-      if (mine === latest) await load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me);
+      if (!stale()) await load(publicCallSheetUrl(mode.api, mode.sheet), mode.sheet, mode.me, stale);
     };
     refreshRef.current = refresh;
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     const timer = window.setInterval(() => void refresh(), 60_000);
-    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
+    return () => { replaced = true; document.removeEventListener("visibilitychange", onVisible); window.clearInterval(timer); };
   }, [mode]);
 
   useEffect(() => {
