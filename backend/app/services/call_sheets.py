@@ -72,9 +72,10 @@ def _next_revision_letter(call_sheet: CallSheet) -> str:
     """
     count = len(call_sheet.revisions)
     if count >= len(_REVISION_LETTERS):
+        # The routers return this text to the AD as a 409, so it says what to do next and carries no ids.
         raise ValueError(
-            f"Call sheet {call_sheet.id} already has {count} revisions; "
-            "refusing to generate a 27th (A-Z exhausted)."
+            f"Day {call_sheet.day_number} already has {count} revisions (REV A to Z), the most one day can have. "
+            "To change it further, cancel this day and create a new one for the same date."
         )
     return _REVISION_LETTERS[count]
 
@@ -210,8 +211,9 @@ def publish_revision(
 
     if payload.crew_calls is None:
         # Copy forward: the AD edits yesterday's personal calls, they never retype them.
+        # model_construct, here and below: a stored value is not new input, and an old one must not block a publish that does not touch it.
         crew_calls = [
-            CrewCallEntryCreate(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
+            CrewCallEntryCreate.model_construct(crew_member_id=e.crew_member_id, call_time=e.call_time, pickup_time=e.pickup_time, note=e.note)
             for e in (previous.crew_calls if previous is not None else (crew_calls_seed or []))
             if db.get(CrewMember, e.crew_member_id) is not None
         ]
@@ -224,7 +226,7 @@ def publish_revision(
 
     if payload.cast_calls is None:
         cast_calls = [
-            CastCallEntryCreate(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
+            CastCallEntryCreate.model_construct(cast_member_id=e.cast_member_id, status_code=e.status_code, pickup_time=e.pickup_time,
                                 call_time=e.call_time, makeup_hair_time=e.makeup_hair_time, on_set_time=e.on_set_time)
             for e in (previous.cast_calls if previous is not None else (cast_calls_seed or []))
             if db.get(CastMember, e.cast_member_id) is not None

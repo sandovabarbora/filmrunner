@@ -2379,3 +2379,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - Remove takes the scene out at once and says "Scene 42 removed · Undo" in a role="status" line for eight seconds; Undo puts it back at the same index with every field
   - one pending undo at a time: a second removal replaces the first
   - failure case: removal and undo touch only the unpublished draft and its autosave, never a published revision; undoing the only change since publish leaves nothing to publish
+## FR-222 · tech-lead · Wrong data and broken rules found by QA on the test environment
+- state: in-progress
+- gated: no
+- note: split in two PRs because of size. This one: sun times, input validation, server errors, head of day, REV Z. The second, branch feat/fr-222-day-rules: cancel and restore, past dates and duplicate days, the empty day on the dashboard, Prague's date.
+- why: QA reproduced sun times an hour out, "25:99" reaching the crew, a 500 reading as no connection, and a publish button saying "REV ["; each one gives a crew a wrong instruction or an AD a wrong reason
+- dod:
+  - sun times are right to the minute on every day of two years, checked against exact arithmetic
+  - times, text lengths, NUL bytes and numbers are refused with a 422 on the way in; values already stored still read back and still carry forward
+  - an unhandled error is a 500 with CORS headers and no internals, logged with its traceback; the editor calls it a server error in both languages
+  - someone who is no longer head of day on any current revision can be removed
+  - past REV Z publishing is off with a plain explanation
+  - failure case: a legacy value such as "abc" never blocks a publish or a moved day that does not touch it, and a personal link token never reaches the error log

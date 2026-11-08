@@ -6,6 +6,8 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, smsUrl, whatsappNumber, whatsappUrl } from "../shareText";
+import { nextRevisionLetter } from "../revisions";
+import { firstBadTime } from "../times";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL } from "../lang";
@@ -92,10 +94,6 @@ function draftFromServer(productionId: string, productionName: string | null, sh
     castCalls: Object.fromEntries((rev?.cast_calls ?? []).map((e) => [e.cast_member_id, { status: e.status_code, pickup: e.pickup_time ?? "", call: e.call_time ?? "", makeup: e.makeup_hair_time ?? "", onSet: e.on_set_time ?? "" }])),
   };
   return { ...draft, base: editableContent(draft) };
-}
-
-function nextLetter(letter: string): string {
-  return String.fromCharCode(letter.charCodeAt(0) + 1);
 }
 
 function localToday(): string {
@@ -278,9 +276,24 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     }
   }
 
+  function timeFields(d: Draft): [string, string][] {
+    const crewName = (id: string) => crew.find((m) => m.id === id)?.contact.name ?? id;
+    const castName = (id: string) => cast.find((a) => a.id === id)?.contact.name ?? id;
+    return [
+      [L("Crew call"), d.general_crew_call], [L("Shooting call"), d.shooting_call], [L("Sunrise"), d.sunrise], [L("Sunset"), d.sunset],
+      ...Object.entries(d.crewCalls ?? {}).flatMap(([id, v]): [string, string][] => [[L("Call for {name}", { name: crewName(id) }), v.call], [L("Pickup for {name}", { name: crewName(id) }), v.pickup]]),
+      ...Object.entries(d.castCalls ?? {}).flatMap(([id, v]): [string, string][] => [
+        [L("Pickup for {name}", { name: castName(id) }), v.pickup], [L("Call for {name}", { name: castName(id) }), v.call],
+        [L("Make-up for {name}", { name: castName(id) }), v.makeup], [L("On set for {name}", { name: castName(id) }), v.onSet],
+      ]),
+    ];
+  }
+
   async function publish() {
     if (!draft || readOnly) return;
     if (!draft.general_crew_call.trim()) { setNotice({ kind: "error", text: L("Crew call is required; the crew wakes up for that number.") }); return; }
+    const badTime = firstBadTime(timeFields(draft));
+    if (badTime) { setNotice({ kind: "error", text: L("{field}: \"{value}\" is not a time. Write it like 06:30.", badTime) }); return; }
     setBusy(true);
     try {
       if (!draft.callSheetId) {
@@ -353,6 +366,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   async function saveActuals() {
     if (!draft?.callSheetId) return;
+    const badTime = firstBadTime([[L("First shot"), actuals.first_shot ?? ""], [L("Lunch out"), actuals.lunch_out ?? ""], [L("Lunch in"), actuals.lunch_in ?? ""], [L("Wrap"), actuals.wrap ?? ""]]);
+    if (badTime) { setNotice({ kind: "error", text: L("{field}: \"{value}\" is not a time. Write it like 06:30.", badTime) }); return; }
     setActualsBusy(true);
     try {
       const sheet = await api.setActuals(conn, draft.callSheetId, actuals);
@@ -437,6 +452,8 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const published = draft.callSheetId && draft.lastPublishedLetter && !planned;
   // The message must say what the link says: with unpublished edits the text would lie (FR-29 dod).
   const shareable = !!published && !draft.dirtySincePublish;
+  const nextLetter = published ? nextRevisionLetter(draft.lastPublishedLetter!) : null;
+  const outOfLetters = !!published && nextLetter === null;
   const dis = readOnly;
 
   return (
@@ -523,7 +540,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         <h2>{L("Shoot day")}</h2>
         <div className="grid2">
           <Field label={L("Date")} id="shoot_date" type="date" value={draft.shoot_date} onChange={(v) => update({ shoot_date: v })} disabled={dis || !!draft.callSheetId} />
-          <Field label={L("Unit")} id="unit_name" value={draft.unit_name} onChange={(v) => update({ unit_name: v })} disabled={dis || !!draft.callSheetId} />
+          <Field label={L("Unit")} id="unit_name" maxLength={100} value={draft.unit_name} onChange={(v) => update({ unit_name: v })} disabled={dis || !!draft.callSheetId} />
           <Field label={L("Day")} id="day_number" type="number" value={String(draft.day_number)} onChange={(v) => update({ day_number: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
           <Field label={L("of")} id="day_count" type="number" value={String(draft.day_count)} onChange={(v) => update({ day_count: Math.max(1, Number(v) || 1) })} disabled={dis || !!draft.callSheetId} />
         </div>
@@ -562,7 +579,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           <Field label={L("Sunrise")} id="sunrise" placeholder="06:41" mono value={draft.sunrise} onChange={(v) => update({ sunrise: v })} disabled={dis} />
           <Field label={L("Sunset")} id="sunset" placeholder="19:03" mono value={draft.sunset} onChange={(v) => update({ sunset: v })} disabled={dis} />
         </div>
-        <Field label={L("Weather")} id="weather_forecast" value={draft.weather_forecast} onChange={(v) => update({ weather_forecast: v })} disabled={dis} />
+        <Field label={L("Weather")} id="weather_forecast" maxLength={500} value={draft.weather_forecast} onChange={(v) => update({ weather_forecast: v })} disabled={dis} />
         {!dis && (
           <div className="inline">
             <button type="button" className="quiet" disabled={suggestingWeather} onClick={() => void suggestWeather()}>
@@ -584,7 +601,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           {sunState === "no-coords" && <>{L("That location has no map position, so sunrise and sunset cannot be computed; type them, or add an address under")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a>.</>}
           {sunState === "failed" && <>{L("Could not fetch suggestions; type sunrise and sunset yourself.")}</>}
         </p>
-        <Field label={L("Safety notes")} id="safety_notes" textarea value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
+        <Field label={L("Safety notes")} id="safety_notes" textarea maxLength={2000} value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
         <label className="field" htmlFor="headOfDay">
           <span className="label">{L("Head of day")}</span>
           <select id="headOfDay" value={draft.headOfDayId ?? ""} onChange={(e) => update({ headOfDayId: e.target.value || null })} disabled={dis}>
@@ -619,7 +636,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                       <div className="pcall-row">
                         <input className="mono" aria-label={L("Call for {name}", { name: m.contact.name })} placeholder={L("call")} value={v.call} disabled={dis} onChange={(e) => set({ call: e.target.value })} />
                         <input className="mono" aria-label={L("Pickup for {name}", { name: m.contact.name })} placeholder={L("pickup")} value={v.pickup} disabled={dis} onChange={(e) => set({ pickup: e.target.value })} />
-                        <input aria-label={L("Note for {name}", { name: m.contact.name })} placeholder={L("note")} value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
+                        <input aria-label={L("Note for {name}", { name: m.contact.name })} placeholder={L("note")} maxLength={300} value={v.note} disabled={dis} onChange={(e) => set({ note: e.target.value })} />
                       </div>
                     </li>
                   );
@@ -682,13 +699,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           {draft.items.map((it, i) => (
             <li key={i} className="item">
               <div className="item-row">
-                <input className="mono scene" aria-label={L("Scene")} placeholder="42" value={it.scene_number} disabled={dis} onChange={(e) => updateItem(i, { scene_number: e.target.value })} />
+                <input className="mono scene" aria-label={L("Scene")} placeholder="42" maxLength={20} value={it.scene_number} disabled={dis} onChange={(e) => updateItem(i, { scene_number: e.target.value })} />
                 <select aria-label={L("Int/Ext")} value={it.int_ext} disabled={dis} onChange={(e) => updateItem(i, { int_ext: e.target.value as "INT" | "EXT" })}><option>INT</option><option>EXT</option></select>
                 <select aria-label={L("Day/Night")} value={it.day_night} disabled={dis} onChange={(e) => updateItem(i, { day_night: e.target.value as "DAY" | "NIGHT" })}><option>DAY</option><option>NIGHT</option></select>
-                <input className="mono pages" aria-label={L("Pages in eighths")} type="number" min={0} value={it.page_count_eighths} disabled={dis} onChange={(e) => updateItem(i, { page_count_eighths: Math.max(0, Number(e.target.value) || 0) })} />
+                <input className="mono pages" aria-label={L("Pages in eighths")} type="number" min={0} max={8000} value={it.page_count_eighths} disabled={dis} onChange={(e) => updateItem(i, { page_count_eighths: Math.max(0, Number(e.target.value) || 0) })} />
                 <span className="hint">/8</span>
               </div>
-              <input className="set" aria-label={L("Set")} placeholder="RIVERBANK, TROJA. Marta finds the boat." value={it.set_description} disabled={dis} onChange={(e) => updateItem(i, { set_description: e.target.value })} />
+              <input className="set" aria-label={L("Set")} placeholder="RIVERBANK, TROJA. Marta finds the boat." maxLength={500} value={it.set_description} disabled={dis} onChange={(e) => updateItem(i, { set_description: e.target.value })} />
               <select aria-label={L("Location")} value={it.location_id ?? ""} disabled={dis} onChange={(e) => updateItem(i, { location_id: e.target.value || null })}>
                 <option value="">{L("— no location —")}</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -759,7 +776,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
               ))}
             </div>
             <label className="field" htmlFor="actual_note"><span className="label">{L("Note")}</span>
-              <input id="actual_note" value={actuals.note ?? ""} disabled={readOnly || actualsBusy} placeholder={L("Rain from 15:00; lost the last two scenes")}
+              <input id="actual_note" maxLength={500} value={actuals.note ?? ""} disabled={readOnly || actualsBusy} placeholder={L("Rain from 15:00; lost the last two scenes")}
                 onChange={(e) => { setActuals({ ...actuals, note: e.target.value }); setActualsDirty(true); }} />
             </label>
             {!readOnly && (
@@ -884,26 +901,27 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           {!offline && !canPublish && L("Read-only: your role on this production can view but not publish.")}
           {!readOnly && !published && !planned && L("Not published yet. Your draft is saved on this phone.")}
           {!readOnly && planned && L("Planned day, not published: the crew cannot see it yet. Check it and publish to send REV A.")}
-          {!readOnly && published && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
-          {!readOnly && published && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter(draft.lastPublishedLetter!) })}
+          {!readOnly && outOfLetters && L("This day has used all 26 revisions, A to Z, so nothing more can be published on it. To change it further, cancel it and create a new day for the same date.")}
+          {!readOnly && published && !outOfLetters && !draft.dirtySincePublish && L("REV {rev} is live.", { rev: draft.lastPublishedLetter! })}
+          {!readOnly && published && !outOfLetters && draft.dirtySincePublish && L("Changes since REV {rev}. Publish to send REV {next}.", { rev: draft.lastPublishedLetter!, next: nextLetter! })}
         </div>
         {/* With nothing new to send, publishing is not the next step: only a change earns the loud button. */}
-        <button id="publish" className={published && !draft.dirtySincePublish ? "secondary" : undefined} onClick={() => void publish()} disabled={busy || readOnly}>
-          {busy ? L("Publishing…") : published ? L("Publish REV {rev}", { rev: nextLetter(draft.lastPublishedLetter!) }) : L("Publish")}
+        <button id="publish" className={published && !draft.dirtySincePublish ? "secondary" : undefined} onClick={() => void publish()} disabled={busy || readOnly || outOfLetters}>
+          {busy ? L("Publishing…") : outOfLetters ? L("No revisions left") : published ? L("Publish REV {rev}", { rev: nextLetter! }) : L("Publish")}
         </button>
       </div>
     </>
   );
 }
 
-function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean }) {
-  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled } = props;
+function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean; maxLength?: number }) {
+  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled, maxLength } = props;
   return (
     <label className="field" htmlFor={id}>
       <span className="label">{label}</span>
       {textarea
-        ? <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={3} disabled={disabled} />
-        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
+        ? <textarea id={id} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} rows={3} disabled={disabled} />
+        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
     </label>
   );
 }

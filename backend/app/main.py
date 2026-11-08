@@ -22,6 +22,7 @@ from app.ratelimit import RateLimitMiddleware
 from app.config import get_settings
 from app.database import engine
 from app.request_log import RequestLogMiddleware
+from app.errors import UnhandledErrorMiddleware
 from app.routers import call_sheets, dashboard, productions, push, sandbox
 
 settings = get_settings()
@@ -45,7 +46,8 @@ app = FastAPI(
 # Vite dev server locally), so CORS is required. Origins come from
 # FILMRUNNER_CORS_ORIGINS; "*" is the local-dev default.
 # FR-51: the abuse guard sits inside CORS (added first = innermost), so a 429 still carries CORS headers
-# and the browser can show the message instead of a blocked request.
+# and the browser can show the message instead of a blocked request. The same reason places FR-222's
+# handler for unhandled errors inside CORS too (see app/errors.py).
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(
     RateLimitMiddleware,
@@ -53,6 +55,7 @@ app.add_middleware(
     per_token=settings.public_rate_limit_per_token,
     per_ip_photos=settings.public_rate_limit_per_ip_photos,
 )
+app.add_middleware(UnhandledErrorMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

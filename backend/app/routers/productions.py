@@ -498,7 +498,7 @@ def remove_crew_member(
     heads_day = (
         db.query(CallSheet)
         .join(CallSheetRevision, CallSheetRevision.call_sheet_id == CallSheet.id)
-        .filter(CallSheetRevision.head_of_day_crew_member_id == member.id)
+        .filter(CallSheetRevision.head_of_day_crew_member_id == member.id, CallSheetRevision.is_current.is_(True))
         .order_by(CallSheet.shoot_date)
         .first()
     )
@@ -507,6 +507,9 @@ def remove_crew_member(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"{member.contact.name} is head of day on Day {heads_day.day_number} ({heads_day.shoot_date}); pick another head of day first",
         )
+    # The foreign key has no ON DELETE, so replaced revisions naming this person would refuse the delete.
+    # Their personal calls on those revisions already go with them (crew_call_entries cascades): same rule.
+    db.query(CallSheetRevision).filter(CallSheetRevision.head_of_day_crew_member_id == member.id).update({CallSheetRevision.head_of_day_crew_member_id: None}, synchronize_session=False)
     db.delete(member)
     db.commit()
 

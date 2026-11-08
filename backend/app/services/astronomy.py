@@ -13,7 +13,7 @@ References:
 """
 
 import math
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 _ZENITH = 90.833  # degrees; official sunrise/sunset, includes refraction + solar radius
@@ -66,6 +66,13 @@ def _sun_time_utc_hours(is_sunrise: bool, lat: float, lng: float, on_date: date)
     return ut_hours
 
 
+def _local_hhmm(utc_hours: float, on_date: date, tz_name: str) -> str:
+    # Whole minutes from midnight, so a minute that rounds up to 60 carries into the hour and on into the next day.
+    midnight = datetime(on_date.year, on_date.month, on_date.day, tzinfo=timezone.utc)
+    instant = midnight + timedelta(minutes=round(utc_hours * 60))
+    return instant.astimezone(ZoneInfo(tz_name)).strftime("%H:%M")
+
+
 def sunrise_sunset(lat: float, lng: float, on_date: date, tz_name: str = "Europe/Prague") -> tuple[str, str] | tuple[None, None]:
     """Local "HH:MM" sunrise and sunset for the given coordinates and date,
     or (None, None) if the sun does not rise or set (not expected for
@@ -75,13 +82,4 @@ def sunrise_sunset(lat: float, lng: float, on_date: date, tz_name: str = "Europe
     if rise_utc is None or set_utc is None:
         return None, None
 
-    tz = ZoneInfo(tz_name)
-
-    def to_local(hours: float) -> str:
-        h = int(hours) % 24
-        minute = int(round((hours - int(hours)) * 60)) % 60
-        utc_dt = datetime(on_date.year, on_date.month, on_date.day, h, minute, tzinfo=ZoneInfo("UTC"))
-        local_dt = utc_dt.astimezone(tz)
-        return local_dt.strftime("%H:%M")
-
-    return to_local(rise_utc), to_local(set_utc)
+    return _local_hhmm(rise_utc, on_date, tz_name), _local_hhmm(set_utc, on_date, tz_name)

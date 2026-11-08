@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
+import { firstBadTime } from "../times";
 import { clearPendingCrewEdit, contactChanges, diffCrewEditFields, loadAllPendingCrewEdits, mergeCrewEdit, savePendingCrewEdit, type CrewEditableFields, type PendingCrewEdit } from "../crewEdits";
 import { resizeImageToBlob } from "../resizeImage";
 import { importableRows, parseCrewList, type ParsedCrewRow } from "../crewImport";
@@ -426,6 +427,8 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
   function cancelEdit() { setEditing(null); setForm({ ...EMPTY_FORM, department: form.department }); }
 
   async function save() {
+    const badTime = firstBadTime([[L("Personal call (optional)"), form.call]]);
+    if (badTime) { setNotice({ kind: "error", text: L("{field}: \"{value}\" is not a time. Write it like 06:30.", badTime) }); return; }
     setBusy(true);
     try {
       if (editing) {
@@ -872,6 +875,8 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
   function cancelEdit() { setEditing(null); setForm(EMPTY_CAST_FORM); }
 
   async function save() {
+    const badTime = firstBadTime([[L("Usual pickup (optional)"), form.pickup]]);
+    if (badTime) { setNotice({ kind: "error", text: L("{field}: \"{value}\" is not a time. Write it like 06:30.", badTime) }); return; }
     setBusy(true);
     try {
       if (editing) {

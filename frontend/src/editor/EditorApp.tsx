@@ -21,6 +21,7 @@ export function noticeFromError(err: unknown, fallback: string): Notice {
     const T = (text: string) => translate(currentLang(), text);
     if (err.status === 0) return { kind: "warn", text: T("No connection. Nothing was lost; try again when you are back in signal.") };
     if (err.status === 401) return { kind: "error", text: T("The token was rejected. Disconnect and connect again.") };
+    if (err.status >= 500) return { kind: "error", text: `${fallback}: ${T("The server had a problem; it is not your connection. What you typed is still here. Try again in a moment.")}` };
     return { kind: "error", text: `${fallback}: ${T(err.message)}` };
   }
   return { kind: "error", text: `${fallback}: ${String(err)}` };
