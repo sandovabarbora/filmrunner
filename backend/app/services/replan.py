@@ -144,7 +144,7 @@ def _refuse_past(sheet: CallSheet, shoot_date: date) -> None:
 def reschedule_day(db: Session, sheet: CallSheet, shoot_date: date, expected_letter: str, created_by: str | None) -> list[tuple[CallSheet, CallSheetRevision]]:
     """Move a whole shoot day to another date."""
     number, unit = sheet.day_number, sheet.unit_name
-    lock_day_slot(db, sheet.production_id, shoot_date, number, unit)
+    lock_day_slot(db, sheet.production_id, shoot_date, unit)
     _lock(db, sheet)
     if (sheet.day_number, sheet.unit_name) != (number, unit):
         raise ReplanConflict(f"Day {number} was changed by someone else just now; reload and try again")
@@ -176,7 +176,7 @@ def cancel_day(db: Session, sheet: CallSheet) -> bool:
 def restore_day(db: Session, sheet: CallSheet) -> bool:
     """Undo a cancellation, back to what the day was. Returns whether the crew must be told."""
     # A cancelled day cannot be moved or renumbered, so the slot read before the lock is still its slot after it.
-    lock_day_slot(db, sheet.production_id, sheet.shoot_date, sheet.day_number, sheet.unit_name)
+    lock_day_slot(db, sheet.production_id, sheet.shoot_date, sheet.unit_name)
     _lock(db, sheet)
     tell_crew = sheet.status == CallSheetStatus.CANCELLED and not sheet.cancelled_from_draft
     if sheet.status == CallSheetStatus.CANCELLED:
@@ -194,7 +194,13 @@ def swap_days(db: Session, a: CallSheet, b: CallSheet, expected_letter: str, exp
         raise ReplanConflict("Pick another day to swap with")
     if a.production_id != b.production_id:
         raise ReplanConflict("That day belongs to another production")
+    # Each day lands on the other's date in its own unit; with two units that slot may hold a cancelled day being restored.
+    landing = {a.id: (b.shoot_date, a.unit_name), b.id: (a.shoot_date, b.unit_name)}
+    for shoot_date, unit in sorted(set(landing.values()), key=lambda slot: (slot[0], slot[1])):
+        lock_day_slot(db, a.production_id, shoot_date, unit)
     _lock(db, a, b)
+    if {a.id: (b.shoot_date, a.unit_name), b.id: (a.shoot_date, b.unit_name)} != landing:
+        raise ReplanConflict("One of these days was changed by someone else just now; reload and try again")
     rev_a, rev_b = _current(a, expected_letter), _current(b, expected_other_letter)
     _refuse_past(a, b.shoot_date)
     _refuse_past(b, a.shoot_date)

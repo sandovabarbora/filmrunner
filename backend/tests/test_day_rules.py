@@ -211,9 +211,10 @@ def test_two_creates_at_once_make_one_day() -> None:
 
 # --- FR-222 review: restore and reschedule wait for a create of the same day. ----------------------
 
-def _race_against_a_create(change, prague_clock_value: str | None = None) -> tuple[object, int]:
-    """A create of Day 3 on 2031-03-03 is under way and not committed while `change` runs in another session.
-    Returns what the change did, and how many live Day 3s exist on that date afterwards."""
+def _race_against_a_create(change, elsewhere_number: int = 3) -> tuple[object, int]:
+    """A create of Day 3 of the Main Unit on 2031-03-03 is under way and not committed while `change` runs in another session.
+    Besides it: a cancelled Day 3 on that date, Day `elsewhere_number` on 2031-03-10, and a Second Unit Day 3 on 2031-03-03.
+    Returns what the change did, and how many live Main Unit days exist on 2031-03-03 afterwards."""
     from datetime import date as day
 
     from sqlalchemy import text as sql
@@ -226,17 +227,18 @@ def _race_against_a_create(change, prague_clock_value: str | None = None) -> tup
     setup.add(production)
     setup.flush()
     cancelled = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 3), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.CANCELLED)
-    elsewhere = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 10), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.PUBLISHED)
-    setup.add_all([cancelled, elsewhere])
+    elsewhere = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 10), day_number=elsewhere_number, day_count=9, unit_name="Main Unit", status=CallSheetStatus.PUBLISHED)
+    second_unit = CallSheet(production_id=production.id, shoot_date=day(2031, 3, 3), day_number=3, day_count=9, unit_name="Second Unit", status=CallSheetStatus.PUBLISHED)
+    setup.add_all([cancelled, elsewhere, second_unit])
     setup.flush()
-    for sheet in (cancelled, elsewhere):
+    for sheet in (cancelled, elsewhere, second_unit):
         setup.add(CallSheetRevision(call_sheet_id=sheet.id, revision_letter="A", is_current=True, general_crew_call="06:30", shoot_date=sheet.shoot_date))
     setup.commit()
-    ids = {"production": production.id, "cancelled": cancelled.id, "elsewhere": elsewhere.id}
+    ids = {"production": production.id, "cancelled": cancelled.id, "elsewhere": elsewhere.id, "second_unit": second_unit.id}
     setup.close()
 
     creator = SessionLocal()
-    creator.execute(sql("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": f"create-day:{ids['production']}:2031-03-03:3:Main Unit"})
+    creator.execute(sql("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": f"create-day:{ids['production']}:2031-03-03:Main Unit"})
     creator.add(CallSheet(production_id=ids["production"], shoot_date=day(2031, 3, 3), day_number=3, day_count=9, unit_name="Main Unit", status=CallSheetStatus.PUBLISHED))
     creator.flush()
     outcome: dict = {}
@@ -262,7 +264,7 @@ def _race_against_a_create(change, prague_clock_value: str | None = None) -> tup
     check = SessionLocal()
     try:
         live = check.query(CallSheet).filter(CallSheet.production_id == ids["production"], CallSheet.shoot_date == day(2031, 3, 3),
-                                             CallSheet.day_number == 3, CallSheet.status != CallSheetStatus.CANCELLED).count()
+                                             CallSheet.unit_name == "Main Unit", CallSheet.status != CallSheetStatus.CANCELLED).count()
     finally:
         for sheet in check.query(CallSheet).filter(CallSheet.production_id == ids["production"]).all():
             for revision in list(sheet.revisions):
@@ -290,3 +292,20 @@ def test_rescheduling_waits_for_a_create_on_the_target_date_and_then_refuses(pra
     prague_clock("2031-01-01T12:00")
     result, live = _race_against_a_create(lambda db, ids: reschedule_day(db, db.get(CallSheet, ids["elsewhere"]), date(2031, 3, 3), "A", "ad"))
     assert isinstance(result, ReplanConflict) and live == 1
+
+
+def test_rescheduling_another_day_number_onto_the_date_waits_too(prague_clock) -> None:
+    """The clash rule is one Main Unit day per date, whatever its number, so the lock has to be by date too."""
+    from app.services.replan import ReplanConflict, reschedule_day
+
+    prague_clock("2031-01-01T12:00")
+    result, live = _race_against_a_create(lambda db, ids: reschedule_day(db, db.get(CallSheet, ids["elsewhere"]), date(2031, 3, 3), "A", "ad"), elsewhere_number=5)
+    assert isinstance(result, ReplanConflict) and live == 1
+
+
+def test_swapping_waits_for_a_create_on_the_slot_it_lands_on(prague_clock) -> None:
+    """Day 5 of the Main Unit swaps with the Second Unit's day on 2031-03-03, so it lands on the slot being created."""
+    from app.services.replan import swap_days
+
+    prague_clock("2031-01-01T12:00")
+    _race_against_a_create(lambda db, ids: swap_days(db, db.get(CallSheet, ids["elsewhere"]), db.get(CallSheet, ids["second_unit"]), "A", "A", "ad"), elsewhere_number=5)

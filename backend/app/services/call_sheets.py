@@ -330,10 +330,11 @@ def _same_create_request(sheet: CallSheet, payload: CallSheetCreate) -> bool:
     return stored_items == sent_items and stored_crew == sent_crew and stored_cast == sent_cast
 
 
-def lock_day_slot(db: Session, production_id, shoot_date: date, day_number: int, unit_name: str) -> None:
-    """Serialise everything that can put a live day on this date, number and unit: creating one, restoring one,
-    moving one there. Always taken before a day's own publish lock, never after, so the two cannot deadlock."""
-    key = f"create-day:{production_id}:{shoot_date}:{day_number}:{unit_name}"
+def lock_day_slot(db: Session, production_id, shoot_date: date, unit_name: str) -> None:
+    """Serialise everything that can put a live day on this unit's date: creating one, restoring one, moving or
+    swapping one there. By date and unit, not day number, because moving a day refuses any day already on that date.
+    Always taken before a day's own publish lock, never after, so the two cannot deadlock; several at once go in sorted order."""
+    key = f"create-day:{production_id}:{shoot_date}:{unit_name}"
     db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": key})
 
 
@@ -346,7 +347,7 @@ def create_call_sheet_once(db: Session, production_id, payload: CallSheetCreate,
     Raises:
         DuplicateDay: the day exists with other content.
     """
-    lock_day_slot(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
+    lock_day_slot(db, production_id, payload.shoot_date, payload.unit_name)
     existing = live_days_like(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
     if not existing:
         return create_call_sheet(db, production_id, payload, created_by=created_by), True
