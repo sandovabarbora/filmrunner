@@ -10,12 +10,13 @@ Reference: https://docs.sqlalchemy.org/en/20/orm/session_transaction.html
 import logging
 import string
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import or_, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.clock import prague_today
 from app.models.production import CastMember, CrewMember, Location
 from app.models.push import PushSubscription
 from app.models.seen import RevisionView
@@ -100,7 +101,7 @@ def _fill_computed_sunrise_sunset(db: Session, revision: CallSheetRevision, shoo
 def _weather_target(db: Session, revision: CallSheetRevision) -> tuple[float, float, date] | None:
     # Open-Meteo forecasts 16 days ahead and nothing in the past; outside that window the call can only
     # fail (FR-52 found a 400 per publish on a 30-day schedule import), so it is not made.
-    horizon = (revision.shoot_date - date.today()).days
+    horizon = (revision.shoot_date - prague_today()).days
     if horizon < 0 or horizon > 16:
         return None
     ordered = sorted((i for i in revision.schedule_items if i.location_id is not None), key=lambda i: i.order_index)
@@ -192,7 +193,7 @@ def publish_revision(
 
     head_of_day_id = _validate_head_of_day(db, call_sheet.production_id, payload.head_of_day_crew_member_id)
     previous = call_sheet.current_revision
-    if call_sheet.status == CallSheetStatus.DRAFT and previous is not None:
+    if call_sheet.hidden_from_crew and previous is not None:
         # A draft day (FR-56) was never seen by anyone: its content is replaced, not revised, so the
         # first thing the crew sees is REV A. Copy-forward below still reads `previous` first.
         replaced = previous
@@ -248,6 +249,7 @@ def publish_revision(
         existing.is_current = False
     # A published revision means the day is on: this also puts a cancelled day back (FR-34), telling the crew via the revision push.
     call_sheet.status = CallSheetStatus.PUBLISHED
+    call_sheet.cancelled_from_draft = False
 
     revision = CallSheetRevision(
         call_sheet_id=call_sheet.id,
@@ -291,6 +293,68 @@ def publish_revision(
         len(cast_calls),
     )
     return revision, True
+
+
+class DuplicateDay(ValueError):
+    """This date, day number and unit is already a day, with other content; the message tells the AD."""
+
+
+def live_days_like(db: Session, production_id, shoot_date: date, day_number: int, unit_name: str) -> list[CallSheet]:
+    """The days this one would duplicate. A cancelled day does not count: creating its replacement is the normal way forward."""
+    return (
+        db.query(CallSheet)
+        .filter(CallSheet.production_id == production_id, CallSheet.shoot_date == shoot_date, CallSheet.day_number == day_number,
+                CallSheet.unit_name == unit_name, CallSheet.status != CallSheetStatus.CANCELLED)
+        .all()
+    )
+
+
+def _same_create_request(sheet: CallSheet, payload: CallSheetCreate) -> bool:
+    """Whether `payload` is what created `sheet`, so a retry rather than a second day. Compared with REV A, not the
+    current revision: a retry that arrives after a newer publish is still that same request."""
+    first = next((r for r in sheet.revisions if r.revision_letter == "A"), None)
+    wanted = payload.initial_revision
+    if first is None or sheet.day_count != payload.day_count or (sheet.status == CallSheetStatus.DRAFT) != payload.draft:
+        return False
+    # Left blank, these were filled in by the server when it published.
+    if any(getattr(wanted, name) and getattr(wanted, name) != getattr(first, name) for name in ("sunrise", "sunset", "weather_forecast")):
+        return False
+    if any((getattr(wanted, name) or None) != (getattr(first, name) or None) for name in ("general_crew_call", "shooting_call", "safety_notes", "head_of_day_crew_member_id")):
+        return False
+    stored_items = [(i.order_index, i.scene_number, i.int_ext, i.day_night, i.set_description, i.location_id, i.page_count_eighths) for i in _ordered_items(first)]
+    sent_items = sorted(((i.order_index, i.scene_number, i.int_ext, i.day_night, i.set_description, i.location_id, i.page_count_eighths) for i in wanted.schedule_items), key=lambda row: row[0])
+    stored_crew = {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in first.crew_calls}
+    sent_crew = {e.crew_member_id: (e.call_time, e.pickup_time, e.note) for e in wanted.crew_calls or []}
+    stored_cast = {e.cast_member_id: (e.status_code, e.pickup_time, e.call_time, e.makeup_hair_time, e.on_set_time) for e in first.cast_calls}
+    sent_cast = {e.cast_member_id: (e.status_code, e.pickup_time, e.call_time, e.makeup_hair_time, e.on_set_time) for e in wanted.cast_calls or []}
+    return stored_items == sent_items and stored_crew == sent_crew and stored_cast == sent_cast
+
+
+def lock_day_slot(db: Session, production_id, shoot_date: date, unit_name: str) -> None:
+    """Serialise everything that can put a live day on this unit's date: creating one, restoring one, moving or
+    swapping one there. By date and unit, not day number, because moving a day refuses any day already on that date.
+    Always taken before a day's own publish lock, never after, so the two cannot deadlock; several at once go in sorted order."""
+    key = f"create-day:{production_id}:{shoot_date}:{unit_name}"
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key)::bigint)"), {"key": key})
+
+
+def create_call_sheet_once(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> tuple[CallSheet, bool]:
+    """Create a day unless it exists. Returns (day, is_new); is_new False is a retry, and the crew was told the first time.
+
+    An advisory lock rather than a unique index: an index cannot be added while older duplicates may exist, and a
+    retried create has to be told apart from a real conflict anyway.
+
+    Raises:
+        DuplicateDay: the day exists with other content.
+    """
+    lock_day_slot(db, production_id, payload.shoot_date, payload.unit_name)
+    existing = live_days_like(db, production_id, payload.shoot_date, payload.day_number, payload.unit_name)
+    if not existing:
+        return create_call_sheet(db, production_id, payload, created_by=created_by), True
+    retried = next((sheet for sheet in existing if _same_create_request(sheet, payload)), None)
+    if retried is not None:
+        return retried, False
+    raise DuplicateDay(f"Day {payload.day_number} of {payload.unit_name} on {payload.shoot_date.isoformat()} already exists; open it instead of creating it again")
 
 
 def create_call_sheet(db: Session, production_id, payload: CallSheetCreate, created_by: str | None = None) -> CallSheet:
@@ -625,8 +689,8 @@ def _schedule_changes(before: CallSheetRevision, after: CallSheetRevision) -> li
     # Every revision since `before`, not only the last: someone catching up across several must still see each move.
     between = [r for r in after.call_sheet.revisions if before.revision_letter < r.revision_letter <= after.revision_letter]
     # A planned day does not exist for the crew: no link to it and no trace of it. To them the scene simply left or arrived.
-    moves_out = [m for r in between for m in r.moves_out if m.to_revision.call_sheet.status != CallSheetStatus.DRAFT]
-    moves_in = [m for r in between for m in r.moves_in if m.from_revision.call_sheet.status != CallSheetStatus.DRAFT]
+    moves_out = [m for r in between for m in r.moves_out if not m.to_revision.call_sheet.hidden_from_crew]
+    moves_in = [m for r in between for m in r.moves_in if not m.from_revision.call_sheet.hidden_from_crew]
     moved_out = {m.scene_number for m in moves_out}
     moved_in = {m.scene_number for m in moves_in}
     for move in moves_out:
@@ -784,13 +848,48 @@ def build_personal_calls(db: Session, call_sheet: CallSheet) -> list[PersonalCal
     return rows
 
 
-def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | None:
+NIGHT_ENDS_AT_HOUR = 6
+
+
+def _minutes(value: str | None) -> int | None:
+    """Minutes after midnight of an HH:MM time; None for anything else, which stored data can still hold."""
+    hour, colon, minute = (value or "").partition(":")
+    if not colon or not (hour.isascii() and hour.isdigit() and minute.isascii() and minute.isdigit()):
+        return None
+    return int(hour) * 60 + int(minute)
+
+
+def _due_before_dawn(revision: CallSheetRevision, person: CrewMember | CastMember) -> bool:
+    """Whether this person has to move before 06:00 on this day: their earliest own time (call or pickup), else the general call.
+    An actor not called that day does not. A time that cannot be read counts as early, since the harm to avoid is
+    sending someone to a finished sheet."""
+    if isinstance(person, CastMember):
+        entry = next((e for e in revision.cast_calls if e.cast_member_id == person.id), None)
+        if entry is None:
+            return False
+        times = [t for t in (entry.pickup_time, entry.call_time, entry.makeup_hair_time, entry.on_set_time) if t] or [revision.general_crew_call]
+    else:
+        entry = _crew_entry(revision, person)
+        times = [effective_call(revision, person)] + ([entry.pickup_time] if entry and entry.pickup_time else [])
+    minutes = [_minutes(t) for t in times]
+    return any(m is None or m < NIGHT_ENDS_AT_HOUR * 60 for m in minutes)
+
+
+def next_day_for_token(db: Session, token: str, today: date, *, before_dawn: bool = False) -> CrewNextDay | None:
     """FR-32: one link per person for the whole shoot. Resolves the personal
     token to its crew member and picks the day that link should open: the
     earliest shoot day on or after `today`, else the most recent one (the
     shoot is over, the last sheet is still the useful one). None for an
     unknown token; a production with no days yet gives call_sheet_id None
-    so the viewer can say "no day published yet" instead of 404-ing."""
+    so the viewer can say "no day published yet" instead of 404-ing.
+
+    FR-222: `before_dawn` (before 06:00) keeps yesterday's day open for a
+    shoot still running: only when that day's crew call was at noon or later,
+    this person was on it (crew always are, an actor only when called), and
+    they are not due before 06:00 on today's day (their own call or pickup,
+    else the general call). Otherwise it is today's day as usual. Whether
+    they are still on set is not known; the rule only avoids the cases that
+    send someone with an early start today to a finished sheet."""
     member = db.query(CrewMember).filter(CrewMember.personal_token == token).first() or db.query(CastMember).filter(CastMember.personal_token == token).first()
     if member is None:
         return None
@@ -816,11 +915,19 @@ def next_day_for_token(db: Session, token: str, today: date) -> CrewNextDay | No
                    general_crew_call=s.current_revision.general_crew_call if s.current_revision else None,
                    first_location_name=first_location_name(s.current_revision))
         for s in sheets
+        if not s.hidden_from_crew
     ]
-    days = [d for d in days if d.status != "draft"]  # planned days (FR-56) do not exist for the crew yet
     live = [d for d in days if d.status != "cancelled"]
     upcoming = [d for d in live if d.shoot_date >= today]
     chosen = upcoming[0] if upcoming else (live[-1] if live else (days[-1] if days else None))
+    if before_dawn:
+        by_id = {s.id: s for s in sheets}
+        running = [d for d in live if d.shoot_date == today - timedelta(days=1) and (_minutes(d.general_crew_call) or 0) >= 12 * 60
+                   and by_id[d.call_sheet_id].current_revision is not None and _is_called(by_id[d.call_sheet_id].current_revision, member)]
+        today_days = [by_id[d.call_sheet_id] for d in live if d.shoot_date == today]
+        early_today = any(day.current_revision is not None and _due_before_dawn(day.current_revision, member) for day in today_days)
+        if running and not early_today:
+            chosen = running[-1]
     return CrewNextDay(production_name=member.production.name, crew_member_name=member.contact.name,
                        call_sheet_id=chosen.call_sheet_id if chosen else None, days=days)
 

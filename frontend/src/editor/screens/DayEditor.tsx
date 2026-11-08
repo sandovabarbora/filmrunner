@@ -6,6 +6,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import { crewLink, personalLink } from "./Production";
 import { QrCode } from "./QrCode";
 import { canWebShare, daySummaryText, personalMessageText, smsUrl, whatsappNumber, whatsappUrl } from "../shareText";
+import { pragueToday } from "../pragueDate";
 import { nextRevisionLetter } from "../revisions";
 import { firstBadTime } from "../times";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
@@ -96,11 +97,6 @@ function draftFromServer(productionId: string, productionName: string | null, sh
   return { ...draft, base: editableContent(draft) };
 }
 
-function localToday(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 export function DayEditor({ conn, productionId, productionName, callSheetId, canPublish, setNotice }: {
   conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; canPublish: boolean; setNotice: (n: Notice) => void;
 }) {
@@ -123,6 +119,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [reminded, setReminded] = useState<Set<string>>(new Set());  // this sitting only: "{letter}:{id}", so a new revision starts over
   const [history, setHistory] = useState<HistoryEntry[]>([]);  // FR-50: who published each revision, when, what changed
   const [dayStatus, setDayStatus] = useState<string | null>(null);  // FR-34: "cancelled" shows the banner and the restore button
+  const [cancelledDraft, setCancelledDraft] = useState(false);  // FR-222: cancelled, but the crew never saw it
   // FR-65: the production's numbers after the day; saved on their own, no revision, never on the crew's sheet.
   const EMPTY_ACTUALS: Actuals = { first_shot: null, lunch_out: null, lunch_in: null, wrap: null, note: null };
   const [actuals, setActuals] = useState<Actuals>(EMPTY_ACTUALS);
@@ -153,7 +150,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       if (callSheetId) {
         try {
           const sheet = await api.getCallSheet(conn, callSheetId);
-          if (!cancelled) { setDayStatus(sheet.status ?? "published"); setActuals(sheet.actuals ?? EMPTY_ACTUALS); setActualsDirty(false); }
+          if (!cancelled) { setDayStatus(sheet.status ?? "published"); setCancelledDraft(!!sheet.cancelled_from_draft); setActuals(sheet.actuals ?? EMPTY_ACTUALS); setActualsDirty(false); }
           const fromServer = draftFromServer(productionId, productionName, sheet);
           // Keep unpublished local edits if they are newer than the last publish.
           const sameRevision = local?.baseRevisionId ? local.baseRevisionId === fromServer.baseRevisionId : local?.lastPublishedLetter === fromServer.lastPublishedLetter;
@@ -259,8 +256,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!draft) return;
     const locationId = firstLocationId();
     if (!locationId) { setNotice({ kind: "warn", text: L("Pick a location for the first scene to get a weather suggestion.") }); return; }
-    const today = new Date().toISOString().slice(0, 10);
-    if (isBeyondWeatherForecastHorizon(draft.shoot_date, today)) {
+    if (isBeyondWeatherForecastHorizon(draft.shoot_date, pragueToday())) {
       setNotice({ kind: "warn", text: L("Too far ahead to forecast yet — try again closer to the date.") });
       return;
     }
@@ -308,6 +304,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       } else {
         const rev = await api.publishRevision(conn, draft.callSheetId, { ...revisionPayload(draft), expected_revision_id: draft.baseRevisionId });
         update({ lastPublishedLetter: rev.revision_letter, baseRevisionId: rev.id, base: editableContent(draft), publishedAt: new Date().toISOString(), dirtySincePublish: false });
+        setCancelledDraft(false);
         setDayStatus("published");  // publishing puts a cancelled day back on, and makes a planned day real
         setNotice({ kind: "ok", text: L("Published REV {rev}. Everyone with the link sees it now.", { rev: rev.revision_letter }) });
       }
@@ -414,9 +411,12 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
     if (!draft?.callSheetId) return;
     setBusy(true);
     try {
-      await api.restoreCallSheet(conn, draft.callSheetId);
-      setDayStatus("published");
-      setNotice({ kind: "warn", text: L("Day {n} is back on. Publish a revision so the crew gets told.", { n: draft.day_number }) });
+      const sheet = await api.restoreCallSheet(conn, draft.callSheetId);
+      setDayStatus(sheet.status ?? "published");
+      setCancelledDraft(false);
+      setNotice({ kind: "ok", text: sheet.status === "draft"
+        ? L("Day {n} is a planned day again. The crew cannot see it.", { n: draft.day_number })
+        : L("Day {n} is back on. The crew is being told.", { n: draft.day_number }) });
     } catch (err) {
       setNotice(noticeFromError(err, L("Could not restore the day")));
     } finally {
@@ -448,7 +448,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
   if (!draft) return <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>;
   // A planned (draft) day exists on the server but nobody has seen it: no sharing, no receipts, publish sends REV A.
-  const planned = dayStatus === "draft";
+  const planned = dayStatus === "draft" || cancelledDraft;
   const published = draft.callSheetId && draft.lastPublishedLetter && !planned;
   // The message must say what the link says: with unpublished edits the text would lie (FR-29 dod).
   const shareable = !!published && !draft.dirtySincePublish;
@@ -552,7 +552,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         )}
         {draft.callSheetId && movingDay && (
           <div className="replan" id="moveDayPanel">
-            <Field label={L("New date")} id="newDate" type="date" value={newDate} onChange={(v) => { setNewDate(v); setSwapId(""); }} disabled={busy} />
+            <Field label={L("New date")} id="newDate" type="date" min={pragueToday()} value={newDate} onChange={(v) => { setNewDate(v); setSwapId(""); }} disabled={busy} />
             {otherDays.length > 0 && (
               <label className="field" htmlFor="swapWith">
                 <span className="label">{L("Or swap with")}</span>
@@ -753,7 +753,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       <section className="publish" aria-label={L("Publish")}>
         {dayStatus === "cancelled" && (
           <div className="cancelled-banner" id="cancelledBanner" role="status">
-            <strong>{L("CANCELLED")}</strong> — this day is off. The crew link says so.
+            <strong>{L("CANCELLED")}</strong> {cancelledDraft ? L("This planned day is off. The crew never saw it.") : L("This day is off. The crew link says so.")}
             {!readOnly && <button type="button" className="quiet" id="restoreDay" disabled={busy} onClick={() => void restoreDay()}>{L("Restore the day")}</button>}
           </div>
         )}
@@ -763,7 +763,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           </div>
         )}
         {published && dayStatus !== "cancelled" && (
-          <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= localToday() || Object.values(actuals).some(Boolean)}>
+          <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= pragueToday() || Object.values(actuals).some(Boolean)}>
             <summary>{L("Actual times")}</summary>
             <p className="hint">{L("After wrap: what really happened. For the production's records only; the crew's sheet does not change and nobody is notified.")}</p>
             <div className="actuals-grid">
@@ -914,14 +914,14 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   );
 }
 
-function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean; maxLength?: number }) {
-  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled, maxLength } = props;
+function Field(props: { label: string; id: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; mono?: boolean; textarea?: boolean; disabled?: boolean; maxLength?: number; min?: string }) {
+  const { label, id, value, onChange, type = "text", placeholder, mono, textarea, disabled, maxLength, min } = props;
   return (
     <label className="field" htmlFor={id}>
       <span className="label">{label}</span>
       {textarea
         ? <textarea id={id} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} rows={3} disabled={disabled} />
-        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
+        : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} min={min} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
     </label>
   );
 }

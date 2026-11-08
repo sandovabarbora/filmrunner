@@ -177,7 +177,7 @@ def _valid_body(model: type[BaseModel], ids: dict) -> dict:
     if model is CrewMemberCreate:
         return {"contact_id": ids["contact_id"], "department": "AD", "position": "3rd AD"}
     if model is CallSheetCreate:
-        return {"shoot_date": "2026-01-01", "day_number": 1, "day_count": 1, "initial_revision": {}}
+        return {"shoot_date": "2031-02-01", "day_number": 1, "day_count": 1, "initial_revision": {}}
     if model is PushSubscriptionCreate:
         return {"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "p", "auth": "a"}, "link_url": "https://example.com/sheet"}
     if model is ConfirmRequest:
@@ -236,14 +236,14 @@ def _ids(client: TestClient, auth_headers) -> dict:
     ).json()
     sheet = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
-        json={"shoot_date": "2026-01-01", "day_number": 1, "day_count": 2, "initial_revision": {
+        json={"shoot_date": "2031-01-01", "day_number": 1, "day_count": 2, "initial_revision": {
             "schedule_items": [{"order_index": 1, "scene_number": "1", "int_ext": "INT", "day_night": "DAY", "set_description": "Set", "page_count_eighths": 8}],
         }},
         headers=auth_headers,
     ).json()
     other = client.post(
         f"/api/v1/productions/{pid}/call-sheets",
-        json={"shoot_date": "2026-01-02", "day_number": 2, "day_count": 2, "initial_revision": {}},
+        json={"shoot_date": "2031-01-02", "day_number": 2, "day_count": 2, "initial_revision": {}},
         headers=auth_headers,
     ).json()
     return {"production_id": pid, "contact_id": contact_id, "crew_member_token": crew["personal_token"], "call_sheet_id": sheet["id"], "other_call_sheet_id": other["id"]}

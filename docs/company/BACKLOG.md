@@ -2391,3 +2391,18 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - someone who is no longer head of day on any current revision can be removed
   - past REV Z publishing is off with a plain explanation
   - failure case: a legacy value such as "abc" never blocks a publish or a moved day that does not touch it, and a personal link token never reaches the error log
+  - cancelling a draft tells nobody and restoring returns it to draft; the crew cannot reach a cancelled draft by any public route
+  - restoring a published day tells the crew once; a repeat cancel or restore tells nobody
+  - a day cannot move to a date before Prague's today; the same date, day number and unit cannot exist twice; an identical retry returns the existing day with no new push
+  - a published day with nobody on it needs attention on the dashboard, in both languages
+  - today is Prague's date in the API and the editor; a shoot called at noon or later stays current until 06:00
+  - failure case: a cancelled day cannot be restored on top of its replacement, and someone called at 05:30 today is not sent to yesterday's finished sheet
+
+## FR-227 · tech-lead · Resend a cancellation to the people it did not reach
+- state: ready
+- gated: no
+- why: a repeat cancel deliberately tells nobody (FR-222), so a person whose push failed the first time never learns the day is off unless the AD calls them
+- dod:
+  - the AD can resend "CANCELLED" to the people whose delivery failed or who have not opened it, from the day screen, alongside the planned reminders
+  - nobody who already received it gets it twice
+  - failure case: a resend that fails again shows those names to the AD as not told

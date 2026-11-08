@@ -1,11 +1,10 @@
 import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.clock import prague_today
 from app.config import get_settings
 from app.database import get_db
 from app.errors import where_it_failed
@@ -39,4 +38,4 @@ def start_session(request: Request, db: Session = Depends(get_db)) -> SandboxSes
         logger.error("Could not purge expired test worlds: %s", where_it_failed(exc))
     if live_session_count(db) >= MAX_LIVE_SESSIONS:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="The test environment is full; try again later")
-    return create_session(db, datetime.now(ZoneInfo("Europe/Prague")).date())
+    return create_session(db, prague_today())

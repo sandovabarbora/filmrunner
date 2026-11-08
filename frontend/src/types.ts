@@ -182,7 +182,7 @@ export type Permission = "production:read" | "production:manage_members" | "prod
 export type ProductionRole = "owner" | "editor" | "viewer";
 
 export interface DashboardItem {
-  kind: "unconfirmed" | "unpublished";
+  kind: "unconfirmed" | "no_crew" | "unpublished";
   production_id: string;
   production_name: string;
   call_sheet_id: string;
@@ -230,6 +230,7 @@ export interface Member {
 export interface CallSheetCreated extends CallSheet {
   id: string;
   production_id: string;
+  cancelled_from_draft?: boolean;
 }
 
 export interface ContactCreate {

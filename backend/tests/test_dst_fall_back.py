@@ -92,18 +92,17 @@ def test_sunrise_sunset_tracks_the_fall_back_not_a_fixed_offset() -> None:
 # --- call_sheets.py's "today" cutoff ------------------------------------
 
 def _freeze_now(monkeypatch: pytest.MonkeyPatch, instant_utc: datetime) -> None:
-    """Patches `app.routers.call_sheets.datetime.now` so the public "next
-    day" endpoint computes its Prague "today" from a fixed UTC instant,
-    the same way the real line (`datetime.now(ZoneInfo("Europe/Prague"))`)
-    would at that moment in real time."""
-    from app.routers import call_sheets as call_sheets_router
+    """Patches `app.clock.datetime.now` so the public "next day" endpoint
+    computes its Prague "today" from a fixed UTC instant, the same way the
+    real line (`datetime.now(PRAGUE)`) would at that moment in real time."""
+    from app import clock
 
     class _Frozen(_dt.datetime):
         @classmethod
         def now(cls, tz=None):
             return instant_utc.astimezone(tz) if tz is not None else instant_utc
 
-    monkeypatch.setattr(call_sheets_router, "datetime", _Frozen)
+    monkeypatch.setattr(clock, "datetime", _Frozen)
 
 
 def _setup_two_days(client: TestClient, day1: str, day2: str) -> str:
