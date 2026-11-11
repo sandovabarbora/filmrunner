@@ -26,7 +26,7 @@ Film set, unit base, van, night before a shoot. Cold hands, one hand, low light,
 
 ## Capabilities and Constraints
 
-React and Vite PWA on GitHub Pages, FastAPI on Fly, Postgres on Supabase. Crew use a link with no account or install. Sheets print to paper and must stay legible in print. Czech and English interface; user-entered text is never translated. Cost impact, availability checks and automatic SMS are not built.
+React and Vite PWA on GitHub Pages, FastAPI on Fly, Postgres on Supabase. Crew use a link with no account or install. Sheets print to paper and must stay legible in print. Czech and English interface; user-entered text is never translated. Cost impact and automatic SMS are not built. Availability is checked only against the days an actor agreed to, as a warning (FR-228, planned).
 
 ## Brand Commitments
 

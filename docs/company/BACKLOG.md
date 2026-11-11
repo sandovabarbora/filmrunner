@@ -2406,3 +2406,15 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - the AD can resend "CANCELLED" to the people whose delivery failed or who have not opened it, from the day screen, alongside the planned reminders
   - nobody who already received it gets it twice
   - failure case: a resend that fails again shows those names to the AD as not told
+
+## FR-228 · tech-lead · An actor's agreed days, and a warning when the plan leaves them
+- state: ready
+- gated: no
+- why: a head of production (outreach reply, 2026-11-11) named actors' commitments as the biggest constraint on every project; the damage comes when a scene moves off the days an actor agreed to and nobody notices until a phone call, and nothing in the product knows those days
+- dod:
+  - the Cast tab records an actor's agreed days, each with its evidence: who agreed (actor, agent, production), when, and how (email, phone); the status is derived from that evidence, never ticked by hand
+  - moving a scene, moving a day or swapping two days (FR-203) names every actor the move takes outside their agreed days in the existing confirm step, before publishing; the AD can still publish
+  - the day screen marks such an actor "outside agreed days" on the confirmation list, with call, WhatsApp and SMS and the message written, as for FR-202 chasing
+  - changes to an actor's agreed days are kept in a visible history
+  - not in this item: clashes with an actor's other shoots, suggesting a new order of days
+  - failure case: an actor with no agreed days entered shows "agreed days not entered", never a clean "OK"; the warning never blocks or changes a publish
