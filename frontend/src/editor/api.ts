@@ -3,7 +3,7 @@
  * the bearer token from the Connect screen (temporary until FR-12).
  */
 
-import type { Dashboard, CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, HistoryEntry, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes, CallSheetPdfExtraction, Actuals } from "../types";
+import type { AvailabilityIssue, CastAgreement, CastAgreementCreate, Dashboard, CallSheetCreate, CallSheetCreated, CallSheetRevision, CastMember, CastMemberCreate, ContactCreate, Contact, ContactMatch, CrewMember, CrewMemberCreate, HistoryEntry, Location, LocationCreate, LocationSuggestion, LocationUpdate, Member, Production, ProductionRole, RevisionCreate, SeenReport, SunTimes, CallSheetPdfExtraction, Actuals } from "../types";
 
 import { currentLang, translate } from "./lang";
 
@@ -174,6 +174,14 @@ export const api = {
     request<CastMember>(c, "PATCH", `/api/v1/productions/${productionId}/cast-members/${castMemberId}`, patch),
   deleteCastMember: (c: Connection, productionId: string, castMemberId: string) =>
     request<void>(c, "DELETE", `/api/v1/productions/${productionId}/cast-members/${castMemberId}`),
+  listAgreements: (c: Connection, productionId: string, castMemberId: string) =>
+    request<CastAgreement[]>(c, "GET", `/api/v1/productions/${productionId}/cast-members/${castMemberId}/agreements`),
+  createAgreement: (c: Connection, productionId: string, castMemberId: string, payload: CastAgreementCreate) =>
+    request<CastAgreement>(c, "POST", `/api/v1/productions/${productionId}/cast-members/${castMemberId}/agreements`, payload),
+  withdrawAgreement: (c: Connection, productionId: string, castMemberId: string, agreementId: string) =>
+    request<CastAgreement>(c, "POST", `/api/v1/productions/${productionId}/cast-members/${castMemberId}/agreements/${agreementId}/withdraw`),
+  checkAvailability: (c: Connection, productionId: string, checks: { shoot_date: string; cast_member_ids: string[] }[]) =>
+    request<AvailabilityIssue[]>(c, "POST", `/api/v1/productions/${productionId}/cast-availability`, { checks }),
   sunTimes: (c: Connection, productionId: string, locationId: string, shootDate: string) =>
     request<SunTimes>(c, "GET", `/api/v1/productions/${productionId}/locations/${locationId}/sun?shoot_date=${encodeURIComponent(shootDate)}`),
   hospitalSuggestion: (c: Connection, productionId: string, locationId: string) =>

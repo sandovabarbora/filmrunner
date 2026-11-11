@@ -335,6 +335,34 @@ export interface CastMember extends CastMemberCreate {
   personal_token: string | null;
 }
 
+/** FR-228: days an actor agreed to and the evidence. Never edited; a change withdraws it and adds a new one. */
+export interface CastAgreementCreate {
+  days: string[];
+  agreed_by: "actor" | "agent" | "production";
+  agreed_via: "email" | "phone" | "in_person" | "other";
+  agreed_on: string;
+  note: string | null;
+}
+
+export interface CastAgreement extends CastAgreementCreate {
+  id: string;
+  cast_member_id: string;
+  created_at: string;
+  created_by: string | null;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+}
+
+/** FR-228: an actor a day puts outside their agreed days; "not_entered" when none are recorded. */
+export interface AvailabilityIssue {
+  shoot_date: string;
+  cast_member_id: string;
+  name: string;
+  character_name: string;
+  status: "outside" | "not_entered";
+  agreed_days: string[];
+}
+
 export interface CastCallEntry {
   cast_member_id: string;
   status_code: CastStatus;

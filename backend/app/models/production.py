@@ -7,9 +7,10 @@ References:
 import enum
 import secrets
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, LargeBinary, String
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, LargeBinary, String
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -130,6 +131,26 @@ class CastMember(Base):
 
     production: Mapped["Production"] = relationship(back_populates="cast_members")
     contact: Mapped["Contact"] = relationship()
+
+
+class CastAgreement(Base):
+    """FR-228: days an actor agreed to, with who agreed, when and how.
+
+    Never edited: a change withdraws the old agreement and adds a new one, so the history shows what was agreed before."""
+
+    __tablename__ = "cast_agreements"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    cast_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cast_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    days: Mapped[list[date]] = mapped_column(ARRAY(Date), nullable=False)
+    agreed_by: Mapped[str] = mapped_column(String(20), nullable=False)  # actor | agent | production
+    agreed_via: Mapped[str] = mapped_column(String(20), nullable=False)  # email | phone | in_person | other
+    agreed_on: Mapped[date] = mapped_column(nullable=False)
+    note: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(255))
+    withdrawn_at: Mapped[datetime | None] = mapped_column()
+    withdrawn_by: Mapped[str | None] = mapped_column(String(255))
 
 
 class ContactPhoto(Base):

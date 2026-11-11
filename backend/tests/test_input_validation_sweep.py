@@ -40,7 +40,7 @@ from app.models.call_sheet import CallSheet, CallSheetRevision, CallSheetStatus,
 from app.models.membership import ProductionMember
 from app.models.production import CastMember, Contact, CrewMember, Location, Production
 from app.schemas.call_sheet import CallSheetCreate, CallSheetRevisionCreate, CastCallEntryCreate, ConfirmRequest, CrewCallEntryCreate, MoveSceneRequest, RescheduleRequest, ScheduleItemCreate, SwapDaysRequest
-from app.schemas.production import CastMemberCreate, CastMemberUpdate, ContactCreate, ContactUpdate, CrewMemberCreate, CrewMemberUpdate, LocationCreate, LocationUpdate, MemberCreate, ProductionCreate, ProductionUpdate
+from app.schemas.production import AvailabilityRequest, CastAgreementCreate, CastMemberCreate, CastMemberUpdate, ContactCreate, ContactUpdate, CrewMemberCreate, CrewMemberUpdate, LocationCreate, LocationUpdate, MemberCreate, ProductionCreate, ProductionUpdate
 from app.schemas.push import PushSubscriptionCreate
 
 
@@ -147,6 +147,8 @@ EXPECTED_REQUIRED_FIELDS: dict[type[BaseModel], set[str]] = {
     MoveSceneRequest: {"scene_number", "target_call_sheet_id", "expected_revision_letter", "expected_target_revision_letter"},
     RescheduleRequest: {"shoot_date", "expected_revision_letter"},
     SwapDaysRequest: {"other_call_sheet_id", "expected_revision_letter", "expected_other_revision_letter"},
+    CastAgreementCreate: {"days", "agreed_by", "agreed_via", "agreed_on"},
+    AvailabilityRequest: {"checks"},
 }
 
 
@@ -188,6 +190,10 @@ def _valid_body(model: type[BaseModel], ids: dict) -> dict:
         return {"shoot_date": "2030-01-01", "expected_revision_letter": "A"}
     if model is SwapDaysRequest:
         return {"other_call_sheet_id": ids["other_call_sheet_id"], "expected_revision_letter": "A", "expected_other_revision_letter": "A"}
+    if model is CastAgreementCreate:
+        return {"days": ["2031-01-01"], "agreed_by": "agent", "agreed_via": "email", "agreed_on": "2030-12-01"}
+    if model is AvailabilityRequest:
+        return {"checks": [{"shoot_date": "2031-01-01", "cast_member_ids": [ids["cast_member_id"]]}]}
     raise AssertionError(f"no VALID_BODIES example registered for {model.__name__}; add one so this sweep covers it")
 
 
@@ -214,6 +220,8 @@ def _fill(path: str, ids: dict) -> str:
             parts.append(ids["crew_member_token"])
         elif segment == "{call_sheet_id}":
             parts.append(ids["call_sheet_id"])
+        elif segment == "{cast_member_id}":
+            parts.append(ids["cast_member_id"])
         elif segment.startswith("{") and segment.endswith("}"):
             parts.append(str(uuid.uuid4()))
         else:
@@ -246,7 +254,8 @@ def _ids(client: TestClient, auth_headers) -> dict:
         json={"shoot_date": "2031-01-02", "day_number": 2, "day_count": 2, "initial_revision": {}},
         headers=auth_headers,
     ).json()
-    return {"production_id": pid, "contact_id": contact_id, "crew_member_token": crew["personal_token"], "call_sheet_id": sheet["id"], "other_call_sheet_id": other["id"]}
+    actor = client.post(f"/api/v1/productions/{pid}/cast-members", json={"contact_id": contact_id, "character_name": "Sweep"}, headers=auth_headers).json()
+    return {"cast_member_id": actor["id"], "production_id": pid, "contact_id": contact_id, "crew_member_token": crew["personal_token"], "call_sheet_id": sheet["id"], "other_call_sheet_id": other["id"]}
 
 
 @pytest.mark.parametrize("method,path,model", ROUTES_WITH_REQUIRED_FIELDS, ids=[f"{m}:{p}" for m, p, _ in ROUTES_WITH_REQUIRED_FIELDS])

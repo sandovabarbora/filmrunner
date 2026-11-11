@@ -2408,7 +2408,8 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - failure case: a resend that fails again shows those names to the AD as not told
 
 ## FR-228 · tech-lead · An actor's agreed days, and a warning when the plan leaves them
-- state: ready
+- state: done
+- note: interactive session 2026-11-11 (branch `feat/fr-228-agreed-days`). `cast_agreements` table (migration `b9e2c4a7d1f3`), agreements are withdrawn, never edited, so the history stays; `POST /productions/{id}/cast-availability` checks any date and set of actors. Shown in the Cast tab ("Agreed days"), on the day's cast list, under the confirmation count, and in the move/swap step before publishing. A scene move does not carry actors (cast calls stay on their day), so its step says so and the warning appears once the actor is ticked on the target day. backend changed: deploy needed
 - gated: no
 - why: a head of production (outreach reply, 2026-11-11) named actors' commitments as the biggest constraint on every project; the damage comes when a scene moves off the days an actor agreed to and nobody notices until a phone call, and nothing in the product knows those days
 - dod:

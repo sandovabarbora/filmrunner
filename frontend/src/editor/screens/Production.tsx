@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { AgreedDays } from "../AgreedDays";
 import { Avatar } from "../../Avatar";
 import { api, ApiError, type Connection } from "../api";
 import { firstBadTime } from "../times";
@@ -862,6 +863,7 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
   const [form, setForm] = useState<CastForm>(EMPTY_CAST_FORM);
   const [editing, setEditing] = useState<CastMember | null>(null);
   const [busy, setBusy] = useState(false);
+  const [daysOpen, setDaysOpen] = useState<string | null>(null);  // FR-228: one actor's agreed days open at a time
 
   useEffect(() => {
     let cancelled = false;
@@ -922,12 +924,16 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
       {cast && cast.length > 0 && (
         <ul className="list" id="cast">
           {cast.map((a) => (
-            <li key={a.id} className={`row static${editing?.id === a.id ? " editing" : ""}`}>
+            <Fragment key={a.id}>
+            <li className={`row static${editing?.id === a.id ? " editing" : ""}`}>
               <span className="name crew-name">
                 <Avatar name={a.contact.name} photoUrl={a.contact.photo_url} size={28} />
                 <span>{a.contact.name}
                   <span className="meta"> · {a.character_name}{a.contact.phone ? ` · ${a.contact.phone}` : ""}{a.standard_pickup_time ? ` · pickup ${a.standard_pickup_time}` : ""}</span>
                 </span>
+              </span>
+              <span className="row-actions">
+                <button type="button" className="quiet" aria-expanded={daysOpen === a.id} onClick={() => setDaysOpen(daysOpen === a.id ? null : a.id)} aria-label={L("Agreed days of {name}", { name: a.contact.name })}>{L("Agreed days")}</button>
               </span>
               {canEdit && (
                 <span className="row-actions">
@@ -937,6 +943,8 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
                 </span>
               )}
             </li>
+            {daysOpen === a.id && <li className="row-detail"><AgreedDays conn={conn} productionId={productionId} actor={a} canEdit={canEdit} setNotice={setNotice} /></li>}
+            </Fragment>
           ))}
         </ul>
       )}

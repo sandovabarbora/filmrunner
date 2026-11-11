@@ -4,8 +4,10 @@ Reference: https://docs.pydantic.dev/latest/concepts/models/
 """
 
 import uuid
+from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.production import ProductionStatus
 from app.schemas.fields import ClockTime, optional_text, text
@@ -138,6 +140,48 @@ class CastMemberRead(BaseModel):
 class CastMemberUpdate(BaseModel):
     character_name: optional_text(255) = None
     standard_pickup_time: ClockTime = None
+
+
+class CastAgreementCreate(BaseModel):
+    """FR-228: the days an actor agreed to and the evidence for it."""
+
+    days: list[date] = Field(min_length=1, max_length=120)
+    agreed_by: Literal["actor", "agent", "production"]
+    agreed_via: Literal["email", "phone", "in_person", "other"]
+    agreed_on: date
+    note: optional_text(300) = None
+
+
+class CastAgreementRead(CastAgreementCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    cast_member_id: uuid.UUID
+    created_at: datetime
+    created_by: str | None = None
+    withdrawn_at: datetime | None = None
+    withdrawn_by: str | None = None
+
+
+class AvailabilityCheck(BaseModel):
+    """One day as it is, or as it would be after a move: its date and the actors called on it."""
+
+    shoot_date: date
+    cast_member_ids: list[uuid.UUID] = Field(max_length=200)
+
+
+class AvailabilityRequest(BaseModel):
+    checks: list[AvailabilityCheck] = Field(max_length=10)
+
+
+class AvailabilityIssue(BaseModel):
+    """An actor on a day the evidence does not cover. "not_entered": nobody has recorded any agreed days for them."""
+
+    shoot_date: date
+    cast_member_id: uuid.UUID
+    name: str
+    character_name: str
+    status: Literal["outside", "not_entered"]
+    agreed_days: list[date]
 
 
 class MemberCreate(BaseModel):
