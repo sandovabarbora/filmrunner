@@ -468,7 +468,7 @@ export const CS: Record<string, string> = {
   "Agreed to": "Dohodnuto do",
   "Who agreed": "Kdo potvrdil",
   "How": "Jak",
-  "Agreed on": "Kdy",
+  "Agreed on": "Kdy potvrzeno",
   "Note (optional)": "Poznámka (nepovinná)",
   "That range does not work: the end is before the start, or it is longer than 120 days.": "Tohle rozmezí nejde: konec je před začátkem, nebo je delší než 120 dní.",
   "Add {n} agreed days": "Přidat dohodnuté dny ({n})",
@@ -477,7 +477,7 @@ export const CS: Record<string, string> = {
   "Outside agreed days ({days})": "Mimo dohodnuté dny ({days})",
   "Agreed days not entered": "Dohodnuté dny nezadány",
   "Actors do not move with the scene. On Day {day}, tick who works there; it will say if that is outside their agreed days.": "Herci se se scénou nepřesouvají. Na Dni {day} zaškrtni, kdo tam hraje; ukáže se, jestli je to mimo jejich dohodnuté dny.",
-  "{name} ({character}) agreed to {days}. This puts them on {date}, outside those days.": "{name} ({character}) má dohodnuté {days}. Tímhle se dostane na {date}, mimo ty dny.",
+  "{name} ({character}): {date} is outside their agreed days ({days}).": "{name} ({character}): {date} je mimo dohodnuté dny ({days}).",
   "Agreed days not entered for: {names}.": "Dohodnuté dny nezadány: {names}.",
   "You can still move the day; nothing is blocked.": "Den můžeš přesunout i tak; nic se neblokuje.",
 };

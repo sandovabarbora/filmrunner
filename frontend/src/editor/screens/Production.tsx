@@ -934,14 +934,12 @@ function Cast({ conn, productionId, canEdit, setNotice }: { conn: Connection; pr
               </span>
               <span className="row-actions">
                 <button type="button" className="quiet" aria-expanded={daysOpen === a.id} onClick={() => setDaysOpen(daysOpen === a.id ? null : a.id)} aria-label={L("Agreed days of {name}", { name: a.contact.name })}>{L("Agreed days")}</button>
-              </span>
-              {canEdit && (
-                <span className="row-actions">
+              {canEdit && (<>
                   <button type="button" className="quiet" onClick={() => { void navigator.clipboard?.writeText(personalLink(conn.apiBase, a.personal_token!)); setNotice({ kind: "ok", text: L("Link for {name} copied.", { name: a.contact.name }) }); }} aria-label={L("Copy link for {name}", { name: a.contact.name })}><Icon name="copy" />{L("Link")}</button>
                   <button type="button" className="quiet" onClick={() => startEdit(a)} aria-label={L("Edit {name}", { name: a.contact.name })}>{L("Edit")}</button>
                   <button type="button" className="quiet danger" disabled={busy} onClick={() => void remove(a)} aria-label={L("Remove {name}", { name: a.contact.name })}>{L("Remove")}</button>
-                </span>
-              )}
+              </>)}
+              </span>
             </li>
             {daysOpen === a.id && <li className="row-detail"><AgreedDays conn={conn} productionId={productionId} actor={a} canEdit={canEdit} setNotice={setNotice} /></li>}
             </Fragment>

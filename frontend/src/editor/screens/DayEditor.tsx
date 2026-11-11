@@ -977,7 +977,7 @@ function AvailabilityWarning({ issues, lang }: { issues: AvailabilityIssue[]; la
     <div className="availability" id="availabilityWarning" role="status">
       {outside.map((i) => (
         <p key={`${i.shoot_date}:${i.cast_member_id}`} className="warn-text">
-          {L("{name} ({character}) agreed to {days}. This puts them on {date}, outside those days.", { name: i.name, character: i.character_name, days: formatDays(i.agreed_days, lang), date: formatDays([i.shoot_date], lang) })}
+          {L("{name} ({character}): {date} is outside their agreed days ({days}).", { name: i.name, character: i.character_name, days: formatDays(i.agreed_days, lang), date: formatDays([i.shoot_date], lang) })}
         </p>
       ))}
       {notEntered.length > 0 && <p className="hint">{L("Agreed days not entered for: {names}.", { names: [...new Set(notEntered.map((i) => i.name))].join(", ") })}</p>}
