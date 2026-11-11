@@ -188,3 +188,8 @@ Append-only. Format: date, decision, why, revisit when.
 - Decision: a cancelled day does not count as a duplicate, so a create with the same payload after a cancel creates a new day rather than returning the cancelled one.
 - Why: creating the replacement is the normal way forward after a cancel. No client retries a create on its own: the editor creates only when the AD taps publish, and the schedule import only when the AD confirms it; neither queues a create offline.
 - Revisit when: a client gains an automatic or offline retry of creates.
+
+## 2026-11-11: availability is checked against agreed days, as a warning only
+- Decision: the product records each actor's agreed days with who agreed, when and how, and warns the AD when a plan change leaves them (FR-228). It does not block the change, suggest a new plan, or check an actor's other shoots.
+- Why: a head of production named actors' commitments as the biggest constraint; the commitment itself cannot be enforced by software, but noticing that a plan change broke it can be. A warning keeps the positioning that the product does not decide what to do when a plan changes.
+- Revisit when: the pilot shows agreed days are rarely entered, or ADs ask for clashes across productions.
