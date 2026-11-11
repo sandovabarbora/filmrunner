@@ -5,7 +5,7 @@ Reference: https://fastapi.tiangolo.com/tutorial/sql-databases/
 
 import logging
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi.responses import Response
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -16,7 +16,7 @@ from app.authz import CREW_EDIT, PRODUCTION_EDIT, PRODUCTION_MANAGE_MEMBERS, PRO
 from app.models.call_sheet import CallSheet, CallSheetRevision, ScheduleItem
 from app.models.membership import ProductionMember, ProductionRole
 from app.database import get_db
-from app.models.production import CastMember, Contact, ContactPhoto, CrewMember, Location, Production
+from app.models.production import CastAgreement, CastMember, Contact, ContactPhoto, CrewMember, Location, Production
 from app.services.storage import ALLOWED_CONTENT_TYPES, MAX_PHOTO_BYTES, PhotoUploadFailed, PhotoUploadNotConfigured, delete_contact_photo, store_contact_photo
 from app.schemas.production import (
     ContactUpdate,
@@ -31,6 +31,10 @@ from app.schemas.production import (
     LocationRead,
     LocationSuggestion,
     SunTimes,
+    AvailabilityIssue,
+    AvailabilityRequest,
+    CastAgreementCreate,
+    CastAgreementRead,
     CastMemberCreate,
     CastMemberRead,
     CastMemberUpdate,
@@ -42,7 +46,7 @@ from app.schemas.production import (
     ProductionCreate,
     ProductionRead,
 )
-from app.services import call_sheet_pdf, geocoding, hospitals, weather
+from app.services import availability, call_sheet_pdf, geocoding, hospitals, weather
 from app.services.astronomy import sunrise_sunset
 
 from app.sandbox_tokens import session_of_email
@@ -420,6 +424,59 @@ def remove_cast_member(
     actor = _cast_member_of_production_or_404(db, production_id, cast_member_id)
     db.delete(actor)
     db.commit()
+
+
+# --- Agreed days (FR-228): what each actor agreed to, and a check of a day against it.
+
+
+@router.get("/productions/{production_id}/cast-members/{cast_member_id}/agreements", response_model=list[CastAgreementRead])
+def list_cast_agreements(
+    production_id: uuid.UUID, cast_member_id: uuid.UUID, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))
+) -> list[CastAgreement]:
+    """Withdrawn agreements included, newest first: this is the history, not only what holds now."""
+    _cast_member_of_production_or_404(db, production_id, cast_member_id)
+    return db.query(CastAgreement).filter(CastAgreement.cast_member_id == cast_member_id).order_by(CastAgreement.created_at.desc(), CastAgreement.id).all()
+
+
+@router.post("/productions/{production_id}/cast-members/{cast_member_id}/agreements", response_model=CastAgreementRead, status_code=status.HTTP_201_CREATED)
+def create_cast_agreement(
+    production_id: uuid.UUID, cast_member_id: uuid.UUID, payload: CastAgreementCreate,
+    db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT)),
+) -> CastAgreement:
+    _cast_member_of_production_or_404(db, production_id, cast_member_id)
+    agreement = CastAgreement(cast_member_id=cast_member_id, **{**payload.model_dump(), "days": sorted(set(payload.days))}, created_by=access.principal.label)
+    db.add(agreement)
+    db.commit()
+    db.refresh(agreement)
+    return agreement
+
+
+@router.post("/productions/{production_id}/cast-members/{cast_member_id}/agreements/{agreement_id}/withdraw", response_model=CastAgreementRead)
+def withdraw_cast_agreement(
+    production_id: uuid.UUID, cast_member_id: uuid.UUID, agreement_id: uuid.UUID,
+    db: Session = Depends(get_db), access: Access = Depends(require(CREW_EDIT)),
+) -> CastAgreement:
+    """Kept, marked withdrawn: a repeat keeps the first withdrawal's time and author."""
+    _cast_member_of_production_or_404(db, production_id, cast_member_id)
+    agreement = db.get(CastAgreement, agreement_id)
+    if agreement is None or agreement.cast_member_id != cast_member_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agreement not found")
+    if agreement.withdrawn_at is None:
+        agreement.withdrawn_at, agreement.withdrawn_by = datetime.now(timezone.utc).replace(tzinfo=None), access.principal.label
+        db.commit()
+        db.refresh(agreement)
+    return agreement
+
+
+@router.post("/productions/{production_id}/cast-availability", response_model=list[AvailabilityIssue])
+def check_cast_availability(
+    production_id: uuid.UUID, payload: AvailabilityRequest, db: Session = Depends(get_db), _: Access = Depends(require(PRODUCTION_READ))
+) -> list[AvailabilityIssue]:
+    """Read-only: the actors each day puts outside what they agreed to. Actors inside their days are not listed."""
+    try:
+        return availability.check(db, production_id, payload.checks)
+    except availability.CastNotOnProduction as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get("/productions/{production_id}/locations/{location_id}/sun", response_model=SunTimes)

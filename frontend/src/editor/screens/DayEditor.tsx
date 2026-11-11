@@ -10,8 +10,9 @@ import { pragueToday } from "../pragueDate";
 import { nextRevisionLetter } from "../revisions";
 import { firstBadTime } from "../times";
 import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
-import type { Actuals, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
-import { useL } from "../lang";
+import { formatDays, splitIssues } from "../availability";
+import type { Actuals, AvailabilityIssue, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
+import { useL, useLang } from "../lang";
 import { Icon } from "../../Icon";
 import { JumpRow } from "../JumpRow";
 import { removeScene, restoreScene, type RemovedScene } from "../sceneUndo";
@@ -101,6 +102,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   conn: Connection; productionId: string; productionName: string | null; callSheetId: string | null; canPublish: boolean; setNotice: (n: Notice) => void;
 }) {
   const L = useL();
+  const lang = useLang();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [offline, setOffline] = useState(false);
   const readOnly = offline || !canPublish;
@@ -133,6 +135,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   const [movingDay, setMovingDay] = useState(false);
   const [newDate, setNewDate] = useState("");
   const [swapId, setSwapId] = useState("");
+  // FR-228: actors this day, or the move being considered, puts outside the days they agreed to.
+  const [dayIssues, setDayIssues] = useState<AvailabilityIssue[]>([]);
+  const [moveIssues, setMoveIssues] = useState<AvailabilityIssue[]>([]);
   const latest = useRef<Draft | null>(null);
   const [undo, setUndo] = useState<RemovedScene | null>(null);  // FR-226: one removed scene at a time, for eight seconds
   const undoNote = useRef<HTMLParagraphElement>(null);
@@ -186,6 +191,31 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
   }, [conn, productionId, productionName, callSheetId, key, setNotice, reloadTick]);
 
   useEffect(() => { latest.current = draft; if (draft) void saveDraft(draft); }, [draft]);
+
+  const castIds = Object.keys(draft?.castCalls ?? {}).sort();
+  const castKey = castIds.join(",");
+  const dayDate = draft?.shoot_date ?? "";
+  useEffect(() => {
+    if (!dayDate || !castKey || offline) { setDayIssues([]); return; }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      api.checkAvailability(conn, productionId, [{ shoot_date: dayDate, cast_member_ids: castKey.split(",") }])
+        .then((r) => { if (!cancelled) setDayIssues(r); }).catch(() => { if (!cancelled) setDayIssues([]); });
+    }, 300);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [conn, productionId, dayDate, castKey, offline, reloadTick]);
+
+  useEffect(() => {
+    const other = swapId ? days.find((d) => d.id === swapId) : null;
+    const checks = other
+      ? [{ shoot_date: other.shoot_date, cast_member_ids: castIds }, { shoot_date: dayDate, cast_member_ids: (other.current_revision?.cast_calls ?? []).map((c) => c.cast_member_id) }]
+      : newDate ? [{ shoot_date: newDate, cast_member_ids: castIds }] : [];
+    const wanted = checks.filter((c) => c.cast_member_ids.length > 0);
+    if (!movingDay || wanted.length === 0) { setMoveIssues([]); return; }
+    let cancelled = false;
+    api.checkAvailability(conn, productionId, wanted).then((r) => { if (!cancelled) setMoveIssues(r); }).catch(() => { if (!cancelled) setMoveIssues([]); });
+    return () => { cancelled = true; };
+  }, [conn, productionId, movingDay, newDate, swapId, days, dayDate, castKey]);
 
   const publishedLetter = draft?.callSheetId ? draft.lastPublishedLetter : null;
   useEffect(() => {
@@ -490,6 +520,9 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             <div className="seen" id="seenPanel">
               <p className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</p>
               {notOpened > 0 && <p className="seen-urgent" id="notOpenedCount">{L("Not opened: {n}", { n: notOpened })}</p>}
+              {!draft.dirtySincePublish && splitIssues(dayIssues).outside.map((i) => (
+                <p key={i.cast_member_id} className="warn-text outside-agreed">{L("{name} agreed to {days}; this day is outside them. Call them before the crew counts on it.", { name: i.name, days: formatDays(i.agreed_days, lang) })}</p>
+              ))}
               {next && (
                 <a className="button primary remind-next" id="remindNext" href={whatsappUrl(whatsappNumber(next.phone)!, nudgeOf(next))} target="_blank" rel="noreferrer" onClick={() => setReminded(new Set(reminded).add(remindKey(next)))}>
                   <Icon name="chat" />{L("Remind {name} ({left} left)", { name: next.name, left: toRemind.length })}
@@ -562,6 +595,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 </select>
               </label>
             )}
+            <AvailabilityWarning issues={moveIssues} lang={lang} />
             <p className="hint">{planned ? L("This day is still planned, so nobody is told.") : L("A new revision goes out straight away and everyone with notifications on is told. Scenes and calls stay as they are.")}</p>
             <div className="inline">
               <button type="button" id="moveDayGo" disabled={busy || (!newDate && !swapId)} onClick={moveDay}>{L("Move the day")}</button>
@@ -673,6 +707,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   <div className="pcall-who">
                     <label className="check"><input type="checkbox" aria-label={L("{name} works today", { name: a.contact.name })} checked={!!v} disabled={dis} onChange={(e) => (e.target.checked ? setEntry({}) : clear())} /> <span className="name">{a.contact.name}</span></label>
                     <span className="meta"> · {a.character_name}</span>
+                    {v && (() => {
+                      const issue = dayIssues.find((i) => i.cast_member_id === a.id);
+                      if (!issue) return null;
+                      return issue.status === "outside"
+                        ? <div className="warn-text outside-agreed">{L("Outside agreed days ({days})", { days: formatDays(issue.agreed_days, lang) })}</div>
+                        : <div className="hint">{L("Agreed days not entered")}</div>;
+                    })()}
                   </div>
                   {v && (
                     <div className="pcall-row cast-row">
@@ -730,6 +771,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                 return (
                   <div className="replan" id="moveScenePanel">
                     <p className="hint">{L("Scene {n} leaves this day and goes last on Day {day}. A new revision goes out on both days straight away.", { n: it.scene_number, day: target.day_number })}</p>
+                    {cast.length > 0 && <p className="hint">{L("Actors do not move with the scene. On Day {day}, tick who works there; it will say if that is outside their agreed days.", { day: target.day_number })}</p>}
                     <div className="inline">
                       <button type="button" id="moveSceneGo" disabled={busy} onClick={() => moveScene(i, target)}>{L("Move scene {n}", { n: it.scene_number })}</button>
                       <button type="button" className="quiet" disabled={busy} onClick={() => setMovingScene(null)}>{L("Keep it")}</button>
@@ -923,5 +965,23 @@ function Field(props: { label: string; id: string; value: string; onChange: (v: 
         ? <textarea id={id} maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} rows={3} disabled={disabled} />
         : <input id={id} type={type} className={mono ? "mono" : undefined} placeholder={placeholder} maxLength={maxLength} min={min} value={value} onChange={(e) => onChange(e.target.value)} inputMode={type === "number" ? "numeric" : undefined} disabled={disabled} />}
     </label>
+  );
+}
+
+/** FR-228: before a move goes out, who it takes outside their agreed days. It never stops the move. */
+function AvailabilityWarning({ issues, lang }: { issues: AvailabilityIssue[]; lang: "cs" | "en" }) {
+  const L = useL();
+  const { outside, notEntered } = splitIssues(issues);
+  if (issues.length === 0) return null;
+  return (
+    <div className="availability" id="availabilityWarning" role="status">
+      {outside.map((i) => (
+        <p key={`${i.shoot_date}:${i.cast_member_id}`} className="warn-text">
+          {L("{name} ({character}): {date} is outside their agreed days ({days}).", { name: i.name, character: i.character_name, days: formatDays(i.agreed_days, lang), date: formatDays([i.shoot_date], lang) })}
+        </p>
+      ))}
+      {notEntered.length > 0 && <p className="hint">{L("Agreed days not entered for: {names}.", { names: [...new Set(notEntered.map((i) => i.name))].join(", ") })}</p>}
+      {outside.length > 0 && <p className="hint">{L("You can still move the day; nothing is blocked.")}</p>}
+    </div>
   );
 }

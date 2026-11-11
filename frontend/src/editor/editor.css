@@ -257,3 +257,11 @@ a.button.primary.remind-next { background: var(--card); color: var(--ink); }
 .undo-note { margin: 8px 0 0; font-size: var(--fs-small); color: var(--ink-2); }
 .undo-note:empty { margin: 0; }
 .undo-note .linklike { display: inline-block; padding-block: 12px; margin-block: -12px; color: var(--ink); font-weight: 600; }
+
+/* FR-228: agreed days under an actor in the Cast tab, and the warnings that use them. */
+.list > li.row-detail { padding: 0 0 12px; border-bottom: 1px solid var(--rule); }
+.agreed-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.agreed-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding: 4px 0; }
+.outside-agreed { font-weight: 600; margin: 2px 0 0; }
+.availability { margin: 0 0 8px; }
+.availability .warn-text { font-weight: 600; margin: 0 0 4px; }
