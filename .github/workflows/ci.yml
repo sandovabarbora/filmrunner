@@ -76,7 +76,8 @@ jobs:
         run: pip install -r backend/requirements.txt -r frontend/tests/requirements.txt
       - name: Install Playwright browser
         if: env.RUN_HEAVY == 'true'
-        run: python -m playwright install --with-deps chromium
+        # The image already has the libraries Chromium needs; --with-deps only adds fonts, and an Ubuntu mirror outage must not fail the build.
+        run: python -m playwright install --with-deps chromium || python -m playwright install chromium
       - name: Branch and PR title conventions
         if: github.event_name == 'pull_request'
         env:
