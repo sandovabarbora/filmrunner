@@ -700,7 +700,7 @@ def test_production_can_be_renamed_and_wrapped_from_settings(page: Page, fronten
 
 
 def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, frontend_url: str, api_url: str) -> None:
-    """FR-36: after publish the day screen says "REV A opened by 0 of 2"; a crew member opening their personal link live moves
+    """FR-36: after publish the day screen says nobody has opened REV A; a crew member opening their personal link live moves
     them across; the one who has not gets a WhatsApp nudge; REV B starts the count over. A cached (offline) open does not count."""
     _connect(page, frontend_url, api_url)
     _create_production(page, f"E2E seen {uuid.uuid4().hex[:6]}")
@@ -713,8 +713,8 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     page.wait_for_selector("#general_crew_call", timeout=10_000)
     page.fill("#general_crew_call", "06:30"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV A", timeout=15_000)
-    expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 0 of 2", timeout=10_000)
-    expect(page.locator("#confirmedCount")).to_contain_text("0 of 2 confirmed")
+    expect(page.locator("#confirmedCount")).to_contain_text("REV A: 0 of 2 confirmed", timeout=10_000)
+    expect(page.locator("#seenBar [data-state='unopened']")).to_have_count(1)  # FR-229: the bar and the words say the same thing
     expect(page.locator("#unconfirmed li")).to_have_count(2)
     assert page.get_by_label("Nudge Tomáš Novák on WhatsApp").get_attribute("href").startswith("https://wa.me/420777123456?text=")
     assert page.get_by_label("Nudge Eva Malá on WhatsApp").count() == 0  # no phone, no broken link
@@ -730,7 +730,9 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
     eva_link = page.locator("#personalLinks li", has_text="Eva Malá").get_by_role("link", name="Open").get_attribute("href")
     v = page.context.new_page(); v.goto(eva_link); v.wait_for_selector("#you", timeout=15_000); v.close()
     page.reload(); page.wait_for_selector("#seenPanel", timeout=10_000)
-    expect(page.locator("#seenPanel")).to_contain_text("REV A opened by 1 of 2", timeout=10_000)
+    expect(page.locator("#openedCount")).to_contain_text("Opened, not confirmed: 1", timeout=10_000)
+    expect(page.locator("#notOpenedCount")).to_contain_text("Not opened: 1")
+    expect(page.locator("#seenBar span")).to_have_count(2)
     # Opened is not confirmed: Eva stays on the list, now as having opened it, and Tomáš is chased first.
     expect(page.locator("#unconfirmed li").first).to_contain_text("Tomáš Novák")
     expect(page.locator("#unconfirmed li", has_text="Eva Malá")).to_contain_text("not confirmed")
@@ -746,7 +748,8 @@ def test_ad_sees_who_opened_the_revision_and_can_nudge_the_rest(page: Page, fron
 
     page.fill("#general_crew_call", "07:00"); page.click("#publish")
     expect(page.locator("#notice")).to_contain_text("Published REV B", timeout=15_000)
-    expect(page.locator("#seenPanel")).to_contain_text("REV B opened by 0 of 2", timeout=10_000)
+    expect(page.locator("#confirmedCount")).to_contain_text("REV B: 0 of 2 confirmed", timeout=10_000)
+    expect(page.locator("#notOpenedCount")).to_contain_text("Not opened: 2")
 
 
 def test_day_screen_shows_a_collapsed_publish_history(page: Page, frontend_url: str, api_url: str) -> None:

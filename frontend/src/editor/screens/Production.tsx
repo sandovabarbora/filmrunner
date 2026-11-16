@@ -17,6 +17,7 @@ import { noticeFromError, type Notice } from "../EditorApp";
 import type { CallSheetCreated, CastMember, Contact, ContactMatch, CrewMember, Location, LocationUpdate, Member, Production, ProductionRole } from "../../types";
 import { fmtDate } from "../../i18n";
 import { useLang, useL } from "../lang";
+import { Explain } from "../Explain";
 import { Icon } from "../../Icon";
 
 /** FR-45: a picked contact is reused; a phone typed differently here corrects it for every production. */
@@ -669,12 +670,14 @@ export function Crew({ conn, productionId, productionName, canEdit, setNotice }:
             void navigator.clipboard?.writeText(allLinksText(allCrew, (m) => personalLink(conn.apiBase, m.personal_token!)));
             setNotice({ kind: "ok", text: L("{n} links copied, one per line with the name. Each person's link is theirs alone; send them one by one, not to the group.", { n: allCrew.length }) });
           }}><Icon name="copy" />{L("Copy all links")}</button>
-          <span className="hint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</span>
+          <Explain id="linksHint">{L("Each link is personal: it shows that person's call and counts as them opening the sheet. WhatsApp sends it to them directly.")}</Explain>
         </div>
       )}
       {canEdit && (<>
-      <h3 className="subhead" id="crewFormTitle">{editing ? L("Editing {name}", { name: editing.contact.name }) : L("Add a person")}</h3>
-      {!editing && <p className="hint" id="suppliersHint">{L("Suppliers and anyone else who needs the plan (catering, rental, transport, location owner) go here too: they get their own link, no sign-in, and appear on your confirmation list.")}</p>}
+      <div className="section-head">
+        <h3 className="subhead" id="crewFormTitle">{editing ? L("Editing {name}", { name: editing.contact.name }) : L("Add a person")}</h3>
+        {!editing && <Explain id="suppliersHint">{L("Suppliers and anyone else who needs the plan (catering, rental, transport, location owner) go here too: they get their own link, no sign-in, and appear on your confirmation list.")}</Explain>}
+      </div>
       {editing && (
         <div className="inline photo-field" id="crewPhotoField">
           <Avatar name={editing.contact.name} photoUrl={editing.contact.photo_url} size={48} />

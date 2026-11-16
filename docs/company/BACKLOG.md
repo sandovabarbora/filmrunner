@@ -2419,3 +2419,14 @@ Ordered by priority; the founder reorders. Grammar in TEAM.md.
   - changes to an actor's agreed days are kept in a visible history
   - not in this item: clashes with an actor's other shoots, suggesting a new order of days
   - failure case: an actor with no agreed days entered shows "agreed days not entered", never a clean "OK"; the warning never blocks or changes a publish
+
+## FR-229 · frontend · Less text on the AD's screens: show state, keep how it works behind an "i"
+- state: in-progress
+- gated: no
+- why: the founder found the app carries too much text for people on a set (2026-11-16); measured on the test day, the day screen showed 349 words, 120 of them the app explaining itself
+- dod:
+  - on the day screen an explanation of how the app works opens from an "i" beside its heading, and is closed by default
+  - who has confirmed, who only opened and who has not opened read from one bar, with the counts in words beside it so colour is never the only signal
+  - a browser test fails when the day screen shows more than 30 words of explanation
+  - the rule is written in `docs/design/visual-world.md`
+  - failure case: a hidden explanation is still in the page and one tap shows it; a message about something wrong (no map position, no connection) stays visible

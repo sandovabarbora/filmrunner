@@ -265,3 +265,23 @@ a.button.primary.remind-next { background: var(--card); color: var(--ink); }
 .outside-agreed { font-weight: 600; margin: 2px 0 0; }
 .availability { margin: 0 0 8px; }
 .availability .warn-text { font-weight: 600; margin: 0 0 4px; }
+
+/* FR-229: the screen shows state; how the app works waits behind an "i". */
+.section-head, .seen-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; }
+.section-head > h2, .section-head > h3, .seen-head > .seen-count { margin: 0; flex: 1 1 0; min-width: 0; }
+.section-head { margin-bottom: 12px; }
+.explain-toggle { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; width: var(--control); min-height: var(--control); margin: -6px 0; padding: 0; border: 0; background: none; color: var(--muted); }
+.explain-toggle[aria-expanded="true"] { color: var(--ink); }
+.explain-toggle .icon { width: 20px; height: 20px; }
+.hint.explain { flex-basis: 100%; margin: 4px 0 0; }
+.section-head + .hint.explain { margin: -6px 0 12px; }
+/* Who knows: one segment per state, sized by head count. Fill pattern, not colour alone, tells them apart. */
+.seen-bar { display: flex; gap: 3px; height: 12px; margin: 10px 0 8px; }
+.seen-bar > span { flex-basis: 0; min-width: 6px; }
+.seen-bar > [data-state="confirmed"] { background: var(--rev); }
+.seen-bar > [data-state="opened"] { background: repeating-linear-gradient(135deg, var(--ink-2) 0 2px, transparent 2px 6px); box-shadow: inset 0 0 0 1px var(--ink-2); }
+.seen-bar > [data-state="unopened"] { box-shadow: inset 0 0 0 1.5px var(--err-ink); }
+.seen-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0; padding: 0; font-size: var(--fs-small); font-weight: 600; }
+.seen-legend > [data-state="opened"] { color: var(--ink-2); }
+.seen-legend > [data-state="unopened"] { color: var(--err-ink); }
+@media (hover: hover) { .explain-toggle:hover { color: var(--ink); } }
