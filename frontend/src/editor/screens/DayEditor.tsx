@@ -13,6 +13,7 @@ import { isBeyondWeatherForecastHorizon } from "../weatherHorizon";
 import { formatDays, splitIssues } from "../availability";
 import type { Actuals, AvailabilityIssue, CallSheetCreated, CastMember, CastStatus, CrewMember, HistoryEntry, Location, RevisionCreate, ScheduleItemCreate, SeenReport } from "../../types";
 import { useL, useLang } from "../lang";
+import { Explain, SectionHead } from "../Explain";
 import { Icon } from "../../Icon";
 import { JumpRow } from "../JumpRow";
 import { removeScene, restoreScene, type RemovedScene } from "../sceneUndo";
@@ -518,8 +519,21 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
           const next = toRemind[0];
           return (
             <div className="seen" id="seenPanel">
-              <p className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</p>
-              {notOpened > 0 && <p className="seen-urgent" id="notOpenedCount">{L("Not opened: {n}", { n: notOpened })}</p>}
+              <div className="seen-head">
+                <h2 className="seen-count" id="confirmedCount">{L("REV {rev}: {n} of {total} confirmed", { rev: seen.revision_letter, n: confirmed.length, total: everyone.length })}</h2>
+                <Explain id="seenNote">{L("Opening a link counts as opened, not confirmed; a copy shown offline counts as neither. Refreshes every minute.")}</Explain>
+              </div>
+              {everyone.length > 0 && (
+                <div className="seen-bar" id="seenBar" data-rev={seen.revision_letter} aria-hidden="true">
+                  {confirmed.length > 0 && <span data-state="confirmed" style={{ flexGrow: confirmed.length }} />}
+                  {waiting.length - notOpened > 0 && <span data-state="opened" style={{ flexGrow: waiting.length - notOpened }} />}
+                  {notOpened > 0 && <span data-state="unopened" style={{ flexGrow: notOpened }} />}
+                </div>
+              )}
+              <ul className="seen-legend">
+                {waiting.length - notOpened > 0 && <li data-state="opened" id="openedCount">{L("Opened, not confirmed: {n}", { n: waiting.length - notOpened })}</li>}
+                {notOpened > 0 && <li data-state="unopened" id="notOpenedCount">{L("Not opened: {n}", { n: notOpened })}</li>}
+              </ul>
               {!draft.dirtySincePublish && splitIssues(dayIssues).outside.map((i) => (
                 <p key={i.cast_member_id} className="warn-text outside-agreed">{L("{name} agreed to {days}; this day is outside them. Call them before the crew counts on it.", { name: i.name, days: formatDays(i.agreed_days, lang) })}</p>
               ))}
@@ -565,7 +579,6 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
                   </ul>
                 </details>
               )}
-              <p className="hint seen-note">{L("REV {rev} opened by {seen} of {total}", { rev: seen.revision_letter, seen: seen.seen.length, total: everyone.length })}. {L("Opening a link counts as opened, not confirmed; a copy shown offline counts as neither. Refreshes every minute.")}</p>
             </div>
           );
         })()}
@@ -606,7 +619,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       </section>
 
       <section className="block" id="callsBlock" aria-label={L("Calls")}>
-        <h2>{L("Calls")}</h2>
+        <SectionHead title={L("Calls")} aboutId="weatherHint" about={L("Left blank, weather fills in from the first location's forecast when you publish — like sunrise and sunset.")} />
         <div className="grid2">
           <Field label={L("Crew call")} id="general_crew_call" placeholder="06:30" mono value={draft.general_crew_call} onChange={(v) => update({ general_crew_call: v })} disabled={dis} />
           <Field label={L("Shooting call")} id="shooting_call" placeholder="07:30" mono value={draft.shooting_call} onChange={(v) => update({ shooting_call: v })} disabled={dis} />
@@ -626,13 +639,13 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
             )}
           </div>
         )}
-        <p className="hint" id="weatherHint">{L("Left blank, weather fills in from the first location's forecast when you publish — like sunrise and sunset.")}</p>
-        <p className="hint" id="sunHint" data-state={sunState}>
+        {/* Only a problem earns a line here; "it worked" is already in the two filled fields. */}
+        <p className="hint" id="sunHint" data-state={sunState} hidden={sunState === "filled"}>
           {sunState === "none" && (locations.length === 0
             ? <>{L("Add a location to this day to get sunrise, sunset, weather and the nearest hospital.")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a></>
             : <>{L("Pick a location on a scene below to get sunrise, sunset, weather and the nearest hospital. No location yet?")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a></>)}
           {sunState === "filled" && <>{L("Sunrise and sunset come from the first scene's location; edit them if you know better.")}</>}
-          {sunState === "no-coords" && <>{L("That location has no map position, so sunrise and sunset cannot be computed; type them, or add an address under")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a>.</>}
+          {sunState === "no-coords" && <>{L("This location has no map position. Type sunrise and sunset, or add its address under")} <a href={href({ screen: "production", productionId, tab: "locations" })}>{L("Locations")}</a>.</>}
           {sunState === "failed" && <>{L("Could not fetch suggestions; type sunrise and sunset yourself.")}</>}
         </p>
         <Field label={L("Safety notes")} id="safety_notes" textarea maxLength={2000} value={draft.safety_notes} onChange={(v) => update({ safety_notes: v })} disabled={dis} />
@@ -647,8 +660,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
       </section>
 
       <section className="block" id="personalCallsBlock" aria-label={L("Personal calls")}>
-        <h2>{L("Personal calls")}</h2>
-        <p className="hint">{L("Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.")}</p>
+        <SectionHead title={L("Personal calls")} about={L("Only for people whose call differs from the crew call today. Empty means the general call (or their standing time). Carried over to the next revision.")} />
         {crew.length === 0 && <p className="hint">{L("Add crew under the Crew tab first.")}</p>}
         {(() => {
           // FR-44: with 40 people on the crew, list only those with an entry today; the rest are one pick away.
@@ -692,8 +704,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
 
       {cast.length > 0 && (
         <section className="block" id="castBlock" aria-label={L("Cast calls")}>
-          <h2>{L("Cast")}</h2>
-          <p className="hint">{L("Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.")}</p>
+          <SectionHead title={L("Cast")} about={L("Tick who works today and set their times. W work · SW start · WF finish · SWF start and finish · H hold · R rehearsal. Carried over to the next revision.")} />
           <ul className="items" id="castCalls">
             {cast.map((a) => {
               const v = draft.castCalls?.[a.id] ?? null;
@@ -807,7 +818,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         {published && dayStatus !== "cancelled" && (
           <details className="actuals fold" id="actuals" data-fold open={draft.shoot_date <= pragueToday() || Object.values(actuals).some(Boolean)}>
             <summary>{L("Actual times")}</summary>
-            <p className="hint">{L("After wrap: what really happened. For the production's records only; the crew's sheet does not change and nobody is notified.")}</p>
+            <p className="hint">{L("For the production's records. The crew's sheet does not change.")}</p>
             <div className="actuals-grid">
               {([["first_shot", "First shot"], ["lunch_out", "Lunch out"], ["lunch_in", "Lunch in"], ["wrap", "Wrap"]] as const).map(([key, label]) => (
                 <label key={key} className="field" htmlFor={`actual_${key}`}>
@@ -899,7 +910,7 @@ export function DayEditor({ conn, productionId, productionName, callSheetId, can
         {published && canPublish && crew.length > 0 && (
           <details className="share fold" id="personalLinks" data-fold>
             <summary>{L("Personal links · one per person, for the whole shoot")}</summary>
-            <p className="hint">{L("Each link opens that person's next day with their own call. Send it once; every new day and revision shows up in it.")}</p>
+            <p className="hint">{L("Send it once; every new day and revision shows up in it.")}</p>
             <ul className="list">
               {crew.map((m) => {
                 const link = personalLink(conn.apiBase, m.personal_token!);  // stable for the whole shoot (FR-32)

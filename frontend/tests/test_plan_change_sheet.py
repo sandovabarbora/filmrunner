@@ -196,6 +196,34 @@ def test_the_day_screen_is_about_changing_the_plan(page: Page, frontend_url: str
     expect(page.locator("#shareLink")).to_be_visible()
 
 
+# FR-229: the words an AD has to read past before reaching the plan. 120 before the cut, measured on this same screen.
+EXPLAINING_WORDS_BUDGET = 30
+_VISIBLE_HINT_WORDS = """() => [...document.querySelectorAll('.hint')]
+  .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
+  .reduce((n, el) => n + (el.innerText.trim().match(/\\S+/g) || []).length, 0)"""
+
+
+def test_the_day_screen_shows_state_and_keeps_how_it_works_behind_the_i(page: Page, frontend_url: str, api_url: str) -> None:
+    sheet, _ = _changed_day(api_url)
+    production = _api(api_url, "GET", f"/call-sheets/{sheet}")["production_id"]
+    connection = json.dumps({"apiBase": api_url, "token": E2E_TOKEN})
+    page.add_init_script(f"localStorage.setItem('filmrunner.editor.connection', {json.dumps(connection)});")
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{frontend_url}/editor.html#/p/{production}/day/{sheet}")
+    page.wait_for_selector("#seenBar", timeout=15_000)
+
+    shown = page.evaluate("() => [...document.querySelectorAll('.hint')].filter((el) => el.getBoundingClientRect().height > 0).map((el) => el.innerText.trim()).filter(Boolean)")
+    assert page.evaluate(_VISIBLE_HINT_WORDS) <= EXPLAINING_WORDS_BUDGET, shown
+    # Failure case: hiding an explanation must not lose it. It is in the page, and one tap shows it.
+    expect(page.locator("#weatherHint")).to_be_hidden()
+    toggle = page.locator("#callsBlock .explain-toggle")
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    toggle.click()
+    expect(page.locator("#weatherHint")).to_be_visible()
+    expect(page.locator("#weatherHint")).to_contain_text("weather fills in")
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+
+
 @pytest.mark.parametrize("target", [".masthead h1", ".home-mark"])
 def test_unhurried_taps_on_either_name_open_the_test_environment(page: Page, frontend_url: str, api_url: str, target: str) -> None:
     _send_the_built_in_api_to_the_test_server(page, api_url)
